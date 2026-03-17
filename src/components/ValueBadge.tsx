@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface ValueBadgeProps {
   value: number;
@@ -10,15 +11,18 @@ export function ValueBadge({ value, className }: ValueBadgeProps) {
   const isNeutral = value === 0;
 
   return (
-    <span className={cn(
-      "inline-flex items-center px-2 py-1 rounded-md font-mono-data text-xs font-bold",
-      isPositive && "bg-primary/10 text-primary ring-1 ring-primary/20",
-      !isPositive && !isNeutral && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
-      isNeutral && "bg-muted text-muted-foreground ring-1 ring-white/10",
-      className
-    )}>
+    <motion.span
+      whileHover={{ scale: 1.05 }}
+      className={cn(
+        "inline-flex items-center px-2 py-1 rounded-md font-mono-data text-xs font-bold transition-all duration-200",
+        isPositive && "bg-primary/10 text-primary ring-1 ring-primary/20",
+        !isPositive && !isNeutral && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
+        isNeutral && "bg-muted text-muted-foreground ring-1 ring-white/10",
+        className
+      )}
+    >
       {isPositive ? "+" : ""}{value.toFixed(1)}%
-    </span>
+    </motion.span>
   );
 }
 
@@ -29,15 +33,18 @@ interface DecisionBadgeProps {
 
 export function DecisionBadge({ decision, className }: DecisionBadgeProps) {
   return (
-    <span className={cn(
-      "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider",
-      decision === "Bet" && "bg-primary/10 text-primary ring-1 ring-primary/20",
-      decision === "No Bet" && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
-      decision === "Caution" && "bg-warning/10 text-warning ring-1 ring-warning/20",
-      className
-    )}>
+    <motion.span
+      whileHover={{ scale: 1.05 }}
+      className={cn(
+        "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200",
+        decision === "Bet" && "bg-primary/10 text-primary ring-1 ring-primary/20",
+        decision === "No Bet" && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
+        decision === "Caution" && "bg-warning/10 text-warning ring-1 ring-warning/20",
+        className
+      )}
+    >
       {decision}
-    </span>
+    </motion.span>
   );
 }
 
@@ -57,5 +64,27 @@ export function RiskBadge({ risk, className }: RiskBadgeProps) {
     )}>
       {risk}
     </span>
+  );
+}
+
+interface SpecialBadgeProps {
+  type: "high-value" | "premium-pick";
+  className?: string;
+}
+
+export function SpecialBadge({ type, className }: SpecialBadgeProps) {
+  return (
+    <motion.span
+      animate={{ opacity: [0.8, 1, 0.8] }}
+      transition={{ duration: 2, repeat: Infinity }}
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest",
+        type === "high-value" && "bg-primary/15 text-primary ring-1 ring-primary/30",
+        type === "premium-pick" && "bg-warning/15 text-warning ring-1 ring-warning/30",
+        className
+      )}
+    >
+      {type === "high-value" ? "⚡ High Value" : "★ Premium Pick"}
+    </motion.span>
   );
 }
