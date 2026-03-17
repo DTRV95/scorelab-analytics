@@ -18,6 +18,7 @@
 
     --primary: 142 71% 45%;
     --primary-foreground: 222 47% 4%;
+    --primary-glow: 160 60% 40%;
 
     --secondary: 222 30% 14%;
     --secondary-foreground: 210 40% 98%;
@@ -50,7 +51,8 @@
     --sidebar-ring: 142 71% 45%;
 
     --shadow-card: 0 0 0 1px rgba(255,255,255,0.05), 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.3);
-    --shadow-card-hover: 0 0 0 1px rgba(255,255,255,0.08), 0 8px 16px -4px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.3);
+    --shadow-card-hover: 0 0 0 1px rgba(255,255,255,0.08), 0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.3);
+    --shadow-glow-primary: 0 0 30px -5px hsla(142, 71%, 45%, 0.15), 0 0 60px -10px hsla(142, 71%, 45%, 0.08);
   }
 }
 
@@ -85,6 +87,10 @@
     box-shadow: var(--shadow-card-hover);
   }
 
+  .card-glow {
+    box-shadow: var(--shadow-glow-primary);
+  }
+
   .glass-surface {
     @apply bg-card/80 backdrop-blur-xl;
     box-shadow: var(--shadow-card);
@@ -116,6 +122,35 @@
   .input-surface:focus-within {
     @apply ring-primary/50;
   }
+
+  .card-interactive {
+    @apply rounded-2xl bg-card ring-surface card-shadow transition-all duration-300;
+  }
+
+  .card-interactive:hover {
+    @apply card-shadow-hover;
+    transform: translateY(-2px);
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Scrollbar */

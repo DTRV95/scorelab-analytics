@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
 import {
   BarChart3,
   TrendingUp,
@@ -14,6 +15,11 @@ import {
   ArrowRight,
   ChevronRight,
   Star,
+  Radar,
+  Brain,
+  Dices,
+  Scale,
+  Crosshair,
 } from "lucide-react";
 
 const fadeIn = {
@@ -41,6 +47,25 @@ const steps = [
   { num: "02", title: "Run the Model", desc: "Our Poisson engine calculates true probabilities." },
   { num: "03", title: "Detect Value", desc: "Compare model vs market to find mispriced bets." },
   { num: "04", title: "Size Your Stake", desc: "Kelly criterion optimizes your position." },
+];
+
+const radarPreview = [
+  { match: "Arsenal vs Chelsea", market: "Over 2.5", value: "+11.8%", conf: 9, decision: "Bet" as const },
+  { match: "Barcelona vs Real Madrid", market: "Over 3.5", value: "+6.6%", conf: 7, decision: "Bet" as const },
+  { match: "Bayern vs Dortmund", market: "Over 2.5", value: "+8.3%", conf: 8, decision: "Bet" as const },
+];
+
+const thinkingSteps = [
+  { icon: Brain, title: "Poisson Model", desc: "Calculates goal probabilities from historical scoring rates using statistical distributions." },
+  { icon: Dices, title: "Monte Carlo Simulation", desc: "Runs thousands of match simulations to generate robust probability estimates." },
+  { icon: Scale, title: "Value Betting Logic", desc: "Compares model probabilities vs market odds to identify mispriced outcomes." },
+];
+
+const whyDifferent = [
+  "Not predictions — probabilities",
+  "Not guessing — data-driven decisions",
+  "Real market comparison",
+  "Built for long-term edge",
 ];
 
 const pricingPlans = [
@@ -79,7 +104,41 @@ const testimonials = [
   { name: "James R.", role: "Bankroll Manager", quote: "The Kelly calculator alone has improved my ROI by 12% over 6 months.", rating: 5 },
 ];
 
+function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+
+  useEffect(() => {
+    if (!isInView) return;
+    let start = 0;
+    const duration = 1500;
+    const increment = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start * 10) / 10);
+      }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [isInView, target]);
+
+  return <span ref={ref} className="font-mono-data">{count.toFixed(target % 1 !== 0 ? 1 : 0)}{suffix}</span>;
+}
+
 export default function Landing() {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -104,8 +163,39 @@ export default function Landing() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden gradient-hero">
+      <section className="relative pt-32 pb-24 px-6 overflow-hidden" onMouseMove={handleMouseMove}>
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 gradient-hero" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsla(142,71%,45%,0.08)_0%,_transparent_60%)]" />
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div
+            className="absolute w-[600px] h-[600px] rounded-full"
+            style={{
+              background: "radial-gradient(circle, hsla(142,71%,45%,0.04) 0%, transparent 70%)",
+              top: "10%",
+              left: "60%",
+            }}
+            animate={{
+              x: [0, 30, -20, 0],
+              y: [0, -20, 30, 0],
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div
+            className="absolute w-[400px] h-[400px] rounded-full"
+            style={{
+              background: "radial-gradient(circle, hsla(222,47%,20%,0.15) 0%, transparent 70%)",
+              top: "50%",
+              left: "20%",
+            }}
+            animate={{
+              x: [0, -30, 20, 0],
+              y: [0, 20, -30, 0],
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+
         <div className="max-w-7xl mx-auto relative">
           <motion.div
             className="max-w-3xl"
@@ -125,15 +215,25 @@ export default function Landing() {
               <span className="text-gradient-primary">Reimagined</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
-              Use statistical models, market pricing, and bankroll logic to identify value bets with clarity.
+              Advanced statistical models and simulations to identify real value in the market.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-wrap gap-4">
-              <Link to="/signup"><Button variant="hero" size="xl">Start Free <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-              <Link to="/dashboard"><Button variant="hero-outline" size="xl">View Demo</Button></Link>
+              <Link to="/analysis"><Button variant="hero" size="xl">Start Analysis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
+              <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explore Value Radar</Button></Link>
             </motion.div>
-            <motion.div variants={fadeIn} custom={4} className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-primary" strokeWidth={1.5} /> No credit card required</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-primary" strokeWidth={1.5} /> 5 free analyses daily</span>
+
+            {/* Animated Stats */}
+            <motion.div variants={fadeIn} custom={4} className="mt-10 flex items-center gap-8 flex-wrap">
+              {[
+                { value: 15420, suffix: "", label: "Analyses Run" },
+                { value: 67.4, suffix: "%", label: "Avg. Accuracy" },
+                { value: 11.8, suffix: "%", label: "Avg. Edge" },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </motion.div>
           </motion.div>
 
@@ -142,24 +242,36 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="mt-16 rounded-xl ring-1 ring-white/10 bg-card p-6 card-shadow"
+            className="mt-16 rounded-2xl ring-1 ring-white/10 bg-card p-6 card-shadow card-glow relative overflow-hidden"
           >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsla(142,71%,45%,0.04)_0%,_transparent_60%)]" />
+            <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Model Prob.", value: "67.4%", sub: "Over 2.5" },
                 { label: "Market Implied", value: "55.6%", sub: "Odds: 1.80" },
                 { label: "Value Edge", value: "+11.8%", color: "text-primary" },
                 { label: "Kelly Stake", value: "2.4%", sub: "$120" },
-              ].map((item) => (
-                <div key={item.label} className="rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-4">
+              ].map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 + i * 0.1 }}
+                  className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-4 hover:bg-white/[0.05] transition-colors"
+                >
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">{item.label}</p>
                   <p className={`mt-1 text-2xl font-bold font-mono-data ${item.color || "text-foreground"}`}>{item.value}</p>
                   {item.sub && <p className="text-xs text-muted-foreground mt-0.5">{item.sub}</p>}
-                </div>
+                </motion.div>
               ))}
             </div>
-            <div className="h-3 rounded-full bg-white/5 overflow-hidden">
-              <div className="h-full rounded-full gradient-primary" style={{ width: "67.4%" }} />
+            <div className="relative h-3 rounded-full bg-white/5 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full gradient-primary"
+                initial={{ width: 0 }}
+                animate={{ width: "67.4%" }}
+                transition={{ delay: 1.2, duration: 1, ease: [0.4, 0, 0.2, 1] }}
+              />
             </div>
             <div className="flex justify-between mt-2 text-xs text-muted-foreground">
               <span>Model: 67.4%</span>
@@ -169,8 +281,65 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Value Radar Preview */}
+      <section className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_50%)]" />
+        <div className="max-w-7xl mx-auto relative">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-primary/5 text-xs text-primary mb-4">
+              <Radar className="w-3 h-3" /> Live Scanner
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Today's Value Radar</h2>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {radarPreview.map((item, i) => (
+              <motion.div
+                key={item.match}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -4, scale: 1.02 }}
+                className={`rounded-2xl bg-card ring-surface p-5 card-shadow transition-all duration-300 ${item.conf >= 8 ? "ring-1 ring-primary/20 card-glow" : ""}`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-foreground">{item.match}</p>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary ring-1 ring-primary/20">
+                    {item.decision}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">{item.market}</p>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono-data text-lg font-bold text-primary">{item.value}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-primary"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${item.conf * 10}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
+                      />
+                    </div>
+                    <span className="font-mono-data text-xs text-muted-foreground">{item.conf}/10</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <div className="text-center">
+            <Link to="/radar">
+              <Button variant="hero-outline" size="lg">
+                View All Opportunities <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
-      <section id="features" className="py-24 px-6">
+      <section id="features" className="py-24 px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Features</p>
@@ -186,15 +355,107 @@ export default function Landing() {
                 viewport={{ once: true, margin: "-50px" }}
                 variants={fadeIn}
                 custom={i}
-                className="rounded-xl bg-card ring-surface p-6 card-shadow hover:card-shadow-hover transition-shadow duration-200 group"
+                whileHover={{ y: -4, scale: 1.02 }}
+                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300 group cursor-default"
               >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                   <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How ScoreLab Thinks */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Intelligence</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Thinks</h2>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Three layers of analysis power every recommendation.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {thinkingSteps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+                className="rounded-2xl bg-card ring-surface p-8 card-shadow text-center relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary/15 transition-colors">
+                    <step.icon className="w-7 h-7 text-primary" strokeWidth={1.5} />
+                  </div>
+                  <div className="text-4xl font-bold text-white/[0.04] mb-2">{String(i + 1).padStart(2, "0")}</div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why ScoreLab is Different */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Philosophy</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Why ScoreLab is Different</h2>
+              <div className="space-y-4">
+                {whyDifferent.map((point, i) => (
+                  <motion.div
+                    key={point}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-3"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Crosshair className="w-4 h-4 text-primary" strokeWidth={1.5} />
+                    </div>
+                    <p className="text-foreground font-medium">{point}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="rounded-2xl bg-card ring-surface p-8 card-shadow"
+            >
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Traditional Approach</p>
+                  <div className="h-3 rounded-full bg-destructive/20 overflow-hidden">
+                    <div className="h-full w-[35%] rounded-full bg-destructive/50" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">~35% long-term accuracy</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ScoreLab Intelligence</p>
+                  <div className="h-3 rounded-full bg-primary/20 overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full gradient-primary"
+                      initial={{ width: 0 }}
+                      whileInView={{ width: "67%" }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1, delay: 0.3 }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">~67% model accuracy</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -215,6 +476,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 variants={fadeIn}
                 custom={i}
+                whileHover={{ y: -2 }}
                 className="relative"
               >
                 <div className="text-5xl font-bold text-white/[0.03] mb-2">{step.num}</div>
@@ -229,43 +491,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Analytics Preview */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Preview</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Intelligence at a Glance</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Sample analysis cards */}
-            {[
-              { match: "Arsenal vs Chelsea", market: "Over 2.5", edge: "+8.4%", conf: 8, decision: "Bet" },
-              { match: "Liverpool vs Man City", market: "BTTS", edge: "+5.2%", conf: 7, decision: "Bet" },
-              { match: "Tottenham vs Newcastle", market: "Under 3.5", edge: "-2.1%", conf: 4, decision: "No Bet" },
-            ].map((item) => (
-              <div key={item.match} className="rounded-xl bg-card ring-surface p-5 card-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-foreground">{item.match}</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${item.decision === "Bet" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-destructive/10 text-destructive ring-1 ring-destructive/20"}`}>
-                    {item.decision}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">{item.market}</p>
-                <div className="flex items-center justify-between">
-                  <span className={`font-mono-data text-lg font-bold ${parseFloat(item.edge) > 0 ? "text-primary" : "text-destructive"}`}>{item.edge}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${item.conf * 10}%` }} />
-                    </div>
-                    <span className="font-mono-data text-xs text-muted-foreground">{item.conf}/10</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
       <section id="pricing" className="py-24 px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
@@ -275,12 +500,17 @@ export default function Landing() {
             <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more power.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {pricingPlans.map((plan) => (
-              <div
+            {pricingPlans.map((plan, i) => (
+              <motion.div
                 key={plan.name}
-                className={`rounded-xl p-6 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -4, scale: 1.02 }}
+                className={`rounded-2xl p-6 card-shadow transition-all duration-300 ${
                   plan.highlighted
-                    ? "bg-card ring-2 ring-primary/30 relative"
+                    ? "bg-card ring-2 ring-primary/30 relative card-glow"
                     : "bg-card ring-surface"
                 }`}
               >
@@ -304,14 +534,11 @@ export default function Landing() {
                   ))}
                 </ul>
                 <Link to="/signup">
-                  <Button
-                    variant={plan.highlighted ? "hero" : "outline"}
-                    className="w-full mt-6"
-                  >
+                  <Button variant={plan.highlighted ? "hero" : "outline"} className="w-full mt-6">
                     {plan.cta}
                   </Button>
                 </Link>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -325,8 +552,16 @@ export default function Landing() {
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Trusted by Analysts</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="rounded-xl bg-card ring-surface p-6 card-shadow">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -2 }}
+                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300"
+              >
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: t.rating }).map((_, i) => (
                     <Star key={i} className="w-4 h-4 fill-primary text-primary" />
@@ -337,15 +572,16 @@ export default function Landing() {
                   <p className="text-sm font-semibold text-foreground">{t.name}</p>
                   <p className="text-xs text-muted-foreground">{t.role}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA Footer */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-3xl mx-auto text-center">
+      <section className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.04)_0%,_transparent_50%)]" />
+        <div className="max-w-3xl mx-auto text-center relative">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground">Ready to Find Your Edge?</h2>
           <p className="mt-4 text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
           <div className="mt-8 flex justify-center gap-4">

@@ -10,12 +10,15 @@ import {
   Settings,
   BarChart3,
   ChevronLeft,
+  Radar,
 } from "lucide-react";
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Match Analysis", url: "/analysis", icon: Target },
+  { title: "Value Radar", url: "/radar", icon: Radar },
   { title: "Daily Opportunities", url: "/opportunities", icon: TrendingUp },
   { title: "History", url: "/history", icon: Clock },
   { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
@@ -51,16 +54,26 @@ export function AppSidebar() {
               key={item.url}
               to={item.url}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group",
                 isActive
                   ? "bg-sidebar-accent text-foreground"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
               )}
             >
-              <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
-              {!collapsed && <span>{item.title}</span>}
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-xl bg-sidebar-accent"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <item.icon className={cn(
+                "w-4 h-4 flex-shrink-0 relative z-10 transition-colors duration-200",
+                isActive && "text-primary"
+              )} strokeWidth={1.5} />
+              {!collapsed && <span className="relative z-10">{item.title}</span>}
               {isActive && !collapsed && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary relative z-10" />
               )}
             </Link>
           );
