@@ -1,73 +1,255 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { Download, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { getAnalyses, updateAnalysisTracking } from "@/lib/analysisStorage";
+import type { SavedAnalysis, BetStatus } from "@/types/analysis";
 
-const history = [
-  { id: 1, match: "Arsenal vs Chelsea", market: "Over 2.5", edge: 11.8, confidence: 9, decision: "Bet" as const, date: "2026-03-16" },
-  { id: 2, match: "Liverpool vs Man City", market: "BTTS", edge: 5.2, confidence: 7, decision: "Bet" as const, date: "2026-03-16" },
-  { id: 3, match: "Tottenham vs Newcastle", market: "Under 3.5", edge: -2.1, confidence: 4, decision: "No Bet" as const, date: "2026-03-15" },
-  { id: 4, match: "Man Utd vs Wolves", market: "Over 2.5", edge: 3.8, confidence: 6, decision: "Caution" as const, date: "2026-03-15" },
-  { id: 5, match: "Bayern vs Dortmund", market: "Over 3.5", edge: 7.1, confidence: 7, decision: "Bet" as const, date: "2026-03-14" },
-  { id: 6, match: "Barcelona vs Real Madrid", market: "Over 2.5", edge: 8.3, confidence: 8, decision: "Bet" as const, date: "2026-03-14" },
-  { id: 7, match: "PSG vs Marseille", market: "BTTS", edge: 4.2, confidence: 6, decision: "Caution" as const, date: "2026-03-13" },
-  { id: 8, match: "Juventus vs AC Milan", market: "Under 2.5", edge: 5.8, confidence: 7, decision: "Bet" as const, date: "2026-03-13" },
-];
+function getBestBet(results: SavedAnalysis["results"]) {
+  if (!Array.isArray(results) || results.length === 0) return null;
+  return results.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
+}
 
 export default function History() {
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+
+  useEffect(() => {
+    const data = getAnalyses();
+    setAnalyses(data);
+  }, []);
+
+  const safeAnalyses = useMemo(() => {
+    return analyses.filter(
+      (analysis) =>
+        analysis &&
+        typeof analysis.id === "string" &&
+        typeof analysis.homeTeam === "string" &&
+        typeof analysis.awayTeam === "string" &&
+        analysis.summary &&
+        Array.isArray(analysis.results)
+    );
+  }, [analyses]);
+
+  const handleTrackingChange = (
+    analysisId: string,
+    updates: Partial<SavedAnalysis["tracking"]>
+  ) => {
+    const updatedAnalyses = updateAnalysisTracking(analysisId, updates);
+    setAnalyses(updatedAnalyses);
+  };
+
   return (
     <AppLayout>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Analysis History</h1>
-            <p className="text-sm text-muted-foreground mt-1">Review and export your past analyses.</p>
-          </div>
-          <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" strokeWidth={1.5} /> Export All</Button>
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Analysis History</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Review your past analyses and track your bets.
+          </p>
         </div>
 
-        <div className="rounded-xl bg-card ring-surface p-4 card-shadow mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
-            <input
-              type="text"
-              placeholder="Search analyses..."
-              className="w-full h-9 pl-9 pr-4 rounded-lg input-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-            />
-          </div>
-        </div>
+        <div className="space-y-6">
+          {safeAnalyses.length === 0 ? (
+            <div className="rounded-xl bg-card ring-surface card-shadow p-8 text-center text-sm text-muted-foreground">
+              No analyses found yet. Run your first analysis in Match Analysis.
+            </div>
+          ) : (
+            safeAnalyses.map((analysis) => {
+              const bestBet = getBestBet(analysis.results);
+              const tracking = analysis.tracking;
 
-        <div className="rounded-xl bg-card ring-surface card-shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {["Date", "Match", "Market", "Edge", "Confidence", "Decision", ""].map((h) => (
-                    <th key={h} className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer">
-                    <td className="px-5 py-3.5 text-muted-foreground font-mono-data text-xs">{h.date}</td>
-                    <td className="px-5 py-3.5 font-medium text-foreground">{h.match}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{h.market}</td>
-                    <td className="px-5 py-3.5"><ValueBadge value={h.edge} /></td>
-                    <td className="px-5 py-3.5"><ConfidenceMeter score={h.confidence} className="w-20" /></td>
-                    <td className="px-5 py-3.5"><DecisionBadge decision={h.decision} /></td>
-                    <td className="px-5 py-3.5">
-                      <Button variant="ghost" size="sm" className="text-xs">View</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              return (
+                <div
+                  key={analysis.id}
+                  className="rounded-xl bg-card ring-surface card-shadow p-5 space-y-4"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {analysis.homeTeam} vs {analysis.awayTeam}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(analysis.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    {bestBet && (
+                      <div className="flex flex-wrap gap-3 items-center">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Best Market</p>
+                          <p className="text-sm font-medium text-foreground">{bestBet.market}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Edge</p>
+                          <ValueBadge value={bestBet.valueBet} />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Confidence</p>
+                          <ConfidenceMeter score={bestBet.confidence} className="w-20" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Decision</p>
+                          <DecisionBadge decision={bestBet.decision} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div>
+                      <label className="flex items-center gap-2 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={tracking.betPlaced}
+                          onChange={(e) =>
+                            handleTrackingChange(analysis.id, {
+                              betPlaced: e.target.checked,
+                            })
+                          }
+                        />
+                        I placed this bet
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Selected Market
+                      </label>
+                      <select
+                        value={tracking.selectedMarket ?? ""}
+                        onChange={(e) =>
+                          handleTrackingChange(analysis.id, {
+                            selectedMarket: e.target.value || null,
+                        })
+                      }
+                        className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+                        disabled={!tracking.betPlaced}
+                      >
+                        <option value="" className="bg-card text-foreground">Select market</option>
+                        {analysis.results.map((result) => (
+                          <option
+                            key={result.market}
+                            value={result.market}
+                            className="bg-card text-foreground"
+                          >
+                            {result.market}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Stake Used
+                      </label>
+                      <input
+                        type="number"
+                        value={tracking.stakeUsed ?? ""}
+                        onChange={(e) =>
+                          handleTrackingChange(analysis.id, {
+                            stakeUsed:
+                              e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        disabled={!tracking.betPlaced}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Odd Used
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={tracking.oddUsed ?? ""}
+                        onChange={(e) =>
+                          handleTrackingChange(analysis.id, {
+                            oddUsed:
+                              e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        disabled={!tracking.betPlaced}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Result Status
+                      </label>
+                      <select
+                      value={tracking.resultStatus}
+                      onChange={(e) =>
+                        handleTrackingChange(analysis.id, {
+                          resultStatus: e.target.value as BetStatus,
+                        })
+                      }
+                      className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+                      disabled={!tracking.betPlaced}
+                    >
+                      <option value="pending" className="bg-card text-foreground">Pending</option>
+                      <option value="green" className="bg-card text-foreground">Green</option>
+                      <option value="red" className="bg-card text-foreground">Red</option>
+                      <option value="void" className="bg-card text-foreground">Void</option>
+                    </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Notes
+                      </label>
+                      <input
+                        type="text"
+                        value={tracking.notes}
+                        onChange={(e) =>
+                          handleTrackingChange(analysis.id, {
+                            notes: e.target.value,
+                          })
+                        }
+                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        disabled={!tracking.betPlaced}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Bankroll Before</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {tracking.bankrollBefore !== null
+                          ? tracking.bankrollBefore.toFixed(2)
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Profit / Loss</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {tracking.profitLoss.toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Bankroll After</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {tracking.bankrollAfter !== null
+                          ? tracking.bankrollAfter.toFixed(2)
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Tracked Status</p>
+                      <p className="text-sm font-medium text-foreground capitalize">
+                        {tracking.resultStatus}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      </motion.div>
+      </div>
     </AppLayout>
   );
 }

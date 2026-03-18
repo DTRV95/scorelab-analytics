@@ -7,22 +7,15 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Progress } from "@/components/ui/progress";
+import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
+import {
+  saveAnalysis,
+  createEmptyTracking,
+  createAnalysisId,
+  calculateNextBankrollBefore,
+} from "@/lib/analysisStorage";
 
 type RiskLevel = "Low" | "Medium" | "High";
-type DecisionType = "Bet" | "No Bet" | "Caution";
-
-interface AnalysisResult {
-  market: string;
-  odds: number;
-  modelProb: number;
-  impliedProb: number;
-  valueBet: number;
-  kelly: number;
-  stake: number;
-  risk: RiskLevel;
-  confidence: number;
-  decision: DecisionType;
-}
 
 interface BackendMarket {
   mercado: string;
@@ -111,7 +104,9 @@ const loadingSteps = [
 function InputSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-6">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{label}</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        {label}
+      </h3>
       <div className="space-y-3">{children}</div>
     </div>
   );
@@ -147,41 +142,6 @@ function mapRisk(risco: number): RiskLevel {
   return "High";
 }
 
-function mapDecision(decisao: string): DecisionType {
-  if (!decisao) return "No Bet";
-
-  const d = decisao.toLowerCase().trim();
-
-  // BET
-  if (
-    d.includes("apostar") ||
-    d.includes("bet") ||
-    d === "sim"
-  ) {
-    return "Bet";
-  }
-
-  // CAUTION
-  if (
-    d.includes("caution") ||
-    d.includes("cautela")
-  ) {
-    return "Caution";
-  }
-
-  // NO BET
-  if (
-    d.includes("não") ||
-    d.includes("nao") ||
-    d.includes("no bet") ||
-    d.includes("no")
-  ) {
-    return "No Bet";
-  }
-
-  return "No Bet";
-}
-
 function mapMarketName(name: string): string {
   const normalized = name.toLowerCase();
 
@@ -215,14 +175,14 @@ export default function MatchAnalysis() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
- const bestBet = useMemo(() => {
-  if (!results.length) return null;
+  const bestBet = useMemo(() => {
+    if (!results.length) return null;
 
-  const positiveBets = results.filter((r) => r.valueBet > 0);
-  if (!positiveBets.length) return null;
+    const positiveBets = results.filter((r) => r.valueBet > 0);
+    if (!positiveBets.length) return null;
 
-  return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
-}, [results]);
+    return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
+  }, [results]);
 
   const chartData = useMemo(
     () =>
@@ -318,30 +278,53 @@ export default function MatchAnalysis() {
         risk: mapRisk(m.risco),
         confidence: Number(m.confianca.toFixed(0)),
         decision:
-        m.value_bet_pct >= 5 && m.kelly_pct >= 2
-         ? "Bet"
-         : m.value_bet_pct > 0
-         ? "Caution"
-         : "No Bet",
+          m.value_bet_pct >= 5 && m.kelly_pct >= 2
+            ? "Bet"
+            : m.value_bet_pct > 0
+            ? "Caution"
+            : "No Bet",
       }));
 
       const avgConfidence =
         mappedResults.length > 0
-          ? mappedResults.reduce((acc, item) => acc + item.confidence, 0) / mappedResults.length
+          ? mappedResults.reduce((acc, item) => acc + item.confidence, 0) /
+            mappedResults.length
           : 0;
 
-      setResults(mappedResults);
-      setSummary({
+      const summaryData = {
         homeXg: data.lambda_casa,
         awayXg: data.lambda_fora,
         totalXg: data.total_golos_esperados,
         confidence: Number(avgConfidence.toFixed(1)),
-      });
+      };
+
+      setResults(mappedResults);
+      setSummary(summaryData);
+
+      const bankrollBefore = calculateNextBankrollBefore();
+
+      const analysisToSave: SavedAnalysis = {
+        id: createAnalysisId(),
+        createdAt: new Date().toISOString(),
+        homeTeam: formData.homeTeam,
+        awayTeam: formData.awayTeam,
+        summary: summaryData,
+        results: mappedResults,
+        tracking: {
+          ...createEmptyTracking(),
+          bankrollBefore,
+          bankrollAfter: bankrollBefore,
+        },
+      };
+
+      saveAnalysis(analysisToSave);
 
       setShowResults(true);
     } catch (error) {
       console.error(error);
-      setErrorMessage("Could not connect to the analysis engine. Make sure the backend API is running.");
+      setErrorMessage(
+        "Could not connect to the analysis engine. Make sure the backend API is running."
+      );
       setShowResults(false);
     } finally {
       setTimeout(() => {
@@ -356,7 +339,9 @@ export default function MatchAnalysis() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Match Analysis</h1>
-            <p className="text-sm text-muted-foreground mt-1">Enter team statistics and market odds to detect value.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter team statistics and market odds to detect value.
+            </p>
           </div>
           <Button variant="outline" size="sm">
             <Save className="w-4 h-4 mr-1" strokeWidth={1.5} /> Save
@@ -364,7 +349,6 @@ export default function MatchAnalysis() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Input Panel */}
           <div className="lg:col-span-2 rounded-2xl bg-card ring-surface p-6 card-shadow overflow-y-auto max-h-[calc(100vh-180px)]">
             <InputSection label="Home Team">
               <FormField label="Team Name" value={formData.homeTeam} onChange={(v) => updateField("homeTeam", v)} />
@@ -419,7 +403,6 @@ export default function MatchAnalysis() {
             )}
           </div>
 
-          {/* Results Panel */}
           <div className="lg:col-span-3 space-y-4">
             <AnimatePresence>
               {isLoading && (
@@ -452,7 +435,6 @@ export default function MatchAnalysis() {
 
             {showResults && results.length > 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="space-y-4">
-                {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: "Home xG", value: summary.homeXg.toFixed(2) },
@@ -473,7 +455,6 @@ export default function MatchAnalysis() {
                   ))}
                 </div>
 
-                {/* Why This Bet */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -525,7 +506,6 @@ export default function MatchAnalysis() {
                   </AnimatePresence>
                 </motion.div>
 
-                {/* Betting Recommendation */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -546,7 +526,6 @@ export default function MatchAnalysis() {
                   )}
                 </motion.div>
 
-                {/* Probability Chart */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -565,7 +544,6 @@ export default function MatchAnalysis() {
                   </ResponsiveContainer>
                 </motion.div>
 
-                {/* Results Table */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -622,7 +600,6 @@ export default function MatchAnalysis() {
                   </div>
                 </motion.div>
 
-                {/* Strongest Value */}
                 {bestBet && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -645,7 +622,6 @@ export default function MatchAnalysis() {
               </motion.div>
             )}
 
-            {/* Empty state */}
             {!showResults && !isLoading && !errorMessage && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl bg-card ring-surface p-16 card-shadow text-center">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
