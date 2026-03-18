@@ -1,160 +1,83 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import { ValueBadge, DecisionBadge, SpecialBadge } from "@/components/ValueBadge";
+import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import {
   BarChart3,
-  TrendingUp,
-  Target,
-  Shield,
-  Zap,
-  Clock,
-  Download,
-  BookmarkCheck,
-  Check,
   ArrowRight,
-  ChevronRight,
-  Star,
-  Radar,
+  ArrowUpDown,
   Brain,
   Dices,
   Scale,
-  Crosshair,
+  Shield,
+  Flame,
+  Zap,
+  TrendingUp,
 } from "lucide-react";
 
 const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] as const },
+    transition: { delay: i * 0.06, duration: 0.45, ease: [0.4, 0, 0.2, 1] },
   }),
 };
 
-const features = [
-  { icon: BarChart3, title: "Poisson Probability Engine", desc: "Model match outcomes using advanced statistical distributions." },
-  { icon: TrendingUp, title: "Value Bet Detection", desc: "Compare model probabilities against market odds to find edges." },
-  { icon: Target, title: "Kelly Stake Calculator", desc: "Optimal position sizing based on your edge and bankroll." },
-  { icon: Shield, title: "Confidence Scoring", desc: "0–10 confidence meter backed by data quality signals." },
-  { icon: Clock, title: "Match History", desc: "Track and review every analysis you've run." },
-  { icon: Zap, title: "Daily Edge Dashboard", desc: "Pre-scanned daily opportunities ranked by value." },
-  { icon: Download, title: "Export to Excel", desc: "Download analyses and reports in structured formats." },
-  { icon: BookmarkCheck, title: "Saved Analyses", desc: "Bookmark and organize your most important predictions." },
-];
-
-const steps = [
-  { num: "01", title: "Input Match Data", desc: "Enter team stats, recent form, and market odds." },
-  { num: "02", title: "Run the Model", desc: "Our Poisson engine calculates true probabilities." },
-  { num: "03", title: "Detect Value", desc: "Compare model vs market to find mispriced bets." },
-  { num: "04", title: "Size Your Stake", desc: "Kelly criterion optimizes your position." },
-];
-
-const radarPreview = [
-  { match: "Arsenal vs Chelsea", market: "Over 2.5", value: "+11.8%", conf: 9, decision: "Bet" as const },
-  { match: "Barcelona vs Real Madrid", market: "Over 3.5", value: "+6.6%", conf: 7, decision: "Bet" as const },
-  { match: "Bayern vs Dortmund", market: "Over 2.5", value: "+8.3%", conf: 8, decision: "Bet" as const },
-];
-
-const thinkingSteps = [
-  { icon: Brain, title: "Poisson Model", desc: "Calculates goal probabilities from historical scoring rates using statistical distributions." },
-  { icon: Dices, title: "Monte Carlo Simulation", desc: "Runs thousands of match simulations to generate robust probability estimates." },
-  { icon: Scale, title: "Value Betting Logic", desc: "Compares model probabilities vs market odds to identify mispriced outcomes." },
-];
-
-const whyDifferent = [
-  "Not predictions — probabilities",
-  "Not guessing — data-driven decisions",
-  "Real market comparison",
-  "Built for long-term edge",
-];
-
-const pricingPlans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    desc: "Get started with basic analysis tools.",
-    features: ["5 analyses per day", "Basic Poisson model", "Single match analysis", "Community support"],
-    cta: "Start Free",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "$29",
-    period: "/month",
-    desc: "For serious analysts who need an edge.",
-    features: ["Unlimited analyses", "Advanced models", "Daily opportunities", "Export to Excel", "Match history", "Priority support"],
-    cta: "Start Pro Trial",
-    highlighted: true,
-  },
-  {
-    name: "Premium",
-    price: "$79",
-    period: "/month",
-    desc: "The full intelligence toolkit.",
-    features: ["Everything in Pro", "API access", "Custom models", "Bankroll tools", "Team collaboration", "Dedicated support", "Early feature access"],
-    cta: "Go Premium",
-    highlighted: false,
-  },
-];
-
-const testimonials = [
-  { name: "Marcus K.", role: "Professional Bettor", quote: "ScoreLab transformed my approach. The edge detection is incredibly precise.", rating: 5 },
-  { name: "Sarah T.", role: "Data Analyst", quote: "Finally a platform that treats betting like quantitative analysis. Clean, fast, reliable.", rating: 5 },
-  { name: "James R.", role: "Bankroll Manager", quote: "The Kelly calculator alone has improved my ROI by 12% over 6 months.", rating: 5 },
-];
-
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!isInView) return;
-    let start = 0;
-    const duration = 1500;
-    const increment = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start * 10) / 10);
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [isInView, target]);
-
-  return <span ref={ref} className="font-mono-data">{count.toFixed(target % 1 !== 0 ? 1 : 0)}{suffix}</span>;
+interface Opportunity {
+  match: string;
+  league: string;
+  market: string;
+  odds: number;
+  modelProb: number;
+  valueBet: number;
+  confidence: number;
+  decision: "Bet" | "No Bet" | "Caution";
+  tags?: string[];
 }
 
-export default function Landing() {
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+const todayOpportunities: Opportunity[] = [
+  { match: "Arsenal vs Chelsea", league: "Premier League", market: "Over 2.5", odds: 1.80, modelProb: 67.4, valueBet: 11.8, confidence: 9, decision: "Bet", tags: ["High scoring expectation"] },
+  { match: "Barcelona vs Real Madrid", league: "La Liga", market: "Over 2.5", odds: 1.65, modelProb: 72.8, valueBet: 8.3, confidence: 8, decision: "Bet", tags: ["Strong model agreement"] },
+  { match: "Bayern vs Dortmund", league: "Bundesliga", market: "Over 3.5", odds: 2.60, modelProb: 45.2, valueBet: 7.1, confidence: 7, decision: "Bet" },
+  { match: "Ajax vs PSV", league: "Eredivisie", market: "Over 3.5", odds: 2.80, modelProb: 42.0, valueBet: 9.6, confidence: 8, decision: "Bet", tags: ["High scoring expectation"] },
+  { match: "Liverpool vs Man City", league: "Premier League", market: "BTTS Yes", odds: 1.75, modelProb: 62.1, valueBet: 5.0, confidence: 7, decision: "Bet" },
+  { match: "Juventus vs AC Milan", league: "Serie A", market: "Under 2.5", odds: 1.90, modelProb: 58.4, valueBet: 5.8, confidence: 7, decision: "Bet" },
+  { match: "PSG vs Marseille", league: "Ligue 1", market: "BTTS Yes", odds: 2.00, modelProb: 54.3, valueBet: 4.2, confidence: 6, decision: "Caution" },
+  { match: "Tottenham vs Newcastle", league: "Premier League", market: "Over 2.5", odds: 2.10, modelProb: 49.8, valueBet: -2.1, confidence: 4, decision: "No Bet" },
+];
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  };
+type SortKey = "valueBet" | "confidence";
+
+const howItWorks = [
+  { icon: Brain, title: "Poisson Model", desc: "Calculates goal probabilities from historical scoring rates." },
+  { icon: Dices, title: "Monte Carlo Simulation", desc: "Thousands of simulated matches for robust estimates." },
+  { icon: Scale, title: "Value Bet Detection", desc: "Compares model vs market odds to find mispriced outcomes." },
+  { icon: Shield, title: "Kelly Criterion", desc: "Optimal stake sizing based on your edge and bankroll." },
+];
+
+export default function Landing() {
+  const [sortBy, setSortBy] = useState<SortKey>("valueBet");
+
+  const sorted = [...todayOpportunities].sort((a, b) =>
+    sortBy === "valueBet" ? b.valueBet - a.valueBet : b.confidence - a.confidence
+  );
+
+  const bestValue = sorted[0];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 md:px-6">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-primary-foreground" strokeWidth={1.5} />
+            <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center">
+              <BarChart3 className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={1.5} />
             </div>
             <span className="font-bold text-foreground text-lg tracking-tight">ScoreLab</span>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How it Works</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-          </div>
           <div className="flex items-center gap-3">
             <Link to="/login"><Button variant="ghost" size="sm">Log In</Button></Link>
             <Link to="/signup"><Button variant="hero" size="sm">Start Free</Button></Link>
@@ -162,445 +85,227 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden" onMouseMove={handleMouseMove}>
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 gradient-hero" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsla(142,71%,45%,0.08)_0%,_transparent_60%)]" />
-        <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            className="absolute w-[600px] h-[600px] rounded-full"
-            style={{
-              background: "radial-gradient(circle, hsla(142,71%,45%,0.04) 0%, transparent 70%)",
-              top: "10%",
-              left: "60%",
-            }}
-            animate={{
-              x: [0, 30, -20, 0],
-              y: [0, -20, 30, 0],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute w-[400px] h-[400px] rounded-full"
-            style={{
-              background: "radial-gradient(circle, hsla(222,47%,20%,0.15) 0%, transparent 70%)",
-              top: "50%",
-              left: "20%",
-            }}
-            animate={{
-              x: [0, -30, 20, 0],
-              y: [0, 20, -30, 0],
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-
-        <div className="max-w-7xl mx-auto relative">
-          <motion.div
-            className="max-w-3xl"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.1 } },
-            }}
-          >
-            <motion.div variants={fadeIn} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-white/10 bg-white/5 text-xs text-muted-foreground mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Football Betting Intelligence Platform
-            </motion.div>
-            <motion.h1 variants={fadeIn} custom={1} className="text-5xl md:text-7xl font-bold text-foreground leading-[1.05]">
-              Football Betting Intelligence,{" "}
-              <span className="text-gradient-primary">Reimagined</span>
-            </motion.h1>
-            <motion.p variants={fadeIn} custom={2} className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
-              Advanced statistical models and simulations to identify real value in the market.
-            </motion.p>
-            <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-wrap gap-4">
-              <Link to="/analysis"><Button variant="hero" size="xl">Start Analysis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-              <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explore Value Radar</Button></Link>
-            </motion.div>
-
-            {/* Animated Stats */}
-            <motion.div variants={fadeIn} custom={4} className="mt-10 flex items-center gap-8 flex-wrap">
-              {[
-                { value: 15420, suffix: "", label: "Analyses Run" },
-                { value: 67.4, suffix: "%", label: "Avg. Accuracy" },
-                { value: 11.8, suffix: "%", label: "Avg. Edge" },
-              ].map(s => (
-                <div key={s.label} className="text-center">
-                  <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+      {/* SECTION 1 — Games Today (Hero) */}
+      <section className="pt-20 pb-6 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}>
+            <motion.div variants={fadeIn} custom={0} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+              <div>
+                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full ring-1 ring-white/10 bg-white/5 text-xs text-muted-foreground mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  Live · {todayOpportunities.length} markets scanned
                 </div>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* Hero Dashboard Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="mt-16 rounded-2xl ring-1 ring-white/10 bg-card p-6 card-shadow card-glow relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsla(142,71%,45%,0.04)_0%,_transparent_60%)]" />
-            <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {[
-                { label: "Model Prob.", value: "67.4%", sub: "Over 2.5" },
-                { label: "Market Implied", value: "55.6%", sub: "Odds: 1.80" },
-                { label: "Value Edge", value: "+11.8%", color: "text-primary" },
-                { label: "Kelly Stake", value: "2.4%", sub: "$120" },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 + i * 0.1 }}
-                  className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-4 hover:bg-white/[0.05] transition-colors"
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today's Value Opportunities</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Sort by</span>
+                <button
+                  onClick={() => setSortBy(sortBy === "valueBet" ? "confidence" : "valueBet")}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg input-surface text-xs text-foreground hover:bg-white/[0.08] transition-colors"
                 >
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{item.label}</p>
-                  <p className={`mt-1 text-2xl font-bold font-mono-data ${item.color || "text-foreground"}`}>{item.value}</p>
-                  {item.sub && <p className="text-xs text-muted-foreground mt-0.5">{item.sub}</p>}
+                  <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                  {sortBy === "valueBet" ? "Value %" : "Confidence"}
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Opportunity Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {sorted.map((opp, i) => (
+                <motion.div
+                  key={opp.match + opp.market}
+                  variants={fadeIn}
+                  custom={i + 1}
+                  whileHover={{ y: -3, scale: 1.015 }}
+                  className={`rounded-2xl bg-card ring-surface p-4 card-shadow transition-all duration-300 cursor-pointer group ${
+                    opp.valueBet >= 8 ? "ring-1 ring-primary/20" : ""
+                  }`}
+                >
+                  <Link to="/analysis" className="block">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{opp.match}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{opp.league} · {opp.market}</p>
+                      </div>
+                      <DecisionBadge decision={opp.decision} />
+                    </div>
+
+                    {/* Core Data */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Odds</p>
+                        <p className="font-mono-data text-sm text-foreground">{opp.odds.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</p>
+                        <p className="font-mono-data text-sm text-foreground">{opp.modelProb.toFixed(1)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Edge</p>
+                        <ValueBadge value={opp.valueBet} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Conf.</p>
+                        <ConfidenceMeter score={opp.confidence} className="mt-1" />
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    {opp.tags && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {opp.tags.map(tag => (
+                          <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary ring-1 ring-primary/10">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {opp.valueBet >= 9 && (
+                      <div className="mt-2">
+                        <SpecialBadge type="high-value" />
+                      </div>
+                    )}
+                  </Link>
                 </motion.div>
               ))}
             </div>
-            <div className="relative h-3 rounded-full bg-white/5 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full gradient-primary"
-                initial={{ width: 0 }}
-                animate={{ width: "67.4%" }}
-                transition={{ delay: 1.2, duration: 1, ease: [0.4, 0, 0.2, 1] }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>Model: 67.4%</span>
-              <span>Market: 55.6%</span>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* SECTION 2 — Best Value Today */}
+      <section className="py-6 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-2xl bg-card ring-1 ring-primary/20 p-5 md:p-6 card-shadow card-glow relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsla(142,71%,45%,0.06)_0%,_transparent_60%)]" />
+            <div className="relative flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-primary font-semibold uppercase tracking-wider">Best Value Today</p>
+                  <p className="text-lg font-bold text-foreground">{bestValue.match}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-6 md:ml-auto">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Market</p>
+                  <p className="text-sm text-foreground font-medium">{bestValue.market}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Edge</p>
+                  <p className="font-mono-data text-xl font-bold text-primary">+{bestValue.valueBet.toFixed(1)}%</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Confidence</p>
+                  <ConfidenceMeter score={bestValue.confidence} className="w-20 mt-1" />
+                </div>
+                <Link to="/analysis">
+                  <Button variant="hero" size="sm">
+                    View Analysis <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Value Radar Preview */}
-      <section className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_50%)]" />
-        <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-primary/5 text-xs text-primary mb-4">
-              <Radar className="w-3 h-3" /> Live Scanner
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Today's Value Radar</h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {radarPreview.map((item, i) => (
-              <motion.div
-                key={item.match}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-2xl bg-card ring-surface p-5 card-shadow transition-all duration-300 ${item.conf >= 8 ? "ring-1 ring-primary/20 card-glow" : ""}`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-foreground">{item.match}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary ring-1 ring-primary/20">
-                    {item.decision}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">{item.market}</p>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono-data text-lg font-bold text-primary">{item.value}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-primary"
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${item.conf * 10}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
-                      />
-                    </div>
-                    <span className="font-mono-data text-xs text-muted-foreground">{item.conf}/10</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="text-center">
-            <Link to="/radar">
-              <Button variant="hero-outline" size="lg">
-                View All Opportunities <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
+      {/* SECTION 3 — Micro Explanation */}
+      <section className="py-8 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="flex items-center gap-3 rounded-xl bg-white/[0.02] ring-1 ring-white/5 px-5 py-4"
+          >
+            <Zap className="w-4 h-4 text-primary flex-shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              Data-driven insights powered by probabilistic models, Monte Carlo simulations, and market inefficiency detection.
+            </p>
+          </motion.div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-24 px-6 border-t border-white/5">
+      {/* SECTION 4 — How It Works */}
+      <section className="py-10 px-4 md:px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Features</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Quantify the Pitch</h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Every tool you need to make data-driven betting decisions, in one platform.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-50px" }}
-                variants={fadeIn}
-                custom={i}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300 group cursor-default"
-              >
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How ScoreLab Thinks */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Intelligence</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Thinks</h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Three layers of analysis power every recommendation.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {thinkingSteps.map((step, i) => (
+          <motion.h2
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-lg font-semibold text-foreground mb-6"
+          >
+            How ScoreLab Works
+          </motion.h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {howItWorks.map((step, i) => (
               <motion.div
                 key={step.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="rounded-2xl bg-card ring-surface p-8 card-shadow text-center relative overflow-hidden group"
+                transition={{ delay: i * 0.08 }}
+                whileHover={{ y: -2 }}
+                className="rounded-xl bg-card ring-surface p-4 card-shadow transition-all duration-300"
               >
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary/15 transition-colors">
-                    <step.icon className="w-7 h-7 text-primary" strokeWidth={1.5} />
-                  </div>
-                  <div className="text-4xl font-bold text-white/[0.04] mb-2">{String(i + 1).padStart(2, "0")}</div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                  <step.icon className="w-4 h-4 text-primary" strokeWidth={1.5} />
                 </div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">{step.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Why ScoreLab is Different */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Philosophy</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Why ScoreLab is Different</h2>
-              <div className="space-y-4">
-                {whyDifferent.map((point, i) => (
-                  <motion.div
-                    key={point}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Crosshair className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                    </div>
-                    <p className="text-foreground font-medium">{point}</p>
-                  </motion.div>
-                ))}
+      {/* SECTION 5 — CTA */}
+      <section className="py-12 px-4 md:px-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-card ring-surface p-6 card-shadow"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-foreground font-semibold">Run your own analysis</p>
+                <p className="text-xs text-muted-foreground">Input any match. Get probabilities, edges, and optimal stakes.</p>
               </div>
             </div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="rounded-2xl bg-card ring-surface p-8 card-shadow"
-            >
-              <div className="space-y-6">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Traditional Approach</p>
-                  <div className="h-3 rounded-full bg-destructive/20 overflow-hidden">
-                    <div className="h-full w-[35%] rounded-full bg-destructive/50" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">~35% long-term accuracy</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ScoreLab Intelligence</p>
-                  <div className="h-3 rounded-full bg-primary/20 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full gradient-primary"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: "67%" }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.3 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">~67% model accuracy</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section id="how-it-works" className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Process</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Works</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.num}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeIn}
-                custom={i}
-                whileHover={{ y: -2 }}
-                className="relative"
-              >
-                <div className="text-5xl font-bold text-white/[0.03] mb-2">{step.num}</div>
-                <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">{step.desc}</p>
-                {i < steps.length - 1 && (
-                  <ChevronRight className="hidden md:block absolute top-8 -right-3 w-5 h-5 text-white/10" />
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Pricing</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Simple, Transparent Pricing</h2>
-            <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more power.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {pricingPlans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-2xl p-6 card-shadow transition-all duration-300 ${
-                  plan.highlighted
-                    ? "bg-card ring-2 ring-primary/30 relative card-glow"
-                    : "bg-card ring-surface"
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full gradient-primary text-xs font-bold text-primary-foreground">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-foreground font-mono-data">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground">{plan.period}</span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{plan.desc}</p>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" strokeWidth={1.5} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/signup">
-                  <Button variant={plan.highlighted ? "hero" : "outline"} className="w-full mt-6">
-                    {plan.cta}
-                  </Button>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Testimonials</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Trusted by Analysts</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={t.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -2 }}
-                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300"
-              >
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">"{t.quote}"</p>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Footer */}
-      <section className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.04)_0%,_transparent_50%)]" />
-        <div className="max-w-3xl mx-auto text-center relative">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">Ready to Find Your Edge?</h2>
-          <p className="mt-4 text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
-          <div className="mt-8 flex justify-center gap-4">
-            <Link to="/signup"><Button variant="hero" size="xl">Start Free Today <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-          </div>
+            <Link to="/analysis">
+              <Button variant="hero" size="lg">
+                Start Analysis <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-white/5 py-6 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-3 h-3 text-primary-foreground" strokeWidth={1.5} />
+            <div className="w-5 h-5 rounded gradient-primary flex items-center justify-center">
+              <BarChart3 className="w-2.5 h-2.5 text-primary-foreground" strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-semibold text-foreground">ScoreLab</span>
-            <span className="text-xs text-muted-foreground ml-2">Where statistics meet betting strategy.</span>
+            <span className="text-xs font-semibold text-foreground">ScoreLab</span>
+            <span className="text-[11px] text-muted-foreground ml-1">Where statistics meet betting strategy.</span>
           </div>
-          <p className="text-xs text-muted-foreground">© 2026 ScoreLab. All rights reserved.</p>
+          <p className="text-[11px] text-muted-foreground">© 2026 ScoreLab. All rights reserved.</p>
         </div>
       </footer>
     </div>
