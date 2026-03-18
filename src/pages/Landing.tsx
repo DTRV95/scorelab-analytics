@@ -85,17 +85,66 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* SECTION 1 — Games Today (Hero) */}
-      <section className="pt-20 pb-6 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}>
-            <motion.div variants={fadeIn} custom={0} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+      {/* SECTION 1 — HERO (Branding) */}
+      <section className="pt-24 pb-16 px-4 md:px-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsla(142,71%,45%,0.05)_0%,_transparent_50%)]" />
+        <div className="max-w-7xl mx-auto relative">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
+            className="text-center max-w-3xl mx-auto"
+          >
+            <motion.div variants={fadeIn} custom={0} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full ring-1 ring-white/10 bg-white/5 text-xs text-muted-foreground mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Live intelligence · Updated in real-time
+            </motion.div>
+            <motion.h1 variants={fadeIn} custom={1} className="text-3xl md:text-5xl font-bold text-foreground leading-tight mb-4">
+              Football Betting Intelligence,{" "}
+              <span className="text-primary">Reimagined</span>
+            </motion.h1>
+            <motion.p variants={fadeIn} custom={2} className="text-base md:text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Use statistical models, market pricing, and bankroll logic to identify value bets with clarity.
+            </motion.p>
+            <motion.div variants={fadeIn} custom={3} className="flex items-center justify-center gap-3 mb-12">
+              <Link to="/analysis">
+                <Button variant="hero" size="lg">
+                  Start Analysis <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+              <a href="#opportunities">
+                <Button variant="outline" size="lg" className="border-white/10 text-foreground hover:bg-white/5">
+                  Explore Value Radar
+                </Button>
+              </a>
+            </motion.div>
+            <motion.div variants={fadeIn} custom={4} className="grid grid-cols-3 gap-6 max-w-md mx-auto">
+              {[
+                { label: "Analyses Run", value: "12,847" },
+                { label: "Avg. Accuracy", value: "68.3%" },
+                { label: "Avg. Edge", value: "+7.2%" },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="font-mono-data text-xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* SECTION 2 — Games Today */}
+      <section id="opportunities" className="py-10 px-4 md:px-6 border-t border-white/5">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}>
+            <motion.div variants={fadeIn} custom={0} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
               <div>
                 <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full ring-1 ring-white/10 bg-white/5 text-xs text-muted-foreground mb-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   Live · {todayOpportunities.length} markets scanned
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today's Value Opportunities</h1>
+                <h2 className="text-xl md:text-2xl font-bold text-foreground">Today's Value Opportunities</h2>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Sort by</span>
@@ -109,60 +158,60 @@ export default function Landing() {
               </div>
             </motion.div>
 
-            {/* Opportunity Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Single Column Cards */}
+            <div className="flex flex-col gap-3">
               {sorted.map((opp, i) => (
                 <motion.div
                   key={opp.match + opp.market}
                   variants={fadeIn}
                   custom={i + 1}
-                  whileHover={{ y: -3, scale: 1.015 }}
-                  className={`rounded-2xl bg-card ring-surface p-4 card-shadow transition-all duration-300 cursor-pointer group ${
+                  whileHover={{ y: -2, scale: 1.008 }}
+                  className={`rounded-2xl bg-card ring-surface p-5 card-shadow transition-all duration-300 cursor-pointer group ${
                     opp.valueBet >= 8 ? "ring-1 ring-primary/20" : ""
                   }`}
                 >
                   <Link to="/analysis" className="block">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{opp.match}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{opp.league} · {opp.market}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      {/* Match Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1">
+                          <p className="text-base font-semibold text-foreground">{opp.match}</p>
+                          <DecisionBadge decision={opp.decision} />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{opp.league} · {opp.market}</p>
+                        {opp.tags && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {opp.tags.map(tag => (
+                              <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary ring-1 ring-primary/10">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <DecisionBadge decision={opp.decision} />
-                    </div>
 
-                    {/* Core Data */}
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Odds</p>
-                        <p className="font-mono-data text-sm text-foreground">{opp.odds.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</p>
-                        <p className="font-mono-data text-sm text-foreground">{opp.modelProb.toFixed(1)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Edge</p>
-                        <ValueBadge value={opp.valueBet} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Conf.</p>
-                        <ConfidenceMeter score={opp.confidence} className="mt-1" />
+                      {/* Data Points */}
+                      <div className="flex items-center gap-6 flex-shrink-0">
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Odds</p>
+                          <p className="font-mono-data text-sm text-foreground mt-0.5">{opp.odds.toFixed(2)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</p>
+                          <p className="font-mono-data text-sm text-foreground mt-0.5">{opp.modelProb.toFixed(1)}%</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Edge</p>
+                          <ValueBadge value={opp.valueBet} />
+                        </div>
+                        <div className="w-24">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Confidence</p>
+                          <ConfidenceMeter score={opp.confidence} className="mt-1" />
+                        </div>
                       </div>
                     </div>
-
-                    {/* Tags */}
-                    {opp.tags && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {opp.tags.map(tag => (
-                          <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary ring-1 ring-primary/10">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                     {opp.valueBet >= 9 && (
-                      <div className="mt-2">
+                      <div className="mt-3">
                         <SpecialBadge type="high-value" />
                       </div>
                     )}
