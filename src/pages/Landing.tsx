@@ -288,50 +288,114 @@ export default function Landing() {
       <section className="py-24 px-6 border-t border-white/5 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_50%)]" />
         <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-primary/5 text-xs text-primary mb-4">
               <Radar className="w-3 h-3" /> Live Scanner
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Today's Value Radar</h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+
+          {/* Sort controls */}
+          <div className="flex items-center gap-2 mb-4 justify-end">
+            <span className="text-xs text-muted-foreground mr-1">Sort:</span>
+            <button
+              onClick={() => {/* static preview, no-op */}}
+              className="px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary ring-1 ring-primary/20"
+            >
+              Edge %
+            </button>
+            <button
+              onClick={() => {/* static preview, no-op */}}
+              className="px-3 py-1 rounded-lg text-xs font-medium bg-white/5 text-muted-foreground ring-1 ring-white/10 hover:bg-white/10 transition-colors"
+            >
+              Confidence
+            </button>
+          </div>
+
+          {/* Scanner table */}
+          <div className="rounded-2xl bg-card ring-surface card-shadow overflow-hidden">
+            {/* Header */}
+            <div className="hidden md:grid grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 px-5 py-3 border-b border-white/5">
+              {["Match", "Market", "Odds", "Model %", "Edge", "Confidence", "Decision"].map(h => (
+                <span key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{h}</span>
+              ))}
+            </div>
+
+            {/* Rows */}
             {radarPreview.map((item, i) => (
               <motion.div
-                key={item.match}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                key={`${item.home}-${item.away}`}
+                initial={{ opacity: 0, x: -12 }}
+                whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-2xl bg-card ring-surface p-5 card-shadow transition-all duration-300 ${item.conf >= 8 ? "ring-1 ring-primary/20 card-glow" : ""}`}
+                transition={{ delay: i * 0.06 }}
+                className={`
+                  grid grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-5 py-4
+                  border-b border-white/5 last:border-b-0
+                  hover:bg-white/[0.03] transition-all duration-200 cursor-pointer group
+                  ${item.best ? "bg-primary/[0.03] ring-1 ring-primary/10" : ""}
+                `}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-foreground">{item.match}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary ring-1 ring-primary/20">
-                    {item.decision}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">{item.market}</p>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono-data text-lg font-bold text-primary">{item.value}</span>
+                {/* Match Info */}
+                <div>
+                  {item.best && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary/15 text-primary ring-1 ring-primary/30 mb-1.5">
+                      🔥 Best Value Today
+                    </span>
+                  )}
+                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {item.home} vs {item.away}
+                  </p>
                   <div className="flex items-center gap-2">
-                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-primary"
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${item.conf * 10}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
-                      />
-                    </div>
-                    <span className="font-mono-data text-xs text-muted-foreground">{item.conf}/10</span>
+                    <span className="text-[11px] text-muted-foreground">{item.league}</span>
+                    {item.tag && (
+                      <span className="text-[10px] text-primary/70 italic">· {item.tag}</span>
+                    )}
                   </div>
                 </div>
+
+                {/* Market */}
+                <span className="text-xs text-muted-foreground md:text-sm">{item.market}</span>
+
+                {/* Odds */}
+                <span className="font-mono-data text-sm font-medium text-foreground">{item.odds.toFixed(2)}</span>
+
+                {/* Model % */}
+                <span className="font-mono-data text-sm text-foreground">{item.modelProb.toFixed(1)}%</span>
+
+                {/* Edge */}
+                <span className={`font-mono-data text-sm font-bold ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
+                  {item.edge > 0 ? "+" : ""}{item.edge.toFixed(1)}%
+                </span>
+
+                {/* Confidence */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden max-w-[60px]">
+                    <motion.div
+                      className={`h-full rounded-full ${item.conf >= 7 ? "bg-primary" : item.conf >= 4 ? "bg-warning" : "bg-destructive"}`}
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${item.conf * 10}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8, delay: 0.2 + i * 0.06 }}
+                    />
+                  </div>
+                  <span className="font-mono-data text-xs text-muted-foreground">{item.conf}</span>
+                </div>
+
+                {/* Decision */}
+                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider w-fit
+                  ${item.decision === "Bet" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
+                  ${item.decision === "Caution" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
+                  ${item.decision === "No Bet" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
+                `}>
+                  {item.decision}
+                </span>
               </motion.div>
             ))}
           </div>
-          <div className="text-center">
+
+          <div className="text-center mt-8">
             <Link to="/radar">
               <Button variant="hero-outline" size="lg">
                 View All Opportunities <ArrowRight className="w-4 h-4 ml-1" />
