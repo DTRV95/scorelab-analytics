@@ -31,20 +31,18 @@ interface DecisionBadgeProps {
   className?: string;
 }
 
-export function DecisionBadge({ decision, className }: DecisionBadgeProps) {
+export function DecisionBadge({ decision }: { decision: "Bet" | "No Bet" | "Caution" }) {
+  const styles =
+    decision === "Bet"
+      ? "bg-emerald-500/10 text-emerald-400"
+      : decision === "Caution"
+      ? "bg-yellow-500/10 text-yellow-400"
+      : "bg-red-500/10 text-red-400";
+
   return (
-    <motion.span
-      whileHover={{ scale: 1.05 }}
-      className={cn(
-        "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200",
-        decision === "Bet" && "bg-primary/10 text-primary ring-1 ring-primary/20",
-        decision === "No Bet" && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
-        decision === "Caution" && "bg-warning/10 text-warning ring-1 ring-warning/20",
-        className
-      )}
-    >
-      {decision}
-    </motion.span>
+    <span className={`inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold ${styles}`}>
+      {decision.toUpperCase()}
+    </span>
   );
 }
 

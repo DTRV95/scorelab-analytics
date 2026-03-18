@@ -148,11 +148,36 @@ function mapRisk(risco: number): RiskLevel {
 }
 
 function mapDecision(decisao: string): DecisionType {
+  if (!decisao) return "No Bet";
+
   const d = decisao.toLowerCase().trim();
 
-  if (d.includes("não apostar") || d.includes("nao apostar")) return "No Bet";
-  if (d.includes("caution")) return "Caution";
-  if (d.includes("apostar")) return "Bet";
+  // BET
+  if (
+    d.includes("apostar") ||
+    d.includes("bet") ||
+    d === "sim"
+  ) {
+    return "Bet";
+  }
+
+  // CAUTION
+  if (
+    d.includes("caution") ||
+    d.includes("cautela")
+  ) {
+    return "Caution";
+  }
+
+  // NO BET
+  if (
+    d.includes("não") ||
+    d.includes("nao") ||
+    d.includes("no bet") ||
+    d.includes("no")
+  ) {
+    return "No Bet";
+  }
 
   return "No Bet";
 }
@@ -292,7 +317,12 @@ export default function MatchAnalysis() {
         stake: Number(m.stake_sugerida.toFixed(0)),
         risk: mapRisk(m.risco),
         confidence: Number(m.confianca.toFixed(0)),
-        decision: mapDecision(m.decisao),
+        decision:
+        m.value_bet_pct >= 5 && m.kelly_pct >= 2
+         ? "Bet"
+         : m.value_bet_pct > 0
+         ? "Caution"
+         : "No Bet",
       }));
 
       const avgConfidence =
