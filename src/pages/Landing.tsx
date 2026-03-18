@@ -50,9 +50,12 @@ const steps = [
 ];
 
 const radarPreview = [
-  { match: "Arsenal vs Chelsea", market: "Over 2.5", value: "+11.8%", conf: 9, decision: "Bet" as const },
-  { match: "Barcelona vs Real Madrid", market: "Over 3.5", value: "+6.6%", conf: 7, decision: "Bet" as const },
-  { match: "Bayern vs Dortmund", market: "Over 2.5", value: "+8.3%", conf: 8, decision: "Bet" as const },
+  { home: "Arsenal", away: "Chelsea", league: "Premier League", market: "Over 2.5", odds: 1.80, modelProb: 67.4, edge: 11.8, conf: 9, decision: "Bet" as const, tag: "High scoring expectation", best: true },
+  { home: "Liverpool", away: "Man City", league: "Premier League", market: "BTTS Yes", odds: 1.75, modelProb: 62.1, edge: 5.0, conf: 7, decision: "Bet" as const, tag: "Strong model agreement" },
+  { home: "Barcelona", away: "Real Madrid", league: "La Liga", market: "Over 3.5", odds: 2.80, modelProb: 42.3, edge: 6.6, conf: 7, decision: "Bet" as const },
+  { home: "Bayern", away: "Dortmund", league: "Bundesliga", market: "Over 2.5", odds: 1.55, modelProb: 72.8, edge: 8.3, conf: 8, decision: "Bet" as const, tag: "Strong model agreement" },
+  { home: "PSG", away: "Lyon", league: "Ligue 1", market: "BTTS Yes", odds: 1.90, modelProb: 58.4, edge: 5.8, conf: 6, decision: "Caution" as const },
+  { home: "Juventus", away: "AC Milan", league: "Serie A", market: "Under 2.5", odds: 1.95, modelProb: 54.2, edge: 2.9, conf: 5, decision: "Caution" as const },
 ];
 
 const thinkingSteps = [
