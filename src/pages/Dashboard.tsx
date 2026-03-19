@@ -16,6 +16,7 @@ import {
 import { useMemo } from "react";
 import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
+import { useNavigate } from "react-router-dom";
 
 const stagger = {
   hidden: {},
@@ -58,6 +59,7 @@ function getRecentLabel(dateString: string) {
 export default function Dashboard() {
   const analyses = getAnalyses();
   const bankrollStats = getBankrollStats();
+  const navigate = useNavigate();
 
   const dashboardData = useMemo(() => {
     const validAnalyses = analyses.filter(
@@ -242,7 +244,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
           <motion.div
             variants={fadeUp}
-            className="lg:col-span-2 rounded-2xl bg-card ring-1 ring-primary/10 p-6 card-shadow card-glow relative overflow-hidden"
+            onClick={() =>
+              topValue ? navigate(`/history?analysisId=${topValue.analysis.id}`) : undefined
+            }
+            className="lg:col-span-2 rounded-2xl bg-card ring-1 ring-primary/10 p-6 card-shadow card-glow relative overflow-hidden cursor-pointer hover:bg-white/[0.02] transition-colors"
           >
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsla(142,71%,45%,0.04)_0%,_transparent_60%)]" />
             <div className="relative">
@@ -460,6 +465,7 @@ export default function Dashboard() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.5 + i * 0.05 }}
+                      onClick={() => navigate(`/history?analysisId=${a.id}`)}
                       className="border-t border-white/5 hover:bg-white/[0.03] transition-all duration-200 cursor-pointer"
                     >
                       <td className="px-6 py-3.5 text-sm font-medium text-foreground">

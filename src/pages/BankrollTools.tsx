@@ -6,6 +6,7 @@ import {
   saveBankrollSettings,
   getBankrollStats,
   getMarketPerformance,
+  getDailyPerformance,
 } from "@/lib/analysisStorage";
 import {
   ResponsiveContainer,
@@ -36,6 +37,10 @@ export default function BankrollTools() {
 
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
   const marketPerformance = useMemo(() => getMarketPerformance(), [analyses]);
+  const dailyPerformance = useMemo(() => getDailyPerformance(), [analyses]);
+
+  const todayPerformance = dailyPerformance[0] || null;
+  const yesterdayPerformance = dailyPerformance[1] || null;
   
 
   const loadData = () => {
@@ -208,6 +213,26 @@ export default function BankrollTools() {
               {stats.totalReds}
             </p>
           </div>
+
+            <div className="rounded-xl bg-card ring-surface card-shadow p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                Today Growth
+              </p>
+              <p className="text-2xl font-bold text-foreground mt-2 font-mono-data">
+                {todayPerformance ? `${todayPerformance.growthPct.toFixed(2)}%` : "0.00%"}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-card ring-surface card-shadow p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                Yesterday Growth
+              </p>
+              <p className="text-2xl font-bold text-foreground mt-2 font-mono-data">
+                {yesterdayPerformance
+                  ? `${yesterdayPerformance.growthPct.toFixed(2)}%`
+                  : "0.00%"}
+              </p>
+            </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -314,6 +339,61 @@ export default function BankrollTools() {
             </div>
           </div>
         </div>
+        <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+  <h2 className="text-lg font-semibold text-foreground mb-4">
+    Daily Performance
+  </h2>
+
+  {dailyPerformance.length === 0 ? (
+    <p className="text-sm text-muted-foreground">
+      No settled bets yet. Track results in History to see daily growth.
+    </p>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-white/5">
+            {["Date", "Start Bankroll", "End Bankroll", "P/L", "Growth %", "Settled Bets"].map((h) => (
+              <th
+                key={h}
+                className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dailyPerformance.map((item) => (
+            <tr
+              key={item.date}
+              className="border-t border-white/5 hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 py-3 text-foreground font-medium">
+                {item.date}
+              </td>
+              <td className="px-4 py-3 text-foreground font-mono-data">
+                {item.startBankroll.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-foreground font-mono-data">
+                {item.endBankroll.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-foreground font-mono-data">
+                {item.profitLoss.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-foreground font-mono-data">
+                {item.growthPct.toFixed(2)}%
+              </td>
+              <td className="px-4 py-3 text-foreground">
+                {item.settledBets}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
       <div className="rounded-xl bg-card ring-surface card-shadow p-5">
   <h2 className="text-lg font-semibold text-foreground mb-4">
     Market Performance

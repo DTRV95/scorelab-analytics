@@ -259,3 +259,69 @@ export function getMarketPerformance(): MarketPerformanceItem[] {
     (a, b) => b.profitLoss - a.profitLoss
   );
 }
+
+export interface DailyPerformanceItem {
+  date: string;
+  startBankroll: number;
+  endBankroll: number;
+  profitLoss: number;
+  growthPct: number;
+  settledBets: number;
+}
+
+export function getDailyPerformance(): DailyPerformanceItem[] {
+  const analyses = getAnalyses();
+  const { initialBankroll } = getBankrollSettings();
+
+  const settledAnalyses = analyses
+    .filter(
+      (analysis) =>
+        analysis.tracking.betPlaced &&
+        (analysis.tracking.resultStatus === "green" ||
+          analysis.tracking.resultStatus === "red" ||
+          analysis.tracking.resultStatus === "void")
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+  const grouped = new Map<string, DailyPerformanceItem>();
+  let runningBankroll = initialBankroll;
+
+  settledAnalyses.forEach((analysis) => {
+    const date = new Date(analysis.createdAt).toISOString().split("T")[0];
+    const profitLoss = analysis.tracking.profitLoss || 0;
+
+    if (!grouped.has(date)) {
+      grouped.set(date, {
+        date,
+        startBankroll: runningBankroll,
+        endBankroll: runningBankroll,
+        profitLoss: 0,
+        growthPct: 0,
+        settledBets: 0,
+      });
+    }
+
+    const current = grouped.get(date)!;
+
+    current.profitLoss += profitLoss;
+    current.endBankroll += profitLoss;
+    current.settledBets += 1;
+
+    grouped.set(date, current);
+
+    runningBankroll += profitLoss;
+  });
+
+  return Array.from(grouped.values())
+    .map((item) => ({
+      ...item,
+      growthPct:
+        item.startBankroll > 0
+          ? (item.profitLoss / item.startBankroll) * 100
+          : 0,
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
