@@ -1,9 +1,14 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { useEffect, useMemo, useState } from "react";
-import { getAnalyses, updateAnalysisTracking } from "@/lib/analysisStorage";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  getAnalyses,
+  updateAnalysisTracking,
+  deleteAnalysis,
+} from "@/lib/analysisStorage";
 import type { SavedAnalysis, BetStatus } from "@/types/analysis";
+import { useSearchParams } from "react-router-dom";
 
 function getBestBet(results: SavedAnalysis["results"]) {
   if (!Array.isArray(results) || results.length === 0) return null;
@@ -12,6 +17,9 @@ function getBestBet(results: SavedAnalysis["results"]) {
 
 export default function History() {
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+  const [searchParams] = useSearchParams();
+  const highlightedAnalysisId = searchParams.get("analysisId");
+  const analysisRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     const data = getAnalyses();
@@ -30,11 +38,31 @@ export default function History() {
     );
   }, [analyses]);
 
+  useEffect(() => {
+    if (!highlightedAnalysisId) return;
+
+    const target = analysisRefs.current[highlightedAnalysisId];
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightedAnalysisId, safeAnalyses]);
+
   const handleTrackingChange = (
     analysisId: string,
     updates: Partial<SavedAnalysis["tracking"]>
   ) => {
     const updatedAnalyses = updateAnalysisTracking(analysisId, updates);
+    setAnalyses(updatedAnalyses);
+  };
+
+  const handleDeleteAnalysis = (analysisId: string, matchLabel: string) => {
+    const confirmed = window.confirm(
+      `Delete analysis for ${matchLabel}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    const updatedAnalyses = deleteAnalysis(analysisId);
     setAnalyses(updatedAnalyses);
   };
 
@@ -55,45 +83,93 @@ export default function History() {
             </div>
           ) : (
             safeAnalyses.map((analysis) => {
-              const bestBet = getBestBet(analysis.results);
+              const selectedMarketData = analysis.tracking.selectedMarket
+                ? analysis.results.find(
+                    (r) => r.market === analysis.tracking.selectedMarket
+                  )
+                : null;
+
+              const displayBet = selectedMarketData || getBestBet(analysis.results);
               const tracking = analysis.tracking;
+              const matchLabel = `${analysis.homeTeam} vs ${analysis.awayTeam}`;
 
               return (
                 <div
                   key={analysis.id}
-                  className="rounded-xl bg-card ring-surface card-shadow p-5 space-y-4"
+                  ref={(el) => {
+                    analysisRefs.current[analysis.id] = el;
+                  }}
+                  className={`rounded-xl bg-card ring-surface card-shadow p-5 space-y-4 transition-all duration-300 ${
+                    highlightedAnalysisId === analysis.id
+                      ? "ring-2 ring-primary/40 bg-primary/[0.04]"
+                      : ""
+                  }`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-semibold text-foreground">
-                        {analysis.homeTeam} vs {analysis.awayTeam}
+                        {matchLabel}
                       </h3>
                       <p className="text-xs text-muted-foreground">
                         {new Date(analysis.createdAt).toLocaleString()}
                       </p>
                     </div>
 
-                    {bestBet && (
-                      <div className="flex flex-wrap gap-3 items-center">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Best Market</p>
-                          <p className="text-sm font-medium text-foreground">{bestBet.market}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Edge</p>
-                          <ValueBadge value={bestBet.valueBet} />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Confidence</p>
-                          <ConfidenceMeter score={bestBet.confidence} className="w-20" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Decision</p>
-                          <DecisionBadge decision={bestBet.decision} />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleDeleteAnalysis(analysis.id, matchLabel)}
+                        className="h-9 px-4 rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 text-sm font-medium hover:bg-red-500/15 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {displayBet && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          {analysis.tracking.selectedMarket ? "Selected Market" : "Best Market"}
+                        </p>
+                        <p className="text-sm font-medium text-foreground mt-1">
+                          {displayBet.market}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Model Probability</p>
+                        <p className="text-sm font-medium text-foreground mt-1">
+                          {displayBet.modelProb.toFixed(1)}%
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Implied Probability</p>
+                        <p className="text-sm font-medium text-foreground mt-1">
+                          {displayBet.impliedProb.toFixed(1)}%
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Edge</p>
+                        <div className="mt-1">
+                          <ValueBadge value={displayBet.valueBet} />
                         </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Confidence</p>
+                        <ConfidenceMeter score={displayBet.confidence} className="w-20" />
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Decision</p>
+                        <div className="mt-1">
+                          <DecisionBadge decision={displayBet.decision} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <div>
@@ -120,12 +196,14 @@ export default function History() {
                         onChange={(e) =>
                           handleTrackingChange(analysis.id, {
                             selectedMarket: e.target.value || null,
-                        })
-                      }
+                          })
+                        }
                         className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
                         disabled={!tracking.betPlaced}
                       >
-                        <option value="" className="bg-card text-foreground">Select market</option>
+                        <option value="" className="bg-card text-foreground">
+                          Select market
+                        </option>
                         {analysis.results.map((result) => (
                           <option
                             key={result.market}
@@ -151,7 +229,7 @@ export default function History() {
                               e.target.value === "" ? null : Number(e.target.value),
                           })
                         }
-                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
                         disabled={!tracking.betPlaced}
                       />
                     </div>
@@ -170,7 +248,7 @@ export default function History() {
                               e.target.value === "" ? null : Number(e.target.value),
                           })
                         }
-                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
                         disabled={!tracking.betPlaced}
                       />
                     </div>
@@ -180,20 +258,28 @@ export default function History() {
                         Result Status
                       </label>
                       <select
-                      value={tracking.resultStatus}
-                      onChange={(e) =>
-                        handleTrackingChange(analysis.id, {
-                          resultStatus: e.target.value as BetStatus,
-                        })
-                      }
-                      className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
-                      disabled={!tracking.betPlaced}
-                    >
-                      <option value="pending" className="bg-card text-foreground">Pending</option>
-                      <option value="green" className="bg-card text-foreground">Green</option>
-                      <option value="red" className="bg-card text-foreground">Red</option>
-                      <option value="void" className="bg-card text-foreground">Void</option>
-                    </select>
+                        value={tracking.resultStatus}
+                        onChange={(e) =>
+                          handleTrackingChange(analysis.id, {
+                            resultStatus: e.target.value as BetStatus,
+                          })
+                        }
+                        className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+                        disabled={!tracking.betPlaced}
+                      >
+                        <option value="pending" className="bg-card text-foreground">
+                          Pending
+                        </option>
+                        <option value="green" className="bg-card text-foreground">
+                          Green
+                        </option>
+                        <option value="red" className="bg-card text-foreground">
+                          Red
+                        </option>
+                        <option value="void" className="bg-card text-foreground">
+                          Void
+                        </option>
+                      </select>
                     </div>
 
                     <div>
@@ -208,7 +294,7 @@ export default function History() {
                             notes: e.target.value,
                           })
                         }
-                        className="w-full h-9 px-3 rounded-lg input-surface text-sm text-foreground focus:outline-none"
+                        className="w-full h-9 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
                         disabled={!tracking.betPlaced}
                       />
                     </div>

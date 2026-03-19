@@ -202,3 +202,60 @@ export function calculateNextBankrollBefore(): number {
   const stats = getBankrollStats();
   return stats.currentBankroll;
 }
+
+export interface MarketPerformanceItem {
+  market: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  voids: number;
+  pending: number;
+  profitLoss: number;
+  hitRate: number;
+}
+
+export function getMarketPerformance(): MarketPerformanceItem[] {
+  const analyses = getAnalyses();
+
+  const placedBets = analyses.filter(
+    (analysis) =>
+      analysis.tracking.betPlaced &&
+      analysis.tracking.selectedMarket
+  );
+
+  const marketMap = new Map<string, MarketPerformanceItem>();
+
+  placedBets.forEach((analysis) => {
+    const market = analysis.tracking.selectedMarket!;
+    const status = analysis.tracking.resultStatus;
+    const profitLoss = analysis.tracking.profitLoss || 0;
+
+    const existing = marketMap.get(market) || {
+      market,
+      bets: 0,
+      greens: 0,
+      reds: 0,
+      voids: 0,
+      pending: 0,
+      profitLoss: 0,
+      hitRate: 0,
+    };
+
+    existing.bets += 1;
+    existing.profitLoss += profitLoss;
+
+    if (status === "green") existing.greens += 1;
+    if (status === "red") existing.reds += 1;
+    if (status === "void") existing.voids += 1;
+    if (status === "pending") existing.pending += 1;
+
+    const settled = existing.greens + existing.reds;
+    existing.hitRate = settled > 0 ? (existing.greens / settled) * 100 : 0;
+
+    marketMap.set(market, existing);
+  });
+
+  return Array.from(marketMap.values()).sort(
+    (a, b) => b.profitLoss - a.profitLoss
+  );
+}

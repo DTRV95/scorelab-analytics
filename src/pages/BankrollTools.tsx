@@ -5,6 +5,7 @@ import {
   getBankrollSettings,
   saveBankrollSettings,
   getBankrollStats,
+  getMarketPerformance,
 } from "@/lib/analysisStorage";
 import {
   ResponsiveContainer,
@@ -34,6 +35,8 @@ export default function BankrollTools() {
   });
 
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
+  const marketPerformance = useMemo(() => getMarketPerformance(), [analyses]);
+  
 
   const loadData = () => {
     const settings = getBankrollSettings();
@@ -311,6 +314,55 @@ export default function BankrollTools() {
             </div>
           </div>
         </div>
+      <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+  <h2 className="text-lg font-semibold text-foreground mb-4">
+    Market Performance
+  </h2>
+
+  {marketPerformance.length === 0 ? (
+    <p className="text-sm text-muted-foreground">
+      No tracked bets yet. Start tracking bets in History to see market performance.
+    </p>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-white/5">
+            {["Market", "Bets", "Greens", "Reds", "Hit Rate", "Profit / Loss"].map((h) => (
+              <th
+                key={h}
+                className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {marketPerformance.map((item) => (
+            <tr
+              key={item.market}
+              className="border-t border-white/5 hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 py-3 text-foreground font-medium">
+                {item.market}
+              </td>
+              <td className="px-4 py-3 text-foreground">{item.bets}</td>
+              <td className="px-4 py-3 text-foreground">{item.greens}</td>
+              <td className="px-4 py-3 text-foreground">{item.reds}</td>
+              <td className="px-4 py-3 text-foreground">
+                {item.hitRate.toFixed(1)}%
+              </td>
+              <td className="px-4 py-3 text-foreground font-mono-data">
+                {item.profitLoss.toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
       </div>
     </AppLayout>
   );
