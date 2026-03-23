@@ -176,14 +176,23 @@ def calcular_confianca(value_bet, total_golos_esperados, jogos_casa, jogos_fora,
     return min(round(score, 1), 10.0)
 
 
-def obter_decisao(value_bet, jogos_casa, jogos_fora, total_golos_esperados, kelly):
+def obter_decisao(value_bet, jogos_casa, jogos_fora, total_golos_esperados, kelly, odd=None):
     if jogos_casa < 5 or jogos_fora < 5:
         return "Não apostar"
-    if value_bet < 3:
+
+    if value_bet < 2:
         return "Não apostar"
-    if kelly < 0.01:
+
+    if kelly < 0.008:
         return "Não apostar"
-    return "Apostar"
+
+    if odd is not None and (odd < 1.4 or odd > 4.0):
+        return "Não apostar"
+
+    if value_bet >= 5 and kelly >= 0.015 and jogos_casa >= 8 and jogos_fora >= 8:
+        return "Apostar"
+
+    return "Cautela"
 
 
 def analisar_jogo(data):
@@ -248,7 +257,7 @@ def analisar_jogo(data):
         risco = calcular_risco(value, odd, kelly)
         confianca = calcular_confianca(value, total_golos_esperados, data.jogos_casa, data.jogos_fora, kelly)
         classificacao = obter_classificacao(value)
-        decisao = obter_decisao(value, data.jogos_casa, data.jogos_fora, total_golos_esperados, kelly)
+        decisao = obter_decisao(value, data.jogos_casa, data.jogos_fora, total_golos_esperados, kelly, odd)
 
         mercados.append({
             "mercado": nome,

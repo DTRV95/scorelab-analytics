@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import { motion } from "framer-motion";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Signal Lab", url: "/signal-lab", icon: FlaskConical },
   { title: "Match Analysis", url: "/analysis", icon: Target },
   { title: "Value Radar", url: "/radar", icon: Radar },
   { title: "Daily Opportunities", url: "/opportunities", icon: TrendingUp },

@@ -37,10 +37,20 @@ export default function BankrollTools() {
 
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
   const marketPerformance = useMemo(() => getMarketPerformance(), [analyses]);
+  
   const dailyPerformance = useMemo(() => getDailyPerformance(), [analyses]);
 
-  const todayPerformance = dailyPerformance[0] || null;
-  const yesterdayPerformance = dailyPerformance[1] || null;
+  const todayDate = new Date().toISOString().split("T")[0];
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayDate = yesterday.toISOString().split("T")[0];
+
+  const todayPerformance =
+    dailyPerformance.find((item) => item.date === todayDate) || null;
+
+  const yesterdayPerformance =
+    dailyPerformance.find((item) => item.date === yesterdayDate) || null;
   
 
   const loadData = () => {

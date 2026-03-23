@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatCard } from "@/components/StatCard";
-import { ValueBadge, DecisionBadge } from "@/components/ValueBadge";
+import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { BarChart3, TrendingUp, Target, Zap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -13,8 +13,9 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
+import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import { useNavigate } from "react-router-dom";
 
@@ -37,6 +38,14 @@ function getBestBet(results: AnalysisResult[]) {
   return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
 }
 
+function isSameDay(dateA: Date, dateB: Date) {
+  return (
+    dateA.getDate() === dateB.getDate() &&
+    dateA.getMonth() === dateB.getMonth() &&
+    dateA.getFullYear() === dateB.getFullYear()
+  );
+}
+
 function getRecentLabel(dateString: string) {
   const analysisDate = new Date(dateString);
   const today = new Date();
@@ -56,12 +65,93 @@ function getRecentLabel(dateString: string) {
   return analysisDate.toLocaleDateString();
 }
 
+function startOfCurrentWeek(now: Date) {
+  const date = new Date(now);
+  const day = date.getDay(); // 0 = Sun, 1 = Mon ...
+  const diff = day === 0 ? -6 : 1 - day; // Monday as start
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function endOfCurrentWeek(now: Date) {
+  const start = startOfCurrentWeek(now);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function startOfCurrentMonth(now: Date) {
+  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+}
+
+function endOfCurrentMonth(now: Date) {
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+}
+
+function buildWeeklyTrend(validAnalyses: SavedAnalysis[]) {
+  const now = new Date();
+  const start = startOfCurrentWeek(now);
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  return days.map((label, index) => {
+    const currentDay = new Date(start);
+    currentDay.setDate(start.getDate() + index);
+
+    const dayAnalyses = validAnalyses.filter((analysis) =>
+      isSameDay(new Date(analysis.createdAt), currentDay)
+    );
+
+    const bestValue = dayAnalyses.reduce((max, analysis) => {
+      const bestBet = getBestBet(analysis.results);
+      if (!bestBet) return max;
+      return Math.max(max, bestBet.valueBet);
+    }, 0);
+
+    return {
+      name: label,
+      value: Number(bestValue.toFixed(1)),
+    };
+  });
+}
+
+function buildMonthlyTrend(validAnalyses: SavedAnalysis[]) {
+  const now = new Date();
+  const start = startOfCurrentMonth(now);
+  const end = endOfCurrentMonth(now);
+  const totalDays = end.getDate();
+
+  return Array.from({ length: totalDays }, (_, i) => {
+    const currentDay = new Date(start);
+    currentDay.setDate(i + 1);
+
+    const dayAnalyses = validAnalyses.filter((analysis) =>
+      isSameDay(new Date(analysis.createdAt), currentDay)
+    );
+
+    const bestValue = dayAnalyses.reduce((max, analysis) => {
+      const bestBet = getBestBet(analysis.results);
+      if (!bestBet) return max;
+      return Math.max(max, bestBet.valueBet);
+    }, 0);
+
+    return {
+      name: String(i + 1),
+      value: Number(bestValue.toFixed(1)),
+    };
+  });
+}
+
 export default function Dashboard() {
   const analyses = getAnalyses();
   const bankrollStats = getBankrollStats();
   const navigate = useNavigate();
+  const [trendView, setTrendView] = useState<"week" | "month">("week");
 
   const dashboardData = useMemo(() => {
+    const now = new Date();
+
     const validAnalyses = analyses.filter(
       (analysis) =>
         analysis &&
@@ -69,16 +159,9 @@ export default function Dashboard() {
         analysis.results.length > 0
     );
 
-    const analysesToday = validAnalyses.filter((analysis) => {
-      const analysisDate = new Date(analysis.createdAt);
-      const now = new Date();
-
-      return (
-        analysisDate.getDate() === now.getDate() &&
-        analysisDate.getMonth() === now.getMonth() &&
-        analysisDate.getFullYear() === now.getFullYear()
-      );
-    }).length;
+    const analysesToday = validAnalyses.filter((analysis) =>
+      isSameDay(new Date(analysis.createdAt), now)
+    ).length;
 
     const allResults = validAnalyses.flatMap((analysis) => analysis.results);
 
@@ -96,7 +179,11 @@ export default function Dashboard() {
           validAnalyses.length
         : 0;
 
-    const allBestBets = validAnalyses
+    const todaysAnalyses = validAnalyses.filter((analysis) =>
+      isSameDay(new Date(analysis.createdAt), now)
+    );
+
+    const allTodayBestBets = todaysAnalyses
       .map((analysis) => {
         const bestBet = getBestBet(analysis.results);
         if (!bestBet) return null;
@@ -108,9 +195,9 @@ export default function Dashboard() {
       })
       .filter(Boolean) as { analysis: SavedAnalysis; bestBet: AnalysisResult }[];
 
-    const topValueEntry =
-      allBestBets.length > 0
-        ? allBestBets.reduce((a, b) =>
+    const topValueTodayEntry =
+      allTodayBestBets.length > 0
+        ? allTodayBestBets.reduce((a, b) =>
             a.bestBet.valueBet > b.bestBet.valueBet ? a : b
           )
         : null;
@@ -141,25 +228,8 @@ export default function Dashboard() {
       date: string;
     }[];
 
-    const trendMap = new Map<string, number>();
-
-    validAnalyses.forEach((analysis) => {
-      const day = new Date(analysis.createdAt).toLocaleDateString("en-US", {
-        weekday: "short",
-      });
-
-      const bestBet = getBestBet(analysis.results);
-      if (!bestBet) return;
-
-      const current = trendMap.get(day) || 0;
-      trendMap.set(day, Math.max(current, bestBet.valueBet));
-    });
-
-    const weekOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const trendData = weekOrder.map((day) => ({
-      name: day,
-      value: trendMap.get(day) || 0,
-    }));
+    const weeklyTrendData = buildWeeklyTrend(validAnalyses);
+    const monthlyTrendData = buildMonthlyTrend(validAnalyses);
 
     const totalTrackedStake = validAnalyses.reduce(
       (acc, analysis) => acc + (analysis.tracking.stakeUsed || 0),
@@ -181,26 +251,32 @@ export default function Dashboard() {
         ? "Moderate"
         : "High";
 
+    const performance = getAdvancedPerformanceBreakdown(validAnalyses);
+
     return {
       analysesToday,
       valueBetsFound,
       avgConfidence,
       avgXg,
-      topValueEntry,
+      topValueTodayEntry,
       recentAnalyses,
-      trendData,
+      weeklyTrendData,
+      monthlyTrendData,
       totalTrackedStake,
       openExposure,
       riskLevel,
+      performance,
     };
   }, [analyses, bankrollStats.currentBankroll]);
 
-  const topValue = dashboardData.topValueEntry;
+  const topValueToday = dashboardData.topValueTodayEntry;
+  const activeTrendData =
+    trendView === "week" ? dashboardData.weeklyTrendData : dashboardData.monthlyTrendData;
 
   return (
     <AppLayout>
-      <motion.div initial="hidden" animate="visible" variants={stagger}>
-        <motion.div variants={fadeUp} className="mb-8">
+      <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8">
+        <motion.div variants={fadeUp}>
           <h1 className="text-2xl font-bold text-foreground">Good afternoon, Analyst</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Here's your daily intelligence briefing.
@@ -209,7 +285,7 @@ export default function Dashboard() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           <StatCard
             label="Analyses Today"
@@ -241,11 +317,11 @@ export default function Dashboard() {
           />
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <motion.div
             variants={fadeUp}
             onClick={() =>
-              topValue ? navigate(`/history?analysisId=${topValue.analysis.id}`) : undefined
+              topValueToday ? navigate(`/history?analysisId=${topValueToday.analysis.id}`) : undefined
             }
             className="lg:col-span-2 rounded-2xl bg-card ring-1 ring-primary/10 p-6 card-shadow card-glow relative overflow-hidden cursor-pointer hover:bg-white/[0.02] transition-colors"
           >
@@ -260,35 +336,35 @@ export default function Dashboard() {
                 </span>
               </div>
 
-              {topValue ? (
+              {topValueToday ? (
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-foreground">
-                      {topValue.analysis.homeTeam} vs {topValue.analysis.awayTeam}
+                      {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      {topValue.bestBet.market}
+                      {topValueToday.bestBet.market}
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         {
                           label: "Model Prob.",
-                          value: `${topValue.bestBet.modelProb}%`,
+                          value: `${topValueToday.bestBet.modelProb}%`,
                           color: "text-foreground",
                         },
                         {
                           label: "Implied Prob.",
-                          value: `${topValue.bestBet.impliedProb}%`,
+                          value: `${topValueToday.bestBet.impliedProb}%`,
                           color: "text-muted-foreground",
                         },
                         {
                           label: "Value Edge",
-                          value: `+${topValue.bestBet.valueBet.toFixed(1)}%`,
+                          value: `+${topValueToday.bestBet.valueBet.toFixed(1)}%`,
                           color: "text-primary",
                         },
                         {
                           label: "Kelly Stake",
-                          value: `${topValue.bestBet.kelly.toFixed(1)}%`,
+                          value: `${topValueToday.bestBet.kelly.toFixed(1)}%`,
                           color: "text-foreground",
                         },
                       ].map((item, i) => (
@@ -311,17 +387,17 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <div className="mb-4">
                       <p className="text-xs text-muted-foreground mb-2">Confidence</p>
-                      <ConfidenceMeter score={topValue.bestBet.confidence} />
+                      <ConfidenceMeter score={topValueToday.bestBet.confidence} />
                     </div>
                     <div className="mb-4">
                       <p className="text-xs text-muted-foreground mb-2">Market Direction</p>
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium ring-1 ring-primary/20">
                         <TrendingUp className="w-3 h-3" />
-                        {topValue.bestBet.market.includes("Over")
+                        {topValueToday.bestBet.market.includes("Over")
                           ? "Over leaning"
-                          : topValue.bestBet.market.includes("Under")
+                          : topValueToday.bestBet.market.includes("Under")
                           ? "Under leaning"
-                          : topValue.bestBet.market.includes("BTTS")
+                          : topValueToday.bestBet.market.includes("BTTS")
                           ? "BTTS leaning"
                           : "Model leaning"}
                       </span>
@@ -329,15 +405,15 @@ export default function Dashboard() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-2">Why this bet?</p>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        The model identifies this as the strongest available edge based on probability
-                        advantage, confidence score, and stake sizing.
+                        This is the strongest positive edge detected today based on probability
+                        advantage, confidence score, and Kelly sizing.
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No positive value bets found yet. Run more analyses to populate this section.
+                  No positive value bets found today. Run new analyses to populate this section.
                 </p>
               )}
             </div>
@@ -347,11 +423,37 @@ export default function Dashboard() {
             variants={fadeUp}
             className="rounded-2xl bg-card ring-surface p-6 card-shadow"
           >
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Edge Trend (7d)
-            </h2>
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Edge Trend
+              </h2>
+
+              <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+                <button
+                  onClick={() => setTrendView("week")}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    trendView === "week"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Week
+                </button>
+                <button
+                  onClick={() => setTrendView("month")}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    trendView === "month"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Month
+                </button>
+              </div>
+            </div>
+
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={dashboardData.trendData}>
+              <BarChart data={activeTrendData}>
                 <XAxis
                   dataKey="name"
                   axisLine={false}
@@ -370,7 +472,7 @@ export default function Dashboard() {
                   cursor={false}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {dashboardData.trendData.map((entry, index) => (
+                  {activeTrendData.map((entry, index) => (
                     <Cell
                       key={index}
                       fill={
@@ -388,7 +490,7 @@ export default function Dashboard() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
         >
           <StatCard
             label="Bankroll"
@@ -400,9 +502,15 @@ export default function Dashboard() {
           <StatCard
             label="Suggested Exposure"
             value={`$${dashboardData.openExposure.toFixed(2)}`}
-            change={`${dashboardData.openExposure > 0
-              ? ((dashboardData.openExposure / Math.max(bankrollStats.currentBankroll, 1)) * 100).toFixed(1)
-              : "0.0"}% of bankroll`}
+            change={`${
+              dashboardData.openExposure > 0
+                ? (
+                    (dashboardData.openExposure /
+                      Math.max(bankrollStats.currentBankroll, 1)) *
+                    100
+                  ).toFixed(1)
+                : "0.0"
+            }% of bankroll`}
             changeType="neutral"
             mono
           />
@@ -488,6 +596,79 @@ export default function Dashboard() {
                       </td>
                     </motion.tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={fadeUp}
+          className="rounded-2xl bg-card ring-surface p-6 card-shadow"
+        >
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Performance by Tier
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              This shows which signal levels actually generate profit.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-3 pr-4">Tier</th>
+                  <th className="py-3 pr-4">Bets</th>
+                  <th className="py-3 pr-4">Wins</th>
+                  <th className="py-3 pr-4">Losses</th>
+                  <th className="py-3 pr-4">Hit Rate</th>
+                  <th className="py-3 pr-4">Stake</th>
+                  <th className="py-3 pr-4">P/L</th>
+                  <th className="py-3 pr-4">ROI</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {dashboardData.performance?.tierPerformance?.length > 0 ? (
+                  dashboardData.performance.tierPerformance.map((row) => (
+                    <tr key={row.tier} className="border-t border-white/5">
+                      <td className="py-3 pr-4">
+                        <TierBadge tier={row.tier} />
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.bets}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.wins}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.losses}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.hitRate}%
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        €{row.totalStake.toFixed(2)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        €{row.profitLoss.toFixed(2)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.roi}%
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      No settled bets yet. Start tracking results.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

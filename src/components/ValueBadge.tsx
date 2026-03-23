@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import type { BetTier } from "@/types/analysis";
 
 interface ValueBadgeProps {
   value: number;
@@ -21,14 +22,10 @@ export function ValueBadge({ value, className }: ValueBadgeProps) {
         className
       )}
     >
-      {isPositive ? "+" : ""}{value.toFixed(1)}%
+      {isPositive ? "+" : ""}
+      {value.toFixed(1)}%
     </motion.span>
   );
-}
-
-interface DecisionBadgeProps {
-  decision: "Bet" | "No Bet" | "Caution";
-  className?: string;
 }
 
 export function DecisionBadge({ decision }: { decision: "Bet" | "No Bet" | "Caution" }) {
@@ -53,14 +50,46 @@ interface RiskBadgeProps {
 
 export function RiskBadge({ risk, className }: RiskBadgeProps) {
   return (
-    <span className={cn(
-      "inline-flex items-center px-2 py-1 rounded text-xs font-medium",
-      risk === "Low" && "bg-primary/10 text-primary",
-      risk === "Medium" && "bg-warning/10 text-warning",
-      risk === "High" && "bg-destructive/10 text-destructive",
-      className
-    )}>
+    <span
+      className={cn(
+        "inline-flex items-center px-2 py-1 rounded text-xs font-medium",
+        risk === "Low" && "bg-primary/10 text-primary",
+        risk === "Medium" && "bg-warning/10 text-warning",
+        risk === "High" && "bg-destructive/10 text-destructive",
+        className
+      )}
+    >
       {risk}
+    </span>
+  );
+}
+
+interface TierBadgeProps {
+  tier: BetTier;
+  className?: string;
+}
+
+export function TierBadge({ tier, className }: TierBadgeProps) {
+  const styles =
+    tier === "premium"
+      ? "bg-warning/15 text-warning ring-1 ring-warning/30"
+      : tier === "elite"
+      ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+      : tier === "bet"
+      ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+      : tier === "watchlist"
+      ? "bg-yellow-500/10 text-yellow-400 ring-1 ring-yellow-500/20"
+      : "bg-muted text-muted-foreground ring-1 ring-white/10";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+        styles,
+        className
+      )}
+    >
+      {tier}
     </span>
   );
 }
@@ -82,7 +111,7 @@ export function SpecialBadge({ type, className }: SpecialBadgeProps) {
         className
       )}
     >
-      {type === "high-value" ? "⚡ High Value" : "★ Premium Pick"}
+      {type === "high-value" ? "⚡ Elite Signal" : "★ Premium Signal"}
     </motion.span>
   );
 }
