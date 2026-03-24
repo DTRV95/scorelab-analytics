@@ -20,6 +20,60 @@ export interface BankrollStats {
   roi: number;
 }
 
+export interface MarketPerformanceItem {
+  market: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  voids: number;
+  pending: number;
+  profitLoss: number;
+  hitRate: number;
+}
+
+export interface DailyPerformanceItem {
+  date: string;
+  startBankroll: number;
+  endBankroll: number;
+  profitLoss: number;
+  growthPct: number;
+  settledBets: number;
+}
+
+export interface EdgeBucketPerformanceItem {
+  bucket: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+  hitRate: number;
+}
+
+export interface ConfidenceBucketPerformanceItem {
+  bucket: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+  hitRate: number;
+}
+
+export interface DrawdownPoint {
+  step: string;
+  bankroll: number;
+  peak: number;
+  drawdownPct: number;
+}
+
+export interface CumulativeMarketSeries {
+  markets: string[];
+  data: Array<Record<string, string | number>>;
+}
+
 export function getAnalyses(): SavedAnalysis[] {
   try {
     const raw = localStorage.getItem(ANALYSES_KEY);
@@ -203,24 +257,11 @@ export function calculateNextBankrollBefore(): number {
   return stats.currentBankroll;
 }
 
-export interface MarketPerformanceItem {
-  market: string;
-  bets: number;
-  greens: number;
-  reds: number;
-  voids: number;
-  pending: number;
-  profitLoss: number;
-  hitRate: number;
-}
-
 export function getMarketPerformance(): MarketPerformanceItem[] {
   const analyses = getAnalyses();
 
   const placedBets = analyses.filter(
-    (analysis) =>
-      analysis.tracking.betPlaced &&
-      analysis.tracking.selectedMarket
+    (analysis) => analysis.tracking.betPlaced && analysis.tracking.selectedMarket
   );
 
   const marketMap = new Map<string, MarketPerformanceItem>();
@@ -258,15 +299,6 @@ export function getMarketPerformance(): MarketPerformanceItem[] {
   return Array.from(marketMap.values()).sort(
     (a, b) => b.profitLoss - a.profitLoss
   );
-}
-
-export interface DailyPerformanceItem {
-  date: string;
-  startBankroll: number;
-  endBankroll: number;
-  profitLoss: number;
-  growthPct: number;
-  settledBets: number;
 }
 
 export function getDailyPerformance(): DailyPerformanceItem[] {
@@ -324,4 +356,336 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
           : 0,
     }))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function getSettledBetsWithContext() {
+  const analyses = getAnalyses();
+
+  return analyses
+    .filter(
+      (analysis) =>
+        analysis.tracking.betPlaced &&
+        analysis.tracking.selectedMarket &&
+        (analysis.tracking.resultStatus === "green" ||
+          analysis.tracking.resultStatus === "red" ||
+          analysis.tracking.resultStatus === "void")
+    )
+    .map((analysis) => {
+      const selectedMarket = analysis.tracking.selectedMarket!;
+      const selectedResult =
+        analysis.results.find((r) => r.market === selectedMarket) || null;
+
+      return {
+        analysis,
+        selectedResult,
+        market: selectedMarket,
+        stake: analysis.tracking.stakeUsed || 0,
+        profitLoss: analysis.tracking.profitLoss || 0,
+        status: analysis.tracking.resultStatus,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.analysis.createdAt).getTime() -
+        new Date(b.analysis.createdAt).getTime()
+    );
+}
+
+function getEdgeBucket(valueBet: number): string {
+  if (valueBet < 3) return "0–2.9%";
+  if (valueBet < 5) return "3–4.9%";
+  if (valueBet < 7) return "5–6.9%";
+  return "7%+";
+}
+
+function getConfidenceBucket(confidence: number): string {
+  if (confidence <= 5) return "0–5";
+  if (confidence <= 6) return "6";
+  if (confidence <= 7) return "7";
+  if (confidence <= 8) return "8";
+  return "9–10";
+}
+
+export function getEdgeBucketPerformance(): EdgeBucketPerformanceItem[] {
+  const bets = getSettledBetsWithContext();
+  const bucketMap = new Map<string, EdgeBucketPerformanceItem>();
+
+  bets.forEach((bet) => {
+    if (!bet.selectedResult) return;
+
+    const bucket = getEdgeBucket(bet.selectedResult.valueBet);
+    const current = bucketMap.get(bucket) || {
+      bucket,
+      bets: 0,
+      greens: 0,
+      reds: 0,
+      totalStake: 0,
+      profitLoss: 0,
+      roi: 0,
+      hitRate: 0,
+    };
+
+    current.bets += 1;
+    current.totalStake += bet.stake;
+    current.profitLoss += bet.profitLoss;
+
+    if (bet.status === "green") current.greens += 1;
+    if (bet.status === "red") current.reds += 1;
+
+    const settled = current.greens + current.reds;
+    current.hitRate = settled > 0 ? (current.greens / settled) * 100 : 0;
+    current.roi = current.totalStake > 0 ? (current.profitLoss / current.totalStake) * 100 : 0;
+
+    bucketMap.set(bucket, current);
+  });
+
+  const order = ["0–2.9%", "3–4.9%", "5–6.9%", "7%+"];
+
+  return Array.from(bucketMap.values()).sort(
+    (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)
+  );
+}
+
+export function getConfidenceBucketPerformance(): ConfidenceBucketPerformanceItem[] {
+  const bets = getSettledBetsWithContext();
+  const bucketMap = new Map<string, ConfidenceBucketPerformanceItem>();
+
+  bets.forEach((bet) => {
+    if (!bet.selectedResult) return;
+
+    const bucket = getConfidenceBucket(bet.selectedResult.confidence);
+    const current = bucketMap.get(bucket) || {
+      bucket,
+      bets: 0,
+      greens: 0,
+      reds: 0,
+      totalStake: 0,
+      profitLoss: 0,
+      roi: 0,
+      hitRate: 0,
+    };
+
+    current.bets += 1;
+    current.totalStake += bet.stake;
+    current.profitLoss += bet.profitLoss;
+
+    if (bet.status === "green") current.greens += 1;
+    if (bet.status === "red") current.reds += 1;
+
+    const settled = current.greens + current.reds;
+    current.hitRate = settled > 0 ? (current.greens / settled) * 100 : 0;
+    current.roi = current.totalStake > 0 ? (current.profitLoss / current.totalStake) * 100 : 0;
+
+    bucketMap.set(bucket, current);
+  });
+
+  const order = ["0–5", "6", "7", "8", "9–10"];
+
+  return Array.from(bucketMap.values()).sort(
+    (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)
+  );
+}
+
+export function getDrawdownSeries(): DrawdownPoint[] {
+  const { initialBankroll } = getBankrollSettings();
+  const bets = getSettledBetsWithContext();
+
+  let bankroll = initialBankroll;
+  let peak = initialBankroll;
+
+  const series: DrawdownPoint[] = [
+    {
+      step: "Start",
+      bankroll: Number(initialBankroll.toFixed(2)),
+      peak: Number(initialBankroll.toFixed(2)),
+      drawdownPct: 0,
+    },
+  ];
+
+  bets.forEach((bet, index) => {
+    bankroll += bet.profitLoss;
+    peak = Math.max(peak, bankroll);
+
+    const drawdownPct = peak > 0 ? ((bankroll - peak) / peak) * 100 : 0;
+
+    series.push({
+      step: `${index + 1}`,
+      bankroll: Number(bankroll.toFixed(2)),
+      peak: Number(peak.toFixed(2)),
+      drawdownPct: Number(drawdownPct.toFixed(2)),
+    });
+  });
+
+  return series;
+}
+
+export function getDailyProfitSeries() {
+  return getDailyPerformance()
+    .slice()
+    .reverse()
+    .map((day) => ({
+      date: day.date.slice(5),
+      profitLoss: Number(day.profitLoss.toFixed(2)),
+      growthPct: Number(day.growthPct.toFixed(2)),
+    }));
+}
+
+export function getCumulativeMarketSeries(): CumulativeMarketSeries {
+  const bets = getSettledBetsWithContext();
+  const markets = Array.from(
+    new Set(bets.map((bet) => bet.market))
+  ).sort();
+
+  const runningTotals: Record<string, number> = {};
+  markets.forEach((market) => {
+    runningTotals[market] = 0;
+  });
+
+  const data = bets.map((bet, index) => {
+    runningTotals[bet.market] += bet.profitLoss;
+
+    const row: Record<string, string | number> = {
+      step: `${index + 1}`,
+    };
+
+    markets.forEach((market) => {
+      row[market] = Number(runningTotals[market].toFixed(2));
+    });
+
+    return row;
+  });
+
+  return { markets, data };
+}
+
+export interface BestPerformingZone {
+  bestMarket: {
+    market: string;
+    roi: number;
+    bets: number;
+    profitLoss: number;
+  } | null;
+  bestEdgeBucket: {
+    bucket: string;
+    roi: number;
+    bets: number;
+    profitLoss: number;
+  } | null;
+  bestConfidenceBucket: {
+    bucket: string;
+    roi: number;
+    bets: number;
+    profitLoss: number;
+  } | null;
+}
+
+export function getBestPerformingZone(): BestPerformingZone {
+  const marketPerformance = getMarketPerformance();
+  const edgePerformance = getEdgeBucketPerformance();
+  const confidencePerformance = getConfidenceBucketPerformance();
+
+  const validMarkets = marketPerformance.filter(
+    (item) => item.bets >= 2
+  );
+
+  const bestMarket =
+    validMarkets.length > 0
+      ? validMarkets.reduce((best, current) => {
+          const currentRoi =
+            current.bets > 0
+              ? (current.profitLoss /
+                  Math.max(
+                    1,
+                    getAnalyses()
+                      .filter(
+                        (a) =>
+                          a.tracking.betPlaced &&
+                          a.tracking.selectedMarket === current.market
+                      )
+                      .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
+                )) *
+                100
+              : 0;
+
+          const bestRoi =
+            best.bets > 0
+              ? (best.profitLoss /
+                  Math.max(
+                    1,
+                    getAnalyses()
+                      .filter(
+                        (a) =>
+                          a.tracking.betPlaced &&
+                          a.tracking.selectedMarket === best.market
+                      )
+                      .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
+                )) *
+                100
+              : 0;
+
+          return currentRoi > bestRoi ? current : best;
+        })
+      : null;
+
+  const validEdgeBuckets = edgePerformance.filter((item) => item.bets >= 2);
+  const bestEdgeBucket =
+    validEdgeBuckets.length > 0
+      ? validEdgeBuckets.reduce((best, current) =>
+          current.roi > best.roi ? current : best
+        )
+      : null;
+
+  const validConfidenceBuckets = confidencePerformance.filter(
+    (item) => item.bets >= 2
+  );
+  const bestConfidenceBucket =
+    validConfidenceBuckets.length > 0
+      ? validConfidenceBuckets.reduce((best, current) =>
+          current.roi > best.roi ? current : best
+        )
+      : null;
+
+  return {
+    bestMarket: bestMarket
+      ? {
+          market: bestMarket.market,
+          roi: Number(
+            (
+              (bestMarket.profitLoss /
+                Math.max(
+                  1,
+                  getAnalyses()
+                    .filter(
+                      (a) =>
+                        a.tracking.betPlaced &&
+                        a.tracking.selectedMarket === bestMarket.market
+                    )
+                    .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
+                )) *
+              100
+            ).toFixed(2)
+          ),
+          bets: bestMarket.bets,
+          profitLoss: Number(bestMarket.profitLoss.toFixed(2)),
+        }
+      : null,
+
+    bestEdgeBucket: bestEdgeBucket
+      ? {
+          bucket: bestEdgeBucket.bucket,
+          roi: Number(bestEdgeBucket.roi.toFixed(2)),
+          bets: bestEdgeBucket.bets,
+          profitLoss: Number(bestEdgeBucket.profitLoss.toFixed(2)),
+        }
+      : null,
+
+    bestConfidenceBucket: bestConfidenceBucket
+      ? {
+          bucket: bestConfidenceBucket.bucket,
+          roi: Number(bestConfidenceBucket.roi.toFixed(2)),
+          bets: bestConfidenceBucket.bets,
+          profitLoss: Number(bestConfidenceBucket.profitLoss.toFixed(2)),
+        }
+      : null,
+  };
 }

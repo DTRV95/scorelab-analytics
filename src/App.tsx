@@ -17,7 +17,6 @@ import BankrollTools from "./pages/BankrollTools";
 import PricingPage from "./pages/PricingPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import SignalLab from "./pages/signalLab";
 
 
 const queryClient = new QueryClient();
@@ -31,7 +30,6 @@ const App = () => (
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/signal-lab" element={<SignalLab />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
