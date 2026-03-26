@@ -11,7 +11,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import MatchAnalysis from "./pages/MatchAnalysis";
 import ValueRadar from "./pages/ValueRadar";
-import DailyOpportunities from "./pages/DailyOpportunities";
 import History from "./pages/History";
 import BankrollTools from "./pages/BankrollTools";
 import PricingPage from "./pages/PricingPage";
@@ -36,7 +35,6 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analysis" element={<MatchAnalysis />} />
             <Route path="/radar" element={<ValueRadar />} />
-            <Route path="/opportunities" element={<DailyOpportunities />} />
             <Route path="/history" element={<History />} />
             <Route path="/bankroll" element={<BankrollTools />} />
             <Route path="/pricing" element={<PricingPage />} />

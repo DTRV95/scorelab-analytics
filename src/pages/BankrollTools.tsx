@@ -1,5 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useEffect, useMemo, useState } from "react";
+import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
   getAnalyses,
   getBankrollSettings,
@@ -11,8 +12,6 @@ import {
   getConfidenceBucketPerformance,
   getDrawdownSeries,
   getDailyProfitSeries,
-  getCumulativeMarketSeries,
-  getBestPerformingZone,
 } from "@/lib/analysisStorage";
 import {
   ResponsiveContainer,
@@ -26,7 +25,32 @@ import {
   CartesianGrid,
   Legend,
   Cell,
+  PieChart,
+  Pie,
 } from "recharts";
+
+const chartTooltipStyle = {
+  backgroundColor: "hsl(222, 47%, 7%)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 12,
+  fontSize: 12,
+  color: "hsl(210, 40%, 98%)",
+};
+
+const chartTooltipLabelStyle = {
+  color: "hsl(210, 40%, 98%)",
+};
+
+const chartTooltipItemStyle = {
+  color: "hsl(210, 40%, 98%)",
+};
+
+const resultColors: Record<string, string> = {
+  Greens: "hsl(142, 71%, 45%)",
+  Reds: "hsl(0, 70%, 55%)",
+  Pending: "hsl(45, 93%, 47%)",
+  Voids: "hsl(222, 30%, 35%)",
+};
 
 export default function BankrollTools() {
   const [initialBankrollInput, setInitialBankrollInput] = useState("");
@@ -45,6 +69,7 @@ export default function BankrollTools() {
   });
 
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
+
   const marketPerformance = useMemo(() => getMarketPerformance(), [analyses]);
   const dailyPerformance = useMemo(() => getDailyPerformance(), [analyses]);
   const edgeBucketPerformance = useMemo(() => getEdgeBucketPerformance(), [analyses]);
@@ -54,8 +79,7 @@ export default function BankrollTools() {
   );
   const drawdownSeries = useMemo(() => getDrawdownSeries(), [analyses]);
   const dailyProfitSeries = useMemo(() => getDailyProfitSeries(), [analyses]);
-  const cumulativeMarketSeries = useMemo(() => getCumulativeMarketSeries(), [analyses]);
-  const bestPerformingZone = useMemo(() => getBestPerformingZone(), [analyses]);
+  const edgeZoneSummary = useMemo(() => getEdgeZoneSummary(), [analyses]);
 
   const todayPerformance = dailyPerformance[0] || null;
   const yesterdayPerformance = dailyPerformance[1] || null;
@@ -139,6 +163,10 @@ export default function BankrollTools() {
       { name: "Voids", value: stats.totalVoids },
     ];
   }, [stats]);
+
+  const betResultsTotal = useMemo(() => {
+    return performanceData.reduce((acc, item) => acc + item.value, 0);
+  }, [performanceData]);
 
   return (
     <AppLayout>
@@ -262,226 +290,377 @@ export default function BankrollTools() {
         </div>
 
         <div className="rounded-xl bg-card ring-surface card-shadow p-5">
-  <h2 className="text-lg font-semibold text-foreground mb-4">
-    Bankroll Evolution
-  </h2>
-  <div className="h-[300px]">
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={bankrollEvolutionData}>
-        <CartesianGrid stroke="rgb(0, 0, 0)" vertical={false} />
-        <XAxis
-          dataKey="name"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-        />
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-        />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: "hsl(222, 47%, 7%)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 12,
-            fontSize: 12,
-          }}
-        />
-        <Line
-          type="monotone"
-          dataKey="bankroll"
-          stroke="hsl(142, 71%, 45%)"
-          strokeWidth={2}
-          dot={{ r: 3 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-</div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Bankroll Evolution
+          </h2>
+          <div className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bankrollEvolutionData}>
+                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={chartTooltipLabelStyle}
+                  itemStyle={chartTooltipItemStyle}
+                  cursor={{ stroke: "rgba(255,255,255,0.05)" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="bankroll"
+                  stroke="hsl(142, 71%, 45%)"
+                  strokeWidth={3}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-  <div className="rounded-xl bg-card ring-surface card-shadow p-5">
-    <h2 className="text-lg font-semibold text-foreground mb-4">
-      Daily Profit / Loss
-    </h2>
-    <div className="h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={dailyProfitSeries}>
-          <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis
-            dataKey="date"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(0, 0%, 4%)",
-              border: "1px solid rgb(67, 65, 65)",
-              borderRadius: 12,
-              fontSize: 12,
-            }}
-          />
-          <Bar dataKey="profitLoss" radius={[6, 6, 0, 0]}>
-            {dailyProfitSeries.map((entry, index) => (
-              <Cell
-                key={index}
-                fill={
-                  entry.profitLoss >= 0
-                    ? "hsl(142, 71%, 45%)"
-                    : "hsl(0, 70%, 55%)"
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              Daily Profit / Loss
+            </h2>
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyProfitSeries} barCategoryGap="28%">
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                  />
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                  />
+                  <Bar dataKey="profitLoss" radius={[10, 10, 0, 0]} barSize={28}>
+                    {dailyProfitSeries.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={
+                          entry.profitLoss >= 0
+                            ? "hsl(142, 71%, 45%)"
+                            : "hsl(0, 70%, 55%)"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-  <div className="rounded-xl bg-card ring-surface card-shadow p-5">
-    <h2 className="text-lg font-semibold text-foreground mb-4">
-      Bet Results Breakdown
-    </h2>
-    <div className="h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={performanceData}>
-          <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis
-            dataKey="name"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(222, 47%, 7%)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 12,
-              fontSize: 12,
-            }}
-          />
-          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-            {performanceData.map((entry, index) => (
-              <Cell
-                key={index}
-                fill={
-                  entry.name === "Greens"
-                    ? "hsl(142, 71%, 45%)"
-                    : entry.name === "Reds"
-                    ? "hsl(0, 70%, 55%)"
-                    : "hsl(222, 30%, 20%)"
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-</div>
+          <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              Bet Results Breakdown
+            </h2>
+
+            <div className="h-[320px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    wrapperStyle={{ color: "hsl(215, 20%, 65%)", fontSize: 12 }}
+                  />
+                  <Pie
+                    data={performanceData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={70}
+                    outerRadius={105}
+                    paddingAngle={4}
+                    stroke="rgba(255,255,255,0.04)"
+                    strokeWidth={1}
+                  >
+                    {performanceData.map((entry, index) => (
+                      <Cell key={index} fill={resultColors[entry.name]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              <div className="absolute pointer-events-none text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Total
+                </p>
+                <p className="text-2xl font-bold text-foreground font-mono-data">
+                  {betResultsTotal}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="rounded-xl bg-card ring-surface card-shadow p-5">
-  <h2 className="text-lg font-semibold text-foreground mb-4">
-    Best Performing Zone
-  </h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Edge Intelligence
+          </h2>
 
-  {!bestPerformingZone.bestMarket &&
-  !bestPerformingZone.bestEdgeBucket &&
-  !bestPerformingZone.bestConfidenceBucket ? (
-    <p className="text-sm text-muted-foreground">
-      Not enough settled bets yet. You need at least 2 bets per group to detect your strongest zone.
-    </p>
-  ) : (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-          Best Market
-        </p>
-        {bestPerformingZone.bestMarket ? (
-          <>
-            <p className="text-lg font-bold text-foreground">
-              {bestPerformingZone.bestMarket.market}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              ROI: {bestPerformingZone.bestMarket.roi.toFixed(2)}%
-            </p>
+          {!edgeZoneSummary.bestMarket &&
+          !edgeZoneSummary.bestEdgeBucket &&
+          !edgeZoneSummary.bestConfidenceBucket ? (
             <p className="text-sm text-muted-foreground">
-              Bets: {bestPerformingZone.bestMarket.bets}
+              Not enough settled bets yet. You need at least 2 bets per group to detect your strongest zone.
             </p>
-            <p className="text-sm text-muted-foreground">
-              P/L: {bestPerformingZone.bestMarket.profitLoss.toFixed(2)}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Not enough data</p>
-        )}
-      </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Best Market
+                </p>
+                {edgeZoneSummary.bestMarket ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground">
+                      {edgeZoneSummary.bestMarket.market}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ROI: {edgeZoneSummary.bestMarket.roi.toFixed(2)}%
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Bets: {edgeZoneSummary.bestMarket.bets}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Avg Edge: {edgeZoneSummary.bestMarket.avgEdge.toFixed(2)}%
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not enough data</p>
+                )}
+              </div>
 
-      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-          Best Edge Bucket
-        </p>
-        {bestPerformingZone.bestEdgeBucket ? (
-          <>
-            <p className="text-lg font-bold text-foreground">
-              {bestPerformingZone.bestEdgeBucket.bucket}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              ROI: {bestPerformingZone.bestEdgeBucket.roi.toFixed(2)}%
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Bets: {bestPerformingZone.bestEdgeBucket.bets}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              P/L: {bestPerformingZone.bestEdgeBucket.profitLoss.toFixed(2)}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Not enough data</p>
-        )}
-      </div>
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Best Edge Bucket
+                </p>
+                {edgeZoneSummary.bestEdgeBucket ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground">
+                      {edgeZoneSummary.bestEdgeBucket.bucket}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ROI: {edgeZoneSummary.bestEdgeBucket.roi.toFixed(2)}%
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Bets: {edgeZoneSummary.bestEdgeBucket.bets}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Hit Rate: {edgeZoneSummary.bestEdgeBucket.hitRate.toFixed(2)}%
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not enough data</p>
+                )}
+              </div>
 
-      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-          Best Confidence Bucket
-        </p>
-        {bestPerformingZone.bestConfidenceBucket ? (
-          <>
-            <p className="text-lg font-bold text-foreground">
-              {bestPerformingZone.bestConfidenceBucket.bucket}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              ROI: {bestPerformingZone.bestConfidenceBucket.roi.toFixed(2)}%
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Bets: {bestPerformingZone.bestConfidenceBucket.bets}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              P/L: {bestPerformingZone.bestConfidenceBucket.profitLoss.toFixed(2)}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Not enough data</p>
-        )}
-      </div>
-    </div>
-  )}
-</div>
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Best Confidence Bucket
+                </p>
+                {edgeZoneSummary.bestConfidenceBucket ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground">
+                      {edgeZoneSummary.bestConfidenceBucket.bucket}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ROI: {edgeZoneSummary.bestConfidenceBucket.roi.toFixed(2)}%
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Bets: {edgeZoneSummary.bestConfidenceBucket.bets}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Avg Edge: {edgeZoneSummary.bestConfidenceBucket.avgEdge.toFixed(2)}%
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not enough data</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              ROI by Edge Bucket
+            </h2>
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={edgeBucketPerformance}
+                  layout="vertical"
+                  margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+                  barCategoryGap="30%"
+                >
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" horizontal={true} vertical={false} />
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                  />
+                  <YAxis
+                    dataKey="bucket"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                    width={70}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${value.toFixed(2)}%`, "ROI"]}
+                    contentStyle={chartTooltipStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                  />
+                  <Bar dataKey="roi" radius={[0, 10, 10, 0]} barSize={22}>
+                    {edgeBucketPerformance.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={
+                          entry.roi >= 0
+                            ? "hsl(142, 71%, 45%)"
+                            : "hsl(0, 70%, 55%)"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-          
+          <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              ROI by Confidence Bucket
+            </h2>
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={confidenceBucketPerformance}
+                  layout="vertical"
+                  margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+                  barCategoryGap="30%"
+                >
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" horizontal={true} vertical={false} />
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                  />
+                  <YAxis
+                    dataKey="bucket"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                    width={70}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${value.toFixed(2)}%`, "ROI"]}
+                    contentStyle={chartTooltipStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                  />
+                  <Bar dataKey="roi" radius={[0, 10, 10, 0]} barSize={22}>
+                    {confidenceBucketPerformance.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={
+                          entry.roi >= 0
+                            ? "hsl(142, 71%, 45%)"
+                            : "hsl(0, 70%, 55%)"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-card ring-surface card-shadow p-5">
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Drawdown
+          </h2>
+          <div className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={drawdownSeries}>
+                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis
+                  dataKey="step"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    if (name === "drawdownPct") {
+                      return [`${value.toFixed(2)}%`, "Drawdown"];
+                    }
+                    return [value, name];
+                  }}
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={chartTooltipLabelStyle}
+                  itemStyle={chartTooltipItemStyle}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="bankroll"
+                  stroke="hsl(142, 71%, 45%)"
+                  strokeWidth={2.5}
+                  dot={false}
+                  name="Bankroll"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="peak"
+                  stroke="hsl(215, 20%, 65%)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  strokeDasharray="4 4"
+                  name="Peak"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
         <div className="rounded-xl bg-card ring-surface card-shadow p-5">
           <h2 className="text-lg font-semibold text-foreground mb-3">

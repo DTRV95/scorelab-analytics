@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -20,7 +19,6 @@ const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Match Analysis", url: "/analysis", icon: Target },
   { title: "Value Radar", url: "/radar", icon: Radar },
-  { title: "Daily Opportunities", url: "/opportunities", icon: TrendingUp },
   { title: "History", url: "/history", icon: Clock },
   { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
   { title: "Pricing", url: "/pricing", icon: CreditCard },

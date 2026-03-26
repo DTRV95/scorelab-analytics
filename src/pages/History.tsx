@@ -15,11 +15,54 @@ function getBestBet(results: SavedAnalysis["results"]) {
   return results.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
 }
 
+function isToday(dateString: string) {
+  const d = new Date(dateString);
+  const now = new Date();
+
+  return (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
+}
+
+function isWithinLast7Days(dateString: string) {
+  const d = new Date(dateString).getTime();
+  const now = new Date().getTime();
+  const diff = now - d;
+  return diff <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function isThisMonth(dateString: string) {
+  const d = new Date(dateString);
+  const now = new Date();
+
+  return (
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
+}
+
 export default function History() {
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [searchParams] = useSearchParams();
   const highlightedAnalysisId = searchParams.get("analysisId");
   const analysisRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "green" | "red" | "void"
+  >("all");
+  const [betPlacedFilter, setBetPlacedFilter] = useState<
+    "all" | "placed" | "not-placed"
+  >("all");
+  const [marketFilter, setMarketFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "today" | "last7" | "month"
+  >("all");
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "edge" | "confidence" | "profitLoss"
+  >("newest");
 
   useEffect(() => {
     const data = getAnalyses();
@@ -38,6 +81,121 @@ export default function History() {
     );
   }, [analyses]);
 
+  const availableMarkets = useMemo(() => {
+    return Array.from(
+      new Set(
+        safeAnalyses
+          .map((analysis) => analysis.tracking.selectedMarket)
+          .filter(Boolean)
+      )
+    ) as string[];
+  }, [safeAnalyses]);
+
+  const filteredAnalyses = useMemo(() => {
+    let items = [...safeAnalyses];
+
+    items = items.filter((analysis) => {
+      const match = `${analysis.homeTeam} vs ${analysis.awayTeam}`.toLowerCase();
+      const market = (analysis.tracking.selectedMarket || "").toLowerCase();
+      const search = searchTerm.trim().toLowerCase();
+
+      const matchesSearch =
+        search === "" ||
+        match.includes(search) ||
+        analysis.homeTeam.toLowerCase().includes(search) ||
+        analysis.awayTeam.toLowerCase().includes(search) ||
+        market.includes(search);
+
+      if (!matchesSearch) return false;
+
+      if (
+        statusFilter !== "all" &&
+        analysis.tracking.resultStatus !== statusFilter
+      ) {
+        return false;
+      }
+
+      if (betPlacedFilter === "placed" && !analysis.tracking.betPlaced) {
+        return false;
+      }
+
+      if (betPlacedFilter === "not-placed" && analysis.tracking.betPlaced) {
+        return false;
+      }
+
+      if (
+        marketFilter !== "all" &&
+        analysis.tracking.selectedMarket !== marketFilter
+      ) {
+        return false;
+      }
+
+      if (dateFilter === "today" && !isToday(analysis.createdAt)) {
+        return false;
+      }
+
+      if (dateFilter === "last7" && !isWithinLast7Days(analysis.createdAt)) {
+        return false;
+      }
+
+      if (dateFilter === "month" && !isThisMonth(analysis.createdAt)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    items.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      if (sortBy === "oldest") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+
+      if (sortBy === "profitLoss") {
+        return (b.tracking.profitLoss || 0) - (a.tracking.profitLoss || 0);
+      }
+
+      if (sortBy === "edge") {
+        const aResult = a.tracking.selectedMarket
+          ? a.results.find((r) => r.market === a.tracking.selectedMarket)
+          : getBestBet(a.results);
+
+        const bResult = b.tracking.selectedMarket
+          ? b.results.find((r) => r.market === b.tracking.selectedMarket)
+          : getBestBet(b.results);
+
+        return (bResult?.valueBet || 0) - (aResult?.valueBet || 0);
+      }
+
+      if (sortBy === "confidence") {
+        const aResult = a.tracking.selectedMarket
+          ? a.results.find((r) => r.market === a.tracking.selectedMarket)
+          : getBestBet(a.results);
+
+        const bResult = b.tracking.selectedMarket
+          ? b.results.find((r) => r.market === b.tracking.selectedMarket)
+          : getBestBet(b.results);
+
+        return (bResult?.confidence || 0) - (aResult?.confidence || 0);
+      }
+
+      return 0;
+    });
+
+    return items;
+  }, [
+    safeAnalyses,
+    searchTerm,
+    statusFilter,
+    betPlacedFilter,
+    marketFilter,
+    dateFilter,
+    sortBy,
+  ]);
+
   useEffect(() => {
     if (!highlightedAnalysisId) return;
 
@@ -45,7 +203,7 @@ export default function History() {
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [highlightedAnalysisId, safeAnalyses]);
+  }, [highlightedAnalysisId, filteredAnalyses]);
 
   const handleTrackingChange = (
     analysisId: string,
@@ -66,23 +224,194 @@ export default function History() {
     setAnalyses(updatedAnalyses);
   };
 
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setBetPlacedFilter("all");
+    setMarketFilter("all");
+    setDateFilter("all");
+    setSortBy("newest");
+  };
+
   return (
     <AppLayout>
-      <div className="p-6">
-        <div className="mb-6">
+      <div className="p-6 space-y-6">
+        <div>
           <h1 className="text-2xl font-bold text-foreground">Analysis History</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Review your past analyses and track your bets.
           </p>
         </div>
 
+        <div className="rounded-xl bg-card ring-surface card-shadow p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+            <input
+              type="text"
+              placeholder="Search team or market..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            />
+
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value as "all" | "pending" | "green" | "red" | "void"
+                )
+              }
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            >
+              <option value="all" className="bg-card text-foreground">
+                All Status
+              </option>
+              <option value="pending" className="bg-card text-foreground">
+                Pending
+              </option>
+              <option value="green" className="bg-card text-foreground">
+                Greens
+              </option>
+              <option value="red" className="bg-card text-foreground">
+                Reds
+              </option>
+              <option value="void" className="bg-card text-foreground">
+                Voids
+              </option>
+            </select>
+
+            <select
+              value={betPlacedFilter}
+              onChange={(e) =>
+                setBetPlacedFilter(
+                  e.target.value as "all" | "placed" | "not-placed"
+                )
+              }
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            >
+              <option value="all" className="bg-card text-foreground">
+                All Bets
+              </option>
+              <option value="placed" className="bg-card text-foreground">
+                Bet Placed
+              </option>
+              <option value="not-placed" className="bg-card text-foreground">
+                No Bet Placed
+              </option>
+            </select>
+
+            <select
+              value={marketFilter}
+              onChange={(e) => setMarketFilter(e.target.value)}
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            >
+              <option value="all" className="bg-card text-foreground">
+                All Markets
+              </option>
+              {availableMarkets.map((market) => (
+                <option
+                  key={market}
+                  value={market}
+                  className="bg-card text-foreground"
+                >
+                  {market}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={dateFilter}
+              onChange={(e) =>
+                setDateFilter(
+                  e.target.value as "all" | "today" | "last7" | "month"
+                )
+              }
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            >
+              <option value="all" className="bg-card text-foreground">
+                All Dates
+              </option>
+              <option value="today" className="bg-card text-foreground">
+                Today
+              </option>
+              <option value="last7" className="bg-card text-foreground">
+                Last 7 Days
+              </option>
+              <option value="month" className="bg-card text-foreground">
+                This Month
+              </option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as
+                    | "newest"
+                    | "oldest"
+                    | "edge"
+                    | "confidence"
+                    | "profitLoss"
+                )
+              }
+              className="h-10 px-3 rounded-lg input-surface bg-card text-foreground border border-white/10 focus:outline-none"
+            >
+              <option value="newest" className="bg-card text-foreground">
+                Newest
+              </option>
+              <option value="oldest" className="bg-card text-foreground">
+                Oldest
+              </option>
+              <option value="edge" className="bg-card text-foreground">
+                Highest Edge
+              </option>
+              <option value="confidence" className="bg-card text-foreground">
+                Highest Confidence
+              </option>
+              <option value="profitLoss" className="bg-card text-foreground">
+                Highest P/L
+              </option>
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setStatusFilter("pending")}
+              className="px-3 py-1 rounded-md text-xs bg-yellow-500/10 text-yellow-400"
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => setStatusFilter("green")}
+              className="px-3 py-1 rounded-md text-xs bg-green-500/10 text-green-400"
+            >
+              Greens
+            </button>
+            <button
+              onClick={() => setStatusFilter("red")}
+              className="px-3 py-1 rounded-md text-xs bg-red-500/10 text-red-400"
+            >
+              Reds
+            </button>
+            <button
+              onClick={resetFilters}
+              className="px-3 py-1 rounded-md text-xs bg-white/5 text-muted-foreground"
+            >
+              Reset Filters
+            </button>
+
+            <span className="ml-auto text-sm text-muted-foreground">
+              Showing {filteredAnalyses.length} analyses
+            </span>
+          </div>
+        </div>
+
         <div className="space-y-6">
-          {safeAnalyses.length === 0 ? (
+          {filteredAnalyses.length === 0 ? (
             <div className="rounded-xl bg-card ring-surface card-shadow p-8 text-center text-sm text-muted-foreground">
-              No analyses found yet. Run your first analysis in Match Analysis.
+              No analyses match the selected filters.
             </div>
           ) : (
-            safeAnalyses.map((analysis) => {
+            filteredAnalyses.map((analysis) => {
               const selectedMarketData = analysis.tracking.selectedMarket
                 ? analysis.results.find(
                     (r) => r.market === analysis.tracking.selectedMarket
