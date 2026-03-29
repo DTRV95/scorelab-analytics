@@ -11,6 +11,7 @@ import {
   getRecommendedStake,
 } from "@/lib/portofolioEngine";
 import { decorateResult } from "@/lib/eliteBetSystem";
+import { getDecisionFromMetrics, getOddsBand, getMarketFamily } from "@/lib/analysisDecision";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,9 @@ interface BackendMarket {
   prob_usada_pct: number;
   prob_implicita_pct: number;
   value_bet_pct: number;
+  edge_lb_pct?: number;
+  robustness_pct?: number;
+  uncertainty_pct?: number;
   kelly_pct: number;
   stake_sugerida: number;
   risco: number;
@@ -217,22 +221,6 @@ function getExpectedValue(valueBet: number): number {
   return Number(valueBet.toFixed(1));
 }
 
-function getOddsBand(odds: number): string {
-  if (odds < 1.9) return "low";
-  if (odds < 2.4) return "mid";
-  return "high";
-}
-
-function getMarketFamily(market: string): string {
-  const lower = market.toLowerCase();
-
-  if (lower.includes("over")) return "totals-over";
-  if (lower.includes("under")) return "totals-under";
-  if (lower.includes("btts")) return "btts";
-  if (lower === "home" || lower === "draw" || lower === "away") return "1x2";
-
-  return "other";
-}
 
 export default function MatchAnalysis() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -264,10 +252,10 @@ export default function MatchAnalysis() {
   const bestBet = useMemo(() => {
     if (!results.length) return null;
 
-    const positiveBets = results.filter((r) => r.valueBet > 0);
+    const positiveBets = results.filter((r) => (r.edgeLowerBound ?? r.valueBet) > 0);
     if (!positiveBets.length) return null;
 
-    return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
+    return positiveBets.reduce((a, b) => ((a.eliteScore ?? 0) > (b.eliteScore ?? 0) ? a : b));
   }, [results]);
 
   const bestBetStakeRecommendation = useMemo(() => {
@@ -293,15 +281,7 @@ export default function MatchAnalysis() {
   const whyThisBetText = useMemo(() => {
     if (!bestBet) return "";
 
-    return `${bestBet.market} shows the strongest edge with a ${bestBet.valueBet.toFixed(
-      1
-    )}% model advantage over the market. The model suggests ${bestBet.kelly.toFixed(
-      1
-    )}% Kelly exposure with a confidence score of ${
-      bestBet.confidence
-    }/10. Total expected goals are ${summary.totalXg.toFixed(
-      2
-    )}, supporting this recommendation.`;
+    return `${bestBet.market} leads the card with a ${bestBet.valueBet.toFixed(1)}% raw edge and a ${(bestBet.edgeLowerBound ?? bestBet.valueBet).toFixed(1)}% conservative edge floor. Robustness is ${(bestBet.robustness ?? 0).toFixed(0)}%, uncertainty width is ${(bestBet.uncertainty ?? 0).toFixed(1)}%, and adjusted Kelly is ${bestBet.kelly.toFixed(2)}%. Total expected goals are ${summary.totalXg.toFixed(2)}.`;
   }, [bestBet, summary.totalXg]);
 
   const runAnalysis = async () => {
@@ -377,31 +357,36 @@ export default function MatchAnalysis() {
           odds: m.odd,
           modelProb: Number(m.prob_usada_pct.toFixed(1)),
           impliedProb: Number(m.prob_implicita_pct.toFixed(1)),
+          fairProb: Number(m.prob_implicita_pct.toFixed(1)),
           valueBet: Number(m.value_bet_pct.toFixed(1)),
-          kelly: Number(m.kelly_pct.toFixed(1)),
-          stake: Number(m.stake_sugerida.toFixed(0)),
+          edgeLowerBound: Number((m.edge_lb_pct ?? m.value_bet_pct).toFixed(1)),
+          robustness: Number((m.robustness_pct ?? 0).toFixed(0)),
+          uncertainty: Number((m.uncertainty_pct ?? 0).toFixed(1)),
+          kelly: Number(m.kelly_pct.toFixed(2)),
+          stake: Number(m.stake_sugerida.toFixed(2)),
           risk: mapRisk(m.risco),
-          confidence: Number(m.confianca.toFixed(0)),
+          confidence: Number(m.confianca.toFixed(1)),
           decision: mapDecision(m.decisao),
           expectedValue: getExpectedValue(Number(m.value_bet_pct.toFixed(1))),
           oddsBand: getOddsBand(m.odd),
           marketFamily: getMarketFamily(mappedMarket),
+          backendDecision: m.decisao,
+          backendClassification: m.classificacao,
         };
 
-        return decorateResult(baseResult);
+        return decorateResult({
+          ...baseResult,
+          decision: getDecisionFromMetrics(baseResult),
+        });
       });
 
-      const avgConfidence =
-        mappedResults.length > 0
-          ? mappedResults.reduce((acc, item) => acc + item.confidence, 0) /
-            mappedResults.length
-          : 0;
+      const bestResultForSummary = [...mappedResults].sort((a, b) => (b.eliteScore ?? 0) - (a.eliteScore ?? 0))[0];
 
       const summaryData = {
         homeXg: data.lambda_casa,
         awayXg: data.lambda_fora,
         totalXg: data.total_golos_esperados,
-        confidence: Number(avgConfidence.toFixed(1)),
+        confidence: Number((bestResultForSummary?.confidence ?? 0).toFixed(1)),
       };
 
       setResults(mappedResults);

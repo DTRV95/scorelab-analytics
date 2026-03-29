@@ -1,6 +1,7 @@
 export type RiskLevel = "Low" | "Medium" | "High";
 export type DecisionType = "Bet" | "No Bet" | "Caution";
 export type BetStatus = "pending" | "green" | "red" | "void";
+export type BetTier = "discard" | "watchlist" | "bet" | "elite" | "premium";
 
 export interface AnalysisResult {
   market: string;
@@ -13,6 +14,11 @@ export interface AnalysisResult {
   risk: RiskLevel;
   confidence: number;
   decision: DecisionType;
+  tier?: BetTier;
+  eliteScore?: number;
+  expectedValue?: number;
+  oddsBand?: string;
+  marketFamily?: string;
 }
 
 export interface AnalysisSummary {

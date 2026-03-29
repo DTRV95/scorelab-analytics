@@ -26,6 +26,9 @@ class AnalyzeRequest(BaseModel):
     odd_menos_35: float
     odd_ambas_marcam: float
     odd_ambas_nao_marcam: float
+    odd_casa: float
+    odd_empate: float
+    odd_fora: float
 
     banca: float
     fracao_kelly: float
@@ -37,6 +40,9 @@ class MarketResult(BaseModel):
     prob_usada_pct: float
     prob_implicita_pct: float
     value_bet_pct: float
+    edge_lb_pct: float
+    robustness_pct: float
+    uncertainty_pct: float
     kelly_pct: float
     stake_sugerida: float
     risco: int

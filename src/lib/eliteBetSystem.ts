@@ -78,6 +78,7 @@ export function getMarketFamily(market: string): string {
   if (lower.includes("over")) return "totals-over";
   if (lower.includes("under")) return "totals-under";
   if (lower.includes("btts")) return "btts";
+  if (lower === "home" || lower === "draw" || lower === "away") return "1x2";
 
   return "other";
 }
@@ -103,16 +104,31 @@ export function getEliteScore(result: AnalysisResult): number {
   return Number((score * 100).toFixed(1));
 }
 
+function getDecisionFromMetrics(result: AnalysisResult): AnalysisResult["decision"] {
+  const hasPositiveEdge = result.valueBet >= 2;
+  const hasKelly = result.kelly >= 0.8;
+  const hasConfidence = result.confidence >= 5;
+  const safeRisk = result.risk !== "High";
+
+  if (hasPositiveEdge && hasKelly && hasConfidence && safeRisk) {
+    return "Bet";
+  }
+
+  if (result.valueBet > 0 && result.confidence >= 4) {
+    return "Caution";
+  }
+
+  return "No Bet";
+}
+
 export function getBetTier(
   result: AnalysisResult,
   config: EliteBetConfig = DEFAULT_ELITE_CONFIG
 ): BetTier {
-  const isBetLike =
-    result.decision === "Bet" ||
-    (result.valueBet >= 3 && result.kelly >= 1 && result.confidence >= 6);
+  const safeDecision = getDecisionFromMetrics(result);
 
   const passesEliteGate =
-    result.decision === "Bet" &&
+    safeDecision === "Bet" &&
     result.valueBet >= config.minEdge &&
     result.confidence >= config.minConfidence &&
     result.kelly >= config.minKelly &&
@@ -120,34 +136,56 @@ export function getBetTier(
     result.odds <= config.maxOdds &&
     (config.allowHighRisk || result.risk !== "High");
 
-  if (!passesEliteGate) {
-    if (result.decision === "Bet") return "bet";
-    if (isBetLike || result.valueBet > 0) return "watchlist";
-    return "discard";
+  if (passesEliteGate) {
+    const isPremium =
+      result.valueBet >= config.premiumMinEdge &&
+      result.confidence >= config.premiumMinConfidence &&
+      result.kelly >= config.premiumMinKelly &&
+      result.odds >= config.premiumMinOdds &&
+      result.odds <= config.premiumMaxOdds &&
+      result.risk !== "High";
+
+    return isPremium ? "premium" : "elite";
   }
 
-  const isPremium =
-    result.valueBet >= config.premiumMinEdge &&
-    result.confidence >= config.premiumMinConfidence &&
-    result.kelly >= config.premiumMinKelly &&
-    result.odds >= config.premiumMinOdds &&
-    result.odds <= config.premiumMaxOdds &&
+  const qualifiesAsBet =
+    safeDecision === "Bet" &&
+    result.valueBet >= 2 &&
+    result.kelly >= 0.8 &&
+    result.confidence >= 5 &&
     result.risk !== "High";
 
-  return isPremium ? "premium" : "elite";
+  if (qualifiesAsBet) return "bet";
+
+  const qualifiesAsWatchlist =
+    result.valueBet > 0 &&
+    result.confidence >= 4 &&
+    result.kelly >= 0 &&
+    result.risk !== "High";
+
+  if (qualifiesAsWatchlist) return "watchlist";
+
+  return "discard";
 }
 
 export function decorateResult(
   result: AnalysisResult,
   config: EliteBetConfig = DEFAULT_ELITE_CONFIG
 ): AnalysisResult {
-  return {
+  const normalizedDecision = getDecisionFromMetrics(result);
+
+  const normalizedResult: AnalysisResult = {
     ...result,
-    tier: getBetTier(result, config),
-    eliteScore: getEliteScore(result),
-    expectedValue: getExpectedValuePercent(result),
-    oddsBand: getOddsBand(result.odds),
-    marketFamily: getMarketFamily(result.market),
+    decision: normalizedDecision,
+  };
+
+  return {
+    ...normalizedResult,
+    tier: getBetTier(normalizedResult, config),
+    eliteScore: getEliteScore(normalizedResult),
+    expectedValue: getExpectedValuePercent(normalizedResult),
+    oddsBand: getOddsBand(normalizedResult.odds),
+    marketFamily: getMarketFamily(normalizedResult.market),
   };
 }
 
@@ -203,8 +241,8 @@ export function buildRankedOpportunities(
         confidence: result.confidence,
         decision: result.decision,
         risk: result.risk,
-        tier: result.tier,
-        eliteScore: result.eliteScore,
+        tier: result.tier!,
+        eliteScore: result.eliteScore!,
         time: getTimeFromCreatedAt(analysis.createdAt),
         createdAt: analysis.createdAt,
         result,

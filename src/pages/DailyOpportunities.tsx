@@ -1,160 +1,166 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ValueBadge, DecisionBadge, RiskBadge } from "@/components/ValueBadge";
+import { ValueBadge, DecisionBadge, RiskBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
-import { Filter, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getAnalyses } from "@/lib/analysisStorage";
-import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
+import {
+  buildRankedOpportunities,
+  getUniqueBestPerMatch,
+  isToday,
+} from "@/lib/eliteBetSystem";
 import { useNavigate } from "react-router-dom";
 
-interface OpportunityItem {
-  analysisId: string;
-  id: string;
-  match: string;
-  league: string;
-  market: string;
-  odds: number;
-  modelProb: number;
-  valueBet: number;
-  confidence: number;
-  decision: "Bet" | "No Bet" | "Caution";
-  risk: "Low" | "Medium" | "High";
-}
-
-function buildOpportunities(analyses: SavedAnalysis[]): OpportunityItem[] {
-  const items: OpportunityItem[] = [];
-
-  analyses.forEach((analysis) => {
-    analysis.results.forEach((result, index) => {
-      items.push({
-        analysisId: analysis.id,
-        id: `${analysis.id}-${index}-${result.market}`,
-        match: `${analysis.homeTeam} vs ${analysis.awayTeam}`,
-        league: "Saved Analysis",
-        market: result.market,
-        odds: result.odds,
-        modelProb: result.modelProb,
-        valueBet: result.valueBet,
-        confidence: result.confidence,
-        decision: result.decision,
-        risk: result.risk,
-      });
-    });
-  });
-
-  return items.sort((a, b) => b.valueBet - a.valueBet);
-}
-
 export default function DailyOpportunities() {
-  const [minValue, setMinValue] = useState("");
-  const [minConf, setMinConf] = useState("");
+  const [minValue, setMinValue] = useState("0");
+  const [minConf, setMinConf] = useState("0");
   const [league, setLeague] = useState("");
+  const [eliteOnly, setEliteOnly] = useState(false);
+  const [bestPerMatchOnly, setBestPerMatchOnly] = useState(true);
+
   const navigate = useNavigate();
+
   const analyses = useMemo(() => {
-  const allAnalyses = getAnalyses();
-  const now = new Date();
+    return getAnalyses().filter((analysis) => isToday(analysis.createdAt));
+  }, []);
 
-  return allAnalyses.filter((analysis) => {
-    const analysisDate = new Date(analysis.createdAt);
-
-    return (
-      analysisDate.getDate() === now.getDate() &&
-      analysisDate.getMonth() === now.getMonth() &&
-      analysisDate.getFullYear() === now.getFullYear()
-    );
-  });
-}, []);
-
-  const opportunities = useMemo(() => buildOpportunities(analyses), [analyses]);
+  const opportunities = useMemo(() => {
+    const ranked = buildRankedOpportunities(analyses);
+    return bestPerMatchOnly ? getUniqueBestPerMatch(ranked) : ranked;
+  }, [analyses, bestPerMatchOnly]);
 
   const filtered = useMemo(() => {
-  return opportunities
-    // 🔥 FILTRO PRINCIPAL (apenas bets)
-    .filter((o) => o.decision === "Bet")
+    return opportunities
+      .filter((o) => {
+        if (eliteOnly && o.tier !== "elite" && o.tier !== "premium") return false;
+        if (minValue && o.valueBet < parseFloat(minValue)) return false;
+        if (minConf && o.confidence < parseInt(minConf)) return false;
+        if (league && !o.league.toLowerCase().includes(league.toLowerCase())) return false;
+        return true;
+      });
+  }, [opportunities, eliteOnly, minValue, minConf, league]);
 
-    // filtros adicionais
-    .filter((o) => {
-      if (minValue && o.valueBet < parseFloat(minValue)) return false;
-      if (minConf && o.confidence < parseInt(minConf)) return false;
-      if (league && !o.league.toLowerCase().includes(league.toLowerCase())) return false;
-      return true;
-    });
-}, [opportunities, minValue, minConf, league]);
+  const premiumCount = filtered.filter((o) => o.tier === "premium").length;
+  const eliteCount = filtered.filter((o) => o.tier === "elite").length;
+  const avgEliteScore =
+    filtered.length > 0
+      ? filtered.reduce((sum, o) => sum + o.eliteScore, 0) / filtered.length
+      : 0;
 
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <div className="mb-6">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Daily Opportunities</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Ranked opportunities built from analyses saved today.
+            Today’s ranked betting signals, sorted by quality instead of noise.
           </p>
         </div>
 
-        <div className="rounded-xl bg-card ring-surface p-4 card-shadow mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Filter className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
-
-            <div className="relative">
-              <Search
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground"
-                strokeWidth={1.5}
-              />
-              <input
-                type="text"
-                placeholder="Filter by league..."
-                value={league}
-                onChange={(e) => setLeague(e.target.value)}
-                className="h-8 w-40 pl-8 pr-3 rounded-md input-surface text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-            </div>
-
-            <input
-              type="number"
-              placeholder="Min value %"
-              value={minValue}
-              onChange={(e) => setMinValue(e.target.value)}
-              className="h-8 w-28 px-3 rounded-md input-surface text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
-            />
-
-            <input
-              type="number"
-              placeholder="Min conf."
-              value={minConf}
-              onChange={(e) => setMinConf(e.target.value)}
-              className="h-8 w-28 px-3 rounded-md input-surface text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
-            />
-
-            <span className="text-xs text-muted-foreground ml-auto">
-              {filtered.length} opportunities
-            </span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Signals Today</p>
+            <p className="text-2xl font-bold font-mono-data text-foreground mt-1">{filtered.length}</p>
+          </div>
+          <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Premium</p>
+            <p className="text-2xl font-bold font-mono-data text-warning mt-1">{premiumCount}</p>
+          </div>
+          <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Elite</p>
+            <p className="text-2xl font-bold font-mono-data text-primary mt-1">{eliteCount}</p>
+          </div>
+          <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Elite Score</p>
+            <p className="text-2xl font-bold font-mono-data text-foreground mt-1">
+              {avgEliteScore.toFixed(1)}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-xl bg-card ring-surface card-shadow overflow-hidden">
+        <div className="rounded-2xl bg-card ring-surface p-5 card-shadow mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Search className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Filters
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Min Edge %</label>
+              <input
+                type="number"
+                value={minValue}
+                onChange={(e) => setMinValue(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Min Confidence</label>
+              <input
+                type="number"
+                value={minConf}
+                onChange={(e) => setMinConf(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">League</label>
+              <input
+                type="text"
+                value={league}
+                onChange={(e) => setLeague(e.target.value)}
+                placeholder="Saved Analysis"
+                className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-foreground mt-6">
+              <input
+                type="checkbox"
+                checked={eliteOnly}
+                onChange={(e) => setEliteOnly(e.target.checked)}
+              />
+              Elite only
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-foreground mt-6">
+              <input
+                type="checkbox"
+                checked={bestPerMatchOnly}
+                onChange={(e) => setBestPerMatchOnly(e.target.checked)}
+              />
+              Best per match
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-card ring-surface overflow-hidden card-shadow">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {["Match", "League", "Market", "Odds", "Model %", "Edge", "Conf.", "Risk", "Decision"].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
+            <table className="w-full min-w-[1050px] text-sm">
+              <thead className="bg-white/[0.02] border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-5 py-3">Match</th>
+                  <th className="px-5 py-3">Market</th>
+                  <th className="px-5 py-3">Odds</th>
+                  <th className="px-5 py-3">Model %</th>
+                  <th className="px-5 py-3">Edge</th>
+                  <th className="px-5 py-3">Confidence</th>
+                  <th className="px-5 py-3">Risk</th>
+                  <th className="px-5 py-3">Tier</th>
+                  <th className="px-5 py-3">Elite Score</th>
+                  <th className="px-5 py-3">Decision</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={9}
-                      className="px-5 py-10 text-center text-sm text-muted-foreground"
-                    >
-                      No saved opportunities match your filters yet.
+                    <td colSpan={10} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                      No ranked signals match your filters yet.
                     </td>
                   </tr>
                 ) : (
@@ -165,26 +171,15 @@ export default function DailyOpportunities() {
                       className="border-t border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-3.5 font-medium text-foreground">{o.match}</td>
-                      <td className="px-5 py-3.5 text-muted-foreground text-xs">{o.league}</td>
                       <td className="px-5 py-3.5 text-muted-foreground">{o.market}</td>
-                      <td className="px-5 py-3.5 font-mono-data text-muted-foreground">
-                        {o.odds.toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5 font-mono-data text-foreground">
-                        {o.modelProb.toFixed(1)}%
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <ValueBadge value={o.valueBet} />
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <ConfidenceMeter score={o.confidence} className="w-16" />
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <RiskBadge risk={o.risk} />
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <DecisionBadge decision={o.decision} />
-                      </td>
+                      <td className="px-5 py-3.5 font-mono-data text-muted-foreground">{o.odds.toFixed(2)}</td>
+                      <td className="px-5 py-3.5 font-mono-data text-foreground">{o.modelProb.toFixed(1)}%</td>
+                      <td className="px-5 py-3.5"><ValueBadge value={o.valueBet} /></td>
+                      <td className="px-5 py-3.5"><ConfidenceMeter score={o.confidence} className="w-16" /></td>
+                      <td className="px-5 py-3.5"><RiskBadge risk={o.risk} /></td>
+                      <td className="px-5 py-3.5"><TierBadge tier={o.tier} /></td>
+                      <td className="px-5 py-3.5 font-mono-data text-foreground">{o.eliteScore.toFixed(1)}</td>
+                      <td className="px-5 py-3.5"><DecisionBadge decision={o.decision} /></td>
                     </tr>
                   ))
                 )}
