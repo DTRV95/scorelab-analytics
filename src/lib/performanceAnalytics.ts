@@ -3,6 +3,11 @@ import {
   getTierPerformance,
   getOddsBucketPerformance,
   getEdgeBucketPerformance,
+  getMarketPerformance,
+  getConfidenceBucketPerformance,
+  getRiskPerformance,
+  getRobustnessBucketPerformance,
+  getEdgeLowerBoundBucketPerformance,
 } from "@/lib/portofolioEngine";
 
 export interface PerformanceSummary {
@@ -13,14 +18,42 @@ export interface PerformanceSummary {
   hitRate: number;
 }
 
+export interface DailyProfitPoint {
+  date: string;
+  profitLoss: number;
+  stake: number;
+  roi: number;
+  bets: number;
+}
+
+export interface AdvancedPerformanceBreakdown {
+  summary: PerformanceSummary;
+  dailyProfitTrend: DailyProfitPoint[];
+  tierPerformance: ReturnType<typeof getTierPerformance>;
+  oddsBucketPerformance: ReturnType<typeof getOddsBucketPerformance>;
+  edgeBucketPerformance: ReturnType<typeof getEdgeBucketPerformance>;
+  marketPerformance: ReturnType<typeof getMarketPerformance>;
+  confidenceBucketPerformance: ReturnType<typeof getConfidenceBucketPerformance>;
+  riskPerformance: ReturnType<typeof getRiskPerformance>;
+  robustnessBucketPerformance: ReturnType<typeof getRobustnessBucketPerformance>;
+  edgeLowerBoundBucketPerformance: ReturnType<typeof getEdgeLowerBoundBucketPerformance>;
+}
+
+function isSettledResult(status?: string): boolean {
+  return status === "green" || status === "red" || status === "void";
+}
+
+function isValidTrackedBet(analysis: SavedAnalysis): boolean {
+  return Boolean(
+    analysis?.tracking?.betPlaced &&
+      isSettledResult(analysis.tracking?.resultStatus)
+  );
+}
+
 export function getPerformanceSummary(
   analyses: SavedAnalysis[]
 ): PerformanceSummary {
-  const settled = analyses.filter(
-    (analysis) =>
-      analysis.tracking?.betPlaced &&
-      ["green", "red", "void"].includes(analysis.tracking.resultStatus)
-  );
+  const settled = analyses.filter(isValidTrackedBet);
 
   const totalStake = settled.reduce(
     (sum, item) => sum + (item.tracking.stakeUsed || 0),
@@ -51,11 +84,69 @@ export function getPerformanceSummary(
   };
 }
 
-export function getAdvancedPerformanceBreakdown(analyses: SavedAnalysis[]) {
+export function getDailyProfitTrend(
+  analyses: SavedAnalysis[]
+): DailyProfitPoint[] {
+  const settled = analyses.filter(isValidTrackedBet);
+
+  const grouped = new Map<
+    string,
+    { profitLoss: number; stake: number; bets: number; ts: number }
+  >();
+
+  settled.forEach((analysis) => {
+    const dateObj = new Date(analysis.createdAt);
+    const safeTime = Number.isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
+
+    const dateKey = new Date(safeTime).toLocaleDateString();
+
+    if (!grouped.has(dateKey)) {
+      grouped.set(dateKey, {
+        profitLoss: 0,
+        stake: 0,
+        bets: 0,
+        ts: safeTime,
+      });
+    }
+
+    const row = grouped.get(dateKey)!;
+    row.profitLoss += analysis.tracking.profitLoss || 0;
+    row.stake += analysis.tracking.stakeUsed || 0;
+    row.bets += 1;
+  });
+
+  return Array.from(grouped.entries())
+    .map(([date, row]) => ({
+      date,
+      profitLoss: Number(row.profitLoss.toFixed(2)),
+      stake: Number(row.stake.toFixed(2)),
+      roi:
+        row.stake > 0
+          ? Number(((row.profitLoss / row.stake) * 100).toFixed(1))
+          : 0,
+      bets: row.bets,
+      ts: row.ts,
+    }))
+    .sort((a, b) => a.ts - b.ts)
+    .map(({ ts, ...rest }) => rest);
+}
+
+export function getAdvancedPerformanceBreakdown(
+  analyses: SavedAnalysis[]
+): AdvancedPerformanceBreakdown {
+  const safeAnalyses = Array.isArray(analyses) ? analyses : [];
+
   return {
-    summary: getPerformanceSummary(analyses),
-    tierPerformance: getTierPerformance(analyses),
-    oddsBucketPerformance: getOddsBucketPerformance(analyses),
-    edgeBucketPerformance: getEdgeBucketPerformance(analyses),
+    summary: getPerformanceSummary(safeAnalyses),
+    dailyProfitTrend: getDailyProfitTrend(safeAnalyses),
+    tierPerformance: getTierPerformance(safeAnalyses),
+    oddsBucketPerformance: getOddsBucketPerformance(safeAnalyses),
+    edgeBucketPerformance: getEdgeBucketPerformance(safeAnalyses),
+    marketPerformance: getMarketPerformance(safeAnalyses),
+    confidenceBucketPerformance: getConfidenceBucketPerformance(safeAnalyses),
+    riskPerformance: getRiskPerformance(safeAnalyses),
+    robustnessBucketPerformance: getRobustnessBucketPerformance(safeAnalyses),
+    edgeLowerBoundBucketPerformance:
+      getEdgeLowerBoundBucketPerformance(safeAnalyses),
   };
 }

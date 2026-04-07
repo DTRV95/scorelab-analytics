@@ -1,5 +1,10 @@
-import type { SavedAnalysis, BetTier, BetStatus } from "@/types/analysis";
-import * as EliteBetSystem from "@/lib/eliteBetSystem";
+import type {
+  SavedAnalysis,
+  BetTier,
+  BetStatus,
+  AnalysisResult,
+  RiskLevel,
+} from "@/types/analysis";
 
 export interface BankrollPolicy {
   premiumStakePct: number;
@@ -57,6 +62,7 @@ export interface OddsBucketPerformance {
   wins: number;
   losses: number;
   voids: number;
+  hitRate: number;
   totalStake: number;
   profitLoss: number;
   roi: number;
@@ -68,9 +74,175 @@ export interface EdgeBucketPerformance {
   wins: number;
   losses: number;
   voids: number;
+  hitRate: number;
   totalStake: number;
   profitLoss: number;
   roi: number;
+}
+
+export interface MarketPerformance {
+  market: string;
+  marketGroup: string;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgOdds: number;
+  avgConfidence: number;
+  avgEdge: number;
+  avgEdgeLowerBound: number;
+  avgRobustness: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+export interface ConfidenceBucketPerformance {
+  bucket: string;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgOdds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+export interface RiskPerformance {
+  risk: RiskLevel;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgOdds: number;
+  avgConfidence: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+export interface RobustnessBucketPerformance {
+  bucket: string;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgOdds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+export interface EdgeLowerBoundBucketPerformance {
+  bucket: string;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgOdds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+type AggregateRow = {
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  totalStake: number;
+  profitLoss: number;
+  oddsSum: number;
+  confidenceSum: number;
+  edgeSum: number;
+  edgeLowerBoundSum: number;
+  robustnessSum: number;
+};
+
+function createAggregateRow(): AggregateRow {
+  return {
+    bets: 0,
+    wins: 0,
+    losses: 0,
+    voids: 0,
+    totalStake: 0,
+    profitLoss: 0,
+    oddsSum: 0,
+    confidenceSum: 0,
+    edgeSum: 0,
+    edgeLowerBoundSum: 0,
+    robustnessSum: 0,
+  };
+}
+
+function isSettled(status: BetStatus): boolean {
+  return status === "green" || status === "red" || status === "void";
+}
+
+function getTrackedResult(analysis: SavedAnalysis): AnalysisResult | null {
+  if (!analysis?.tracking?.selectedMarket) return null;
+
+  const selected = analysis.results.find(
+    (result) => result.market === analysis.tracking.selectedMarket
+  );
+
+  return selected || null;
+}
+
+function getTrackedTier(analysis: SavedAnalysis): BetTier {
+  const selected = getTrackedResult(analysis);
+  return selected?.tier || "discard";
+}
+
+function updateAggregate(
+  row: AggregateRow,
+  analysis: SavedAnalysis,
+  result: AnalysisResult
+) {
+  row.bets += 1;
+  row.totalStake += analysis.tracking.stakeUsed || 0;
+  row.profitLoss += analysis.tracking.profitLoss || 0;
+  row.oddsSum += analysis.tracking.oddUsed || result.odds || 0;
+  row.confidenceSum += result.confidence || 0;
+  row.edgeSum += result.valueBet || 0;
+  row.edgeLowerBoundSum += result.edgeLowerBound || 0;
+  row.robustnessSum += result.robustness || 0;
+
+  if (analysis.tracking.resultStatus === "green") row.wins += 1;
+  if (analysis.tracking.resultStatus === "red") row.losses += 1;
+  if (analysis.tracking.resultStatus === "void") row.voids += 1;
+}
+
+function finalizeBaseRow(row: AggregateRow) {
+  const avgOdds = row.bets > 0 ? row.oddsSum / row.bets : 0;
+  const avgConfidence = row.bets > 0 ? row.confidenceSum / row.bets : 0;
+  const avgEdge = row.bets > 0 ? row.edgeSum / row.bets : 0;
+  const avgEdgeLowerBound = row.bets > 0 ? row.edgeLowerBoundSum / row.bets : 0;
+  const avgRobustness = row.bets > 0 ? row.robustnessSum / row.bets : 0;
+  const hitRate = row.bets > 0 ? (row.wins / row.bets) * 100 : 0;
+  const roi = row.totalStake > 0 ? (row.profitLoss / row.totalStake) * 100 : 0;
+
+  return {
+    bets: row.bets,
+    wins: row.wins,
+    losses: row.losses,
+    voids: row.voids,
+    hitRate: Number(hitRate.toFixed(1)),
+    totalStake: Number(row.totalStake.toFixed(2)),
+    profitLoss: Number(row.profitLoss.toFixed(2)),
+    roi: Number(roi.toFixed(1)),
+    avgOdds: Number(avgOdds.toFixed(2)),
+    avgConfidence: Number(avgConfidence.toFixed(2)),
+    avgEdge: Number(avgEdge.toFixed(2)),
+    avgEdgeLowerBound: Number(avgEdgeLowerBound.toFixed(2)),
+    avgRobustness: Number(avgRobustness.toFixed(2)),
+  };
 }
 
 export function getRecommendedStakePctForTier(
@@ -101,7 +273,10 @@ export function getRecommendedStake(
   }
 
   const cappedPct = Math.min(basePct, policy.maxPerBetPct);
-  const remainingCapacityPct = Math.max(0, policy.maxDailyExposurePct - currentOpenExposurePct);
+  const remainingCapacityPct = Math.max(
+    0,
+    policy.maxDailyExposurePct - currentOpenExposurePct
+  );
   const finalPct = Math.min(cappedPct, remainingCapacityPct);
 
   if (finalPct <= 0) {
@@ -146,7 +321,9 @@ export function getOpenExposureSummary(
   );
 
   const remainingDailyCapacityAmount =
-    currentBankroll > 0 ? (currentBankroll * remainingDailyCapacityPct) / 100 : 0;
+    currentBankroll > 0
+      ? (currentBankroll * remainingDailyCapacityPct) / 100
+      : 0;
 
   let riskLevel: "Low" | "Moderate" | "High" = "Low";
   if (openExposurePct > 8) riskLevel = "High";
@@ -162,218 +339,264 @@ export function getOpenExposureSummary(
   };
 }
 
-function getTrackedTier(analysis: SavedAnalysis): BetTier {
-  const selected = analysis.results.find(
-    (result) => result.market === analysis.tracking.selectedMarket
-  );
-
-  if (!selected?.tier) return "discard";
-  return selected.tier;
-}
-
-function isSettled(status: BetStatus): boolean {
-  return status === "green" || status === "red" || status === "void";
-}
-
 export function getTierPerformance(
   analyses: SavedAnalysis[]
 ): TierPerformance[] {
-  const base: Record<BetTier, TierPerformance> = {
-    premium: { tier: "premium", bets: 0, wins: 0, losses: 0, voids: 0, hitRate: 0, totalStake: 0, profitLoss: 0, roi: 0 },
-    elite: { tier: "elite", bets: 0, wins: 0, losses: 0, voids: 0, hitRate: 0, totalStake: 0, profitLoss: 0, roi: 0 },
-    bet: { tier: "bet", bets: 0, wins: 0, losses: 0, voids: 0, hitRate: 0, totalStake: 0, profitLoss: 0, roi: 0 },
-    watchlist: { tier: "watchlist", bets: 0, wins: 0, losses: 0, voids: 0, hitRate: 0, totalStake: 0, profitLoss: 0, roi: 0 },
-    discard: { tier: "discard", bets: 0, wins: 0, losses: 0, voids: 0, hitRate: 0, totalStake: 0, profitLoss: 0, roi: 0 },
+  const base: Record<BetTier, AggregateRow> = {
+    premium: createAggregateRow(),
+    elite: createAggregateRow(),
+    bet: createAggregateRow(),
+    watchlist: createAggregateRow(),
+    discard: createAggregateRow(),
   };
 
   analyses.forEach((analysis) => {
     if (!analysis.tracking?.betPlaced) return;
     if (!isSettled(analysis.tracking.resultStatus)) return;
 
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
+
     const tier = getTrackedTier(analysis);
-    const bucket = base[tier];
-
-    bucket.bets += 1;
-    bucket.totalStake += analysis.tracking.stakeUsed || 0;
-    bucket.profitLoss += analysis.tracking.profitLoss || 0;
-
-    if (analysis.tracking.resultStatus === "green") bucket.wins += 1;
-    if (analysis.tracking.resultStatus === "red") bucket.losses += 1;
-    if (analysis.tracking.resultStatus === "void") bucket.voids += 1;
+    updateAggregate(base[tier], analysis, selected);
   });
 
-  return Object.values(base)
-    .map((row) => ({
-      ...row,
-      hitRate: row.bets > 0 ? Number(((row.wins / row.bets) * 100).toFixed(1)) : 0,
-      roi: row.totalStake > 0 ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1)) : 0,
-      totalStake: Number(row.totalStake.toFixed(2)),
-      profitLoss: Number(row.profitLoss.toFixed(2)),
+  return (Object.entries(base) as [BetTier, AggregateRow][])
+    .map(([tier, row]) => ({
+      tier,
+      ...finalizeBaseRow(row),
     }))
     .filter((row) => row.bets > 0);
 }
 
 function getOddsBucket(odd: number): string {
-  if (odd < 1.9) return "1.50–1.89";
-  if (odd < 2.4) return "1.90–2.39";
-  return "2.40+";
+  if (odd < 1.60) return "1.30–1.59";
+  if (odd < 1.80) return "1.60–1.79";
+  if (odd < 2.00) return "1.80–1.99";
+  if (odd < 2.25) return "2.00–2.24";
+  if (odd < 2.50) return "2.25–2.49";
+  if (odd < 3.00) return "2.50–2.99";
+  return "3.00+";
 }
 
 function getEdgeBucket(edge: number): string {
-  if (edge < 5) return "3–4.9%";
-  if (edge < 7) return "5–6.9%";
-  return "7%+";
+  if (edge < 1) return "0–0.99%";
+  if (edge < 2) return "1–1.99%";
+  if (edge < 3) return "2–2.99%";
+  if (edge < 5) return "3–4.99%";
+  return "5%+";
+}
+
+function getConfidenceBucket(confidence: number): string {
+  if (confidence < 5) return "0–4.9";
+  if (confidence < 6) return "5–5.9";
+  if (confidence < 7) return "6–6.9";
+  if (confidence < 8) return "7–7.9";
+  return "8+";
+}
+
+function getRobustnessBucket(robustness?: number): string {
+  const value = robustness ?? 0;
+  if (value < 55) return "<55";
+  if (value < 65) return "55–64";
+  if (value < 75) return "65–74";
+  if (value < 85) return "75–84";
+  return "85+";
+}
+
+function getEdgeLowerBoundBucket(edgeLowerBound?: number): string {
+  const value = edgeLowerBound ?? 0;
+  if (value < 0) return "<0";
+  if (value < 1) return "0–0.99";
+  if (value < 2) return "1–1.99";
+  if (value < 3) return "2–2.99";
+  return "3+";
+}
+
+function getMarketGroup(market: string): string {
+  const lower = market.toLowerCase();
+
+  if (lower.includes("over")) return "Over";
+  if (lower.includes("under")) return "Under";
+  if (lower.includes("btts")) return "BTTS";
+  if (lower === "home") return "Home";
+  if (lower === "draw") return "Draw";
+  if (lower === "away") return "Away";
+
+  return market;
 }
 
 export function getOddsBucketPerformance(
   analyses: SavedAnalysis[]
 ): OddsBucketPerformance[] {
-  const map = new Map<string, OddsBucketPerformance>();
+  const map = new Map<string, AggregateRow>();
 
   analyses.forEach((analysis) => {
     if (!analysis.tracking?.betPlaced) return;
     if (!isSettled(analysis.tracking.resultStatus)) return;
-    if (!analysis.tracking.oddUsed) return;
 
-    const bucket = getOddsBucket(analysis.tracking.oddUsed);
-    if (!map.has(bucket)) {
-      map.set(bucket, {
-        bucket,
-        bets: 0,
-        wins: 0,
-        losses: 0,
-        voids: 0,
-        totalStake: 0,
-        profitLoss: 0,
-        roi: 0,
-      });
-    }
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
 
-    const row = map.get(bucket)!;
-    row.bets += 1;
-    row.totalStake += analysis.tracking.stakeUsed || 0;
-    row.profitLoss += analysis.tracking.profitLoss || 0;
+    const odd = analysis.tracking.oddUsed || selected.odds || 0;
+    const bucket = getOddsBucket(odd);
 
-    if (analysis.tracking.resultStatus === "green") row.wins += 1;
-    if (analysis.tracking.resultStatus === "red") row.losses += 1;
-    if (analysis.tracking.resultStatus === "void") row.voids += 1;
+    if (!map.has(bucket)) map.set(bucket, createAggregateRow());
+    updateAggregate(map.get(bucket)!, analysis, selected);
   });
 
-  return Array.from(map.values()).map((row) => ({
-    ...row,
-    totalStake: Number(row.totalStake.toFixed(2)),
-    profitLoss: Number(row.profitLoss.toFixed(2)),
-    roi: row.totalStake > 0 ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1)) : 0,
+  return Array.from(map.entries()).map(([bucket, row]) => ({
+    bucket,
+    ...finalizeBaseRow(row),
   }));
 }
 
 export function getEdgeBucketPerformance(
   analyses: SavedAnalysis[]
 ): EdgeBucketPerformance[] {
-  const map = new Map<string, EdgeBucketPerformance>();
+  const map = new Map<string, AggregateRow>();
 
   analyses.forEach((analysis) => {
     if (!analysis.tracking?.betPlaced) return;
     if (!isSettled(analysis.tracking.resultStatus)) return;
 
-    const selected = analysis.results.find(
-      (result) => result.market === analysis.tracking.selectedMarket
-    );
-
+    const selected = getTrackedResult(analysis);
     if (!selected) return;
 
-    const bucket = getEdgeBucket(selected.valueBet);
-    if (!map.has(bucket)) {
-      map.set(bucket, {
-        bucket,
-        bets: 0,
-        wins: 0,
-        losses: 0,
-        voids: 0,
-        totalStake: 0,
-        profitLoss: 0,
-        roi: 0,
-      });
-    }
+    const bucket = getEdgeBucket(selected.valueBet || 0);
 
-    const row = map.get(bucket)!;
-    row.bets += 1;
-    row.totalStake += analysis.tracking.stakeUsed || 0;
-    row.profitLoss += analysis.tracking.profitLoss || 0;
-
-    if (analysis.tracking.resultStatus === "green") row.wins += 1;
-    if (analysis.tracking.resultStatus === "red") row.losses += 1;
-    if (analysis.tracking.resultStatus === "void") row.voids += 1;
+    if (!map.has(bucket)) map.set(bucket, createAggregateRow());
+    updateAggregate(map.get(bucket)!, analysis, selected);
   });
 
-  return Array.from(map.values()).map((row) => ({
-    ...row,
-    totalStake: Number(row.totalStake.toFixed(2)),
-    profitLoss: Number(row.profitLoss.toFixed(2)),
-    roi: row.totalStake > 0 ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1)) : 0,
+  return Array.from(map.entries()).map(([bucket, row]) => ({
+    bucket,
+    ...finalizeBaseRow(row),
   }));
 }
 
-function getCorrelationGroup(market: string): string {
-  const lower = market.toLowerCase();
+export function getMarketPerformance(
+  analyses: SavedAnalysis[]
+): MarketPerformance[] {
+  const map = new Map<string, AggregateRow>();
 
-  if (lower.includes("over 2.5") || lower.includes("over 3.5")) return "overs";
-  if (lower.includes("under 2.5") || lower.includes("under 3.5")) return "unders";
-  if (lower.includes("btts yes")) return "btts-yes";
-  if (lower.includes("btts no")) return "btts-no";
+  analyses.forEach((analysis) => {
+    if (!analysis.tracking?.betPlaced) return;
+    if (!isSettled(analysis.tracking.resultStatus)) return;
 
-  return "other";
-}
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
 
-export function suppressCorrelatedSignals(
-  analyses: SavedAnalysis[],
-  policy: BankrollPolicy = DEFAULT_BANKROLL_POLICY
-) {
-  const ranked = EliteBetSystem.buildRankedOpportunities(analyses);
-  const bestPerMatch = EliteBetSystem.getUniqueBestPerMatch(ranked);
+    const key = selected.market;
 
-  if (!policy.suppressCorrelatedMarkets) return bestPerMatch;
-
-  const seen = new Set<string>();
-
-  return bestPerMatch.filter((item) => {
-    const group = getCorrelationGroup(item.market);
-    const key = `${item.match}-${group}`;
-
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+    if (!map.has(key)) map.set(key, createAggregateRow());
+    updateAggregate(map.get(key)!, analysis, selected);
   });
+
+  return Array.from(map.entries())
+    .map(([market, row]) => ({
+      market,
+      marketGroup: getMarketGroup(market),
+      ...finalizeBaseRow(row),
+    }))
+    .sort((a, b) => b.roi - a.roi);
 }
 
-export function canAddBetForMatch(
-  analyses: SavedAnalysis[],
-  match: string,
-  currentBankroll: number,
-  additionalStakePct: number,
-  policy: BankrollPolicy = DEFAULT_BANKROLL_POLICY
-): { allowed: boolean; reason?: string } {
-  const pendingSameMatch = analyses.filter(
-    (analysis) =>
-      `${analysis.homeTeam} vs ${analysis.awayTeam}` === match &&
-      analysis.tracking?.betPlaced &&
-      analysis.tracking?.resultStatus === "pending"
-  );
+export function getConfidenceBucketPerformance(
+  analyses: SavedAnalysis[]
+): ConfidenceBucketPerformance[] {
+  const map = new Map<string, AggregateRow>();
 
-  const sameMatchStake = pendingSameMatch.reduce(
-    (sum, analysis) => sum + (analysis.tracking.stakeUsed || 0),
-    0
-  );
+  analyses.forEach((analysis) => {
+    if (!analysis.tracking?.betPlaced) return;
+    if (!isSettled(analysis.tracking.resultStatus)) return;
 
-  const sameMatchPct =
-    currentBankroll > 0 ? (sameMatchStake / currentBankroll) * 100 : 0;
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
 
-  if (sameMatchPct + additionalStakePct > policy.maxPerMatchPct) {
-    return {
-      allowed: false,
-      reason: "Match-level exposure cap exceeded",
-    };
-  }
+    const bucket = getConfidenceBucket(selected.confidence);
 
-  return { allowed: true };
+    if (!map.has(bucket)) map.set(bucket, createAggregateRow());
+    updateAggregate(map.get(bucket)!, analysis, selected);
+  });
+
+  return Array.from(map.entries()).map(([bucket, row]) => ({
+    bucket,
+    ...finalizeBaseRow(row),
+  }));
+}
+
+export function getRiskPerformance(
+  analyses: SavedAnalysis[]
+): RiskPerformance[] {
+  const base: Record<RiskLevel, AggregateRow> = {
+    Low: createAggregateRow(),
+    Medium: createAggregateRow(),
+    High: createAggregateRow(),
+  };
+
+  analyses.forEach((analysis) => {
+    if (!analysis.tracking?.betPlaced) return;
+    if (!isSettled(analysis.tracking.resultStatus)) return;
+
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
+
+    updateAggregate(base[selected.risk], analysis, selected);
+  });
+
+  return (Object.entries(base) as [RiskLevel, AggregateRow][])
+    .map(([risk, row]) => ({
+      risk,
+      ...finalizeBaseRow(row),
+    }))
+    .filter((row) => row.bets > 0);
+}
+
+export function getRobustnessBucketPerformance(
+  analyses: SavedAnalysis[]
+): RobustnessBucketPerformance[] {
+  const map = new Map<string, AggregateRow>();
+
+  analyses.forEach((analysis) => {
+    if (!analysis.tracking?.betPlaced) return;
+    if (!isSettled(analysis.tracking.resultStatus)) return;
+
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
+
+    const bucket = getRobustnessBucket(selected.robustness);
+
+    if (!map.has(bucket)) map.set(bucket, createAggregateRow());
+    updateAggregate(map.get(bucket)!, analysis, selected);
+  });
+
+  return Array.from(map.entries()).map(([bucket, row]) => ({
+    bucket,
+    ...finalizeBaseRow(row),
+  }));
+}
+
+export function getEdgeLowerBoundBucketPerformance(
+  analyses: SavedAnalysis[]
+): EdgeLowerBoundBucketPerformance[] {
+  const map = new Map<string, AggregateRow>();
+
+  analyses.forEach((analysis) => {
+    if (!analysis.tracking?.betPlaced) return;
+    if (!isSettled(analysis.tracking.resultStatus)) return;
+
+    const selected = getTrackedResult(analysis);
+    if (!selected) return;
+
+    const bucket = getEdgeLowerBoundBucket(selected.edgeLowerBound);
+
+    if (!map.has(bucket)) map.set(bucket, createAggregateRow());
+    updateAggregate(map.get(bucket)!, analysis, selected);
+  });
+
+  return Array.from(map.entries()).map(([bucket, row]) => ({
+    bucket,
+    ...finalizeBaseRow(row),
+  }));
 }
