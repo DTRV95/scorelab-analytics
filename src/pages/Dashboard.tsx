@@ -20,6 +20,7 @@ import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import { useNavigate } from "react-router-dom";
+import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
 
 const stagger = {
   hidden: {},
@@ -304,6 +305,8 @@ export default function Dashboard() {
         : "High";
 
     const performance = getAdvancedPerformanceBreakdown(validAnalyses);
+    const autoInsights = getDashboardAutoInsights();
+    
 
     return {
       analysesToday,
@@ -315,6 +318,7 @@ export default function Dashboard() {
       openExposure,
       riskLevel,
       performance,
+      autoInsights
     };
   }, [analyses, bankrollStats.currentBankroll]);
 
@@ -404,6 +408,35 @@ export default function Dashboard() {
             mono
           />
         </motion.div>
+
+        {(dashboardData.autoInsights ?? []).length > 0 && (
+  <motion.div
+    variants={fadeUp}
+    className="grid grid-cols-1 gap-4 xl:grid-cols-2"
+  >
+    {dashboardData.autoInsights.map((insight) => (
+      <div
+        key={insight.title}
+        className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          {insight.title}
+        </p>
+        <p
+          className={`mt-3 text-sm leading-relaxed ${
+            insight.tone === "positive"
+              ? "text-emerald-300"
+              : insight.tone === "negative"
+              ? "text-red-300"
+              : "text-white/70"
+          }`}
+        >
+          {insight.detail}
+        </p>
+      </div>
+    ))}
+  </motion.div>
+)}
 
         {topValueToday && (
           <motion.div

@@ -1,5 +1,5 @@
 import { getAnalyses } from "@/lib/analysisStorage";
-import type { SavedAnalysis } from "@/types/analysis";
+import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 
 export interface EdgeMarketInsight {
   market: string;
@@ -47,6 +47,18 @@ export interface EdgeZoneSummary {
   worstConfidenceBucket: ConfidenceBucketInsight | null;
 }
 
+export interface HistoricalSignal {
+  label: string;
+  detail: string;
+  tone: "positive" | "negative" | "neutral";
+}
+
+export interface DashboardAutoInsight {
+  title: string;
+  detail: string;
+  tone: "positive" | "negative" | "neutral";
+}
+
 interface SettledBetContext {
   analysis: SavedAnalysis;
   selectedMarket: string;
@@ -62,8 +74,8 @@ function getSettledTrackedBets(): SettledBetContext[] {
   return analyses
     .filter(
       (analysis) =>
-        analysis.tracking.betPlaced &&
-        analysis.tracking.selectedMarket &&
+        analysis?.tracking?.betPlaced &&
+        analysis?.tracking?.selectedMarket &&
         (analysis.tracking.resultStatus === "green" ||
           analysis.tracking.resultStatus === "red" ||
           analysis.tracking.resultStatus === "void")
@@ -134,8 +146,8 @@ export function getMarketEdgeInsights(): EdgeMarketInsight[] {
     current.bets += 1;
     current.totalStake += bet.stake;
     current.totalProfitLoss += bet.profitLoss;
-    current.totalEdge += bet.selectedResult.valueBet;
-    current.totalConfidence += bet.selectedResult.confidence;
+    current.totalEdge += bet.selectedResult.valueBet || 0;
+    current.totalConfidence += bet.selectedResult.confidence || 0;
 
     if (bet.status === "green") current.greens += 1;
     if (bet.status === "red") current.reds += 1;
@@ -159,8 +171,9 @@ export function getMarketEdgeInsights(): EdgeMarketInsight[] {
         item.greens + item.reds > 0
           ? Number(((item.greens / (item.greens + item.reds)) * 100).toFixed(2))
           : 0,
-      avgEdge: Number((item.totalEdge / item.bets).toFixed(2)),
-      avgConfidence: Number((item.totalConfidence / item.bets).toFixed(2)),
+      avgEdge: item.bets > 0 ? Number((item.totalEdge / item.bets).toFixed(2)) : 0,
+      avgConfidence:
+        item.bets > 0 ? Number((item.totalConfidence / item.bets).toFixed(2)) : 0,
     }))
     .sort((a, b) => b.roi - a.roi);
 }
@@ -181,7 +194,7 @@ export function getEdgeBucketInsights(): EdgeBucketInsight[] {
   >();
 
   bets.forEach((bet) => {
-    const bucket = getEdgeBucket(bet.selectedResult.valueBet);
+    const bucket = getEdgeBucket(bet.selectedResult.valueBet || 0);
 
     const current = map.get(bucket) || {
       bucket,
@@ -196,7 +209,7 @@ export function getEdgeBucketInsights(): EdgeBucketInsight[] {
     current.bets += 1;
     current.totalStake += bet.stake;
     current.totalProfitLoss += bet.profitLoss;
-    current.totalConfidence += bet.selectedResult.confidence;
+    current.totalConfidence += bet.selectedResult.confidence || 0;
 
     if (bet.status === "green") current.greens += 1;
     if (bet.status === "red") current.reds += 1;
@@ -222,7 +235,8 @@ export function getEdgeBucketInsights(): EdgeBucketInsight[] {
         item.greens + item.reds > 0
           ? Number(((item.greens / (item.greens + item.reds)) * 100).toFixed(2))
           : 0,
-      avgConfidence: Number((item.totalConfidence / item.bets).toFixed(2)),
+      avgConfidence:
+        item.bets > 0 ? Number((item.totalConfidence / item.bets).toFixed(2)) : 0,
     }))
     .sort((a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket));
 }
@@ -243,7 +257,7 @@ export function getConfidenceBucketInsights(): ConfidenceBucketInsight[] {
   >();
 
   bets.forEach((bet) => {
-    const bucket = getConfidenceBucket(bet.selectedResult.confidence);
+    const bucket = getConfidenceBucket(bet.selectedResult.confidence || 0);
 
     const current = map.get(bucket) || {
       bucket,
@@ -258,7 +272,7 @@ export function getConfidenceBucketInsights(): ConfidenceBucketInsight[] {
     current.bets += 1;
     current.totalStake += bet.stake;
     current.totalProfitLoss += bet.profitLoss;
-    current.totalEdge += bet.selectedResult.valueBet;
+    current.totalEdge += bet.selectedResult.valueBet || 0;
 
     if (bet.status === "green") current.greens += 1;
     if (bet.status === "red") current.reds += 1;
@@ -284,7 +298,7 @@ export function getConfidenceBucketInsights(): ConfidenceBucketInsight[] {
         item.greens + item.reds > 0
           ? Number(((item.greens / (item.greens + item.reds)) * 100).toFixed(2))
           : 0,
-      avgEdge: Number((item.totalEdge / item.bets).toFixed(2)),
+      avgEdge: item.bets > 0 ? Number((item.totalEdge / item.bets).toFixed(2)) : 0,
     }))
     .sort((a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket));
 }
@@ -296,20 +310,131 @@ export function getEdgeZoneSummary(): EdgeZoneSummary {
 
   return {
     bestMarket: markets.length > 0 ? markets[0] : null,
-    worstMarket: markets.length > 0 ? [...markets].sort((a, b) => a.roi - b.roi)[0] : null,
-
-    bestEdgeBucket: edgeBuckets.length > 0
-      ? [...edgeBuckets].sort((a, b) => b.roi - a.roi)[0]
-      : null,
-    worstEdgeBucket: edgeBuckets.length > 0
-      ? [...edgeBuckets].sort((a, b) => a.roi - b.roi)[0]
-      : null,
-
-    bestConfidenceBucket: confidenceBuckets.length > 0
-      ? [...confidenceBuckets].sort((a, b) => b.roi - a.roi)[0]
-      : null,
-    worstConfidenceBucket: confidenceBuckets.length > 0
-      ? [...confidenceBuckets].sort((a, b) => a.roi - b.roi)[0]
-      : null,
+    worstMarket:
+      markets.length > 0 ? [...markets].sort((a, b) => a.roi - b.roi)[0] : null,
+    bestEdgeBucket:
+      edgeBuckets.length > 0
+        ? [...edgeBuckets].sort((a, b) => b.roi - a.roi)[0]
+        : null,
+    worstEdgeBucket:
+      edgeBuckets.length > 0
+        ? [...edgeBuckets].sort((a, b) => a.roi - b.roi)[0]
+        : null,
+    bestConfidenceBucket:
+      confidenceBuckets.length > 0
+        ? [...confidenceBuckets].sort((a, b) => b.roi - a.roi)[0]
+        : null,
+    worstConfidenceBucket:
+      confidenceBuckets.length > 0
+        ? [...confidenceBuckets].sort((a, b) => a.roi - b.roi)[0]
+        : null,
   };
+}
+
+export function getDashboardAutoInsights(): DashboardAutoInsight[] {
+  const summary = getEdgeZoneSummary();
+  const insights: DashboardAutoInsight[] = [];
+
+  if (summary.bestMarket) {
+    insights.push({
+      title: "Best market",
+      detail: `${summary.bestMarket.market} is the strongest tracked market so far with ${summary.bestMarket.roi.toFixed(1)}% ROI across ${summary.bestMarket.bets} bets.`,
+      tone: summary.bestMarket.roi >= 0 ? "positive" : "neutral",
+    });
+  }
+
+  if (summary.worstMarket && summary.worstMarket.market !== summary.bestMarket?.market) {
+    insights.push({
+      title: "Weak market",
+      detail: `${summary.worstMarket.market} is currently the weakest market with ${summary.worstMarket.roi.toFixed(1)}% ROI.`,
+      tone: "negative",
+    });
+  }
+
+  if (summary.bestEdgeBucket) {
+    insights.push({
+      title: "Best edge zone",
+      detail: `Edge bucket ${summary.bestEdgeBucket.bucket} is performing best at ${summary.bestEdgeBucket.roi.toFixed(1)}% ROI.`,
+      tone: summary.bestEdgeBucket.roi >= 0 ? "positive" : "neutral",
+    });
+  }
+
+  if (summary.bestConfidenceBucket) {
+    insights.push({
+      title: "Best confidence zone",
+      detail: `Confidence bucket ${summary.bestConfidenceBucket.bucket} is your strongest tracked confidence zone.`,
+      tone: summary.bestConfidenceBucket.roi >= 0 ? "neutral" : "negative",
+    });
+  }
+
+  if (!insights.length) {
+    insights.push({
+      title: "Not enough tracked data",
+      detail:
+        "Start tracking more settled bets to unlock reliable historical insights.",
+      tone: "neutral",
+    });
+  }
+
+  return insights.slice(0, 4);
+}
+
+export function getHistoricalSignalsForResult(
+  result: AnalysisResult
+): HistoricalSignal[] {
+  const signals: HistoricalSignal[] = [];
+
+  const marketInsight = getMarketEdgeInsights().find(
+    (item) => item.market === result.market
+  );
+  const edgeInsight = getEdgeBucketInsights().find(
+    (item) => item.bucket === getEdgeBucket(result.valueBet || 0)
+  );
+  const confidenceInsight = getConfidenceBucketInsights().find(
+    (item) => item.bucket === getConfidenceBucket(result.confidence || 0)
+  );
+
+  if (marketInsight && marketInsight.bets >= 2) {
+    signals.push({
+      label: "Market history",
+      detail:
+        marketInsight.roi >= 0
+          ? `${result.market} is historically positive at ${marketInsight.roi.toFixed(1)}% ROI over ${marketInsight.bets} tracked bets.`
+          : `${result.market} is historically weak at ${marketInsight.roi.toFixed(1)}% ROI over ${marketInsight.bets} tracked bets.`,
+      tone: marketInsight.roi >= 0 ? "positive" : "negative",
+    });
+  }
+
+  if (edgeInsight && edgeInsight.bets >= 2) {
+    signals.push({
+      label: "Edge bucket",
+      detail:
+        edgeInsight.roi >= 0
+          ? `Edge bucket ${edgeInsight.bucket} is performing well with ${edgeInsight.roi.toFixed(1)}% ROI.`
+          : `Edge bucket ${edgeInsight.bucket} is underperforming with ${edgeInsight.roi.toFixed(1)}% ROI.`,
+      tone: edgeInsight.roi >= 0 ? "positive" : "negative",
+    });
+  }
+
+  if (confidenceInsight && confidenceInsight.bets >= 2) {
+    signals.push({
+      label: "Confidence bucket",
+      detail:
+        confidenceInsight.roi >= 0
+          ? `Confidence bucket ${confidenceInsight.bucket} is holding up at ${confidenceInsight.roi.toFixed(1)}% ROI.`
+          : `Confidence bucket ${confidenceInsight.bucket} is not validating well at ${confidenceInsight.roi.toFixed(1)}% ROI.`,
+      tone: confidenceInsight.roi >= 0 ? "neutral" : "negative",
+    });
+  }
+
+  if (!signals.length) {
+    signals.push({
+      label: "Historical coverage",
+      detail:
+        "Not enough tracked sample yet to generate reliable historical warnings for this pick.",
+      tone: "neutral",
+    });
+  }
+
+  return signals.slice(0, 3);
 }
