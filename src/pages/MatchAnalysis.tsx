@@ -1,4 +1,4 @@
-import {
+﻿import {
   getBankrollStats,
   getAnalyses,
   saveAnalysis,
@@ -308,13 +308,13 @@ function mapMarketName(name: string): string {
   if (normalized.includes("menos de 3.5")) return "Under 3.5";
   if (
     normalized.includes("ambas marcam") &&
-    !normalized.includes("não") &&
+    !normalized.includes("nÃ£o") &&
     !normalized.includes("nao")
   ) {
     return "BTTS Yes";
   }
   if (
-    normalized.includes("ambas não marcam") ||
+    normalized.includes("ambas nÃ£o marcam") ||
     normalized.includes("ambas nao marcam")
   ) {
     return "BTTS No";
@@ -331,7 +331,7 @@ function mapDecision(decisao: string): "Bet" | "No Bet" | "Caution" {
   const normalized = decisao.trim().toLowerCase();
 
   if (normalized.includes("apostar")) return "Bet";
-  if (normalized.includes("não") || normalized.includes("nao")) return "No Bet";
+  if (normalized.includes("nÃ£o") || normalized.includes("nao")) return "No Bet";
   return "Caution";
 }
 
@@ -347,6 +347,7 @@ export default function MatchAnalysis() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [whyExpanded, setWhyExpanded] = useState(false);
+  const [showLeagueAdvanced, setShowLeagueAdvanced] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [summary, setSummary] = useState({
     homeXg: 0,
@@ -690,7 +691,7 @@ export default function MatchAnalysis() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="space-y-6">
                 <SectionCard title="League Setup">
                   <div className="space-y-4">
                     <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
@@ -747,59 +748,98 @@ export default function MatchAnalysis() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <FormField
-                        label="Home Goals Baseline"
-                        value={formData.league_home_goals_avg}
-                        onChange={(v) => updateField("league_home_goals_avg", v)}
-                        type="number"
-                        description="Average goals scored by home teams in this league."
-                      />
-                      <FormField
-                        label="Away Goals Baseline"
-                        value={formData.league_away_goals_avg}
-                        onChange={(v) => updateField("league_away_goals_avg", v)}
-                        type="number"
-                        description="Average goals scored by away teams in this league."
-                      />
-                      <FormField
-                        label="Tight-Score Tuning"
-                        value={formData.dixon_coles_rho}
-                        onChange={(v) => updateField("dixon_coles_rho", v)}
-                        type="number"
-                        description="Adjusts how much the model respects very common scores like 0-0, 1-0 and 1-1."
-                      />
-                      <FormField
-                        label="Safety For Limited Data"
-                        value={formData.shrinkage_matches}
-                        onChange={(v) => updateField("shrinkage_matches", v)}
-                        type="number"
-                        description="Higher values make the model trust league averages more when team samples are small."
-                      />
+                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            Model defaults loaded
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Keep these collapsed unless you want to fine-tune the league baseline.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowLeagueAdvanced((prev) => !prev)}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-white/60 transition hover:bg-white/[0.08]"
+                        >
+                          {showLeagueAdvanced ? "Hide Advanced" : "Show Advanced"}
+                          <ChevronDown
+                            className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                              showLeagueAdvanced ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                          </div>
+
+                      <AnimatePresence initial={false}>
+                        {showLeagueAdvanced && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                              <FormField
+                                label="Home Goals Baseline"
+                                value={formData.league_home_goals_avg}
+                                onChange={(v) => updateField("league_home_goals_avg", v)}
+                                type="number"
+                                description="Average goals scored by home teams in this league."
+                              />
+                              <FormField
+                                label="Away Goals Baseline"
+                                value={formData.league_away_goals_avg}
+                                onChange={(v) => updateField("league_away_goals_avg", v)}
+                                type="number"
+                                description="Average goals scored by away teams in this league."
+                              />
+                              <FormField
+                                label="Tight-Score Tuning"
+                                value={formData.dixon_coles_rho}
+                                onChange={(v) => updateField("dixon_coles_rho", v)}
+                                type="number"
+                                description="Adjusts how much the model respects very common scores like 0-0, 1-0 and 1-1."
+                              />
+                              <FormField
+                                label="Safety For Limited Data"
+                                value={formData.shrinkage_matches}
+                                onChange={(v) => updateField("shrinkage_matches", v)}
+                                type="number"
+                                description="Higher values make the model trust league averages more when team samples are small."
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </SectionCard>
 
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <SectionCard title="Home Team">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-2.5">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
                           Home Side
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           Use home-only performance and recent home form.
                         </p>
                       </div>
                       <Target className="h-4 w-4 text-emerald-300" strokeWidth={1.7} />
                     </div>
-                    <FormField
-                      label="Team Name"
-                      value={formData.equipa_casa}
-                      onChange={(v) => updateField("equipa_casa", v)}
-                    />
-
                     <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <FormField
+                          label="Team Name"
+                          value={formData.equipa_casa}
+                          onChange={(v) => updateField("equipa_casa", v)}
+                        />
+                      </div>
                       <FormField
                         label="Total Matches"
                         value={formData.jogos_casa}
@@ -846,24 +886,25 @@ export default function MatchAnalysis() {
 
                 <SectionCard title="Away Team">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-2.5">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
                           Away Side
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           Use away-only performance and recent away form.
                         </p>
                       </div>
                       <ShieldCheck className="h-4 w-4 text-sky-300" strokeWidth={1.7} />
                     </div>
-                    <FormField
-                      label="Team Name"
-                      value={formData.equipa_fora}
-                      onChange={(v) => updateField("equipa_fora", v)}
-                    />
-
                     <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <FormField
+                          label="Team Name"
+                          value={formData.equipa_fora}
+                          onChange={(v) => updateField("equipa_fora", v)}
+                        />
+                      </div>
                       <FormField
                         label="Total Matches"
                         value={formData.jogos_fora}
@@ -907,7 +948,9 @@ export default function MatchAnalysis() {
                     </div>
                   </div>
                 </SectionCard>
+                </div>
 
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <SectionCard title="Market Odds">
                   <div className="space-y-5">
                     <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
@@ -994,68 +1037,71 @@ export default function MatchAnalysis() {
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Bankroll Settings">
-                  <div className="space-y-4">
-                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Risk Control
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        These settings control how aggressive the final stake can be.
-                        Keep them conservative if you want smaller recommended exposure.
-                      </p>
+                <div className="space-y-6">
+                  <SectionCard title="Bankroll Settings">
+                    <div className="space-y-4">
+                      <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Risk Control
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          These settings control how aggressive the final stake can be.
+                          Keep them conservative if you want smaller recommended exposure.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <FormField
+                          label="Bankroll (EUR)"
+                          value={formData.banca}
+                          onChange={(v) => updateField("banca", v)}
+                          type="number"
+                        />
+                        <FormField
+                          label="Kelly Fraction"
+                          value={formData.fracao_kelly}
+                          onChange={(v) => updateField("fracao_kelly", v)}
+                          type="number"
+                          description="Lower values make staking calmer and more protective."
+                        />
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <FormField
-                      label="Bankroll (€)"
-                      value={formData.banca}
-                      onChange={(v) => updateField("banca", v)}
-                      type="number"
-                    />
-                    <FormField
-                      label="Kelly Fraction"
-                      value={formData.fracao_kelly}
-                      onChange={(v) => updateField("fracao_kelly", v)}
-                      type="number"
-                      description="Lower values make staking calmer and more protective."
-                    />
-                    </div>
-                  </div>
-                </SectionCard>
-              </div>
+                  </SectionCard>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-                      Ready To Analyze
-                    </p>
-                    <p className="mt-1 text-sm text-white">
-                      {setupProgress.completed >= 4
-                        ? "The setup looks strong enough to run."
-                        : "Finish the core inputs for a more trustworthy output."}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-semibold text-white">
-                      {Math.round(setupProgress.pct)}%
-                    </p>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
-                      Complete
-                    </p>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                          Ready To Analyze
+                        </p>
+                        <p className="mt-1 text-sm text-white">
+                          {setupProgress.completed >= 4
+                            ? "The setup looks strong enough to run."
+                            : "Finish the core inputs for a more trustworthy output."}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-white">
+                          {Math.round(setupProgress.pct)}%
+                        </p>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
+                          Complete
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="hero"
+                      className="w-full"
+                      size="lg"
+                      onClick={runAnalysis}
+                      disabled={isLoading}
+                    >
+                      <Play className="mr-1 h-4 w-4" strokeWidth={1.5} />
+                      {isLoading ? "Running..." : "Run Analysis"}
+                    </Button>
                   </div>
                 </div>
-
-                <Button
-                  variant="hero"
-                  className="w-full"
-                  size="lg"
-                  onClick={runAnalysis}
-                  disabled={isLoading}
-                >
-                  <Play className="mr-1 h-4 w-4" strokeWidth={1.5} />
-                  {isLoading ? "Running..." : "Run Analysis"}
-                </Button>
+                </div>
               </div>
 
               {errorMessage && (
@@ -1229,7 +1275,7 @@ export default function MatchAnalysis() {
                         , this is the best current opportunity. Suggested Kelly
                         stake:{" "}
                         <span className="font-mono-data font-bold text-foreground">
-                          €{bestBet.stake}
+                          â‚¬{bestBet.stake}
                         </span>
                         .
                       </p>
@@ -1242,7 +1288,7 @@ export default function MatchAnalysis() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-lg font-bold font-mono-data text-white">
-                                €{bestBetStakeRecommendation.recommendedAmount.toFixed(2)}
+                                â‚¬{bestBetStakeRecommendation.recommendedAmount.toFixed(2)}
                               </p>
                               <p className="text-xs text-white/45">
                                 {bestBetStakeRecommendation.recommendedPct.toFixed(
@@ -1441,7 +1487,7 @@ export default function MatchAnalysis() {
                                 {r.kelly.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
-                                €{r.stake}
+                                â‚¬{r.stake}
                               </td>
                               <td className="px-4 py-3">
                                 <RiskBadge risk={r.risk} />
@@ -1455,7 +1501,7 @@ export default function MatchAnalysis() {
                               <td className="px-4 py-3">
                                 <div>
                                   <p className="font-mono-data text-foreground">
-                                    €{stakeRecommendation.recommendedAmount.toFixed(2)}
+                                    â‚¬{stakeRecommendation.recommendedAmount.toFixed(2)}
                                   </p>
                                   <p className="text-xs text-white/45">
                                     {stakeRecommendation.recommendedPct.toFixed(2)}%
@@ -1499,11 +1545,11 @@ export default function MatchAnalysis() {
                       <span className="font-mono-data font-bold text-primary">
                         {bestBet.valueBet.toFixed(1)}%
                       </span>{" "}
-                      · Kelly:{" "}
+                      Â· Kelly:{" "}
                       <span className="font-mono-data font-bold">
                         {bestBet.kelly.toFixed(1)}%
                       </span>{" "}
-                      · Confidence:{" "}
+                      Â· Confidence:{" "}
                       <span className="font-mono-data font-bold">
                         {bestBet.confidence}/10
                       </span>
