@@ -4,6 +4,7 @@ import type {
   BetTier,
   RiskLevel,
 } from "@/types/analysis";
+import { getHistoricalAdjustmentMetrics } from "@/lib/historicalAdjustment";
 
 export interface EliteBetConfig {
   minEdge: number;
@@ -64,6 +65,10 @@ function getRiskWeight(risk: RiskLevel): number {
 
 function getOddsQuality(odds: number): number {
   return 1 - Math.min(Math.abs(odds - 2.1) / 1.2, 1);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 export function getOddsBand(odds: number): string {
@@ -172,10 +177,29 @@ export function decorateResult(
   result: AnalysisResult,
   config: EliteBetConfig = DEFAULT_ELITE_CONFIG
 ): AnalysisResult {
-  const normalizedDecision = getDecisionFromMetrics(result);
+  const historicalMetrics = getHistoricalAdjustmentMetrics(result);
+  const baseConfidence = result.baseConfidence ?? result.confidence;
+  const adjustedConfidence = clamp(
+    Number((baseConfidence + historicalMetrics.adjustment).toFixed(1)),
+    0,
+    10
+  );
+
+  const adjustmentAwareResult: AnalysisResult = {
+    ...result,
+    baseConfidence,
+    confidence: adjustedConfidence,
+    adjustedConfidence,
+    historicalAdjustment: historicalMetrics.adjustment,
+    historicalSample: historicalMetrics.settledBets,
+    historicalRoi: historicalMetrics.blendedRoi,
+    historicalHitRate: historicalMetrics.blendedHitRate,
+  };
+
+  const normalizedDecision = getDecisionFromMetrics(adjustmentAwareResult);
 
   const normalizedResult: AnalysisResult = {
-    ...result,
+    ...adjustmentAwareResult,
     decision: normalizedDecision,
   };
 

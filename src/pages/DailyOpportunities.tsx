@@ -1,10 +1,14 @@
-import { AppLayout } from "@/components/layout/AppLayout";
+﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, RiskBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
-import { getAnalyses } from "@/lib/analysisStorage";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ANALYSES_UPDATED_EVENT,
+  getAnalyses,
+} from "@/lib/analysisStorage";
+import type { SavedAnalysis } from "@/types/analysis";
 import {
   buildRankedOpportunities,
   getUniqueBestPerMatch,
@@ -13,6 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 export default function DailyOpportunities() {
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [minValue, setMinValue] = useState("0");
   const [minConf, setMinConf] = useState("0");
   const [league, setLeague] = useState("");
@@ -21,8 +26,21 @@ export default function DailyOpportunities() {
 
   const navigate = useNavigate();
 
-  const analyses = useMemo(() => {
-    return getAnalyses().filter((analysis) => isToday(analysis.createdAt));
+  useEffect(() => {
+    const refreshAnalyses = () => {
+      setAnalyses(getAnalyses().filter((analysis) => isToday(analysis.createdAt)));
+    };
+
+    refreshAnalyses();
+    window.addEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
+    window.addEventListener("storage", refreshAnalyses);
+    window.addEventListener("focus", refreshAnalyses);
+
+    return () => {
+      window.removeEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
+      window.removeEventListener("storage", refreshAnalyses);
+      window.removeEventListener("focus", refreshAnalyses);
+    };
   }, []);
 
   const opportunities = useMemo(() => {
@@ -54,13 +72,13 @@ export default function DailyOpportunities() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Daily Opportunities</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Today’s ranked betting signals, sorted by quality instead of noise.
+            Today's ranked betting signals, sorted by quality instead of noise.
           </p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Signals Today</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Visible Opportunities</p>
             <p className="text-2xl font-bold font-mono-data text-foreground mt-1">{filtered.length}</p>
           </div>
           <div className="rounded-2xl bg-card ring-surface p-4 card-shadow">

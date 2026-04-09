@@ -1,6 +1,7 @@
-import { AppLayout } from "@/components/layout/AppLayout";
+﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -121,6 +122,29 @@ function MetricBlock({
   );
 }
 
+function needsTrackingAttention(analysis: SavedAnalysis) {
+  const tracking = analysis.tracking;
+
+  if (!tracking.betPlaced) return false;
+  if (!tracking.selectedMarket) return true;
+  if (tracking.stakeUsed === null || tracking.stakeUsed <= 0) return true;
+  if (tracking.oddUsed === null || tracking.oddUsed <= 1) return true;
+  return false;
+}
+
+function getTrackingMissingFields(analysis: SavedAnalysis) {
+  const tracking = analysis.tracking;
+  const missing: string[] = [];
+
+  if (!tracking.betPlaced) return missing;
+  if (!tracking.selectedMarket) missing.push("market");
+  if (tracking.stakeUsed === null || tracking.stakeUsed <= 0) missing.push("stake");
+  if (tracking.oddUsed === null || tracking.oddUsed <= 1) missing.push("odd");
+  if (!tracking.notes.trim()) missing.push("notes");
+
+  return missing;
+}
+
 export default function History() {
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [searchParams] = useSearchParams();
@@ -141,6 +165,7 @@ export default function History() {
   const [sortBy, setSortBy] = useState<
     "newest" | "oldest" | "edge" | "confidence" | "profitLoss"
   >("newest");
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   useEffect(() => {
     setAnalyses(getAnalyses());
@@ -280,6 +305,10 @@ export default function History() {
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+
+    setExpandedIds((prev) =>
+      prev.includes(highlightedAnalysisId) ? prev : [...prev, highlightedAnalysisId]
+    );
   }, [highlightedAnalysisId, filteredAnalyses]);
 
   const handleTrackingChange = (
@@ -288,6 +317,48 @@ export default function History() {
   ) => {
     const updatedAnalyses = updateAnalysisTracking(analysisId, updates);
     setAnalyses(updatedAnalyses);
+  };
+
+  const handleBetPlacedToggle = (analysis: SavedAnalysis, betPlaced: boolean) => {
+    if (!betPlaced) {
+      handleTrackingChange(analysis.id, { betPlaced: false });
+      return;
+    }
+
+    const bestBet = getBestBet(analysis.results);
+
+    handleTrackingChange(analysis.id, {
+      betPlaced: true,
+      selectedMarket: bestBet?.market ?? null,
+      stakeUsed: bestBet ? Number(bestBet.stake.toFixed(2)) : null,
+      oddUsed: bestBet ? Number(bestBet.odds.toFixed(2)) : null,
+    });
+  };
+
+  const handleSelectedMarketChange = (
+    analysis: SavedAnalysis,
+    selectedMarket: string
+  ) => {
+    const selectedResult =
+      analysis.results.find((result) => result.market === selectedMarket) || null;
+
+    handleTrackingChange(analysis.id, {
+      selectedMarket: selectedMarket || null,
+      oddUsed: selectedResult ? Number(selectedResult.odds.toFixed(2)) : null,
+      stakeUsed: selectedResult ? Number(selectedResult.stake.toFixed(2)) : null,
+    });
+  };
+
+  const autofillTrackingFromBestBet = (analysis: SavedAnalysis) => {
+    const bestBet = getBestBet(analysis.results);
+    if (!bestBet) return;
+
+    handleTrackingChange(analysis.id, {
+      betPlaced: true,
+      selectedMarket: bestBet.market,
+      oddUsed: Number(bestBet.odds.toFixed(2)),
+      stakeUsed: Number(bestBet.stake.toFixed(2)),
+    });
   };
 
   const handleDeleteAnalysis = (analysisId: string, matchLabel: string) => {
@@ -310,6 +381,14 @@ export default function History() {
     setSortBy("newest");
   };
 
+  const toggleExpanded = (analysisId: string) => {
+    setExpandedIds((prev) =>
+      prev.includes(analysisId)
+        ? prev.filter((id) => id !== analysisId)
+        : [...prev, analysisId]
+    );
+  };
+
   const summary = useMemo(() => {
     const total = filteredAnalyses.length;
     const placed = filteredAnalyses.filter((a) => a.tracking.betPlaced).length;
@@ -322,8 +401,9 @@ export default function History() {
     const reds = filteredAnalyses.filter(
       (a) => a.tracking.resultStatus === "red"
     ).length;
+    const needsUpdate = filteredAnalyses.filter(needsTrackingAttention).length;
 
-    return { total, placed, settled, greens, reds };
+    return { total, placed, settled, greens, reds, needsUpdate };
   }, [filteredAnalyses]);
 
   return (
@@ -349,7 +429,18 @@ export default function History() {
           <MetricBlock label="Bets Placed" value={summary.placed} />
           <MetricBlock label="Settled" value={summary.settled} />
           <MetricBlock label="Greens" value={summary.greens} />
-          <MetricBlock label="Reds" value={summary.reds} />
+          <MetricBlock
+            label="Needs Update"
+            value={
+              <span
+                className={
+                  summary.needsUpdate > 0 ? "text-amber-300" : "text-white"
+                }
+              >
+                {summary.needsUpdate}
+              </span>
+            }
+          />
         </motion.div>
 
         <PremiumCard
@@ -507,6 +598,9 @@ export default function History() {
               const displayBet = selectedMarketData || getBestBet(analysis.results);
               const tracking = analysis.tracking;
               const matchLabel = `${analysis.homeTeam} vs ${analysis.awayTeam}`;
+              const isExpanded = expandedIds.includes(analysis.id);
+              const needsAttention = needsTrackingAttention(analysis);
+              const missingFields = getTrackingMissingFields(analysis);
 
               return (
                 <motion.div
@@ -524,22 +618,107 @@ export default function History() {
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
 
                   <div className="relative space-y-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                          Saved Analysis
-                        </p>
-                        <h3 className="mt-2 text-xl font-semibold text-white">
-                          {matchLabel}
-                        </h3>
-                        <p className="mt-1 text-sm text-white/55">
-                          {formatDateTime(analysis.createdAt)}
-                        </p>
-                      </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(analysis.id)}
+                      className="w-full rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.05]"
+                    >
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                              Saved Analysis
+                            </p>
+                            {needsAttention ? (
+                              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-300">
+                                Needs Update
+                              </span>
+                            ) : null}
+                            {tracking.betPlaced ? (
+                              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-300">
+                                Bet Tracked
+                              </span>
+                            ) : (
+                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55">
+                                Analysis Only
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="mt-2 truncate text-xl font-semibold text-white">
+                            {matchLabel}
+                          </h3>
+                          <p className="mt-1 text-sm text-white/55">
+                            {formatDateTime(analysis.createdAt)}
+                          </p>
+                        </div>
 
+                        <div className="flex flex-col gap-3 xl:items-end">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {displayBet?.tier && <TierBadge tier={displayBet.tier} />}
+                            {displayBet && <DecisionBadge decision={displayBet.decision} />}
+                            <div className="rounded-full border border-white/10 bg-white/5 p-2 text-white/55">
+                              <ChevronDown
+                                className={`h-4 w-4 transition-transform duration-300 ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
+                            <MetricBlock
+                              label={tracking.selectedMarket ? "Selected" : "Best"}
+                              value={displayBet ? displayBet.market : "-"}
+                            />
+                            <MetricBlock
+                              label="Edge"
+                              value={displayBet ? <ValueBadge value={displayBet.valueBet} /> : "-"}
+                            />
+                            <MetricBlock
+                              label="Confidence"
+                              value={
+                                displayBet ? (
+                                  <ConfidenceMeter score={displayBet.confidence} className="w-24" />
+                                ) : (
+                                  "-"
+                                )
+                              }
+                            />
+                            <MetricBlock
+                              label="P/L"
+                              value={`EUR ${tracking.profitLoss.toFixed(2)}`}
+                            />
+                            <MetricBlock
+                              label="Status"
+                              value={<span className="capitalize">{tracking.resultStatus}</span>}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        {displayBet?.tier && <TierBadge tier={displayBet.tier} />}
-                        {displayBet && <DecisionBadge decision={displayBet.decision} />}
+                        {tracking.betPlaced && missingFields.length > 0 ? (
+                          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
+                            Missing: {missingFields.join(", ")}
+                          </span>
+                        ) : null}
+                        {tracking.betPlaced ? (
+                          <button
+                            type="button"
+                            onClick={() => autofillTrackingFromBestBet(analysis)}
+                            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08]"
+                          >
+                            Quick Fill From Best Bet
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm text-white/50">
+                          {isExpanded
+                            ? "Expanded tracking details"
+                            : "Expand to update stake, result, bankroll impact and notes."}
+                        </p>
                         <button
                           onClick={() => handleDeleteAnalysis(analysis.id, matchLabel)}
                           className="h-10 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
@@ -549,45 +728,53 @@ export default function History() {
                       </div>
                     </div>
 
-                    {displayBet && (
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-                        <MetricBlock
-                          label={analysis.tracking.selectedMarket ? "Selected Market" : "Best Market"}
-                          value={displayBet.market}
-                        />
-                        <MetricBlock
-                          label="Model Probability"
-                          value={`${displayBet.modelProb.toFixed(1)}%`}
-                        />
-                        <MetricBlock
-                          label="Implied Probability"
-                          value={`${displayBet.impliedProb.toFixed(1)}%`}
-                        />
-                        <MetricBlock
-                          label="Edge"
-                          value={<ValueBadge value={displayBet.valueBet} />}
-                        />
-                        <MetricBlock
-                          label="Confidence"
-                          value={<ConfidenceMeter score={displayBet.confidence} className="w-24" />}
-                        />
-                        <MetricBlock
-                          label="Decision"
-                          value={<DecisionBadge decision={displayBet.decision} />}
-                        />
-                      </div>
-                    )}
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        height: isExpanded ? "auto" : 0,
+                        opacity: isExpanded ? 1 : 0,
+                      }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="space-y-5 pt-1">
+                        {displayBet && (
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+                            <MetricBlock
+                              label={tracking.selectedMarket ? "Selected Market" : "Best Market"}
+                              value={displayBet.market}
+                            />
+                            <MetricBlock
+                              label="Model Probability"
+                              value={`${displayBet.modelProb.toFixed(1)}%`}
+                            />
+                            <MetricBlock
+                              label="Implied Probability"
+                              value={`${displayBet.impliedProb.toFixed(1)}%`}
+                            />
+                            <MetricBlock
+                              label="Edge"
+                              value={<ValueBadge value={displayBet.valueBet} />}
+                            />
+                            <MetricBlock
+                              label="Confidence"
+                              value={<ConfidenceMeter score={displayBet.confidence} className="w-24" />}
+                            />
+                            <MetricBlock
+                              label="Decision"
+                              value={<DecisionBadge decision={displayBet.decision} />}
+                            />
+                          </div>
+                        )}
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                         <label className="flex items-center gap-3 text-sm text-white">
                           <input
                             type="checkbox"
                             checked={tracking.betPlaced}
                             onChange={(e) =>
-                              handleTrackingChange(analysis.id, {
-                                betPlaced: e.target.checked,
-                              })
+                              handleBetPlacedToggle(analysis, e.target.checked)
                             }
                             className="h-4 w-4 rounded border-white/20 bg-transparent"
                           />
@@ -602,9 +789,7 @@ export default function History() {
                         <select
                           value={tracking.selectedMarket ?? ""}
                           onChange={(e) =>
-                            handleTrackingChange(analysis.id, {
-                              selectedMarket: e.target.value || null,
-                            })
+                            handleSelectedMarketChange(analysis, e.target.value)
                           }
                           className={`${darkSelectClass} w-full`}
                           style={darkSelectStyle}
@@ -715,19 +900,19 @@ export default function History() {
                         label="Bankroll Before"
                         value={
                           tracking.bankrollBefore !== null
-                            ? `€${tracking.bankrollBefore.toFixed(2)}`
+                            ? `EUR ${tracking.bankrollBefore.toFixed(2)}`
                             : "-"
                         }
                       />
                       <MetricBlock
                         label="Profit / Loss"
-                        value={`€${tracking.profitLoss.toFixed(2)}`}
+                        value={`EUR ${tracking.profitLoss.toFixed(2)}`}
                       />
                       <MetricBlock
                         label="Bankroll After"
                         value={
                           tracking.bankrollAfter !== null
-                            ? `€${tracking.bankrollAfter.toFixed(2)}`
+                            ? `EUR ${tracking.bankrollAfter.toFixed(2)}`
                             : "-"
                         }
                       />
@@ -736,6 +921,8 @@ export default function History() {
                         value={<span className="capitalize">{tracking.resultStatus}</span>}
                       />
                     </div>
+                      </div>
+                    </motion.div>
                   </div>
                 </motion.div>
               );

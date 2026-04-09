@@ -168,8 +168,8 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-card ring-surface p-5 card-shadow">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
         {title}
       </h3>
       {children}
@@ -192,7 +192,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs text-muted-foreground">
+      <label className="mb-1.5 block text-xs text-white/55">
         {label}
       </label>
       <input
@@ -200,10 +200,10 @@ function FormField({
         step={type === "number" ? "any" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+        className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
       />
       {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
           {description}
         </p>
       ) : null}
@@ -221,31 +221,31 @@ function SelectField({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: Array<{ value: string; label: string }>;
   description?: string;
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs text-muted-foreground">
+      <label className="mb-1.5 block text-xs text-white/55">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+        className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
       >
         {options.map((option) => (
           <option
-            key={option}
-            value={option}
+            key={option.value}
+            value={option.value}
             className="bg-background text-foreground"
           >
-            {option}
+            {option.label}
           </option>
         ))}
       </select>
       {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
           {description}
         </p>
       ) : null}
@@ -263,12 +263,12 @@ function InsightTile({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/5">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+    <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
         {label}
       </p>
-      <p className="mt-2 text-sm font-medium text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      <p className="mt-2 text-sm font-medium text-white">{value}</p>
+      <p className="mt-1 text-xs text-white/45">{hint}</p>
     </div>
   );
 }
@@ -284,8 +284,8 @@ function StepChip({
     <div
       className={`rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-colors ${
         active
-          ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-          : "bg-white/[0.03] text-muted-foreground ring-1 ring-white/10"
+          ? "bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25"
+          : "bg-white/[0.05] text-white/45 ring-1 ring-white/10"
       }`}
     >
       {label}
@@ -653,27 +653,27 @@ export default function MatchAnalysis() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl bg-card ring-surface p-6 card-shadow">
+          <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
             <div className="space-y-6">
-              <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-5">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
                       Analysis Setup
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-foreground">
+                    <h2 className="mt-2 text-lg font-semibold text-white">
                       Fill the model in the order you think
                     </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-sm leading-relaxed text-white/60">
                       Competition first, then team sample, then market odds. This
                       keeps the analysis grounded before the model makes a call.
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/10 px-3 py-2 text-right">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-right">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
                       Ready
                     </p>
-                    <p className="mt-1 text-xl font-semibold text-foreground">
+                    <p className="mt-1 text-xl font-semibold text-white">
                       {setupProgress.completed}/5
                     </p>
                   </div>
@@ -715,7 +715,10 @@ export default function MatchAnalysis() {
                       label="Competition"
                       value={formData.liga}
                       onChange={handleLeagueChange}
-                      options={LEAGUE_PRESETS.map((preset) => preset.key)}
+                      options={LEAGUE_PRESETS.map((preset) => ({
+                        value: preset.key,
+                        label: `${preset.country} · ${preset.label}`,
+                      }))}
                       description="Pick the league first so the model starts from the right scoring baseline."
                     />
 
@@ -1021,23 +1024,23 @@ export default function MatchAnalysis() {
                 </SectionCard>
               </div>
 
-              <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
                       Ready To Analyze
                     </p>
-                    <p className="mt-1 text-sm text-foreground">
+                    <p className="mt-1 text-sm text-white">
                       {setupProgress.completed >= 4
                         ? "The setup looks strong enough to run."
                         : "Finish the core inputs for a more trustworthy output."}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-foreground">
+                    <p className="text-lg font-semibold text-white">
                       {Math.round(setupProgress.pct)}%
                     </p>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
                       Complete
                     </p>
                   </div>
@@ -1121,12 +1124,12 @@ export default function MatchAnalysis() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.08 }}
-                      className="rounded-2xl bg-card ring-surface p-4 card-shadow group transition-all duration-300 hover:card-shadow-hover"
+                      className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                     >
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      <p className="text-xs uppercase tracking-wider text-white/45">
                         {s.label}
                       </p>
-                      <p className="mt-1 text-2xl font-bold font-mono-data text-foreground">
+                      <p className="mt-1 text-2xl font-bold font-mono-data text-white">
                         {s.value}
                       </p>
                     </motion.div>
@@ -1137,7 +1140,7 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="overflow-hidden rounded-2xl bg-primary/5 ring-1 ring-primary/20 card-shadow"
+                  className="overflow-hidden rounded-3xl border border-primary/20 bg-[linear-gradient(180deg,rgba(20,83,45,0.22)_0%,rgba(8,18,40,0.98)_100%)] shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                 >
                   <button
                     onClick={() => setWhyExpanded(!whyExpanded)}
@@ -1166,31 +1169,31 @@ export default function MatchAnalysis() {
                       >
                         <div className="space-y-3 px-5 pb-5">
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <p className="text-xs text-muted-foreground">
+                            <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
+                              <p className="text-xs text-white/45">
                                 Expected Goals
                               </p>
-                              <p className="text-lg font-bold font-mono-data text-foreground">
+                              <p className="text-lg font-bold font-mono-data text-white">
                                 {summary.totalXg.toFixed(2)}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-white/45">
                                 Home {summary.homeXg.toFixed(2)} + Away{" "}
                                 {summary.awayXg.toFixed(2)}
                               </p>
                             </div>
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <p className="text-xs text-muted-foreground">
+                            <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
+                              <p className="text-xs text-white/45">
                                 Probability Advantage
                               </p>
                               <p className="text-lg font-bold font-mono-data text-primary">
                                 {bestBet ? `${bestBet.valueBet.toFixed(1)}%` : "--"}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-white/45">
                                 Model vs Market
                               </p>
                             </div>
                           </div>
-                          <p className="text-sm leading-relaxed text-muted-foreground">
+                          <p className="text-sm leading-relaxed text-white/65">
                             {whyThisBetText ||
                               "Run an analysis to understand the strongest opportunity."}
                           </p>
@@ -1204,14 +1207,14 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35 }}
-                  className="rounded-2xl bg-card ring-surface p-5 card-shadow"
+                  className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                 >
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/45">
                     Betting Recommendation
                   </h3>
                   {bestBet ? (
                     <div className="space-y-3">
-                      <p className="text-sm leading-relaxed text-muted-foreground">
+                      <p className="text-sm leading-relaxed text-white/65">
                         <span className="font-semibold text-primary">
                           {bestBet.market}
                         </span>{" "}
@@ -1232,16 +1235,16 @@ export default function MatchAnalysis() {
                       </p>
 
                       {bestBetStakeRecommendation && (
-                        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
-                          <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
+                        <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
+                          <p className="mb-1 text-xs uppercase tracking-wider text-white/45">
                             Recommended Stake
                           </p>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-lg font-bold font-mono-data text-foreground">
+                              <p className="text-lg font-bold font-mono-data text-white">
                                 €{bestBetStakeRecommendation.recommendedAmount.toFixed(2)}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-white/45">
                                 {bestBetStakeRecommendation.recommendedPct.toFixed(
                                   2
                                 )}
@@ -1255,7 +1258,7 @@ export default function MatchAnalysis() {
                             )}
                           </div>
                           {bestBetStakeRecommendation.reason && (
-                            <p className="mt-2 text-xs text-muted-foreground">
+                            <p className="mt-2 text-xs text-white/45">
                               {bestBetStakeRecommendation.reason}
                             </p>
                           )}
@@ -1263,7 +1266,7 @@ export default function MatchAnalysis() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-white/60">
                       No recommendation available.
                     </p>
                   )}
@@ -1274,11 +1277,11 @@ export default function MatchAnalysis() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.38 }}
-                    className="rounded-2xl bg-card ring-surface p-5 card-shadow"
+                    className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                   >
                     <div className="mb-3 flex items-center gap-2">
                       <Lightbulb className="h-4 w-4 text-amber-300" />
-                      <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
                         Historical Signals
                       </h3>
                     </div>
@@ -1287,9 +1290,9 @@ export default function MatchAnalysis() {
                       {historicalSignals.map((signal) => (
                         <div
                           key={signal.label}
-                          className="rounded-xl border border-white/8 bg-white/[0.03] p-3"
+                          className="rounded-xl border border-white/8 bg-white/[0.04] p-3"
                         >
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                          <p className="text-xs uppercase tracking-wider text-white/45">
                             {signal.label}
                           </p>
                           <p
@@ -1313,9 +1316,9 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="rounded-2xl bg-card ring-surface p-5 card-shadow"
+                  className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                 >
-                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
                     Model vs Market Probability
                   </h3>
                   <ResponsiveContainer width="100%" height={240}>
@@ -1365,10 +1368,10 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.45 }}
-                  className="overflow-hidden rounded-2xl bg-card ring-surface card-shadow"
+                  className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                 >
                   <div className="p-5 pb-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/45">
                       Detailed Results
                     </h3>
                   </div>
@@ -1392,7 +1395,7 @@ export default function MatchAnalysis() {
                           ].map((h) => (
                             <th
                               key={h}
-                              className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                              className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-white/45"
                             >
                               {h}
                             </th>
@@ -1422,19 +1425,19 @@ export default function MatchAnalysis() {
                               <td className="px-4 py-3 font-medium text-foreground">
                                 {r.market}
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
+                              <td className="px-4 py-3 font-mono-data text-white/65">
                                 {r.odds.toFixed(2)}
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
                                 {r.modelProb.toFixed(1)}%
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
+                              <td className="px-4 py-3 font-mono-data text-white/65">
                                 {r.impliedProb.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3">
                                 <ValueBadge value={r.valueBet} />
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
+                              <td className="px-4 py-3 font-mono-data text-white/65">
                                 {r.kelly.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
@@ -1454,7 +1457,7 @@ export default function MatchAnalysis() {
                                   <p className="font-mono-data text-foreground">
                                     €{stakeRecommendation.recommendedAmount.toFixed(2)}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-white/45">
                                     {stakeRecommendation.recommendedPct.toFixed(2)}%
                                   </p>
                                   {stakeRecommendation.capped && (
@@ -1480,7 +1483,7 @@ export default function MatchAnalysis() {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="rounded-2xl bg-primary/5 p-5 ring-1 ring-primary/20 card-glow"
+                    className="rounded-3xl border border-primary/20 bg-[linear-gradient(180deg,rgba(20,83,45,0.22)_0%,rgba(8,18,40,0.98)_100%)] p-5 ring-1 ring-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
@@ -1488,10 +1491,10 @@ export default function MatchAnalysis() {
                         Strongest Value Opportunity
                       </h3>
                     </div>
-                    <p className="text-lg font-bold text-foreground">
+                    <p className="text-lg font-bold text-white">
                       {bestBet.market}
                     </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-white/65">
                       Edge:{" "}
                       <span className="font-mono-data font-bold text-primary">
                         {bestBet.valueBet.toFixed(1)}%
@@ -1514,7 +1517,7 @@ export default function MatchAnalysis() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-2xl bg-card ring-surface p-16 text-center card-shadow"
+                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-16 text-center shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
               >
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
                   <Target className="h-8 w-8 text-primary" strokeWidth={1.5} />

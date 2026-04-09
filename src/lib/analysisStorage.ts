@@ -1,7 +1,8 @@
-import type { SavedAnalysis } from "../types/analysis";
+﻿import type { SavedAnalysis } from "../types/analysis";
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
+export const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
 
 export interface BankrollSettings {
   initialBankroll: number;
@@ -88,10 +89,12 @@ export function saveAnalysis(analysis: SavedAnalysis): void {
   const existing = getAnalyses();
   const updated = [analysis, ...existing];
   localStorage.setItem(ANALYSES_KEY, JSON.stringify(updated));
+  window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
 export function overwriteAnalyses(analyses: SavedAnalysis[]): void {
   localStorage.setItem(ANALYSES_KEY, JSON.stringify(analyses));
+  window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
 export function deleteAnalysis(analysisId: string): SavedAnalysis[] {
@@ -392,18 +395,18 @@ function getSettledBetsWithContext() {
 }
 
 function getEdgeBucket(valueBet: number): string {
-  if (valueBet < 3) return "0–2.9%";
-  if (valueBet < 5) return "3–4.9%";
-  if (valueBet < 7) return "5–6.9%";
+  if (valueBet < 3) return "0-2.9%";
+  if (valueBet < 5) return "3-4.9%";
+  if (valueBet < 7) return "5-6.9%";
   return "7%+";
 }
 
 function getConfidenceBucket(confidence: number): string {
-  if (confidence <= 5) return "0–5";
+  if (confidence <= 5) return "0-5";
   if (confidence <= 6) return "6";
   if (confidence <= 7) return "7";
   if (confidence <= 8) return "8";
-  return "9–10";
+  return "9-10";
 }
 
 export function getEdgeBucketPerformance(): EdgeBucketPerformanceItem[] {
@@ -435,11 +438,10 @@ export function getEdgeBucketPerformance(): EdgeBucketPerformanceItem[] {
     const settled = current.greens + current.reds;
     current.hitRate = settled > 0 ? (current.greens / settled) * 100 : 0;
     current.roi = current.totalStake > 0 ? (current.profitLoss / current.totalStake) * 100 : 0;
-
     bucketMap.set(bucket, current);
   });
 
-  const order = ["0–2.9%", "3–4.9%", "5–6.9%", "7%+"];
+  const order = ["0-2.9%", "3-4.9%", "5-6.9%", "7%+"];
 
   return Array.from(bucketMap.values()).sort(
     (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)
@@ -475,11 +477,10 @@ export function getConfidenceBucketPerformance(): ConfidenceBucketPerformanceIte
     const settled = current.greens + current.reds;
     current.hitRate = settled > 0 ? (current.greens / settled) * 100 : 0;
     current.roi = current.totalStake > 0 ? (current.profitLoss / current.totalStake) * 100 : 0;
-
     bucketMap.set(bucket, current);
   });
 
-  const order = ["0–5", "6", "7", "8", "9–10"];
+  const order = ["0-5", "6", "7", "8", "9-10"];
 
   return Array.from(bucketMap.values()).sort(
     (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)

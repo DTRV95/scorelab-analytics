@@ -19,6 +19,12 @@ export interface AnalysisResult {
   expectedValue?: number;
   oddsBand?: string;
   marketFamily?: string;
+  baseConfidence?: number;
+  adjustedConfidence?: number;
+  historicalAdjustment?: number;
+  historicalSample?: number;
+  historicalRoi?: number;
+  historicalHitRate?: number;
 }
 
 export interface AnalysisSummary {

@@ -2,8 +2,11 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
-import { getAnalyses } from "@/lib/analysisStorage";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ANALYSES_UPDATED_EVENT,
+  getAnalyses,
+} from "@/lib/analysisStorage";
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 import {
   ResponsiveContainer,
@@ -166,7 +169,46 @@ function getTrackedOrBestResult(analysis: SavedAnalysis): AnalysisResult | null 
   return analysis.results.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
 }
 
+function isToday(dateString: string) {
+  const d = new Date(dateString);
+  const now = new Date();
+
+  return (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
+}
+
+function RadarLegend() {
+  const items = [
+    { label: "Premium", color: "rgba(168,85,247,0.95)" },
+    { label: "Elite", color: "rgba(56,189,248,0.95)" },
+    { label: "Bet", color: "rgba(34,197,94,0.95)" },
+    { label: "Caution", color: "rgba(234,179,8,0.95)" },
+    { label: "No Bet / Other", color: "rgba(148,163,184,0.9)" },
+  ];
+
+  return (
+    <div className="mb-4 flex flex-wrap gap-2">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/65"
+        >
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: item.color }}
+          />
+          <span>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ValueRadar() {
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [tierFilter, setTierFilter] = useState<
     "all" | "premium" | "elite" | "bet" | "watchlist" | "discard"
   >("all");
@@ -176,7 +218,22 @@ export default function ValueRadar() {
   const [marketSearch, setMarketSearch] = useState("");
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
 
-  const analyses = getAnalyses();
+  useEffect(() => {
+    const refreshAnalyses = () => {
+      setAnalyses(getAnalyses().filter((analysis) => isToday(analysis.createdAt)));
+    };
+
+    refreshAnalyses();
+    window.addEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
+    window.addEventListener("storage", refreshAnalyses);
+    window.addEventListener("focus", refreshAnalyses);
+
+    return () => {
+      window.removeEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
+      window.removeEventListener("storage", refreshAnalyses);
+      window.removeEventListener("focus", refreshAnalyses);
+    };
+  }, []);
 
   const radarPoints = useMemo<RadarPoint[]>(() => {
     return analyses
@@ -206,19 +263,21 @@ export default function ValueRadar() {
   }, [analyses]);
 
   const filteredPoints = useMemo(() => {
-    return radarPoints.filter((point) => {
-      if (tierFilter !== "all" && point.tier !== tierFilter) return false;
-      if (decisionFilter !== "all" && point.decision !== decisionFilter) return false;
+    return radarPoints
+      .filter((point) => {
+        if (tierFilter !== "all" && point.tier !== tierFilter) return false;
+        if (decisionFilter !== "all" && point.decision !== decisionFilter) return false;
 
-      const search = marketSearch.trim().toLowerCase();
-      if (search) {
-        const haystack =
-          `${point.match} ${point.market} ${point.homeTeam} ${point.awayTeam}`.toLowerCase();
-        if (!haystack.includes(search)) return false;
-      }
+        const search = marketSearch.trim().toLowerCase();
+        if (search) {
+          const haystack =
+            `${point.match} ${point.market} ${point.homeTeam} ${point.awayTeam}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => b.confidence - a.confidence);
   }, [radarPoints, tierFilter, decisionFilter, marketSearch]);
 
   const selectedPoint =
@@ -369,10 +428,72 @@ export default function ValueRadar() {
         </PremiumCard>
 
         <PremiumCard
+          title="Visible Opportunities"
+          description="Compact table of today's visible radar points."
+          badge="Table"
+        >
+          {filteredPoints.length === 0 ? (
+            <p className="text-sm text-white/60">
+              No opportunities from today match the current filters.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-sm">
+                <thead className="border-b border-white/5">
+                  <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                    <th className="py-3 pr-4">Match</th>
+                    <th className="py-3 pr-4">Market</th>
+                    <th className="py-3 pr-4">Edge</th>
+                    <th className="py-3 pr-4">Confidence</th>
+                    <th className="py-3 pr-4">Odds</th>
+                    <th className="py-3 pr-4">Kelly</th>
+                    <th className="py-3 pr-4">Decision</th>
+                    <th className="py-3 pr-4">Tier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPoints.map((point) => (
+                    <tr
+                      key={point.id}
+                      onClick={() => setSelectedPointId(point.id)}
+                      className={`cursor-pointer border-t border-white/5 transition-colors hover:bg-white/[0.03] ${
+                        selectedPoint?.id === point.id ? "bg-white/[0.04]" : ""
+                      }`}
+                    >
+                      <td className="py-3 pr-4 font-medium text-white">{point.match}</td>
+                      <td className="py-3 pr-4 text-white/65">{point.market}</td>
+                      <td className="py-3 pr-4">
+                        <ValueBadge value={point.edge} />
+                      </td>
+                      <td className="py-3 pr-4">
+                        <ConfidenceMeter score={point.confidence} className="w-24" />
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-white">
+                        {point.odds.toFixed(2)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-white">
+                        {point.kelly.toFixed(2)}%
+                      </td>
+                      <td className="py-3 pr-4">
+                        <DecisionBadge decision={point.decision} />
+                      </td>
+                      <td className="py-3 pr-4">
+                        {point.tier ? <TierBadge tier={point.tier} /> : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </PremiumCard>
+
+        <PremiumCard
           title="Edge vs Confidence Radar"
           description="Bubble position shows edge and confidence. Bubble size scales with Kelly."
           badge="Core View"
         >
+          <RadarLegend />
           <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
@@ -592,66 +713,6 @@ export default function ValueRadar() {
           )}
         </PremiumCard>
 
-        <PremiumCard
-          title="Visible Opportunities"
-          description="Compact table of the currently visible radar points."
-          badge="Table"
-        >
-          {filteredPoints.length === 0 ? (
-            <p className="text-sm text-white/60">
-              No opportunities match the current filters.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-sm">
-                <thead className="border-b border-white/5">
-                  <tr className="text-left text-xs uppercase tracking-wider text-white/45">
-                    <th className="py-3 pr-4">Match</th>
-                    <th className="py-3 pr-4">Market</th>
-                    <th className="py-3 pr-4">Edge</th>
-                    <th className="py-3 pr-4">Confidence</th>
-                    <th className="py-3 pr-4">Odds</th>
-                    <th className="py-3 pr-4">Kelly</th>
-                    <th className="py-3 pr-4">Decision</th>
-                    <th className="py-3 pr-4">Tier</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPoints.map((point) => (
-                    <tr
-                      key={point.id}
-                      onClick={() => setSelectedPointId(point.id)}
-                      className={`cursor-pointer border-t border-white/5 transition-colors hover:bg-white/[0.03] ${
-                        selectedPoint?.id === point.id ? "bg-white/[0.04]" : ""
-                      }`}
-                    >
-                      <td className="py-3 pr-4 font-medium text-white">{point.match}</td>
-                      <td className="py-3 pr-4 text-white/65">{point.market}</td>
-                      <td className="py-3 pr-4">
-                        <ValueBadge value={point.edge} />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <ConfidenceMeter score={point.confidence} className="w-24" />
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-white">
-                        {point.odds.toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-white">
-                        {point.kelly.toFixed(2)}%
-                      </td>
-                      <td className="py-3 pr-4">
-                        <DecisionBadge decision={point.decision} />
-                      </td>
-                      <td className="py-3 pr-4">
-                        {point.tier ? <TierBadge tier={point.tier} /> : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </PremiumCard>
       </motion.div>
     </AppLayout>
   );
