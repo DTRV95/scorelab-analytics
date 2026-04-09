@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -10,6 +11,16 @@ MIN_ODDS = 1.3
 MAX_ODDS = 6.0
 MAX_GOALS = 10
 BOOTSTRAP_ITERATIONS = 400
+DEFAULT_RHO = -0.08
+DEFAULT_SHRINKAGE_MATCHES = 6.0
+
+
+@dataclass(frozen=True)
+class LeagueContext:
+    home_goals_avg: float
+    away_goals_avg: float
+    rho: float
+    shrinkage_matches: float
 
 
 def clamp(value: float, lower: float, upper: float) -> float:
@@ -41,38 +52,89 @@ def effective_sample(total_games: int, recent_games: int) -> float:
     return max(1.0, total_games * 0.55 + recent_games * 0.45)
 
 
+def get_league_context(data) -> LeagueContext:
+    return LeagueContext(
+        home_goals_avg=clamp(getattr(data, "league_home_goals_avg", LEAGUE_HOME_GOALS_AVG), 0.5, 3.5),
+        away_goals_avg=clamp(getattr(data, "league_away_goals_avg", LEAGUE_AWAY_GOALS_AVG), 0.4, 3.0),
+        rho=clamp(getattr(data, "dixon_coles_rho", DEFAULT_RHO), -0.5, 0.5),
+        shrinkage_matches=clamp(getattr(data, "shrinkage_matches", DEFAULT_SHRINKAGE_MATCHES), 0.0, 30.0),
+    )
+
+
+def shrink_rate(observed_rate: float, games: int, prior_rate: float, shrinkage_matches: float) -> float:
+    if games <= 0:
+        return prior_rate
+    if shrinkage_matches <= 0:
+        return observed_rate
+
+    weight = games / (games + shrinkage_matches)
+    return observed_rate * weight + prior_rate * (1 - weight)
+
+
 def get_attack_defense_strengths(data) -> Dict[str, float]:
-    home_attack_rate = weighted_rate(
+    context = get_league_context(data)
+
+    raw_home_attack_rate = weighted_rate(
         data.golos_marcados_casa,
         data.jogos_casa,
         data.golos_marcados_casa_rec,
         data.jogos_casa_rec,
     )
-    home_defense_concede_rate = weighted_rate(
+    raw_home_defense_concede_rate = weighted_rate(
         data.golos_sofridos_casa,
         data.jogos_casa,
         data.golos_sofridos_casa_rec,
         data.jogos_casa_rec,
     )
-    away_attack_rate = weighted_rate(
+    raw_away_attack_rate = weighted_rate(
         data.golos_marcados_fora,
         data.jogos_fora,
         data.golos_marcados_fora_rec,
         data.jogos_fora_rec,
     )
-    away_defense_concede_rate = weighted_rate(
+    raw_away_defense_concede_rate = weighted_rate(
         data.golos_sofridos_fora,
         data.jogos_fora,
         data.golos_sofridos_fora_rec,
         data.jogos_fora_rec,
     )
 
-    home_attack_strength = clamp(home_attack_rate / LEAGUE_HOME_GOALS_AVG if LEAGUE_HOME_GOALS_AVG else 1.0, 0.45, 2.2)
-    home_defense_weakness = clamp(home_defense_concede_rate / LEAGUE_AWAY_GOALS_AVG if LEAGUE_AWAY_GOALS_AVG else 1.0, 0.45, 2.2)
-    away_attack_strength = clamp(away_attack_rate / LEAGUE_AWAY_GOALS_AVG if LEAGUE_AWAY_GOALS_AVG else 1.0, 0.45, 2.2)
-    away_defense_weakness = clamp(away_defense_concede_rate / LEAGUE_HOME_GOALS_AVG if LEAGUE_HOME_GOALS_AVG else 1.0, 0.45, 2.2)
+    effective_home_games = max(data.jogos_casa, data.jogos_casa_rec)
+    effective_away_games = max(data.jogos_fora, data.jogos_fora_rec)
+
+    home_attack_rate = shrink_rate(
+        raw_home_attack_rate,
+        effective_home_games,
+        context.home_goals_avg,
+        context.shrinkage_matches,
+    )
+    home_defense_concede_rate = shrink_rate(
+        raw_home_defense_concede_rate,
+        effective_home_games,
+        context.away_goals_avg,
+        context.shrinkage_matches,
+    )
+    away_attack_rate = shrink_rate(
+        raw_away_attack_rate,
+        effective_away_games,
+        context.away_goals_avg,
+        context.shrinkage_matches,
+    )
+    away_defense_concede_rate = shrink_rate(
+        raw_away_defense_concede_rate,
+        effective_away_games,
+        context.home_goals_avg,
+        context.shrinkage_matches,
+    )
+
+    home_attack_strength = clamp(home_attack_rate / context.home_goals_avg if context.home_goals_avg else 1.0, 0.45, 2.2)
+    home_defense_weakness = clamp(home_defense_concede_rate / context.away_goals_avg if context.away_goals_avg else 1.0, 0.45, 2.2)
+    away_attack_strength = clamp(away_attack_rate / context.away_goals_avg if context.away_goals_avg else 1.0, 0.45, 2.2)
+    away_defense_weakness = clamp(away_defense_concede_rate / context.home_goals_avg if context.home_goals_avg else 1.0, 0.45, 2.2)
 
     return {
+        "league_home_goals_avg": context.home_goals_avg,
+        "league_away_goals_avg": context.away_goals_avg,
         "home_attack_rate": home_attack_rate,
         "home_defense_concede_rate": home_defense_concede_rate,
         "away_attack_rate": away_attack_rate,
@@ -86,12 +148,13 @@ def get_attack_defense_strengths(data) -> Dict[str, float]:
 
 def estimate_lambdas(data) -> Tuple[float, float]:
     strengths = get_attack_defense_strengths(data)
+    context = get_league_context(data)
 
     sample_factor_home = clamp(effective_sample(data.jogos_casa, data.jogos_casa_rec) / 12.0, 0.75, 1.1)
     sample_factor_away = clamp(effective_sample(data.jogos_fora, data.jogos_fora_rec) / 12.0, 0.75, 1.1)
 
-    lambda_home = LEAGUE_HOME_GOALS_AVG * strengths["home_attack_strength"] * strengths["away_defense_weakness"]
-    lambda_away = LEAGUE_AWAY_GOALS_AVG * strengths["away_attack_strength"] * strengths["home_defense_weakness"]
+    lambda_home = context.home_goals_avg * strengths["home_attack_strength"] * strengths["away_defense_weakness"]
+    lambda_away = context.away_goals_avg * strengths["away_attack_strength"] * strengths["home_defense_weakness"]
 
     lambda_home *= sample_factor_home
     lambda_away *= sample_factor_away
@@ -115,7 +178,7 @@ def dixon_coles_tau(i: int, j: int, lambda_home: float, lambda_away: float, rho:
     return 1.0
 
 
-def score_matrix(lambda_home: float, lambda_away: float, rho: float = -0.08, max_goals: int = MAX_GOALS) -> np.ndarray:
+def score_matrix(lambda_home: float, lambda_away: float, rho: float = DEFAULT_RHO, max_goals: int = MAX_GOALS) -> np.ndarray:
     matrix = np.zeros((max_goals + 1, max_goals + 1))
     for i in range(max_goals + 1):
         for j in range(max_goals + 1):
@@ -189,6 +252,7 @@ def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, mar
     home_sample = effective_sample(data.jogos_casa, data.jogos_casa_rec)
     away_sample = effective_sample(data.jogos_fora, data.jogos_fora_rec)
     joint_sample = (home_sample + away_sample) / 2
+    context = get_league_context(data)
 
     sigma_home = clamp(0.28 / math.sqrt(joint_sample), 0.03, 0.16)
     sigma_away = clamp(0.30 / math.sqrt(joint_sample), 0.03, 0.16)
@@ -197,7 +261,7 @@ def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, mar
     for _ in range(BOOTSTRAP_ITERATIONS):
         perturbed_home = clamp(np.random.normal(lambda_home, sigma_home), 0.05, 4.5)
         perturbed_away = clamp(np.random.normal(lambda_away, sigma_away), 0.05, 4.0)
-        matrix = score_matrix(perturbed_home, perturbed_away)
+        matrix = score_matrix(perturbed_home, perturbed_away, rho=context.rho)
         market_probs = market_probabilities_from_matrix(matrix)
         draws.append(market_probs[market_name])
 
@@ -372,8 +436,9 @@ def analyze_market(market_name: str, odd: float, fair_prob: float, model_prob: f
 def analisar_jogo(data):
     lambda_casa, lambda_fora = estimate_lambdas(data)
     total_golos_esperados = lambda_casa + lambda_fora
+    context = get_league_context(data)
 
-    base_matrix = score_matrix(lambda_casa, lambda_fora)
+    base_matrix = score_matrix(lambda_casa, lambda_fora, rho=context.rho)
     model_probs = market_probabilities_from_matrix(base_matrix)
 
     fair_over25, fair_under25 = fair_probs_two_way(data.odd_mais_25, data.odd_menos_25)

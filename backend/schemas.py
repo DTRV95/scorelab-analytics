@@ -1,10 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 
 class AnalyzeRequest(BaseModel):
     equipa_casa: str
     equipa_fora: str
+    liga: str = "default"
 
     jogos_casa: int
     golos_marcados_casa: int
@@ -32,6 +33,10 @@ class AnalyzeRequest(BaseModel):
 
     banca: float
     fracao_kelly: float
+    league_home_goals_avg: float = Field(default=1.45, gt=0)
+    league_away_goals_avg: float = Field(default=1.15, gt=0)
+    dixon_coles_rho: float = Field(default=-0.08, ge=-0.5, le=0.5)
+    shrinkage_matches: float = Field(default=6.0, ge=0.0, le=30.0)
 
 
 class MarketResult(BaseModel):

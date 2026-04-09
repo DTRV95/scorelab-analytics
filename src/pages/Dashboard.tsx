@@ -1,5 +1,4 @@
-import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/StatCard";
+﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
@@ -33,6 +32,82 @@ const fadeUp = {
 };
 
 type ChartRow = Record<string, string | number | null | undefined>;
+
+function MetricCard({
+  label,
+  value,
+  change,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string | number;
+  change?: string;
+  tone?: "positive" | "negative" | "neutral";
+}) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      className="group relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
+      <div className="relative">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          {label}
+        </p>
+        <p className="mt-3 font-mono-data text-3xl font-bold text-white">
+          {value}
+        </p>
+        {change ? (
+          <p
+            className={`mt-2 text-sm ${
+              tone === "positive"
+                ? "text-emerald-300"
+                : tone === "negative"
+                ? "text-red-300"
+                : "text-white/60"
+            }`}
+          >
+            {change}
+          </p>
+        ) : null}
+      </div>
+    </motion.div>
+  );
+}
+
+function ModernSection({
+  title,
+  description,
+  badge,
+  children,
+  className = "",
+}: {
+  title: string;
+  description: string;
+  badge?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      className={`rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+    >
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <p className="mt-1 text-sm text-white/60">{description}</p>
+        </div>
+        {badge ? (
+          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+            {badge}
+          </div>
+        ) : null}
+      </div>
+      {children}
+    </motion.div>
+  );
+}
 
 function getBestBet(results: AnalysisResult[]) {
   if (!Array.isArray(results) || results.length === 0) return null;
@@ -371,72 +446,62 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
-        <motion.div
-          variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          <StatCard
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
             label="Settled Bets"
             value={dashboardData.performance?.summary?.totalSettledBets ?? 0}
             change={`${dashboardData.performance?.summary?.hitRate ?? 0}% hit rate`}
-            changeType="neutral"
-            mono
           />
-          <StatCard
+          <MetricCard
             label="ROI"
             value={`${dashboardData.performance?.summary?.overallRoi ?? 0}%`}
             change={`P/L €${(dashboardData.performance?.summary?.totalProfitLoss ?? 0).toFixed(2)}`}
-            changeType={
+            tone={
               (dashboardData.performance?.summary?.overallRoi ?? 0) >= 0
                 ? "positive"
                 : "negative"
             }
-            mono
           />
-          <StatCard
+          <MetricCard
             label="Avg Confidence"
             value={dashboardData.avgConfidence.toFixed(1)}
             change={`${dashboardData.valueBetsFound} value bets found`}
-            changeType="neutral"
-            mono
           />
-          <StatCard
+          <MetricCard
             label="Bankroll"
             value={`€${bankrollStats.currentBankroll.toFixed(2)}`}
             change={`Open exposure €${dashboardData.openExposure.toFixed(2)} · ${dashboardData.riskLevel}`}
-            changeType="neutral"
-            mono
           />
-        </motion.div>
+        </div>
 
         {(dashboardData.autoInsights ?? []).length > 0 && (
-  <motion.div
-    variants={fadeUp}
-    className="grid grid-cols-1 gap-4 xl:grid-cols-2"
-  >
-    {dashboardData.autoInsights.map((insight) => (
-      <div
-        key={insight.title}
-        className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-          {insight.title}
-        </p>
-        <p
-          className={`mt-3 text-sm leading-relaxed ${
-            insight.tone === "positive"
-              ? "text-emerald-300"
-              : insight.tone === "negative"
-              ? "text-red-300"
-              : "text-white/70"
-          }`}
-        >
-          {insight.detail}
-        </p>
-      </div>
-    ))}
-  </motion.div>
-)}
+          <motion.div
+            variants={fadeUp}
+            className="grid grid-cols-1 gap-4 xl:grid-cols-2"
+          >
+            {dashboardData.autoInsights.map((insight) => (
+              <div
+                key={insight.title}
+                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                  {insight.title}
+                </p>
+                <p
+                  className={`mt-3 text-sm leading-relaxed ${
+                    insight.tone === "positive"
+                      ? "text-emerald-300"
+                      : insight.tone === "negative"
+                      ? "text-red-300"
+                      : "text-white/70"
+                  }`}
+                >
+                  {insight.detail}
+                </p>
+              </div>
+            ))}
+          </motion.div>
+        )}
 
         {topValueToday && (
           <motion.div
@@ -613,23 +678,15 @@ export default function Dashboard() {
           />
         </div>
 
-        <motion.div
-          variants={fadeUp}
-          className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+        <ModernSection
+          title="Performance by Market"
+          description="This is the most important table to discover which market types deserve trust."
+          badge="Markets"
         >
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Performance by Market
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              This is the most important table to discover which market types deserve trust.
-            </p>
-          </div>
-
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1100px] text-sm">
               <thead className="border-b border-white/5">
-                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
                   <th className="py-3 pr-4">Market</th>
                   <th className="py-3 pr-4">Group</th>
                   <th className="py-3 pr-4">Bets</th>
@@ -688,37 +745,34 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </ModernSection>
 
-        <motion.div
-          variants={fadeUp}
-          className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] overflow-hidden"
+        <ModernSection
+          title="Recent Analyses"
+          description="Latest model activity and strongest angle from each recent match."
+          badge="Recent"
+          className="overflow-hidden"
         >
-          <div className="p-6 pb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Recent Analyses
-            </h2>
-          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-t border-white/5">
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Match
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Market
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Edge
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Confidence
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Decision
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
                     Date
                   </th>
                 </tr>
@@ -767,25 +821,17 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </ModernSection>
 
-        <motion.div
-          variants={fadeUp}
-          className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+        <ModernSection
+          title="Performance by Tier"
+          description="This shows whether Premium and Elite are really outperforming the weaker signals."
+          badge="Tiers"
         >
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Performance by Tier
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              This shows whether Premium and Elite are really outperforming the weaker signals.
-            </p>
-          </div>
-
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-sm">
               <thead className="border-b border-white/5">
-                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
                   <th className="py-3 pr-4">Tier</th>
                   <th className="py-3 pr-4">Bets</th>
                   <th className="py-3 pr-4">Wins</th>
@@ -840,7 +886,7 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </ModernSection>
       </motion.div>
     </AppLayout>
   );

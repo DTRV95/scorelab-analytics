@@ -25,7 +25,16 @@ import {
   TierBadge,
 } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { Play, Save, ChevronDown, Lightbulb, Target } from "lucide-react";
+import {
+  Play,
+  Save,
+  ChevronDown,
+  Lightbulb,
+  Target,
+  Database,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -39,6 +48,11 @@ import {
 import { Progress } from "@/components/ui/progress";
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 import { getHistoricalSignalsForResult } from "@/lib/edgeInteligence";
+import {
+  DEFAULT_LEAGUE_KEY,
+  LEAGUE_PRESETS,
+  LEAGUE_PRESET_MAP,
+} from "@/lib/leaguePresets";
 
 type RiskLevel = "Low" | "Medium" | "High";
 
@@ -69,6 +83,7 @@ interface BackendResponse {
 interface FormData {
   equipa_casa: string;
   equipa_fora: string;
+  liga: string;
 
   jogos_casa: string;
   golos_marcados_casa: string;
@@ -97,11 +112,16 @@ interface FormData {
 
   banca: string;
   fracao_kelly: string;
+  league_home_goals_avg: string;
+  league_away_goals_avg: string;
+  dixon_coles_rho: string;
+  shrinkage_matches: string;
 }
 
 const initialFormData: FormData = {
   equipa_casa: "",
   equipa_fora: "",
+  liga: DEFAULT_LEAGUE_KEY,
 
   jogos_casa: "0",
   golos_marcados_casa: "0",
@@ -130,6 +150,7 @@ const initialFormData: FormData = {
 
   banca: "100",
   fracao_kelly: "1",
+  ...LEAGUE_PRESET_MAP[DEFAULT_LEAGUE_KEY],
 };
 
 const loadingSteps = [
@@ -147,7 +168,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+    <div className="rounded-2xl bg-card ring-surface p-5 card-shadow">
       <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
@@ -161,21 +182,113 @@ function FormField({
   value,
   onChange,
   type = "text",
+  description,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  description?: string;
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+      <label className="mb-1.5 block text-xs text-muted-foreground">
+        {label}
+      </label>
       <input
         type={type}
+        step={type === "number" ? "any" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-10 rounded-xl input-surface px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-all duration-200"
+        className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
       />
+      {description ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  description,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  description?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs text-muted-foreground">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full h-10 px-3 rounded-lg input-surface text-sm text-foreground border border-white/10 focus:outline-none"
+      >
+        {options.map((option) => (
+          <option
+            key={option}
+            value={option}
+            className="bg-background text-foreground"
+          >
+            {option}
+          </option>
+        ))}
+      </select>
+      {description ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function InsightTile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/5">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+function StepChip({
+  label,
+  active,
+}: {
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-colors ${
+        active
+          ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+          : "bg-white/[0.03] text-muted-foreground ring-1 ring-white/10"
+      }`}
+    >
+      {label}
     </div>
   );
 }
@@ -253,6 +366,55 @@ export default function MatchAnalysis() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleLeagueChange = (league: string) => {
+    const preset = LEAGUE_PRESET_MAP[league];
+
+    setFormData((prev) => ({
+      ...prev,
+      liga: league,
+      ...(preset ?? {}),
+    }));
+  };
+
+  const selectedLeaguePreset =
+    LEAGUE_PRESET_MAP[formData.liga] ?? LEAGUE_PRESET_MAP[DEFAULT_LEAGUE_KEY];
+
+  const setupProgress = useMemo(() => {
+    const leagueReady = Boolean(formData.liga);
+    const teamsReady = Boolean(formData.equipa_casa && formData.equipa_fora);
+    const statsReady =
+      Number(formData.jogos_casa) > 0 &&
+      Number(formData.jogos_fora) > 0 &&
+      Number(formData.golos_marcados_casa) >= 0 &&
+      Number(formData.golos_marcados_fora) >= 0;
+    const oddsReady =
+      Number(formData.odd_casa) > 1 &&
+      Number(formData.odd_empate) > 1 &&
+      Number(formData.odd_fora) > 1 &&
+      Number(formData.odd_mais_25) > 1 &&
+      Number(formData.odd_menos_25) > 1;
+    const bankrollReady =
+      Number(formData.banca) > 0 && Number(formData.fracao_kelly) > 0;
+
+    const completed = [
+      leagueReady,
+      teamsReady,
+      statsReady,
+      oddsReady,
+      bankrollReady,
+    ].filter(Boolean).length;
+
+    return {
+      leagueReady,
+      teamsReady,
+      statsReady,
+      oddsReady,
+      bankrollReady,
+      completed,
+      pct: (completed / 5) * 100,
+    };
+  }, [formData]);
+
   const bestBet = useMemo(() => {
     if (!results.length) return null;
 
@@ -328,6 +490,7 @@ export default function MatchAnalysis() {
       const payload = {
         equipa_casa: formData.equipa_casa,
         equipa_fora: formData.equipa_fora,
+        liga: formData.liga,
 
         jogos_casa: Number(formData.jogos_casa),
         golos_marcados_casa: Number(formData.golos_marcados_casa),
@@ -356,6 +519,10 @@ export default function MatchAnalysis() {
 
         banca: Number(formData.banca),
         fracao_kelly: Number(formData.fracao_kelly),
+        league_home_goals_avg: Number(formData.league_home_goals_avg),
+        league_away_goals_avg: Number(formData.league_away_goals_avg),
+        dixon_coles_rho: Number(formData.dixon_coles_rho),
+        shrinkage_matches: Number(formData.shrinkage_matches),
       };
 
       const response = await fetch("http://localhost:8000/analyze", {
@@ -457,24 +624,172 @@ export default function MatchAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Match Analysis</h1>
+        <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.7} />
+              Guided Analysis Flow
+            </div>
+            <h1 className="mt-3 text-2xl font-bold text-foreground">
+              Match Analysis
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Enter team statistics and market odds to detect value.
+              Choose the competition, add team stats, and compare your model against the market.
             </p>
           </div>
-          <Button variant="outline" size="sm">
-            <Save className="mr-1 h-4 w-4" strokeWidth={1.5} /> Save
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="hidden rounded-2xl bg-card ring-surface px-4 py-3 card-shadow md:block">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                Setup Progress
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {Math.round(setupProgress.pct)}%
+              </p>
+            </div>
+            <Button variant="outline" size="sm">
+              <Save className="mr-1 h-4 w-4" strokeWidth={1.5} /> Save
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-2 rounded-2xl bg-card ring-surface p-6 card-shadow overflow-y-auto max-h-[calc(100vh-180px)]">
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-card ring-surface p-6 card-shadow">
             <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-1">
+              <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                      Analysis Setup
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-foreground">
+                      Fill the model in the order you think
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      Competition first, then team sample, then market odds. This
+                      keeps the analysis grounded before the model makes a call.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/10 px-3 py-2 text-right">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Ready
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {setupProgress.completed}/5
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Progress value={setupProgress.pct} className="h-2 bg-white/5" />
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <StepChip label="League" active={setupProgress.leagueReady} />
+                    <StepChip label="Teams" active={setupProgress.teamsReady} />
+                    <StepChip label="Stats" active={setupProgress.statsReady} />
+                    <StepChip label="Odds" active={setupProgress.oddsReady} />
+                    <StepChip label="Bankroll" active={setupProgress.bankrollReady} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <SectionCard title="League Setup">
+                  <div className="space-y-4">
+                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            Start with the competition
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            We auto-fill real 2025/26 scoring averages for the selected league,
+                            then suggest safe model defaults for low-score adjustment and
+                            small-sample protection.
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-white/[0.03] ring-1 ring-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          Auto-fill
+                        </div>
+                      </div>
+                    </div>
+
+                    <SelectField
+                      label="Competition"
+                      value={formData.liga}
+                      onChange={handleLeagueChange}
+                      options={LEAGUE_PRESETS.map((preset) => preset.key)}
+                      description="Pick the league first so the model starts from the right scoring baseline."
+                    />
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <InsightTile
+                        label="Country"
+                        value={selectedLeaguePreset.country}
+                        hint={selectedLeaguePreset.tier}
+                      />
+                      <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                        <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          <Database className="h-3.5 w-3.5" strokeWidth={1.7} />
+                          Data Source
+                        </p>
+                        <a
+                          href={selectedLeaguePreset.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 block text-sm font-medium text-foreground underline decoration-white/20 underline-offset-4"
+                        >
+                          {selectedLeaguePreset.sourceLabel}
+                        </a>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {selectedLeaguePreset.sourceNote}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <FormField
+                        label="Home Goals Baseline"
+                        value={formData.league_home_goals_avg}
+                        onChange={(v) => updateField("league_home_goals_avg", v)}
+                        type="number"
+                        description="Average goals scored by home teams in this league."
+                      />
+                      <FormField
+                        label="Away Goals Baseline"
+                        value={formData.league_away_goals_avg}
+                        onChange={(v) => updateField("league_away_goals_avg", v)}
+                        type="number"
+                        description="Average goals scored by away teams in this league."
+                      />
+                      <FormField
+                        label="Tight-Score Tuning"
+                        value={formData.dixon_coles_rho}
+                        onChange={(v) => updateField("dixon_coles_rho", v)}
+                        type="number"
+                        description="Adjusts how much the model respects very common scores like 0-0, 1-0 and 1-1."
+                      />
+                      <FormField
+                        label="Safety For Limited Data"
+                        value={formData.shrinkage_matches}
+                        onChange={(v) => updateField("shrinkage_matches", v)}
+                        type="number"
+                        description="Higher values make the model trust league averages more when team samples are small."
+                      />
+                    </div>
+                  </div>
+                </SectionCard>
+
                 <SectionCard title="Home Team">
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                          Home Side
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Use home-only performance and recent home form.
+                        </p>
+                      </div>
+                      <Target className="h-4 w-4 text-emerald-300" strokeWidth={1.7} />
+                    </div>
                     <FormField
                       label="Team Name"
                       value={formData.equipa_casa}
@@ -528,6 +843,17 @@ export default function MatchAnalysis() {
 
                 <SectionCard title="Away Team">
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
+                          Away Side
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Use away-only performance and recent away form.
+                        </p>
+                      </div>
+                      <ShieldCheck className="h-4 w-4 text-sky-300" strokeWidth={1.7} />
+                    </div>
                     <FormField
                       label="Team Name"
                       value={formData.equipa_fora}
@@ -581,6 +907,16 @@ export default function MatchAnalysis() {
 
                 <SectionCard title="Market Odds">
                   <div className="space-y-5">
+                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        Market Snapshot
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Add the prices exactly as offered by the bookmaker. Cleaner
+                        inputs here produce cleaner implied probabilities and a more
+                        trustworthy value comparison.
+                      </p>
+                    </div>
                     <div>
                       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                         Goals Markets
@@ -656,7 +992,17 @@ export default function MatchAnalysis() {
                 </SectionCard>
 
                 <SectionCard title="Bankroll Settings">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-4">
+                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        Risk Control
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        These settings control how aggressive the final stake can be.
+                        Keep them conservative if you want smaller recommended exposure.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <FormField
                       label="Bankroll (€)"
                       value={formData.banca}
@@ -668,21 +1014,46 @@ export default function MatchAnalysis() {
                       value={formData.fracao_kelly}
                       onChange={(v) => updateField("fracao_kelly", v)}
                       type="number"
+                      description="Lower values make staking calmer and more protective."
                     />
+                    </div>
                   </div>
                 </SectionCard>
               </div>
 
-              <Button
-                variant="hero"
-                className="w-full"
-                size="lg"
-                onClick={runAnalysis}
-                disabled={isLoading}
-              >
-                <Play className="mr-1 h-4 w-4" strokeWidth={1.5} />
-                {isLoading ? "Running..." : "Run Analysis"}
-              </Button>
+              <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                      Ready To Analyze
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {setupProgress.completed >= 4
+                        ? "The setup looks strong enough to run."
+                        : "Finish the core inputs for a more trustworthy output."}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-foreground">
+                      {Math.round(setupProgress.pct)}%
+                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Complete
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="hero"
+                  className="w-full"
+                  size="lg"
+                  onClick={runAnalysis}
+                  disabled={isLoading}
+                >
+                  <Play className="mr-1 h-4 w-4" strokeWidth={1.5} />
+                  {isLoading ? "Running..." : "Run Analysis"}
+                </Button>
+              </div>
 
               {errorMessage && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
@@ -692,7 +1063,7 @@ export default function MatchAnalysis() {
             </div>
           </div>
 
-          <div className="space-y-4 lg:col-span-3">
+          <div className="space-y-4">
             <AnimatePresence>
               {isLoading && (
                 <motion.div
@@ -794,7 +1165,7 @@ export default function MatchAnalysis() {
                         className="overflow-hidden"
                       >
                         <div className="space-y-3 px-5 pb-5">
-                          <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div className="rounded-xl bg-white/[0.03] p-3">
                               <p className="text-xs text-muted-foreground">
                                 Expected Goals
