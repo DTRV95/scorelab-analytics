@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
@@ -135,6 +135,8 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
 export default function Landing() {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const glowX = useTransform(mouseX, [0, 1400], [-120, 120]);
+  const glowY = useTransform(mouseY, [0, 900], [-80, 80]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -143,15 +145,18 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
+      <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_15%_12%,rgba(34,211,238,0.14),transparent_20%),radial-gradient(circle_at_82%_10%,rgba(34,197,94,0.12),transparent_18%),radial-gradient(circle_at_18%_42%,rgba(34,211,238,0.08),transparent_24%),radial-gradient(circle_at_76%_58%,rgba(34,197,94,0.07),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(34,211,238,0.07),transparent_24%),linear-gradient(180deg,rgba(6,11,20,1)_0%,rgba(7,17,31,1)_30%,rgba(6,13,24,1)_64%,rgba(5,12,21,1)_100%)]" />
+      <div className="fixed inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:88px_88px] opacity-40" />
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-primary-foreground" strokeWidth={1.5} />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_10px_30px_rgba(34,211,238,0.18)]">
+              <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
+              <BarChart3 className="relative w-4 h-4 text-cyan-100" strokeWidth={1.7} />
             </div>
-            <span className="font-bold text-foreground text-lg tracking-tight">ScoreLab</span>
+            <span className="font-bold text-foreground text-lg tracking-tight bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -170,6 +175,11 @@ export default function Landing() {
         {/* Animated gradient background */}
         <div className="absolute inset-0 gradient-hero" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsla(142,71%,45%,0.08)_0%,_transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,_hsla(190,100%,70%,0.10)_0%,_transparent_24%),radial-gradient(circle_at_18%_72%,_hsla(142,71%,45%,0.07)_0%,_transparent_24%)]" />
+        <motion.div
+          className="absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+          style={{ x: glowX, y: glowY }}
+        />
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
             className="absolute w-[600px] h-[600px] rounded-full"
@@ -199,9 +209,9 @@ export default function Landing() {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-7xl mx-auto relative lg:grid lg:grid-cols-[1fr_0.84fr] lg:gap-8 lg:items-start">
           <motion.div
-            className="max-w-3xl"
+            className="max-w-3xl relative z-10 lg:-mt-6"
             initial="hidden"
             animate="visible"
             variants={{
@@ -209,12 +219,16 @@ export default function Landing() {
               visible: { transition: { staggerChildren: 0.1 } },
             }}
           >
-            <motion.div variants={fadeIn} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-white/10 bg-white/5 text-xs text-muted-foreground mb-6">
+            <motion.div variants={fadeIn} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/15 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] text-xs text-muted-foreground mb-6 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Football Betting Intelligence Platform
             </motion.div>
             <motion.h1 variants={fadeIn} custom={1} className="text-5xl md:text-7xl font-bold text-foreground leading-[1.05]">
-              Football Betting Intelligence,{" "}
+              Football Betting{" "}
+              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
+                Intelligence
+              </span>
+              ,{" "}
               <span className="text-gradient-primary">Reimagined</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
@@ -232,7 +246,7 @@ export default function Landing() {
                 { value: 67.4, suffix: "%", label: "Avg. Accuracy" },
                 { value: 11.8, suffix: "%", label: "Avg. Edge" },
               ].map(s => (
-                <div key={s.label} className="text-center">
+                <div key={s.label} className="rounded-2xl border border-white/5 bg-[linear-gradient(180deg,rgba(34,211,238,0.05),rgba(255,255,255,0.025))] px-5 py-4 text-center backdrop-blur-sm shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
                   <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
                   <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
                 </div>
@@ -245,41 +259,94 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="mt-16 rounded-2xl ring-1 ring-white/10 bg-card p-6 card-shadow card-glow relative overflow-hidden"
+            className="relative mt-4 lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsla(142,71%,45%,0.04)_0%,_transparent_60%)]" />
-            <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {[
-                { label: "Model Prob.", value: "67.4%", sub: "Over 2.5" },
-                { label: "Market Implied", value: "55.6%", sub: "Odds: 1.80" },
-                { label: "Value Edge", value: "+11.8%", color: "text-primary" },
-                { label: "Kelly Stake", value: "2.4%", sub: "$120" },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 + i * 0.1 }}
-                  className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-4 hover:bg-white/[0.05] transition-colors"
-                >
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{item.label}</p>
-                  <p className={`mt-1 text-2xl font-bold font-mono-data ${item.color || "text-foreground"}`}>{item.value}</p>
-                  {item.sub && <p className="text-xs text-muted-foreground mt-0.5">{item.sub}</p>}
-                </motion.div>
-              ))}
-            </div>
-            <div className="relative h-3 rounded-full bg-white/5 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full gradient-primary"
-                initial={{ width: 0 }}
-                animate={{ width: "67.4%" }}
-                transition={{ delay: 1.2, duration: 1, ease: [0.4, 0, 0.2, 1] }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>Model: 67.4%</span>
-              <span>Market: 55.6%</span>
-            </div>
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ y: -4, scale: 1.01 }}
+              className="relative"
+            >
+              <div className="absolute -inset-[1px] rounded-[30px] bg-[linear-gradient(135deg,rgba(34,211,238,0.35),rgba(34,197,94,0.2),rgba(34,211,238,0.1))] opacity-80 blur-[2px]" />
+              <div className="absolute inset-0 rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.14),transparent_34%)]" />
+              <div className="absolute left-5 top-5 h-8 w-8 rounded-tl-[18px] border-l border-t border-cyan-300/25" />
+              <div className="absolute bottom-5 right-5 h-8 w-8 rounded-br-[18px] border-b border-r border-emerald-300/25" />
+              <div className="rounded-[28px] border border-primary/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.94),rgba(9,16,27,0.96))] p-4 shadow-[0_24px_64px_rgba(0,0,0,0.36)] backdrop-blur-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
+                  <h3 className="mt-1.5 text-lg font-semibold text-foreground">Live value overview</h3>
+                </div>
+                <div className="rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary ring-1 ring-primary/20">
+                  Live
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2.5">
+                {[
+                  { label: "Confidence", value: "8.6", sub: "High" },
+                  { label: "Edge", value: "+11.8%", sub: "Premium" },
+                  { label: "Risk", value: "Low", sub: "Controlled" },
+                  { label: "Stake", value: "2.4%", sub: "Kelly" },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 + i * 0.06 }}
+                    className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-3"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-lg font-bold font-mono-data text-foreground">{item.value}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{item.sub}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-foreground">Trend</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">7D</p>
+                  </div>
+                  <div className="mt-4 flex h-16 items-end gap-1.5">
+                    {[34, 56, 48, 72, 68, 84, 79, 92].map((height, i) => (
+                      <motion.div
+                        key={`${height}-${i}`}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: `${height}%`, opacity: 1 }}
+                        transition={{ delay: 1 + i * 0.05, duration: 0.4 }}
+                        className={`flex-1 rounded-t-xl ${i > 5 ? "bg-[linear-gradient(180deg,#34d399,#22d3ee)]" : "bg-white/15"}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-foreground">Top Signal</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Today</p>
+                  </div>
+                  <div className="mt-3 space-y-2.5">
+                    {[
+                      { match: "Arsenal vs Chelsea", market: "Over 2.5", tone: "bg-primary/10 text-primary" },
+                      { match: "Liverpool vs Man City", market: "BTTS Yes", tone: "bg-emerald-500/10 text-emerald-300" },
+                    ].map((row) => (
+                      <div key={row.match} className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-medium leading-tight text-foreground">{row.match}</p>
+                          <p className="text-[11px] text-muted-foreground">{row.market}</p>
+                        </div>
+                        <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${row.tone}`}>
+                          Signal
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -289,10 +356,15 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_50%)]" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-primary/5 text-xs text-primary mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.12),rgba(34,197,94,0.10))] text-xs text-primary mb-4">
               <Radar className="w-3 h-3" /> Live Scanner
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Today's Value Radar</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              Today&apos;s{" "}
+              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+                Value Radar
+              </span>
+            </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
           </div>
 
@@ -314,7 +386,7 @@ export default function Landing() {
           </div>
 
           {/* Scanner table */}
-          <div className="rounded-2xl bg-card ring-surface card-shadow overflow-hidden">
+          <div className="rounded-[28px] bg-card/95 ring-surface card-shadow overflow-hidden backdrop-blur-xl">
             {/* Header */}
             <div className="hidden md:grid grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 px-5 py-3 border-b border-white/5">
               {["Match", "Market", "Odds", "Model %", "Edge", "Confidence", "Decision"].map(h => (
@@ -333,14 +405,14 @@ export default function Landing() {
                 className={`
                   grid grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-5 py-4
                   border-b border-white/5 last:border-b-0
-                  hover:bg-white/[0.03] transition-all duration-200 cursor-pointer group
+                  hover:bg-white/[0.035] transition-all duration-300 cursor-pointer group
                   ${item.best ? "bg-primary/[0.03] ring-1 ring-primary/10" : ""}
                 `}
               >
                 {/* Match Info */}
                 <div>
                   {item.best && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary/15 text-primary ring-1 ring-primary/30 mb-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[linear-gradient(90deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
                       🔥 Best Value Today
                     </span>
                   )}
@@ -406,11 +478,17 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 px-6 border-t border-white/5">
+      <section id="features" className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.015),transparent)]" />
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Features</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Quantify the Pitch</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              Quantify the{" "}
+              <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+                Pitch
+              </span>
+            </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Every tool you need to make data-driven betting decisions, in one platform.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -423,9 +501,9 @@ export default function Landing() {
                 variants={fadeIn}
                 custom={i}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300 group cursor-default"
+                className="rounded-[26px] bg-card/95 ring-surface p-6 card-shadow transition-all duration-300 group cursor-default hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(8,145,178,0.16)] backdrop-blur-xl"
               >
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(34,197,94,0.14))] flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                   <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{f.title}</h3>
@@ -437,11 +515,18 @@ export default function Landing() {
       </section>
 
       {/* How ScoreLab Thinks */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute right-0 top-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Intelligence</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Thinks</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              How{" "}
+              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+                ScoreLab
+              </span>{" "}
+              Thinks
+            </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Three layers of analysis power every recommendation.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -452,7 +537,7 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15 }}
-                className="rounded-2xl bg-card ring-surface p-8 card-shadow text-center relative overflow-hidden group"
+                className="rounded-[28px] bg-card/95 ring-surface p-8 card-shadow text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 hover:shadow-[0_24px_60px_rgba(34,211,238,0.12)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="relative">
@@ -498,7 +583,7 @@ export default function Landing() {
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="rounded-2xl bg-card ring-surface p-8 card-shadow"
+              className="rounded-[28px] bg-card/95 ring-surface p-8 card-shadow backdrop-blur-xl"
             >
               <div className="space-y-6">
                 <div>
@@ -544,7 +629,7 @@ export default function Landing() {
                 variants={fadeIn}
                 custom={i}
                 whileHover={{ y: -2 }}
-                className="relative"
+                className="relative rounded-[24px] p-4 transition-all duration-300 hover:bg-white/[0.03]"
               >
                 <div className="text-5xl font-bold text-white/[0.03] mb-2">{step.num}</div>
                 <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
@@ -559,7 +644,8 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 border-t border-white/5">
+      <section id="pricing" className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute left-1/2 top-10 h-52 w-52 -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Pricing</p>
@@ -575,10 +661,10 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-2xl p-6 card-shadow transition-all duration-300 ${
+                className={`rounded-[28px] p-6 card-shadow transition-all duration-300 backdrop-blur-xl ${
                   plan.highlighted
-                    ? "bg-card ring-2 ring-primary/30 relative card-glow"
-                    : "bg-card ring-surface"
+                    ? "bg-card ring-2 ring-primary/30 relative card-glow hover:-translate-y-1 shadow-[0_26px_70px_rgba(34,211,238,0.10)]"
+                    : "bg-card/95 ring-surface hover:-translate-y-1"
                 }`}
               >
                 {plan.highlighted && (
@@ -627,7 +713,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -2 }}
-                className="rounded-2xl bg-card ring-surface p-6 card-shadow transition-all duration-300"
+                className="rounded-[26px] bg-card/95 ring-surface p-6 card-shadow transition-all duration-300 hover:-translate-y-1 backdrop-blur-xl"
               >
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: t.rating }).map((_, i) => (
@@ -649,7 +735,12 @@ export default function Landing() {
       <section className="py-24 px-6 border-t border-white/5 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.04)_0%,_transparent_50%)]" />
         <div className="max-w-3xl mx-auto text-center relative">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">Ready to Find Your Edge?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            Ready to Find Your{" "}
+            <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+              Edge?
+            </span>
+          </h2>
           <p className="mt-4 text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
           <div className="mt-8 flex justify-center gap-4">
             <Link to="/signup"><Button variant="hero" size="xl">Start Free Today <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
@@ -661,10 +752,11 @@ export default function Landing() {
       <footer className="border-t border-white/5 py-8 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-3 h-3 text-primary-foreground" strokeWidth={1.5} />
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_8px_22px_rgba(34,211,238,0.14)]">
+              <div className="absolute inset-[1px] rounded-[7px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
+              <BarChart3 className="relative w-3 h-3 text-cyan-100" strokeWidth={1.6} />
             </div>
-            <span className="text-sm font-semibold text-foreground">ScoreLab</span>
+            <span className="text-sm font-semibold bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
             <span className="text-xs text-muted-foreground ml-2">Where statistics meet betting strategy.</span>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 ScoreLab. All rights reserved.</p>

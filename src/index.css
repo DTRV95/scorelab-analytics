@@ -9,24 +9,24 @@
     --background: 222 47% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 7%;
+    --card: 209 45% 9%;
     --card-foreground: 210 40% 98%;
-    --card-hover: 222 47% 10%;
+    --card-hover: 205 43% 12%;
 
-    --popover: 222 47% 7%;
+    --popover: 209 45% 9%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 142 71% 45%;
     --primary-foreground: 222 47% 4%;
     --primary-glow: 160 60% 40%;
 
-    --secondary: 222 30% 14%;
+    --secondary: 207 34% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 30% 14%;
+    --muted: 207 34% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 222 30% 14%;
+    --accent: 207 34% 15%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84% 60%;
@@ -35,24 +35,24 @@
     --warning: 38 92% 50%;
     --warning-foreground: 222 47% 4%;
 
-    --border: 222 20% 15%;
-    --input: 222 20% 15%;
+    --border: 198 28% 18%;
+    --input: 198 28% 18%;
     --ring: 142 71% 45%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 222 47% 5%;
+    --sidebar-background: 209 52% 8%;
     --sidebar-foreground: 215 20% 65%;
     --sidebar-primary: 142 71% 45%;
     --sidebar-primary-foreground: 222 47% 4%;
-    --sidebar-accent: 222 30% 10%;
+    --sidebar-accent: 205 36% 12%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 20% 12%;
+    --sidebar-border: 198 26% 16%;
     --sidebar-ring: 142 71% 45%;
 
-    --shadow-card: 0 0 0 1px rgba(255,255,255,0.05), 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.3);
-    --shadow-card-hover: 0 0 0 1px rgba(255,255,255,0.08), 0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.3);
-    --shadow-glow-primary: 0 0 30px -5px hsla(142, 71%, 45%, 0.15), 0 0 60px -10px hsla(142, 71%, 45%, 0.08);
+    --shadow-card: 0 0 0 1px rgba(130, 228, 255, 0.06), 0 10px 30px -14px rgba(0,0,0,0.42), 0 0 40px -26px rgba(34,211,238,0.10);
+    --shadow-card-hover: 0 0 0 1px rgba(143, 240, 194, 0.10), 0 18px 40px -16px rgba(0,0,0,0.55), 0 0 56px -24px rgba(34,211,238,0.16);
+    --shadow-glow-primary: 0 0 30px -5px hsla(142, 71%, 45%, 0.15), 0 0 60px -10px hsla(190, 90%, 60%, 0.10);
   }
 }
 
@@ -92,7 +92,8 @@
   }
 
   .glass-surface {
-    @apply bg-card/80 backdrop-blur-xl;
+    @apply backdrop-blur-xl;
+    background: linear-gradient(180deg, rgba(10, 24, 40, 0.82) 0%, rgba(8, 20, 33, 0.88) 100%);
     box-shadow: var(--shadow-card);
   }
 
@@ -112,11 +113,14 @@
   }
 
   .ring-surface {
-    @apply ring-1 ring-white/5;
+    @apply ring-1;
+    --tw-ring-color: rgba(143, 240, 194, 0.08);
   }
 
   .input-surface {
-    @apply bg-white/5 ring-1 ring-white/10 border-none;
+    @apply border-none ring-1;
+    background: linear-gradient(180deg, rgba(15, 31, 48, 0.78) 0%, rgba(10, 24, 38, 0.88) 100%);
+    --tw-ring-color: rgba(130, 228, 255, 0.12);
   }
 
   .input-surface:focus-within {

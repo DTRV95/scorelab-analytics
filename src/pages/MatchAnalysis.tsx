@@ -339,6 +339,15 @@ function getExpectedValue(valueBet: number): number {
   return Number(valueBet.toFixed(1));
 }
 
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("pt-PT", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export default function MatchAnalysis() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -1275,7 +1284,7 @@ export default function MatchAnalysis() {
                         , this is the best current opportunity. Suggested Kelly
                         stake:{" "}
                         <span className="font-mono-data font-bold text-foreground">
-                          â‚¬{bestBet.stake}
+                          {formatCurrency(bestBet.stake)}
                         </span>
                         .
                       </p>
@@ -1288,7 +1297,9 @@ export default function MatchAnalysis() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-lg font-bold font-mono-data text-white">
-                                â‚¬{bestBetStakeRecommendation.recommendedAmount.toFixed(2)}
+                                {formatCurrency(
+                                  bestBetStakeRecommendation.recommendedAmount
+                                )}
                               </p>
                               <p className="text-xs text-white/45">
                                 {bestBetStakeRecommendation.recommendedPct.toFixed(
@@ -1487,7 +1498,7 @@ export default function MatchAnalysis() {
                                 {r.kelly.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
-                                â‚¬{r.stake}
+                                {formatCurrency(r.stake)}
                               </td>
                               <td className="px-4 py-3">
                                 <RiskBadge risk={r.risk} />
@@ -1501,7 +1512,9 @@ export default function MatchAnalysis() {
                               <td className="px-4 py-3">
                                 <div>
                                   <p className="font-mono-data text-foreground">
-                                    â‚¬{stakeRecommendation.recommendedAmount.toFixed(2)}
+                                    {formatCurrency(
+                                      stakeRecommendation.recommendedAmount
+                                    )}
                                   </p>
                                   <p className="text-xs text-white/45">
                                     {stakeRecommendation.recommendedPct.toFixed(2)}%
@@ -1545,11 +1558,11 @@ export default function MatchAnalysis() {
                       <span className="font-mono-data font-bold text-primary">
                         {bestBet.valueBet.toFixed(1)}%
                       </span>{" "}
-                      Â· Kelly:{" "}
+                      · Kelly:{" "}
                       <span className="font-mono-data font-bold">
                         {bestBet.kelly.toFixed(1)}%
                       </span>{" "}
-                      Â· Confidence:{" "}
+                      · Confidence:{" "}
                       <span className="font-mono-data font-bold">
                         {bestBet.confidence}/10
                       </span>
