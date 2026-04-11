@@ -2,7 +2,17 @@
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
+const MULTIPLES_KEY = "scorelab_multiples";
 export const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
+
+interface StoredMultipleForBankroll {
+  tracking: {
+    betPlaced: boolean;
+    stakeUsed: number | null;
+    resultStatus: "pending" | "green" | "red" | "void";
+    profitLoss: number;
+  };
+}
 
 export interface BankrollSettings {
   initialBankroll: number;
@@ -75,11 +85,57 @@ export interface CumulativeMarketSeries {
   data: Array<Record<string, string | number>>;
 }
 
+function normalizeMarketName(market: string | null | undefined): string | null {
+  if (!market) return null;
+
+  const normalized = market.trim().toLowerCase();
+
+  if (normalized === "btts yes" || normalized === "ambas marcam") {
+    return "BTTS Yes";
+  }
+
+  if (
+    normalized === "btts no" ||
+    normalized === "bttsn" ||
+    normalized === "ambas não marcam" ||
+    normalized === "ambas nao marcam" ||
+    normalized === "ambas nÃ£o marcam"
+  ) {
+    return "BTTS No";
+  }
+
+  return market;
+}
+
+function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
+  return {
+    ...analysis,
+    results: analysis.results.map((result) => ({
+      ...result,
+      market: normalizeMarketName(result.market) || result.market,
+    })),
+    tracking: {
+      ...analysis.tracking,
+      selectedMarket: normalizeMarketName(analysis.tracking.selectedMarket),
+    },
+  };
+}
+
+function getSavedMultiplesForBankroll(): StoredMultipleForBankroll[] {
+  try {
+    const raw = localStorage.getItem(MULTIPLES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as StoredMultipleForBankroll[];
+  } catch {
+    return [];
+  }
+}
+
 export function getAnalyses(): SavedAnalysis[] {
   try {
     const raw = localStorage.getItem(ANALYSES_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as SavedAnalysis[];
+    return (JSON.parse(raw) as SavedAnalysis[]).map(normalizeSavedAnalysis);
   } catch {
     return [];
   }
@@ -87,13 +143,16 @@ export function getAnalyses(): SavedAnalysis[] {
 
 export function saveAnalysis(analysis: SavedAnalysis): void {
   const existing = getAnalyses();
-  const updated = [analysis, ...existing];
+  const updated = [normalizeSavedAnalysis(analysis), ...existing];
   localStorage.setItem(ANALYSES_KEY, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
 export function overwriteAnalyses(analyses: SavedAnalysis[]): void {
-  localStorage.setItem(ANALYSES_KEY, JSON.stringify(analyses));
+  localStorage.setItem(
+    ANALYSES_KEY,
+    JSON.stringify(analyses.map(normalizeSavedAnalysis))
+  );
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
@@ -189,35 +248,55 @@ export function saveBankrollSettings(settings: BankrollSettings): void {
 
 export function getBankrollStats(): BankrollStats {
   const analyses = getAnalyses();
+  const multiples = getSavedMultiplesForBankroll();
   const { initialBankroll } = getBankrollSettings();
 
-  const placedBets = analyses.filter((a) => a.tracking.betPlaced);
+  const placedSingles = analyses.filter((a) => a.tracking.betPlaced);
+  const placedMultiples = multiples.filter((m) => m.tracking.betPlaced);
 
-  const totalProfitLoss = placedBets.reduce(
-    (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
-    0
-  );
+  const totalProfitLoss =
+    placedSingles.reduce(
+      (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
+      0
+    ) +
+    placedMultiples.reduce(
+      (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
+      0
+    );
 
-  const totalStaked = placedBets.reduce(
-    (acc, analysis) => acc + (analysis.tracking.stakeUsed || 0),
-    0
-  );
+  const totalStaked =
+    placedSingles.reduce(
+      (acc, analysis) => acc + (analysis.tracking.stakeUsed || 0),
+      0
+    ) +
+    placedMultiples.reduce(
+      (acc, multiple) => acc + (multiple.tracking.stakeUsed || 0),
+      0
+    );
 
-  const totalGreens = placedBets.filter(
-    (a) => a.tracking.resultStatus === "green"
-  ).length;
+  const totalGreens =
+    placedSingles.filter((a) => a.tracking.resultStatus === "green").length +
+    placedMultiples.filter((a) => a.tracking.resultStatus === "green").length;
 
-  const totalReds = placedBets.filter(
-    (a) => a.tracking.resultStatus === "red"
-  ).length;
+  const totalReds =
+    placedSingles.filter((a) => a.tracking.resultStatus === "red").length +
+    placedMultiples.filter((a) => a.tracking.resultStatus === "red").length;
 
-  const totalVoids = placedBets.filter(
-    (a) => a.tracking.resultStatus === "void"
-  ).length;
+  const totalVoids =
+    placedSingles.filter((a) => a.tracking.resultStatus === "void").length +
+    placedMultiples.filter((a) => a.tracking.resultStatus === "void").length;
 
-  const totalPending = placedBets.filter(
-    (a) => a.tracking.resultStatus === "pending"
-  ).length;
+  const totalPending =
+    placedSingles.filter((a) => a.tracking.resultStatus === "pending").length +
+    placedMultiples.filter((a) => a.tracking.resultStatus === "pending").length;
+
+  const pendingExposure =
+    placedSingles
+      .filter((a) => a.tracking.resultStatus === "pending")
+      .reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
+    placedMultiples
+      .filter((a) => a.tracking.resultStatus === "pending")
+      .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
 
   const settledBets = totalGreens + totalReds;
   const hitRate = settledBets > 0 ? (totalGreens / settledBets) * 100 : 0;
@@ -225,9 +304,9 @@ export function getBankrollStats(): BankrollStats {
 
   return {
     initialBankroll,
-    currentBankroll: initialBankroll + totalProfitLoss,
+    currentBankroll: initialBankroll + totalProfitLoss - pendingExposure,
     totalProfitLoss,
-    totalBetsPlaced: placedBets.length,
+    totalBetsPlaced: placedSingles.length + placedMultiples.length,
     totalGreens,
     totalReds,
     totalVoids,

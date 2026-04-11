@@ -55,3 +55,46 @@ export interface SavedAnalysis {
   results: AnalysisResult[];
   tracking: TrackedBet;
 }
+
+export interface MultipleLeg {
+  analysisId: string;
+  homeTeam: string;
+  awayTeam: string;
+  match: string;
+  market: string;
+  odds: number;
+  modelProb: number;
+  impliedProb: number;
+  valueBet: number;
+  confidence: number;
+  risk: RiskLevel;
+  tier: BetTier;
+}
+
+export interface MultipleTracking {
+  betPlaced: boolean;
+  stakeUsed: number | null;
+  oddUsed: number | null;
+  resultStatus: BetStatus;
+  profitLoss: number;
+  bankrollBefore: number | null;
+  bankrollAfter: number | null;
+  notes: string;
+}
+
+export interface MultipleBet {
+  id: string;
+  createdAt: string;
+  legs: MultipleLeg[];
+  combinedOdds: number;
+  combinedModelProb: number;
+  combinedImpliedProb: number;
+  combinedEdge: number;
+  adjustedConfidence: number;
+  correlationScore: number;
+  correlationLevel: "Low" | "Medium" | "High";
+  correlationReasons: string[];
+  recommendedStakePct: number;
+  recommendedStakeAmount: number;
+  tracking: MultipleTracking;
+}

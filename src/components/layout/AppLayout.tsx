@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./TopBar";
 
@@ -6,6 +8,12 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   return (
     <div className="relative flex min-h-screen w-full overflow-x-hidden bg-background">
       <div className="pointer-events-none fixed inset-0 -z-20 bg-[radial-gradient(circle_at_14%_16%,rgba(34,211,238,0.10),transparent_18%),radial-gradient(circle_at_82%_12%,rgba(34,197,94,0.09),transparent_16%),radial-gradient(circle_at_50%_70%,rgba(34,211,238,0.05),transparent_24%),linear-gradient(180deg,rgba(6,11,20,1)_0%,rgba(7,17,31,1)_34%,rgba(5,12,21,1)_100%)]" />

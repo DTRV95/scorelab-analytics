@@ -2,6 +2,13 @@
 import { StatCard } from "@/components/StatCard";
 import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
+  getBetTypePerformance,
+  getMultipleCorrelationPerformance,
+  getMultipleLegCountPerformance,
+  getMultiplePerformanceSummary,
+} from "@/lib/multipleStorage";
+import {
+  type DailyPerformanceItem,
   getAnalyses,
   getBankrollSettings,
   saveBankrollSettings,
@@ -220,6 +227,7 @@ function SegmentBarCard({
 export default function BankrollTools() {
   const [initialBankrollInput, setInitialBankrollInput] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
+  const [showAllDailyPerformance, setShowAllDailyPerformance] = useState(false);
   const [stats, setStats] = useState({
     initialBankroll: 0,
     currentBankroll: 0,
@@ -235,7 +243,7 @@ export default function BankrollTools() {
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
 
   const marketPerformance = getMarketPerformance();
-  const dailyPerformance = getDailyPerformance();
+  const dailyPerformance: DailyPerformanceItem[] = getDailyPerformance();
   const edgeBucketPerformance = getEdgeBucketPerformance();
   const confidenceBucketPerformance = getConfidenceBucketPerformance();
   const drawdownSeries = getDrawdownSeries();
@@ -341,8 +349,16 @@ export default function BankrollTools() {
   const confidenceBucketChartData: ChartRow[] = confidenceBucketPerformance.map(
     (item) => ({ ...item })
   );
+  const betTypePerformance = getBetTypePerformance();
+  const multipleLegCountPerformance = getMultipleLegCountPerformance();
+  const multipleCorrelationPerformance = getMultipleCorrelationPerformance();
+  const multipleSummary = getMultiplePerformanceSummary();
   const strongestMarket = marketPerformance[0] || null;
   const betResultsTotal = performanceData.reduce((acc, item) => acc + item.value, 0);
+  const visibleDailyPerformance: DailyPerformanceItem[] = showAllDailyPerformance
+    ? dailyPerformance
+    : dailyPerformance.slice(0, 5);
+  const hiddenDailyRows = Math.max(0, dailyPerformance.length - 5);
 
   return (
     <AppLayout>
@@ -423,6 +439,40 @@ export default function BankrollTools() {
             value={`${maxDrawdown.toFixed(2)}%`}
             change={`Current drawdown ${currentDrawdown.toFixed(2)}%`}
             changeType={maxDrawdown < -8 ? "negative" : "neutral"}
+            mono
+          />
+        </motion.div>
+
+        <motion.div
+          variants={fadeUp}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          <StatCard
+            label="Saved Multiples"
+            value={String(multipleSummary.totalMultiples)}
+            change={`${multipleSummary.placedMultiples} placed`}
+            changeType="neutral"
+            mono
+          />
+          <StatCard
+            label="Multiple P/L"
+            value={formatCurrency(multipleSummary.profitLoss)}
+            change={`${multipleSummary.roi.toFixed(2)}% ROI`}
+            changeType={multipleSummary.profitLoss >= 0 ? "positive" : "negative"}
+            mono
+          />
+          <StatCard
+            label="Multiple Hit Rate"
+            value={`${multipleSummary.hitRate.toFixed(2)}%`}
+            change={`${multipleSummary.settledMultiples} settled`}
+            changeType="neutral"
+            mono
+          />
+          <StatCard
+            label="Multiple Stake"
+            value={formatCurrency(multipleSummary.totalStake)}
+            change="Tracked separately from singles"
+            changeType="neutral"
             mono
           />
         </motion.div>
@@ -706,6 +756,27 @@ export default function BankrollTools() {
           />
         </div>
 
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <SegmentBarCard
+            title="Singles vs Multiples"
+            description="Direct comparison between simple bets and combined slips."
+            data={betTypePerformance}
+            yKey="type"
+          />
+          <SegmentBarCard
+            title="Multiple ROI by Legs"
+            description="See whether shorter or longer combos are treating the bankroll better."
+            data={multipleLegCountPerformance}
+            yKey="bucket"
+          />
+          <SegmentBarCard
+            title="Multiple ROI by Correlation"
+            description="Validate whether same-game correlation is helping or hurting your multiples."
+            data={multipleCorrelationPerformance}
+            yKey="bucket"
+          />
+        </div>
+
         <div className="space-y-6">
           <SectionCard
             title="Daily Performance"
@@ -719,6 +790,24 @@ export default function BankrollTools() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+                {hiddenDailyRows > 0 ? (
+                  <div className="flex items-center justify-between border-b border-white/6 px-4 py-3">
+                    <p className="text-sm text-white/60">
+                      Showing the last 5 days by default.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowAllDailyPerformance((prev) => !prev)
+                      }
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.08]"
+                    >
+                      {showAllDailyPerformance
+                        ? "Show Less"
+                        : `Show ${hiddenDailyRows} More`}
+                    </button>
+                  </div>
+                ) : null}
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">
                   <thead className="border-b border-white/5">
@@ -732,7 +821,7 @@ export default function BankrollTools() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dailyPerformance.map((item) => (
+                    {visibleDailyPerformance.map((item: DailyPerformanceItem) => (
                       <tr key={item.date} className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]">
                         <td className="px-4 py-3 pr-4 font-medium">{item.date}</td>
                         <td className="px-4 py-3 pr-4 font-mono-data">

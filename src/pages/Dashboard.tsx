@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
+import { getSavedMultiples } from "@/lib/multipleStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import { useNavigate } from "react-router-dom";
@@ -283,6 +284,7 @@ export default function Dashboard() {
 
   const dashboardData = useMemo(() => {
     const now = new Date();
+    const savedMultiples = getSavedMultiples();
 
     const validAnalyses = analyses.filter(
       (analysis) =>
@@ -364,13 +366,23 @@ export default function Dashboard() {
       date: string;
     }[];
 
-    const openExposure = validAnalyses
+    const singlesOpenExposure = validAnalyses
       .filter(
         (analysis) =>
           analysis.tracking.betPlaced &&
           analysis.tracking.resultStatus === "pending"
       )
       .reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0);
+
+    const multiplesOpenExposure = savedMultiples
+      .filter(
+        (multiple) =>
+          multiple.tracking.betPlaced &&
+          multiple.tracking.resultStatus === "pending"
+      )
+      .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
+
+    const openExposure = singlesOpenExposure + multiplesOpenExposure;
 
     const riskLevel =
       openExposure <= bankrollStats.currentBankroll * 0.03

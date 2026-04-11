@@ -173,9 +173,7 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative pt-32 pb-24 px-6 overflow-hidden" onMouseMove={handleMouseMove}>
         {/* Animated gradient background */}
-        <div className="absolute inset-0 gradient-hero" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsla(142,71%,45%,0.08)_0%,_transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,_hsla(190,100%,70%,0.10)_0%,_transparent_24%),radial-gradient(circle_at_18%_72%,_hsla(142,71%,45%,0.07)_0%,_transparent_24%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <motion.div
           className="absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
           style={{ x: glowX, y: glowY }}
@@ -261,12 +259,7 @@ export default function Landing() {
             transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
             className="relative mt-4 lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
           >
-            <motion.div
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-              whileHover={{ y: -4, scale: 1.01 }}
-              className="relative"
-            >
+            <div className="relative">
               <div className="absolute -inset-[1px] rounded-[30px] bg-[linear-gradient(135deg,rgba(34,211,238,0.35),rgba(34,197,94,0.2),rgba(34,211,238,0.1))] opacity-80 blur-[2px]" />
               <div className="absolute inset-0 rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.14),transparent_34%)]" />
               <div className="absolute left-5 top-5 h-8 w-8 rounded-tl-[18px] border-l border-t border-cyan-300/25" />
@@ -346,17 +339,17 @@ export default function Landing() {
                 </div>
               </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         </div>
       </section>
 
       {/* Value Radar Preview */}
-      <section className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_50%)]" />
+      <section className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.12),rgba(34,197,94,0.10))] text-xs text-primary mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Radar className="w-3 h-3" /> Live Scanner
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
@@ -366,6 +359,26 @@ export default function Landing() {
               </span>
             </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
+          </div>
+
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Visible opportunities", value: "6 live picks", hint: "Ranked by edge and confidence" },
+              { label: "Best confidence", value: "9 / 10", hint: "Strongest card on the board" },
+              { label: "Top value gap", value: "+11.8%", hint: "Model versus market difference" },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
           </div>
 
           {/* Sort controls */}
@@ -386,7 +399,16 @@ export default function Landing() {
           </div>
 
           {/* Scanner table */}
-          <div className="rounded-[28px] bg-card/95 ring-surface card-shadow overflow-hidden backdrop-blur-xl">
+          <div className="overflow-hidden rounded-[32px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] shadow-[0_28px_80px_-26px_rgba(34,211,238,0.20)] backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-white/6 px-5 py-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Opportunity board</p>
+                <p className="mt-1 text-sm font-medium text-foreground">Live-ranked market edges for today</p>
+              </div>
+              <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Updated live
+              </div>
+            </div>
             {/* Header */}
             <div className="hidden md:grid grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 px-5 py-3 border-b border-white/5">
               {["Match", "Market", "Odds", "Model %", "Edge", "Confidence", "Decision"].map(h => (
@@ -405,8 +427,8 @@ export default function Landing() {
                 className={`
                   grid grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-5 py-4
                   border-b border-white/5 last:border-b-0
-                  hover:bg-white/[0.035] transition-all duration-300 cursor-pointer group
-                  ${item.best ? "bg-primary/[0.03] ring-1 ring-primary/10" : ""}
+                  hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group
+                  ${item.best ? "bg-[linear-gradient(90deg,rgba(34,211,238,0.08),rgba(34,197,94,0.06))]" : ""}
                 `}
               >
                 {/* Match Info */}
@@ -478,11 +500,14 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.015),transparent)]" />
-        <div className="max-w-7xl mx-auto">
+      <section id="features" className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Features</p>
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <Target className="h-3.5 w-3.5" />
+              Features
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Quantify the{" "}
               <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
@@ -490,6 +515,25 @@ export default function Landing() {
               </span>
             </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Every tool you need to make data-driven betting decisions, in one platform.</p>
+          </div>
+          <div className="mb-8 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Analysis stack", value: "Match + Market + Risk", hint: "One workflow from setup to decision" },
+              { label: "Decision layer", value: "Confidence-first", hint: "Signals stay structured and comparable" },
+              { label: "Tracking loop", value: "Performance-aware", hint: "Built to learn from real results" },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((f, i) => (
@@ -500,12 +544,13 @@ export default function Landing() {
                 viewport={{ once: true, margin: "-50px" }}
                 variants={fadeIn}
                 custom={i}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="rounded-[26px] bg-card/95 ring-surface p-6 card-shadow transition-all duration-300 group cursor-default hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(8,145,178,0.16)] backdrop-blur-xl"
+                whileHover={{ y: -6, scale: 1.02 }}
+                className="group cursor-default rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-6 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)] backdrop-blur-xl"
               >
-                <div className="w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(34,197,94,0.14))] flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)] transition-colors group-hover:bg-primary/20">
                   <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
+                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
                 <h3 className="font-semibold text-foreground mb-2">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </motion.div>
@@ -515,11 +560,14 @@ export default function Landing() {
       </section>
 
       {/* How ScoreLab Thinks */}
-      <section className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute right-0 top-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
-        <div className="max-w-7xl mx-auto">
+      <section className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Intelligence</p>
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <Brain className="h-3.5 w-3.5" />
+              Intelligence
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               How{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
@@ -529,6 +577,25 @@ export default function Landing() {
             </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Three layers of analysis power every recommendation.</p>
           </div>
+          <div className="mb-8 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Probability layer", value: "Poisson foundation", hint: "Turns scoring rates into structured match probabilities." },
+              { label: "Simulation layer", value: "Scenario-tested", hint: "Adds robustness by exploring many possible match paths." },
+              { label: "Decision layer", value: "Edge-aware output", hint: "Translates model strength into a usable betting signal." },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {thinkingSteps.map((step, i) => (
               <motion.div
@@ -537,14 +604,15 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15 }}
-                className="rounded-[28px] bg-card/95 ring-surface p-8 card-shadow text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 hover:shadow-[0_24px_60px_rgba(34,211,238,0.12)]"
+                className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-8 text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary/15 transition-colors">
+                  <div className="w-14 h-14 rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] flex items-center justify-center mx-auto mb-5 group-hover:bg-primary/15 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
                     <step.icon className="w-7 h-7 text-primary" strokeWidth={1.5} />
                   </div>
                   <div className="text-4xl font-bold text-white/[0.04] mb-2">{String(i + 1).padStart(2, "0")}</div>
+                  <div className="mx-auto mb-3 h-px w-20 bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
                   <h3 className="text-lg font-semibold text-foreground mb-3">{step.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
                 </div>
@@ -555,12 +623,40 @@ export default function Landing() {
       </section>
 
       {/* Why ScoreLab is Different */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-4xl mx-auto">
+      <section className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative max-w-5xl mx-auto">
+          <div className="mb-10 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <Crosshair className="h-3.5 w-3.5" />
+              Philosophy
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Why ScoreLab is Different</h2>
+            <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
+              Built for disciplined users who want structure, not hype, and a workflow that stays useful over time.
+            </p>
+          </div>
+          <div className="mb-8 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Mindset", value: "Probability over noise", hint: "The product is designed to support judgment, not impulse." },
+              { label: "Method", value: "Market-aware analysis", hint: "Every recommendation lives in context against price and risk." },
+              { label: "Outcome", value: "Long-term discipline", hint: "Tracking and bankroll logic stay part of the same loop." },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Philosophy</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Why ScoreLab is Different</h2>
               <div className="space-y-4">
                 {whyDifferent.map((point, i) => (
                   <motion.div
@@ -569,9 +665,9 @@ export default function Landing() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-3 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.78)_0%,rgba(8,19,33,0.92)_100%)] px-4 py-3 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.14)]"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.24)]">
                       <Crosshair className="w-4 h-4 text-primary" strokeWidth={1.5} />
                     </div>
                     <p className="text-foreground font-medium">{point}</p>
@@ -583,7 +679,7 @@ export default function Landing() {
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="rounded-[28px] bg-card/95 ring-surface p-8 card-shadow backdrop-blur-xl"
+              className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-8 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)]"
             >
               <div className="space-y-6">
                 <div>
@@ -613,11 +709,37 @@ export default function Landing() {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
+      <section id="how-it-works" className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Process</p>
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <ChevronRight className="h-3.5 w-3.5" />
+              Process
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Works</h2>
+            <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
+              A clean flow from match setup to value detection and stake discipline, designed to stay easy to trust.
+            </p>
+          </div>
+          <div className="mb-8 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Input", value: "Match context first", hint: "Start with team stats, odds and the right competition context." },
+              { label: "Engine", value: "Model then market", hint: "Let the system compare your probabilistic view to live prices." },
+              { label: "Outcome", value: "Decision with discipline", hint: "Finish with sizing and a trackable recommendation." },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {steps.map((step, i) => (
@@ -628,10 +750,13 @@ export default function Landing() {
                 viewport={{ once: true }}
                 variants={fadeIn}
                 custom={i}
-                whileHover={{ y: -2 }}
-                className="relative rounded-[24px] p-4 transition-all duration-300 hover:bg-white/[0.03]"
+                whileHover={{ y: -4, scale: 1.01 }}
+                className="relative rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-5 transition-all duration-300 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
               >
-                <div className="text-5xl font-bold text-white/[0.03] mb-2">{step.num}</div>
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
+                  <span className="text-sm font-bold font-mono-data text-primary">{step.num}</span>
+                </div>
+                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
                 <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
                 <p className="text-sm text-muted-foreground">{step.desc}</p>
                 {i < steps.length - 1 && (
@@ -644,13 +769,35 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute left-1/2 top-10 h-52 w-52 -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-        <div className="max-w-7xl mx-auto">
+      <section id="pricing" className="relative border-t border-white/5 px-6 py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Pricing</p>
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <Star className="h-3.5 w-3.5" />
+              Pricing
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Simple, Transparent Pricing</h2>
             <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more power.</p>
+          </div>
+          <div className="mb-8 grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">
+            {[
+              { label: "Entry point", value: "Start with the board", hint: "Use the free plan to understand the workflow and interface." },
+              { label: "Growth path", value: "Unlock more depth", hint: "Move into advanced analysis and daily value scanning when needed." },
+              { label: "Power tier", value: "Operate at full scope", hint: "Get the complete toolkit for tracking, collaboration and scale." },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              >
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+              </motion.div>
+            ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {pricingPlans.map((plan, i) => (
@@ -661,10 +808,10 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-[28px] p-6 card-shadow transition-all duration-300 backdrop-blur-xl ${
+                className={`rounded-[28px] p-6 transition-all duration-300 backdrop-blur-xl ${
                   plan.highlighted
-                    ? "bg-card ring-2 ring-primary/30 relative card-glow hover:-translate-y-1 shadow-[0_26px_70px_rgba(34,211,238,0.10)]"
-                    : "bg-card/95 ring-surface hover:-translate-y-1"
+                    ? "relative border border-primary/30 bg-[linear-gradient(180deg,rgba(10,25,41,0.96)_0%,rgba(8,19,33,0.99)_100%)] card-glow hover:-translate-y-1 shadow-[0_26px_70px_rgba(34,211,238,0.10)]"
+                    : "border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] hover:-translate-y-1 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)]"
                 }`}
               >
                 {plan.highlighted && (
@@ -672,6 +819,7 @@ export default function Landing() {
                     Most Popular
                   </div>
                 )}
+                <div className="mb-4 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
                 <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
                 <div className="mt-4 flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-foreground font-mono-data">{plan.price}</span>
