@@ -14,12 +14,15 @@ import {
   ComposedChart,
   Bar,
 } from "recharts";
-import { useMemo } from "react";
-import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
-import { getSavedMultiples } from "@/lib/multipleStorage";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  ANALYSES_UPDATED_EVENT,
+  getAnalyses,
+  getBankrollStats,
+} from "@/lib/analysisStorage";
+import { getSavedMultiples, MULTIPLES_UPDATED_EVENT } from "@/lib/multipleStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
-import { useNavigate } from "react-router-dom";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
 
 const stagger = {
@@ -34,38 +37,40 @@ const fadeUp = {
 
 type ChartRow = Record<string, string | number | null | undefined>;
 
-function MetricCard({
+function CompactStatCard({
   label,
   value,
   change,
-  tone = "neutral",
+  changeType = "neutral",
 }: {
   label: string;
   value: string | number;
   change?: string;
-  tone?: "positive" | "negative" | "neutral";
+  changeType?: "positive" | "negative" | "neutral";
 }) {
   return (
     <motion.div
-      variants={fadeUp}
-      className="group relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      whileHover={{ y: -1 }}
+      transition={{ type: "spring", stiffness: 360, damping: 26 }}
+      className="relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
       <div className="relative">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
           {label}
         </p>
-        <p className="mt-3 font-mono-data text-3xl font-bold text-white">
+        <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
+        <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
           {value}
         </p>
         {change ? (
           <p
-            className={`mt-2 text-sm ${
-              tone === "positive"
+            className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+              changeType === "positive"
                 ? "text-emerald-300"
-                : tone === "negative"
+                : changeType === "negative"
                 ? "text-red-300"
-                : "text-white/60"
+                : "text-white/42"
             }`}
           >
             {change}
@@ -76,7 +81,7 @@ function MetricCard({
   );
 }
 
-function ModernSection({
+function SectionCard({
   title,
   description,
   badge,
@@ -86,27 +91,29 @@ function ModernSection({
   title: string;
   description: string;
   badge?: string;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
-    <motion.div
+    <motion.section
       variants={fadeUp}
-      className={`rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+      className={`overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="mb-4 flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          <p className="mt-1 text-sm text-white/60">{description}</p>
+          <h2 className="text-sm font-semibold text-white md:text-[15px]">{title}</h2>
+          <p className="mt-1 text-xs leading-6 text-white/58 md:text-[13px]">{description}</p>
         </div>
         {badge ? (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
             {badge}
-          </div>
+          </span>
         ) : null}
       </div>
+      <div className="p-4">
       {children}
-    </motion.div>
+      </div>
+    </motion.section>
   );
 }
 
@@ -125,25 +132,6 @@ function isSameDay(dateA: Date, dateB: Date) {
     dateA.getMonth() === dateB.getMonth() &&
     dateA.getFullYear() === dateB.getFullYear()
   );
-}
-
-function getRecentLabel(dateString: string) {
-  const analysisDate = new Date(dateString);
-  const today = new Date();
-
-  const diffMs =
-    new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() -
-    new Date(
-      analysisDate.getFullYear(),
-      analysisDate.getMonth(),
-      analysisDate.getDate()
-    ).getTime();
-
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return analysisDate.toLocaleDateString();
 }
 
 function CustomTooltip({
@@ -193,29 +181,8 @@ function ChartCard({
   const safeData: ChartRow[] = Array.isArray(data) ? data : [];
 
   return (
-    <motion.div
-      variants={fadeUp}
-      className="group relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
-
-      <div className="relative mb-5 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-            Analytics
-          </p>
-          <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-white/60">
-            {description}
-          </p>
-        </div>
-
-        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
-          ROI
-        </div>
-      </div>
-
-      <div className="relative h-[280px]">
+    <SectionCard title={title} description={description} badge="ROI">
+      <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={safeData}
@@ -273,14 +240,28 @@ function ChartCard({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-    </motion.div>
+    </SectionCard>
   );
 }
 
 export default function Dashboard() {
+  const [, setRefreshTick] = useState(0);
   const analyses = getAnalyses();
   const bankrollStats = getBankrollStats();
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      setRefreshTick((value) => value + 1);
+    };
+
+    window.addEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
+    window.addEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
+
+    return () => {
+      window.removeEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
+      window.removeEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
+    };
+  }, []);
 
   const dashboardData = useMemo(() => {
     const now = new Date();
@@ -340,32 +321,6 @@ export default function Dashboard() {
           )
         : null;
 
-    const recentAnalyses = validAnalyses
-      .slice(0, 5)
-      .map((analysis) => {
-        const bestBet = getBestBet(analysis.results);
-        if (!bestBet) return null;
-
-        return {
-          id: analysis.id,
-          match: `${analysis.homeTeam} vs ${analysis.awayTeam}`,
-          market: bestBet.market,
-          edge: bestBet.valueBet,
-          confidence: bestBet.confidence,
-          decision: bestBet.decision,
-          date: getRecentLabel(analysis.createdAt),
-        };
-      })
-      .filter(Boolean) as {
-      id: string;
-      match: string;
-      market: string;
-      edge: number;
-      confidence: number;
-      decision: "Bet" | "No Bet" | "Caution";
-      date: string;
-    }[];
-
     const singlesOpenExposure = validAnalyses
       .filter(
         (analysis) =>
@@ -401,11 +356,10 @@ export default function Dashboard() {
       avgConfidence,
       avgXg,
       topValueTodayEntry,
-      recentAnalyses,
       openExposure,
       riskLevel,
       performance,
-      autoInsights
+      autoInsights,
     };
   }, [analyses, bankrollStats.currentBankroll]);
 
@@ -436,6 +390,14 @@ export default function Dashboard() {
       ...item,
     })) ?? [];
 
+  const marketPerformanceRows = useMemo(
+    () =>
+      [...(dashboardData.performance?.marketPerformance ?? [])].sort(
+        (a, b) => b.hitRate - a.hitRate
+      ),
+    [dashboardData.performance?.marketPerformance]
+  );
+
   const riskChartData: ChartRow[] =
     dashboardData.performance?.riskPerformance?.map((item) => ({
       ...item,
@@ -449,40 +411,46 @@ export default function Dashboard() {
         variants={stagger}
         className="space-y-8"
       >
-        <motion.div variants={fadeUp}>
-          <h1 className="text-2xl font-bold text-foreground">
+        <motion.div variants={fadeUp} className="space-y-2">
+          <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground md:text-[1.8rem]">
             Performance Intelligence
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Use historical betting performance to find where ScoreLab really wins.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <CompactStatCard
             label="Settled Bets"
             value={dashboardData.performance?.summary?.totalSettledBets ?? 0}
             change={`${dashboardData.performance?.summary?.hitRate ?? 0}% hit rate`}
           />
-          <MetricCard
+          <CompactStatCard
             label="ROI"
             value={`${dashboardData.performance?.summary?.overallRoi ?? 0}%`}
             change={`P/L €${(dashboardData.performance?.summary?.totalProfitLoss ?? 0).toFixed(2)}`}
-            tone={
+            changeType={
               (dashboardData.performance?.summary?.overallRoi ?? 0) >= 0
                 ? "positive"
                 : "negative"
             }
           />
-          <MetricCard
+          <CompactStatCard
             label="Avg Confidence"
             value={dashboardData.avgConfidence.toFixed(1)}
             change={`${dashboardData.valueBetsFound} value bets found`}
           />
-          <MetricCard
+          <CompactStatCard
             label="Bankroll"
             value={`€${bankrollStats.currentBankroll.toFixed(2)}`}
             change={`Open exposure €${dashboardData.openExposure.toFixed(2)} · ${dashboardData.riskLevel}`}
+          />
+          <CompactStatCard
+            label="Bankroll Growth"
+            value={`${bankrollStats.bankrollGrowthPct.toFixed(2)}%`}
+            change={`Started at €${bankrollStats.initialBankroll.toFixed(2)}`}
+            changeType={bankrollStats.bankrollGrowthPct >= 0 ? "positive" : "negative"}
           />
         </div>
 
@@ -494,13 +462,13 @@ export default function Dashboard() {
             {dashboardData.autoInsights.map((insight) => (
               <div
                 key={insight.title}
-                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
+                className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
                   {insight.title}
                 </p>
                 <p
-                  className={`mt-3 text-sm leading-relaxed ${
+                  className={`mt-2.5 text-sm leading-7 ${
                     insight.tone === "positive"
                       ? "text-emerald-300"
                       : insight.tone === "negative"
@@ -518,14 +486,14 @@ export default function Dashboard() {
         {topValueToday && (
           <motion.div
             variants={fadeUp}
-            className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+            className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
           >
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   Top Value Today
                 </p>
-                <h2 className="text-xl font-semibold text-foreground">
+                <h2 className="text-lg font-semibold text-foreground md:text-xl">
                   {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3">
@@ -546,13 +514,13 @@ export default function Dashboard() {
               <div className="min-w-[220px] space-y-3">
                 <ConfidenceMeter score={topValueToday.bestBet.confidence} />
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
                     <p className="text-muted-foreground">Odds</p>
                     <p className="font-mono-data text-foreground">
                       {topValueToday.bestBet.odds}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
                     <p className="text-muted-foreground">Kelly</p>
                     <p className="font-mono-data text-foreground">
                       {topValueToday.bestBet.kelly.toFixed(2)}%
@@ -564,31 +532,15 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        <motion.div
-          variants={fadeUp}
-          className="relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+        <SectionCard
+          title="Daily Profit Trend"
+          description="Real betting performance by settled day."
+          badge="P/L"
+          className="relative"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
 
-          <div className="relative mb-5 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                Trend
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-white">
-                Daily Profit Trend
-              </h2>
-              <p className="mt-1 text-sm text-white/60">
-                Real betting performance by settled day.
-              </p>
-            </div>
-
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
-              P/L
-            </div>
-          </div>
-
-          <div className="relative h-[300px]">
+          <div className="relative h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={dashboardData.performance?.dailyProfitTrend ?? []}
@@ -644,7 +596,7 @@ export default function Dashboard() {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </motion.div>
+        </SectionCard>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <ChartCard
@@ -690,7 +642,7 @@ export default function Dashboard() {
           />
         </div>
 
-        <ModernSection
+        <SectionCard
           title="Performance by Market"
           description="This is the most important table to discover which market types deserve trust."
           badge="Markets"
@@ -717,8 +669,8 @@ export default function Dashboard() {
               </thead>
 
               <tbody>
-                {(dashboardData.performance?.marketPerformance ?? []).length > 0 ? (
-                  (dashboardData.performance?.marketPerformance ?? []).map((row) => (
+                {marketPerformanceRows.length > 0 ? (
+                  marketPerformanceRows.map((row) => (
                     <tr key={row.market} className="border-t border-white/5">
                       <td className="py-3 pr-4 font-medium text-foreground">
                         {row.market}
@@ -757,85 +709,9 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </ModernSection>
+        </SectionCard>
 
-        <ModernSection
-          title="Recent Analyses"
-          description="Latest model activity and strongest angle from each recent match."
-          badge="Recent"
-          className="overflow-hidden"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-t border-white/5">
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Match
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Market
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Edge
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Confidence
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Decision
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/45">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboardData.recentAnalyses.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-sm text-muted-foreground"
-                    >
-                      No recent analyses yet. Run your first analysis to populate the dashboard.
-                    </td>
-                  </tr>
-                ) : (
-                  dashboardData.recentAnalyses.map((a, i) => (
-                    <motion.tr
-                      key={a.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + i * 0.04 }}
-                      onClick={() => navigate(`/history?analysisId=${a.id}`)}
-                      className="cursor-pointer border-t border-white/5 transition-all duration-200 hover:bg-white/[0.03]"
-                    >
-                      <td className="px-6 py-3.5 text-sm font-medium text-foreground">
-                        {a.match}
-                      </td>
-                      <td className="px-6 py-3.5 text-sm text-muted-foreground">
-                        {a.market}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <ValueBadge value={a.edge} />
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <ConfidenceMeter score={a.confidence} className="w-24" />
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <DecisionBadge decision={a.decision} />
-                      </td>
-                      <td className="px-6 py-3.5 text-sm text-muted-foreground">
-                        {a.date}
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </ModernSection>
-
-        <ModernSection
+        <SectionCard
           title="Performance by Tier"
           description="This shows whether Premium and Elite are really outperforming the weaker signals."
           badge="Tiers"
@@ -898,7 +774,7 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </ModernSection>
+        </SectionCard>
       </motion.div>
     </AppLayout>
   );

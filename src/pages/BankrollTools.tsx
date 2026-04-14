@@ -1,24 +1,23 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/StatCard";
 import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
+  MULTIPLES_UPDATED_EVENT,
   getBetTypePerformance,
   getMultipleCorrelationPerformance,
   getMultipleLegCountPerformance,
   getMultiplePerformanceSummary,
+  getSavedMultiples,
 } from "@/lib/multipleStorage";
 import {
+  ANALYSES_UPDATED_EVENT,
   type DailyPerformanceItem,
   getAnalyses,
   getBankrollSettings,
   saveBankrollSettings,
   getBankrollStats,
   getMarketPerformance,
-  getDailyPerformance,
   getEdgeBucketPerformance,
   getConfidenceBucketPerformance,
-  getDrawdownSeries,
-  getDailyProfitSeries,
 } from "@/lib/analysisStorage";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -112,13 +111,13 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+      className={`overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-5 py-4">
+      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
-          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <h2 className="text-sm font-semibold text-white md:text-[15px]">{title}</h2>
           {description ? (
-            <p className="mt-1 text-sm text-white/60">{description}</p>
+            <p className="mt-1 text-xs leading-6 text-white/58 md:text-[13px]">{description}</p>
           ) : null}
         </div>
         {badge ? (
@@ -127,7 +126,7 @@ function SectionCard({
           </span>
         ) : null}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4">{children}</div>
     </motion.section>
   );
 }
@@ -142,15 +141,59 @@ function FocusMetric({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3.5">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 font-mono-data text-xl font-semibold text-foreground">
+      <p className="mt-2 font-mono-data text-lg font-semibold text-foreground md:text-[1.15rem]">
         {value}
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </div>
+  );
+}
+
+function CompactStatCard({
+  label,
+  value,
+  change,
+  changeType = "neutral",
+}: {
+  label: string;
+  value: string;
+  change?: string;
+  changeType?: "positive" | "negative" | "neutral";
+}) {
+  return (
+    <motion.div
+      whileHover={{ y: -1 }}
+      transition={{ type: "spring", stiffness: 360, damping: 26 }}
+      className="relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
+      <div className="relative">
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+          {label}
+        </p>
+        <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
+        <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
+          {value}
+        </p>
+        {change ? (
+          <p
+            className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+              changeType === "positive"
+                ? "text-emerald-400"
+                : changeType === "negative"
+                ? "text-red-400"
+                : "text-white/42"
+            }`}
+          >
+            {change}
+          </p>
+        ) : null}
+      </div>
+    </motion.div>
   );
 }
 
@@ -173,7 +216,7 @@ function SegmentBarCard({
 
   return (
     <SectionCard title={title} description={description} badge="Segments">
-      <div className="h-[280px]">
+      <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={safeData}
@@ -232,6 +275,7 @@ export default function BankrollTools() {
     initialBankroll: 0,
     currentBankroll: 0,
     totalProfitLoss: 0,
+    totalStaked: 0,
     totalBetsPlaced: 0,
     totalGreens: 0,
     totalReds: 0,
@@ -239,31 +283,44 @@ export default function BankrollTools() {
     totalPending: 0,
     hitRate: 0,
     roi: 0,
+    bankrollGrowthPct: 0,
   });
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
+  const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
 
   const marketPerformance = getMarketPerformance();
-  const dailyPerformance: DailyPerformanceItem[] = getDailyPerformance();
   const edgeBucketPerformance = getEdgeBucketPerformance();
   const confidenceBucketPerformance = getConfidenceBucketPerformance();
-  const drawdownSeries = getDrawdownSeries();
-  const dailyProfitSeries = getDailyProfitSeries();
   const edgeZoneSummary = getEdgeZoneSummary();
 
   const loadData = () => {
     const settings = getBankrollSettings();
     const bankrollStats = getBankrollStats();
     const savedAnalyses = getAnalyses();
+    const multiples = getSavedMultiples();
 
     setInitialBankrollInput(
       settings.initialBankroll ? String(settings.initialBankroll) : ""
     );
     setStats(bankrollStats);
     setAnalyses(savedAnalyses);
+    setSavedMultiples(multiples);
   };
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = () => loadData();
+
+    window.addEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
+    window.addEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
+
+    return () => {
+      window.removeEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
+      window.removeEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
+    };
   }, []);
 
   const handleSaveBankroll = () => {
@@ -284,25 +341,42 @@ export default function BankrollTools() {
   };
 
   const bankrollEvolutionData = useMemo(() => {
-    const sorted = [...analyses].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-
     let runningBankroll = stats.initialBankroll;
-    const settledBets = sorted.filter(
-      (analysis) =>
-        analysis.tracking?.betPlaced &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void")
+    const settledEntries = [
+      ...analyses
+        .filter(
+          (analysis) =>
+            analysis.tracking?.betPlaced &&
+            (analysis.tracking.resultStatus === "green" ||
+              analysis.tracking.resultStatus === "red" ||
+              analysis.tracking.resultStatus === "void")
+        )
+        .map((analysis) => ({
+          createdAt: analysis.createdAt,
+          profitLoss: analysis.tracking?.profitLoss || 0,
+        })),
+      ...savedMultiples
+        .filter(
+          (multiple) =>
+            multiple.tracking.betPlaced &&
+            (multiple.tracking.resultStatus === "green" ||
+              multiple.tracking.resultStatus === "red" ||
+              multiple.tracking.resultStatus === "void")
+        )
+        .map((multiple) => ({
+          createdAt: multiple.createdAt,
+          profitLoss: multiple.tracking.profitLoss || 0,
+        })),
+    ].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
     const data: { name: string; bankroll: number }[] = [
       { name: "Start", bankroll: Number(runningBankroll.toFixed(2)) },
     ];
 
-    settledBets.forEach((analysis, index) => {
-      runningBankroll += analysis.tracking?.profitLoss || 0;
+    settledEntries.forEach((entry, index) => {
+      runningBankroll += entry.profitLoss;
       data.push({
         name: `${index + 1}`,
         bankroll: Number(runningBankroll.toFixed(2)),
@@ -310,7 +384,7 @@ export default function BankrollTools() {
     });
 
     return data;
-  }, [analyses, stats.initialBankroll]);
+  }, [analyses, savedMultiples, stats.initialBankroll]);
 
   const performanceData = useMemo(
     () => [
@@ -330,16 +404,194 @@ export default function BankrollTools() {
             analysis.tracking.betPlaced &&
             analysis.tracking.resultStatus === "pending"
         )
-        .reduce((sum, analysis) => sum + (analysis.tracking.stakeUsed || 0), 0),
-    [analyses]
+        .reduce((sum, analysis) => sum + (analysis.tracking.stakeUsed || 0), 0) +
+      savedMultiples
+        .filter(
+          (multiple) =>
+            multiple.tracking.betPlaced &&
+            multiple.tracking.resultStatus === "pending"
+        )
+        .reduce((sum, multiple) => sum + (multiple.tracking.stakeUsed || 0), 0),
+    [analyses, savedMultiples]
   );
 
   const openExposurePct =
     stats.currentBankroll > 0 ? (openExposure / stats.currentBankroll) * 100 : 0;
+  const openPotentialProfit = useMemo(
+    () =>
+      analyses
+        .filter(
+          (analysis) =>
+            analysis.tracking.betPlaced &&
+            analysis.tracking.resultStatus === "pending"
+        )
+        .reduce(
+          (sum, analysis) =>
+            sum +
+            Math.max(
+              0,
+              (analysis.tracking.stakeUsed || 0) *
+                ((analysis.tracking.oddUsed || 0) - 1)
+            ),
+          0
+        ) +
+      savedMultiples
+        .filter(
+          (multiple) =>
+            multiple.tracking.betPlaced &&
+            multiple.tracking.resultStatus === "pending"
+        )
+        .reduce(
+          (sum, multiple) =>
+            sum +
+            Math.max(
+              0,
+              (multiple.tracking.stakeUsed || 0) *
+                ((multiple.tracking.oddUsed || 0) - 1)
+            ),
+          0
+        ),
+    [analyses, savedMultiples]
+  );
 
-  const todayPerformance = dailyPerformance[0] || null;
-  const currentDrawdown = drawdownSeries.at(-1)?.drawdownPct ?? 0;
-  const maxDrawdown = drawdownSeries.reduce(
+  const combinedDailyPerformance = useMemo(() => {
+    const grouped = new Map<
+      string,
+      { date: string; profitLoss: number; settledBets: number }
+    >();
+
+    const settledEntries = [
+      ...analyses
+        .filter(
+          (analysis) =>
+            analysis.tracking.betPlaced &&
+            (analysis.tracking.resultStatus === "green" ||
+              analysis.tracking.resultStatus === "red" ||
+              analysis.tracking.resultStatus === "void")
+        )
+        .map((analysis) => ({
+          createdAt: analysis.createdAt,
+          profitLoss: analysis.tracking.profitLoss || 0,
+        })),
+      ...savedMultiples
+        .filter(
+          (multiple) =>
+            multiple.tracking.betPlaced &&
+            (multiple.tracking.resultStatus === "green" ||
+              multiple.tracking.resultStatus === "red" ||
+              multiple.tracking.resultStatus === "void")
+        )
+        .map((multiple) => ({
+          createdAt: multiple.createdAt,
+          profitLoss: multiple.tracking.profitLoss || 0,
+        })),
+    ].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    let runningBankroll = stats.initialBankroll;
+
+    settledEntries.forEach((entry) => {
+      const date = new Date(entry.createdAt).toISOString().split("T")[0];
+      const current = grouped.get(date) || {
+        date,
+        profitLoss: 0,
+        settledBets: 0,
+      };
+
+      current.profitLoss += entry.profitLoss;
+      current.settledBets += 1;
+      grouped.set(date, current);
+      runningBankroll += entry.profitLoss;
+    });
+
+    const ordered = Array.from(grouped.values()).sort((a, b) =>
+      b.date.localeCompare(a.date)
+    );
+
+    let backfillBankroll =
+      stats.initialBankroll +
+      ordered.reduce((sum, item) => sum + item.profitLoss, 0);
+
+    return ordered.map((item) => {
+      const endBankroll = backfillBankroll;
+      const startBankroll = endBankroll - item.profitLoss;
+      backfillBankroll = startBankroll;
+
+      return {
+        date: item.date,
+        startBankroll: Number(startBankroll.toFixed(2)),
+        endBankroll: Number(endBankroll.toFixed(2)),
+        profitLoss: Number(item.profitLoss.toFixed(2)),
+        growthPct:
+          startBankroll > 0
+            ? Number(((item.profitLoss / startBankroll) * 100).toFixed(2))
+            : 0,
+        settledBets: item.settledBets,
+      };
+    });
+  }, [analyses, savedMultiples, stats.initialBankroll]);
+
+  const todayPerformance = combinedDailyPerformance[0] || null;
+  const combinedDrawdownSeries = useMemo(() => {
+    let peak = stats.initialBankroll;
+    let bankroll = stats.initialBankroll;
+
+    const settledEntries = [
+      ...analyses
+        .filter(
+          (analysis) =>
+            analysis.tracking.betPlaced &&
+            (analysis.tracking.resultStatus === "green" ||
+              analysis.tracking.resultStatus === "red" ||
+              analysis.tracking.resultStatus === "void")
+        )
+        .map((analysis) => ({
+          createdAt: analysis.createdAt,
+          profitLoss: analysis.tracking.profitLoss || 0,
+        })),
+      ...savedMultiples
+        .filter(
+          (multiple) =>
+            multiple.tracking.betPlaced &&
+            (multiple.tracking.resultStatus === "green" ||
+              multiple.tracking.resultStatus === "red" ||
+              multiple.tracking.resultStatus === "void")
+        )
+        .map((multiple) => ({
+          createdAt: multiple.createdAt,
+          profitLoss: multiple.tracking.profitLoss || 0,
+        })),
+    ].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    const series: { step: string; bankroll: number; peak: number; drawdownPct: number }[] = [
+      {
+        step: "Start",
+        bankroll: Number(stats.initialBankroll.toFixed(2)),
+        peak: Number(stats.initialBankroll.toFixed(2)),
+        drawdownPct: 0,
+      },
+    ];
+
+    settledEntries.forEach((entry) => {
+      bankroll += entry.profitLoss;
+      peak = Math.max(peak, bankroll);
+      const drawdownPct = peak > 0 ? ((bankroll - peak) / peak) * 100 : 0;
+
+      series.push({
+        step: `${series.length}`,
+        bankroll: Number(bankroll.toFixed(2)),
+        peak: Number(peak.toFixed(2)),
+        drawdownPct: Number(drawdownPct.toFixed(2)),
+      });
+    });
+
+    return series;
+  }, [analyses, savedMultiples, stats.initialBankroll]);
+  const currentDrawdown = combinedDrawdownSeries.at(-1)?.drawdownPct ?? 0;
+  const maxDrawdown = combinedDrawdownSeries.reduce(
     (worst, point) => Math.min(worst, point.drawdownPct),
     0
   );
@@ -355,10 +607,26 @@ export default function BankrollTools() {
   const multipleSummary = getMultiplePerformanceSummary();
   const strongestMarket = marketPerformance[0] || null;
   const betResultsTotal = performanceData.reduce((acc, item) => acc + item.value, 0);
+  const combinedDailyProfitSeries = useMemo(
+    () =>
+      combinedDailyPerformance
+        .slice()
+        .reverse()
+        .map((day) => ({
+          date: day.date.slice(5),
+          profitLoss: Number(day.profitLoss.toFixed(2)),
+          growthPct: Number(day.growthPct.toFixed(2)),
+        })),
+    [combinedDailyPerformance]
+  );
   const visibleDailyPerformance: DailyPerformanceItem[] = showAllDailyPerformance
-    ? dailyPerformance
-    : dailyPerformance.slice(0, 5);
-  const hiddenDailyRows = Math.max(0, dailyPerformance.length - 5);
+    ? combinedDailyPerformance
+    : combinedDailyPerformance.slice(0, 5);
+  const hiddenDailyRows = Math.max(0, combinedDailyPerformance.length - 5);
+  const marketPerformanceRows = useMemo(
+    () => [...marketPerformance].sort((a, b) => b.hitRate - a.hitRate),
+    [marketPerformance]
+  );
 
   return (
     <AppLayout>
@@ -366,11 +634,11 @@ export default function BankrollTools() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-6"
+        className="space-y-5"
       >
         <motion.div variants={fadeUp} className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Bankroll Tools</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Bankroll Tools</h1>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
             Treat the bankroll as an operating system: set the baseline, track the
             pressure on capital and understand where performance is coming from.
           </p>
@@ -411,69 +679,61 @@ export default function BankrollTools() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
         >
-          <StatCard
+          <CompactStatCard
             label="Current Bankroll"
             value={formatCurrency(stats.currentBankroll)}
             change={`${stats.totalBetsPlaced} tracked bets`}
             changeType="neutral"
-            mono
           />
-          <StatCard
+          <CompactStatCard
             label="Total P/L"
             value={formatCurrency(stats.totalProfitLoss)}
             change={`${stats.roi.toFixed(2)}% ROI`}
             changeType={stats.totalProfitLoss >= 0 ? "positive" : "negative"}
-            mono
           />
-          <StatCard
+          <CompactStatCard
             label="Open Exposure"
             value={formatCurrency(openExposure)}
             change={`${openExposurePct.toFixed(1)}% of live bankroll`}
             changeType={openExposurePct > 8 ? "negative" : "neutral"}
-            mono
           />
-          <StatCard
+          <CompactStatCard
             label="Max Drawdown"
             value={`${maxDrawdown.toFixed(2)}%`}
             change={`Current drawdown ${currentDrawdown.toFixed(2)}%`}
             changeType={maxDrawdown < -8 ? "negative" : "neutral"}
-            mono
           />
         </motion.div>
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
         >
-          <StatCard
-            label="Saved Multiples"
-            value={String(multipleSummary.totalMultiples)}
-            change={`${multipleSummary.placedMultiples} placed`}
-            changeType="neutral"
-            mono
+          <CompactStatCard
+            label="Potential Profit"
+            value={formatCurrency(openPotentialProfit)}
+            change="If every open bet wins"
+            changeType={openPotentialProfit > 0 ? "positive" : "neutral"}
           />
-          <StatCard
+          <CompactStatCard
             label="Multiple P/L"
             value={formatCurrency(multipleSummary.profitLoss)}
             change={`${multipleSummary.roi.toFixed(2)}% ROI`}
             changeType={multipleSummary.profitLoss >= 0 ? "positive" : "negative"}
-            mono
           />
-          <StatCard
+          <CompactStatCard
             label="Multiple Hit Rate"
             value={`${multipleSummary.hitRate.toFixed(2)}%`}
             change={`${multipleSummary.settledMultiples} settled`}
             changeType="neutral"
-            mono
           />
-          <StatCard
+          <CompactStatCard
             label="Multiple Stake"
             value={formatCurrency(multipleSummary.totalStake)}
             change="Tracked separately from singles"
             changeType="neutral"
-            mono
           />
         </motion.div>
 
@@ -553,7 +813,7 @@ export default function BankrollTools() {
             description="Distribution of tracked outcomes across the bankroll."
             badge="Status"
           >
-            <div className="relative flex h-[280px] items-center justify-center">
+            <div className="relative flex h-[240px] items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip content={<ToolTipCard valueLabel="Count" />} />
@@ -650,10 +910,10 @@ export default function BankrollTools() {
             description="Resolved day by day, so the trend is easier to trust."
             badge="P/L"
           >
-            <div className="h-[280px]">
+            <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
-                  data={dailyProfitSeries}
+                  data={combinedDailyProfitSeries}
                   margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
                 >
                   <CartesianGrid
@@ -676,7 +936,7 @@ export default function BankrollTools() {
                   />
                   <Tooltip content={<ToolTipCard valueLabel="P/L" suffix="" />} />
                   <Bar dataKey="profitLoss" radius={[10, 10, 0, 0]} maxBarSize={42}>
-                    {dailyProfitSeries.map((entry, index) => (
+                    {combinedDailyProfitSeries.map((entry, index) => (
                       <Cell
                         key={index}
                         fill={
@@ -697,10 +957,10 @@ export default function BankrollTools() {
             description="Understand pressure against the bankroll peak, not just profit or loss."
             badge="Risk"
           >
-            <div className="h-[280px]">
+            <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
-                  data={drawdownSeries}
+                  data={combinedDrawdownSeries}
                   margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
                 >
                   <CartesianGrid
@@ -784,7 +1044,7 @@ export default function BankrollTools() {
             badge="Daily"
             className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
           >
-            {dailyPerformance.length === 0 ? (
+            {combinedDailyPerformance.length === 0 ? (
               <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
                 No settled bets yet. Track results in History and this page will start showing real bankroll movement.
               </div>
@@ -871,7 +1131,7 @@ export default function BankrollTools() {
                     </tr>
                   </thead>
                   <tbody>
-                    {marketPerformance.map((item) => (
+                    {marketPerformanceRows.map((item) => (
                       <tr
                         key={item.market}
                         className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"

@@ -33,9 +33,10 @@ export function AppSidebar() {
     <div className={cn("relative shrink-0 transition-all duration-300", collapsed ? "w-16" : "w-60")}>
       <aside className={cn(
         "fixed left-0 top-0 z-40 flex h-screen flex-col border-r transition-all duration-300 backdrop-blur-xl",
-        "bg-[linear-gradient(180deg,rgba(10,27,44,0.94)_0%,rgba(8,22,38,0.97)_38%,rgba(6,17,31,0.98)_100%)] border-cyan-200/10 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_24px_80px_-24px_rgba(34,211,238,0.18)]",
+        "bg-[linear-gradient(180deg,rgba(9,25,42,0.96)_0%,rgba(7,20,36,0.98)_34%,rgba(5,16,30,0.99)_100%)] border-cyan-200/10 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_24px_80px_-24px_rgba(34,211,238,0.22)]",
         collapsed ? "w-16" : "w-60"
       )}>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_18%)]" />
         <div className="flex items-center h-16 px-4 border-b border-cyan-200/10">
           <Link to="/" className="flex items-center gap-2 overflow-hidden">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_10px_30px_rgba(34,211,238,0.18)] flex-shrink-0">
@@ -48,7 +49,14 @@ export function AppSidebar() {
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="relative flex-1 p-3 space-y-1">
+          {!collapsed && (
+            <div className="mb-3 px-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/35">
+                Workspace
+              </p>
+            </div>
+          )}
           {navItems.map((item) => {
             const isActive = location.pathname === item.url;
             return (
@@ -56,16 +64,16 @@ export function AppSidebar() {
                 key={item.url}
                 to={item.url}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group",
+                  "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
                   isActive
-                    ? "bg-sidebar-accent text-foreground"
+                    ? "text-foreground"
                     : "text-sidebar-foreground hover:bg-white/[0.05] hover:text-foreground"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-xl bg-[linear-gradient(90deg,rgba(34,211,238,0.12),rgba(34,197,94,0.10))]"
+                    className="absolute inset-0 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] shadow-[0_14px_36px_-22px_rgba(34,211,238,0.45)]"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
@@ -82,12 +90,14 @@ export function AppSidebar() {
           })}
         </nav>
 
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center h-12 border-t border-sidebar-border text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className={cn("w-4 h-4 transition-transform duration-300", collapsed && "rotate-180")} strokeWidth={1.5} />
-        </button>
+        <div className="relative border-t border-sidebar-border/80 p-3">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex h-11 w-full items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className={cn("w-4 h-4 transition-transform duration-300", collapsed && "rotate-180")} strokeWidth={1.5} />
+          </button>
+        </div>
       </aside>
     </div>
   );

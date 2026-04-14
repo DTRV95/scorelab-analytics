@@ -162,6 +162,7 @@ export default function History() {
   const [multipleDraft, setMultipleDraft] = useState(getMultipleDraft());
   const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
   const [multipleStakeInput, setMultipleStakeInput] = useState("");
+  const [showResolvedMultiples, setShowResolvedMultiples] = useState(false);
   const [searchParams] = useSearchParams();
   const highlightedAnalysisId = searchParams.get("analysisId");
   const analysisRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -433,6 +434,19 @@ export default function History() {
     () => getMultipleMetrics(multipleDraft),
     [multipleDraft]
   );
+  const visibleSavedMultiples = useMemo(
+    () =>
+      showResolvedMultiples
+        ? savedMultiples
+        : savedMultiples.filter(
+            (multiple) => multiple.tracking.resultStatus === "pending"
+          ),
+    [savedMultiples, showResolvedMultiples]
+  );
+  const hiddenResolvedMultiplesCount = Math.max(
+    0,
+    savedMultiples.length - visibleSavedMultiples.length
+  );
 
   const handleAddToMultiple = (
     analysis: SavedAnalysis,
@@ -589,14 +603,12 @@ export default function History() {
 
               <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                 <p className="text-sm font-medium text-white">Multiple summary</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MetricBlock label="Combined Odds" value={multipleMetrics.combinedOdds ? multipleMetrics.combinedOdds.toFixed(2) : "-"} />
-                  <MetricBlock label="Model %" value={multipleMetrics.combinedModelProb ? `${multipleMetrics.combinedModelProb.toFixed(2)}%` : "-"} />
-                  <MetricBlock label="Implied %" value={multipleMetrics.combinedImpliedProb ? `${multipleMetrics.combinedImpliedProb.toFixed(2)}%` : "-"} />
-                  <MetricBlock label="Edge" value={multipleMetrics.combinedEdge ? <ValueBadge value={multipleMetrics.combinedEdge} /> : "-"} />
-                  <MetricBlock label="Confidence" value={multipleMetrics.adjustedConfidence ? `${multipleMetrics.adjustedConfidence.toFixed(1)}/10` : "-"} />
-                  <MetricBlock label="Stake" value={multipleMetrics.recommendedStakeAmount ? `EUR ${multipleMetrics.recommendedStakeAmount.toFixed(2)}` : "-"} />
-                </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <MetricBlock label="Combined Odds" value={multipleMetrics.combinedOdds ? multipleMetrics.combinedOdds.toFixed(2) : "-"} />
+                    <MetricBlock label="Model %" value={multipleMetrics.combinedModelProb ? `${multipleMetrics.combinedModelProb.toFixed(2)}%` : "-"} />
+                    <MetricBlock label="Implied %" value={multipleMetrics.combinedImpliedProb ? `${multipleMetrics.combinedImpliedProb.toFixed(2)}%` : "-"} />
+                    <MetricBlock label="Confidence" value={multipleMetrics.adjustedConfidence ? `${multipleMetrics.adjustedConfidence.toFixed(1)}/10` : "-"} />
+                  </div>
 
                 <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] p-3">
                   <p className="text-xs uppercase tracking-wider text-white/45">Correlation</p>
@@ -675,11 +687,33 @@ export default function History() {
               </p>
             ) : (
               <div className="space-y-4">
-                {savedMultiples.map((multiple) => (
-                  <div
-                    key={multiple.id}
-                    className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <p className="text-sm text-white/60">
+                    {showResolvedMultiples
+                      ? "Showing all saved multiples."
+                      : hiddenResolvedMultiplesCount > 0
+                      ? `${hiddenResolvedMultiplesCount} resolved multiples hidden.`
+                      : "Showing only open multiples."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowResolvedMultiples((prev) => !prev)}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/70 transition hover:bg-white/[0.08]"
                   >
+                    {showResolvedMultiples ? "Hide Resolved" : "Show All"}
+                  </button>
+                </div>
+
+                {visibleSavedMultiples.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-white/55">
+                    No open multiples right now.
+                  </div>
+                ) : (
+                  visibleSavedMultiples.map((multiple) => (
+                    <div
+                      key={multiple.id}
+                      className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+                    >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -796,9 +830,10 @@ export default function History() {
                           Delete Multiple
                         </button>
                       </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </PremiumCard>

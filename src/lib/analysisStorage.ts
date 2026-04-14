@@ -22,6 +22,7 @@ export interface BankrollStats {
   initialBankroll: number;
   currentBankroll: number;
   totalProfitLoss: number;
+  totalStaked: number;
   totalBetsPlaced: number;
   totalGreens: number;
   totalReds: number;
@@ -29,6 +30,7 @@ export interface BankrollStats {
   totalPending: number;
   hitRate: number;
   roi: number;
+  bankrollGrowthPct: number;
 }
 
 export interface MarketPerformanceItem {
@@ -301,11 +303,14 @@ export function getBankrollStats(): BankrollStats {
   const settledBets = totalGreens + totalReds;
   const hitRate = settledBets > 0 ? (totalGreens / settledBets) * 100 : 0;
   const roi = totalStaked > 0 ? (totalProfitLoss / totalStaked) * 100 : 0;
+  const bankrollGrowthPct =
+    initialBankroll > 0 ? (totalProfitLoss / initialBankroll) * 100 : 0;
 
   return {
     initialBankroll,
     currentBankroll: initialBankroll + totalProfitLoss - pendingExposure,
     totalProfitLoss,
+    totalStaked,
     totalBetsPlaced: placedSingles.length + placedMultiples.length,
     totalGreens,
     totalReds,
@@ -313,6 +318,7 @@ export function getBankrollStats(): BankrollStats {
     totalPending,
     hitRate,
     roi,
+    bankrollGrowthPct,
   };
 }
 
