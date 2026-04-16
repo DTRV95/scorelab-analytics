@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import AnalyzeRequest, AnalyzeResponse
+from schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    AIBankrollReviewRequest,
+    AIBankrollReviewResponse,
+    AIDashboardSummaryRequest,
+    AIDashboardSummaryResponse,
+)
 from model import analisar_jogo
+from ai_service import generate_bankroll_ai_review, generate_dashboard_ai_summary
 
 app = FastAPI(title="ScoreLab API")
 
@@ -20,3 +28,13 @@ def root():
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(data: AnalyzeRequest):
     return analisar_jogo(data)
+
+
+@app.post("/ai/dashboard-summary", response_model=AIDashboardSummaryResponse)
+def ai_dashboard_summary(data: AIDashboardSummaryRequest):
+    return generate_dashboard_ai_summary(data)
+
+
+@app.post("/ai/bankroll-review", response_model=AIBankrollReviewResponse)
+def ai_bankroll_review(data: AIBankrollReviewRequest):
+    return generate_bankroll_ai_review(data)

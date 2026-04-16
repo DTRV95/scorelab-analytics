@@ -37,6 +37,105 @@ const fadeUp = {
 
 type ChartRow = Record<string, string | number | null | undefined>;
 
+interface DashboardAISummary {
+  configured: boolean;
+  summary: string;
+  strengths: string[];
+  risks: string[];
+  next_actions: string[];
+  disclaimer: string;
+}
+
+interface DashboardAISummaryPayload {
+  current_bankroll: number;
+  bankroll_growth_pct: number;
+  open_exposure: number;
+  risk_level: string;
+  settled_bets: number;
+  roi_pct: number;
+  profit_loss: number;
+  avg_confidence: number;
+  analyses_today: number;
+  value_bets_found: number;
+  auto_insights: string[];
+  top_markets: {
+    market: string;
+    bets: number;
+    roi: number;
+    hit_rate: number;
+    profit_loss: number;
+  }[];
+  tier_performance: {
+    tier: string;
+    bets: number;
+    roi: number;
+    hit_rate: number;
+  }[];
+  top_value_today: {
+    match: string;
+    market: string;
+    edge_pct: number;
+    confidence: number;
+    odds: number;
+    decision: string;
+  } | null;
+}
+
+function buildLocalAiSummary(
+  payload: DashboardAISummaryPayload
+): DashboardAISummary {
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  const nextActions: string[] = [];
+
+  const bestMarket = payload.top_markets[0];
+
+  if (bestMarket) {
+    strengths.push(
+      `${bestMarket.market} is currently the strongest tracked market at ${bestMarket.roi.toFixed(1)}% ROI over ${bestMarket.bets} bets.`
+    );
+  }
+
+  if (payload.top_value_today) {
+    strengths.push(
+      `Today's strongest live angle is ${payload.top_value_today.match} on ${payload.top_value_today.market} with ${payload.top_value_today.edge_pct.toFixed(1)}% edge.`
+    );
+  }
+
+  if (payload.risk_level.toLowerCase() === "high") {
+    risks.push(
+      `Open exposure is high at EUR ${payload.open_exposure.toFixed(2)}, so new bets should stay selective.`
+    );
+  } else {
+    risks.push(
+      `Open exposure is EUR ${payload.open_exposure.toFixed(2)}, which keeps live risk in a manageable zone.`
+    );
+  }
+
+  if (payload.settled_bets < 40) {
+    risks.push(
+      `The sample is still early at ${payload.settled_bets} settled bets, so patterns should guide you but not fully dictate changes.`
+    );
+  }
+
+  nextActions.push(
+    "Keep prioritising the markets that are already validating with real settled volume."
+  );
+  nextActions.push(
+    "Avoid making aggressive model changes until the settled sample grows further."
+  );
+
+  return {
+    configured: false,
+    summary: `ScoreLab is currently running at ${payload.roi_pct.toFixed(1)}% ROI with EUR ${payload.profit_loss.toFixed(2)} total profit and EUR ${payload.current_bankroll.toFixed(2)} live bankroll.`,
+    strengths: strengths.slice(0, 3),
+    risks: risks.slice(0, 3),
+    next_actions: nextActions.slice(0, 3),
+    disclaimer:
+      "This summary is interpretive guidance built on tracked results. It does not replace the statistical model.",
+  };
+}
+
 function CompactStatCard({
   label,
   value,
@@ -244,10 +343,52 @@ function ChartCard({
   );
 }
 
+function AIReviewColumn({
+  title,
+  tone,
+  items,
+}: {
+  title: string;
+  tone: "emerald" | "red" | "cyan";
+  items: string[];
+}) {
+  const toneClasses =
+    tone === "emerald"
+      ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
+      : tone === "red"
+      ? "border-red-400/15 bg-red-400/[0.04] text-red-200"
+      : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200";
+
+  return (
+    <div className={`rounded-xl border p-3.5 ${toneClasses}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+        {title}
+      </p>
+      <div className="mt-3 space-y-2.5">
+        {items.map((item, index) => (
+          <div key={`${title}-${index}`} className="flex items-start gap-2.5">
+            <span className="mt-[3px] inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-current/20 text-[9px] font-semibold opacity-75">
+              {index + 1}
+            </span>
+            <p className="text-[13px] leading-6 text-white/78">{item}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const [, setRefreshTick] = useState(0);
-  const analyses = getAnalyses();
-  const bankrollStats = getBankrollStats();
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [analyses, setAnalyses] = useState(() => getAnalyses());
+  const [bankrollStats, setBankrollStats] = useState(() => getBankrollStats());
+  const [aiSummary, setAiSummary] = useState<DashboardAISummary | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    setAnalyses(getAnalyses());
+    setBankrollStats(getBankrollStats());
+  }, [refreshTick]);
 
   useEffect(() => {
     const handleRefresh = () => {
@@ -403,6 +544,119 @@ export default function Dashboard() {
       ...item,
     })) ?? [];
 
+  const dashboardAiPayload = useMemo<DashboardAISummaryPayload>(
+    () => ({
+      current_bankroll: bankrollStats.currentBankroll,
+      bankroll_growth_pct: bankrollStats.bankrollGrowthPct,
+      open_exposure: dashboardData.openExposure,
+      risk_level: dashboardData.riskLevel,
+      settled_bets: dashboardData.performance?.summary?.totalSettledBets ?? 0,
+      roi_pct: dashboardData.performance?.summary?.overallRoi ?? 0,
+      profit_loss: dashboardData.performance?.summary?.totalProfitLoss ?? 0,
+      avg_confidence: Number(dashboardData.avgConfidence.toFixed(2)),
+      analyses_today: dashboardData.analysesToday,
+      value_bets_found: dashboardData.valueBetsFound,
+      auto_insights: (dashboardData.autoInsights ?? []).map((item) => item.detail),
+      top_markets: marketPerformanceRows.slice(0, 4).map((row) => ({
+        market: row.market,
+        bets: row.bets,
+        roi: row.roi,
+        hit_rate: row.hitRate,
+        profit_loss: row.profitLoss,
+      })),
+      tier_performance: (dashboardData.performance?.tierPerformance ?? [])
+        .slice(0, 4)
+        .map((row) => ({
+          tier: row.tier,
+          bets: row.bets,
+          roi: row.roi,
+          hit_rate: row.hitRate,
+        })),
+      top_value_today: topValueToday
+        ? {
+            match: `${topValueToday.analysis.homeTeam} vs ${topValueToday.analysis.awayTeam}`,
+            market: topValueToday.bestBet.market,
+            edge_pct: topValueToday.bestBet.valueBet,
+            confidence: topValueToday.bestBet.confidence,
+            odds: topValueToday.bestBet.odds,
+            decision: topValueToday.bestBet.decision,
+          }
+        : null,
+    }),
+    [
+      bankrollStats.bankrollGrowthPct,
+      bankrollStats.currentBankroll,
+      dashboardData.analysesToday,
+      dashboardData.autoInsights,
+      dashboardData.avgConfidence,
+      dashboardData.openExposure,
+      dashboardData.performance?.summary?.overallRoi,
+      dashboardData.performance?.summary?.totalProfitLoss,
+      dashboardData.performance?.summary?.totalSettledBets,
+      dashboardData.performance?.tierPerformance,
+      dashboardData.riskLevel,
+      dashboardData.valueBetsFound,
+      marketPerformanceRows,
+      topValueToday,
+    ]
+  );
+
+  const dashboardAiPayloadKey = useMemo(
+    () => JSON.stringify(dashboardAiPayload),
+    [dashboardAiPayload]
+  );
+
+  useEffect(() => {
+    let isCancelled = false;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, 8000);
+
+    const run = async () => {
+      setAiLoading(true);
+      try {
+        const response = await fetch("http://localhost:8000/ai/dashboard-summary", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+          body: dashboardAiPayloadKey,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load AI summary (${response.status})`);
+        }
+
+        const data = (await response.json()) as DashboardAISummary;
+        if (!isCancelled) {
+          setAiSummary(data);
+        }
+      } catch {
+        if (!isCancelled) {
+          const parsedPayload = JSON.parse(
+            dashboardAiPayloadKey
+          ) as DashboardAISummaryPayload;
+          setAiSummary(buildLocalAiSummary(parsedPayload));
+        }
+      } finally {
+        if (!isCancelled) {
+          setAiLoading(false);
+        }
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    run();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [dashboardAiPayloadKey]);
+
   return (
     <AppLayout>
       <motion.div
@@ -482,6 +736,68 @@ export default function Dashboard() {
             ))}
           </motion.div>
         )}
+
+        <SectionCard
+          title="AI Dashboard Read"
+          description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
+          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
+        >
+          {aiLoading ? (
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
+              Building AI summary...
+            </div>
+          ) : aiSummary ? (
+            <div className="space-y-3.5">
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                    Operational Read
+                  </p>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                    {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                  </span>
+                </div>
+                <p className="mt-2.5 text-sm leading-7 text-white/75">{aiSummary.summary}</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <AIReviewColumn
+                  title="Strengths"
+                  tone="emerald"
+                  items={
+                    aiSummary.strengths.length
+                      ? aiSummary.strengths
+                      : ["No clear strength has stood out strongly enough yet."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Risks"
+                  tone="red"
+                  items={
+                    aiSummary.risks.length
+                      ? aiSummary.risks
+                      : ["No major operational risk is being flagged right now."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Next Actions"
+                  tone="cyan"
+                  items={
+                    aiSummary.next_actions.length
+                      ? aiSummary.next_actions
+                      : ["Keep tracking outcomes so the review can get sharper."]
+                  }
+                />
+              </div>
+
+              <p className="text-[11px] leading-5 text-white/42">{aiSummary.disclaimer}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
+              The AI summary could not be loaded right now.
+            </div>
+          )}
+        </SectionCard>
 
         {topValueToday && (
           <motion.div

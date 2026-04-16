@@ -1,7 +1,7 @@
-league,league_home_goals_avg,league_away_goals_avg,dixon_coles_rho,shrinkage_matches,source,source_url,notes
+﻿league,league_home_goals_avg,league_away_goals_avg,dixon_coles_rho,shrinkage_matches,source,source_url,notes
 Liga Portugal,1.49,1.21,-0.08,6,BetExplorer,https://www.betexplorer.com/football/portugal/liga-portugal/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 Liga Portugal 2,1.26,1.19,-0.09,7,BetExplorer,https://www.betexplorer.com/football/portugal/liga-portugal-2/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
-Liga Revelação Sub23,1.74,1.22,-0.05,5,DollarClown,https://dollarclown.com/portugal/liga-revelao-u23/goals-scored,2025/26 snapshot based on current home and away scoring averages across the competition.
+Liga RevelaÃ§Ã£o Sub23,1.74,1.22,-0.05,5,DollarClown,https://dollarclown.com/portugal/liga-revelao-u23/goals-scored,2025/26 snapshot based on current home and away scoring averages across the competition.
 Premier League,1.50,1.24,-0.06,5,BetExplorer,https://www.betexplorer.com/football/england/premier-league/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 Championship,1.39,1.18,-0.08,7,BetExplorer,https://www.betexplorer.com/football/england/championship/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 League One,1.46,1.07,-0.08,7,BetExplorer,https://www.betexplorer.com/football/england/league-one/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
@@ -18,7 +18,12 @@ Eerste Divisie,1.70,1.50,-0.03,5,BetExplorer,https://www.betexplorer.com/footbal
 Super Lig,1.31,1.29,-0.08,6,BetExplorer,https://www.betexplorer.com/football/turkey/super-lig/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 1. Lig,1.66,1.21,-0.07,7,BetExplorer,https://www.betexplorer.com/football/turkey/1-lig/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 Saudi Pro League,1.56,1.41,-0.05,5,BetExplorer,https://www.betexplorer.com/football/saudi-arabia/saudi-professional-league/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
-Primera División,1.18,0.86,-0.11,8,FootyStats,https://footystats.org/argentina/primera-division,2026 snapshot with real league scoring averages and recommended model tuning.
+Argelia Ligue 1,1.27,0.89,-0.10,8,FootyStats,https://footystats.org/algeria/ligue-1,2025/26 snapshot based on current home and away scoring averages across the competition.
+Bahraini Premier League,1.25,1.12,-0.08,7,FootyStats,https://footystats.org/bahrain/bahraini-premier-league,2025/26 snapshot based on current home and away scoring averages across the competition.
+Primera Categoria Serie A,1.11,0.86,-0.11,8,FootyStats,https://footystats.org/ecuador/primera-categoria-serie-a,2026 snapshot based on current home and away scoring averages across the competition.
+Primera Categoria Serie B,1.43,0.82,-0.10,8,SoccerStats,https://www.soccerstats.com/trends.asp?league=ecuador2,2025 season snapshot used because the 2026 secondary-league feed is still incomplete on the primary source.
+PrvaLiga,1.69,1.42,-0.04,5,FootyStats,https://footystats.org/slovenia/prvaliga,2025/26 snapshot based on current home and away scoring averages across the competition.
+Primera DivisiÃ³n,1.18,0.86,-0.11,8,FootyStats,https://footystats.org/argentina/primera-division,2026 snapshot with real league scoring averages and recommended model tuning.
 Primera Nacional,1.07,0.80,-0.12,8,FootyStats,https://footystats.org/argentina/prim-b-nacional,2026 snapshot with real league scoring averages and recommended model tuning.
 Jupiler Pro League,1.36,1.16,-0.07,6,BetExplorer,https://www.betexplorer.com/football/belgium/jupiler-pro-league/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 Challenger Pro League,1.42,1.37,-0.05,6,Betmana,https://betmana.co.uk/football/leagues/belgium/challenger_pro_league/,2025/26 snapshot with real league scoring averages and recommended model tuning.

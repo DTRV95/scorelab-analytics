@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class AnalyzeRequest(BaseModel):
@@ -61,3 +61,95 @@ class AnalyzeResponse(BaseModel):
     lambda_fora: float
     total_golos_esperados: float
     mercados: List[MarketResult]
+
+
+class AITopValueSnapshot(BaseModel):
+    match: str
+    market: str
+    edge_pct: float
+    confidence: float
+    odds: float
+    decision: str
+
+
+class AIMarketSnapshot(BaseModel):
+    market: str
+    bets: int
+    roi: float
+    hit_rate: float
+    profit_loss: float
+
+
+class AITierSnapshot(BaseModel):
+    tier: str
+    bets: int
+    roi: float
+    hit_rate: float
+
+
+class AIDashboardSummaryRequest(BaseModel):
+    current_bankroll: float
+    bankroll_growth_pct: float
+    open_exposure: float
+    risk_level: str
+    settled_bets: int
+    roi_pct: float
+    profit_loss: float
+    avg_confidence: float
+    analyses_today: int
+    value_bets_found: int
+    auto_insights: List[str] = Field(default_factory=list)
+    top_markets: List[AIMarketSnapshot] = Field(default_factory=list)
+    tier_performance: List[AITierSnapshot] = Field(default_factory=list)
+    top_value_today: Optional[AITopValueSnapshot] = None
+
+
+class AIDashboardSummaryResponse(BaseModel):
+    configured: bool
+    summary: str
+    strengths: List[str]
+    risks: List[str]
+    next_actions: List[str]
+    disclaimer: str
+
+
+class AIBankrollMetricSnapshot(BaseModel):
+    label: str
+    value: float
+    context: str
+
+
+class AIBankrollReviewRequest(BaseModel):
+    current_bankroll: float
+    initial_bankroll: float
+    bankroll_growth_pct: float
+    open_exposure: float
+    open_exposure_pct: float
+    potential_profit: float
+    total_profit_loss: float
+    total_staked: float
+    roi_pct: float
+    hit_rate: float
+    total_bets_placed: int
+    total_pending: int
+    total_greens: int
+    total_reds: int
+    max_drawdown_pct: float
+    current_drawdown_pct: float
+    strongest_market: Optional[str] = None
+    strongest_market_profit: Optional[float] = None
+    strongest_zone: Optional[str] = None
+    best_confidence_bucket: Optional[str] = None
+    multiple_roi_pct: float
+    multiple_hit_rate: float
+    multiple_settled: int
+    recent_metrics: List[AIBankrollMetricSnapshot] = Field(default_factory=list)
+
+
+class AIBankrollReviewResponse(BaseModel):
+    configured: bool
+    summary: str
+    strengths: List[str]
+    risks: List[str]
+    next_actions: List[str]
+    disclaimer: str

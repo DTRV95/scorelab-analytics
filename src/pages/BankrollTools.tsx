@@ -48,6 +48,105 @@ const fadeUp = {
 
 type ChartRow = Record<string, string | number | null | undefined>;
 
+interface BankrollAISummary {
+  configured: boolean;
+  summary: string;
+  strengths: string[];
+  risks: string[];
+  next_actions: string[];
+  disclaimer: string;
+}
+
+interface BankrollAISummaryPayload {
+  current_bankroll: number;
+  initial_bankroll: number;
+  bankroll_growth_pct: number;
+  open_exposure: number;
+  open_exposure_pct: number;
+  potential_profit: number;
+  total_profit_loss: number;
+  total_staked: number;
+  roi_pct: number;
+  hit_rate: number;
+  total_bets_placed: number;
+  total_pending: number;
+  total_greens: number;
+  total_reds: number;
+  max_drawdown_pct: number;
+  current_drawdown_pct: number;
+  strongest_market: string | null;
+  strongest_market_profit: number | null;
+  strongest_zone: string | null;
+  best_confidence_bucket: string | null;
+  multiple_roi_pct: number;
+  multiple_hit_rate: number;
+  multiple_settled: number;
+  recent_metrics: Array<{
+    label: string;
+    value: number;
+    context: string;
+  }>;
+}
+
+function buildLocalBankrollAiSummary(
+  payload: BankrollAISummaryPayload
+): BankrollAISummary {
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  const nextActions: string[] = [];
+
+  if (payload.strongest_market) {
+    strengths.push(
+      `${payload.strongest_market} is currently the strongest market, with EUR ${(payload.strongest_market_profit ?? 0).toFixed(2)} profit.`
+    );
+  }
+
+  if (payload.best_confidence_bucket) {
+    strengths.push(
+      `Confidence bucket ${payload.best_confidence_bucket} is the strongest validation zone right now.`
+    );
+  }
+
+  if (payload.open_exposure_pct >= 10) {
+    risks.push(
+      `Open exposure is high at ${payload.open_exposure_pct.toFixed(1)}% of live bankroll, so new positions should stay selective.`
+    );
+  } else {
+    strengths.push(
+      `Open exposure is controlled at ${payload.open_exposure_pct.toFixed(1)}% of live bankroll.`
+    );
+  }
+
+  if (payload.max_drawdown_pct <= -20) {
+    risks.push(
+      `Max drawdown is ${payload.max_drawdown_pct.toFixed(1)}%, which suggests the bankroll path is still volatile.`
+    );
+  }
+
+  if (payload.multiple_settled > 0 && payload.multiple_roi_pct < 0) {
+    risks.push(
+      `Multiples are currently negative at ${payload.multiple_roi_pct.toFixed(1)}% ROI, so they should stay secondary.`
+    );
+  }
+
+  nextActions.push(
+    "Keep using bankroll tools to protect capital before increasing exposure."
+  );
+  nextActions.push(
+    "Use the strongest validated zones as the base of the next decisions."
+  );
+
+  return {
+    configured: false,
+    summary: `Your bankroll is at EUR ${payload.current_bankroll.toFixed(2)}, up ${payload.bankroll_growth_pct.toFixed(1)}% from the starting point, with ${payload.roi_pct.toFixed(1)}% ROI across EUR ${payload.total_staked.toFixed(2)} staked.`,
+    strengths: strengths.slice(0, 3),
+    risks: risks.slice(0, 3),
+    next_actions: nextActions.slice(0, 3),
+    disclaimer:
+      "This review interprets tracked bankroll data. It supports discipline, but it does not replace the betting model.",
+  };
+}
+
 const resultColors: Record<string, string> = {
   Greens: "rgba(34,197,94,0.95)",
   Reds: "rgba(239,68,68,0.95)",
@@ -267,10 +366,47 @@ function SegmentBarCard({
   );
 }
 
+function AIReviewColumn({
+  title,
+  tone,
+  items,
+}: {
+  title: string;
+  tone: "emerald" | "red" | "cyan";
+  items: string[];
+}) {
+  const toneClasses =
+    tone === "emerald"
+      ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
+      : tone === "red"
+      ? "border-red-400/15 bg-red-400/[0.04] text-red-200"
+      : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200";
+
+  return (
+    <div className={`rounded-xl border p-3.5 ${toneClasses}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+        {title}
+      </p>
+      <div className="mt-3 space-y-2.5">
+        {items.map((item, index) => (
+          <div key={`${title}-${index}`} className="flex items-start gap-2.5">
+            <span className="mt-[3px] inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-current/20 text-[9px] font-semibold opacity-75">
+              {index + 1}
+            </span>
+            <p className="text-[13px] leading-6 text-white/78">{item}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BankrollTools() {
   const [initialBankrollInput, setInitialBankrollInput] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [showAllDailyPerformance, setShowAllDailyPerformance] = useState(false);
+  const [aiSummary, setAiSummary] = useState<BankrollAISummary | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [stats, setStats] = useState({
     initialBankroll: 0,
     currentBankroll: 0,
@@ -627,6 +763,130 @@ export default function BankrollTools() {
     () => [...marketPerformance].sort((a, b) => b.hitRate - a.hitRate),
     [marketPerformance]
   );
+  const bankrollAiPayload = useMemo<BankrollAISummaryPayload>(
+    () => ({
+      current_bankroll: stats.currentBankroll,
+      initial_bankroll: stats.initialBankroll,
+      bankroll_growth_pct: stats.bankrollGrowthPct,
+      open_exposure: openExposure,
+      open_exposure_pct: openExposurePct,
+      potential_profit: openPotentialProfit,
+      total_profit_loss: stats.totalProfitLoss,
+      total_staked: stats.totalStaked,
+      roi_pct: stats.roi,
+      hit_rate: stats.hitRate,
+      total_bets_placed: stats.totalBetsPlaced,
+      total_pending: stats.totalPending,
+      total_greens: stats.totalGreens,
+      total_reds: stats.totalReds,
+      max_drawdown_pct: maxDrawdown,
+      current_drawdown_pct: currentDrawdown,
+      strongest_market: strongestMarket?.market ?? null,
+      strongest_market_profit: strongestMarket?.profitLoss ?? null,
+      strongest_zone: edgeZoneSummary.bestMarket?.market ?? null,
+      best_confidence_bucket: edgeZoneSummary.bestConfidenceBucket?.bucket ?? null,
+      multiple_roi_pct: multipleSummary.roi,
+      multiple_hit_rate: multipleSummary.hitRate,
+      multiple_settled: multipleSummary.settledMultiples,
+      recent_metrics: [
+        {
+          label: "roi",
+          value: Number(stats.roi.toFixed(2)),
+          context: "overall betting roi",
+        },
+        {
+          label: "hit-rate",
+          value: Number(stats.hitRate.toFixed(2)),
+          context: "settled singles and multiples",
+        },
+        {
+          label: "drawdown",
+          value: Number(maxDrawdown.toFixed(2)),
+          context: "maximum drawdown percentage",
+        },
+      ],
+    }),
+    [
+      currentDrawdown,
+      edgeZoneSummary.bestConfidenceBucket?.bucket,
+      edgeZoneSummary.bestMarket?.market,
+      maxDrawdown,
+      multipleSummary.hitRate,
+      multipleSummary.roi,
+      multipleSummary.settledMultiples,
+      openExposure,
+      openExposurePct,
+      openPotentialProfit,
+      stats.bankrollGrowthPct,
+      stats.currentBankroll,
+      stats.hitRate,
+      stats.initialBankroll,
+      stats.roi,
+      stats.totalBetsPlaced,
+      stats.totalGreens,
+      stats.totalPending,
+      stats.totalProfitLoss,
+      stats.totalReds,
+      stats.totalStaked,
+      strongestMarket?.market,
+      strongestMarket?.profitLoss,
+    ]
+  );
+  const bankrollAiPayloadKey = useMemo(
+    () => JSON.stringify(bankrollAiPayload),
+    [bankrollAiPayload]
+  );
+
+  useEffect(() => {
+    let isCancelled = false;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, 8000);
+
+    const run = async () => {
+      setAiLoading(true);
+      try {
+        const response = await fetch("http://localhost:8000/ai/bankroll-review", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+          body: bankrollAiPayloadKey,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load bankroll AI review (${response.status})`);
+        }
+
+        const data = (await response.json()) as BankrollAISummary;
+        if (!isCancelled) {
+          setAiSummary(data);
+        }
+      } catch {
+        if (!isCancelled) {
+          const parsedPayload = JSON.parse(
+            bankrollAiPayloadKey
+          ) as BankrollAISummaryPayload;
+          setAiSummary(buildLocalBankrollAiSummary(parsedPayload));
+        }
+      } finally {
+        if (!isCancelled) {
+          setAiLoading(false);
+        }
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    run();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [bankrollAiPayloadKey]);
 
   return (
     <AppLayout>
@@ -736,6 +996,68 @@ export default function BankrollTools() {
             changeType="neutral"
           />
         </motion.div>
+
+        <SectionCard
+          title="AI Bankroll Review"
+          description="A quick read on bankroll health, pressure on capital and where discipline matters most."
+          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
+        >
+          {aiLoading ? (
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
+              Building bankroll review...
+            </div>
+          ) : aiSummary ? (
+            <div className="space-y-3.5">
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                    Capital Review
+                  </p>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                    {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                  </span>
+                </div>
+                <p className="mt-2.5 text-sm leading-7 text-white/75">{aiSummary.summary}</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <AIReviewColumn
+                  title="Strengths"
+                  tone="emerald"
+                  items={
+                    aiSummary.strengths.length
+                      ? aiSummary.strengths
+                      : ["No clear bankroll strength is standing out strongly yet."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Risks"
+                  tone="red"
+                  items={
+                    aiSummary.risks.length
+                      ? aiSummary.risks
+                      : ["No major bankroll warning is being flagged right now."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Next Actions"
+                  tone="cyan"
+                  items={
+                    aiSummary.next_actions.length
+                      ? aiSummary.next_actions
+                      : ["Keep tracking results so the bankroll review can get sharper."]
+                  }
+                />
+              </div>
+
+              <p className="text-[11px] leading-5 text-white/42">{aiSummary.disclaimer}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
+              The bankroll AI review could not be loaded right now.
+            </div>
+          )}
+        </SectionCard>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
           <SectionCard

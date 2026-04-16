@@ -91,17 +91,17 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
-      <div className="relative mb-5 flex items-start justify-between gap-4">
+      <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/42">
             History
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
+          <h2 className="mt-2 text-base font-semibold text-white md:text-lg">{title}</h2>
           {description && (
-            <p className="mt-1 text-sm leading-relaxed text-white/60">
+            <p className="mt-1 text-sm leading-6 text-white/58">
               {description}
             </p>
           )}
@@ -127,8 +127,27 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-      <p className="text-xs uppercase tracking-wider text-white/45">{label}</p>
+    <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+        {label}
+      </p>
+      <div className="mt-1.5 text-sm font-medium text-white">{value}</div>
+    </div>
+  );
+}
+
+function InlineStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+        {label}
+      </p>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
     </div>
   );
@@ -552,296 +571,8 @@ export default function History() {
         </motion.div>
 
         <PremiumCard
-          title="Multiple Builder"
-          description="Build multiples from your saved match analyses, check same-game correlation and save the combo when it looks worth tracking."
-          badge="Multiples"
-        >
-          <div className="space-y-5">
-            <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers3 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-medium text-white">Current legs</p>
-                  </div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
-                    {multipleDraft.length} selected
-                  </span>
-                </div>
-
-                {multipleDraft.length === 0 ? (
-                  <p className="text-sm text-white/55">
-                    Add picks from the analysis cards below to start building a multiple.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {multipleDraft.map((leg) => (
-                      <div
-                        key={`${leg.analysisId}-${leg.market}`}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-white">{leg.match}</p>
-                          <p className="mt-1 text-xs text-white/55">
-                            {leg.market} · {leg.odds.toFixed(2)} · {leg.confidence.toFixed(1)}/10 confidence
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRemoveMultipleLeg(leg.analysisId, leg.market)
-                          }
-                          className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/15"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white">Multiple summary</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <MetricBlock label="Combined Odds" value={multipleMetrics.combinedOdds ? multipleMetrics.combinedOdds.toFixed(2) : "-"} />
-                    <MetricBlock label="Model %" value={multipleMetrics.combinedModelProb ? `${multipleMetrics.combinedModelProb.toFixed(2)}%` : "-"} />
-                    <MetricBlock label="Implied %" value={multipleMetrics.combinedImpliedProb ? `${multipleMetrics.combinedImpliedProb.toFixed(2)}%` : "-"} />
-                    <MetricBlock label="Confidence" value={multipleMetrics.adjustedConfidence ? `${multipleMetrics.adjustedConfidence.toFixed(1)}/10` : "-"} />
-                  </div>
-
-                <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                  <p className="text-xs uppercase tracking-wider text-white/45">Correlation</p>
-                  <p className="mt-1 text-sm font-medium text-white">
-                    {multipleMetrics.correlationLevel} ({multipleMetrics.correlationScore})
-                  </p>
-                  {multipleMetrics.correlationReasons.length > 0 ? (
-                    <div className="mt-2 space-y-1">
-                      {multipleMetrics.correlationReasons.map((reason) => (
-                        <p key={reason} className="text-xs text-white/55">
-                          {reason}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-white/55">
-                      No same-game correlation warning detected.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] p-4">
-                  <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                    Stake To Place (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={multipleStakeInput}
-                    onChange={(e) => setMultipleStakeInput(e.target.value)}
-                    placeholder={multipleMetrics.recommendedStakeAmount
-                      ? multipleMetrics.recommendedStakeAmount.toFixed(2)
-                      : "0.00"}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  />
-                  <p className="mt-2 text-xs text-white/50">
-                    If you enter a stake here, the multiple is saved as already placed and will appear in tracking with stake and combined odds filled in.
-                  </p>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveMultiple}
-                    disabled={multipleDraft.length < 2}
-                    className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Save Multiple
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearMultipleDraft();
-                      refreshMultiples();
-                    }}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:bg-white/[0.08]"
-                  >
-                    Clear Builder
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </PremiumCard>
-
-        <div ref={savedMultiplesRef}>
-          <PremiumCard
-            title="Saved Multiples"
-            description="Every saved multiple stays here in order, ready for tracking and quick updates."
-            badge="Tracking"
-          >
-            {savedMultiples.length === 0 ? (
-              <p className="text-sm text-white/55">
-                No saved multiples yet. Build one above from your saved match analyses.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                  <p className="text-sm text-white/60">
-                    {showResolvedMultiples
-                      ? "Showing all saved multiples."
-                      : hiddenResolvedMultiplesCount > 0
-                      ? `${hiddenResolvedMultiplesCount} resolved multiples hidden.`
-                      : "Showing only open multiples."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowResolvedMultiples((prev) => !prev)}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/70 transition hover:bg-white/[0.08]"
-                  >
-                    {showResolvedMultiples ? "Hide Resolved" : "Show All"}
-                  </button>
-                </div>
-
-                {visibleSavedMultiples.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-white/55">
-                    No open multiples right now.
-                  </div>
-                ) : (
-                  visibleSavedMultiples.map((multiple) => (
-                    <div
-                      key={multiple.id}
-                      className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
-                    >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
-                            {multiple.legs.length} legs
-                          </span>
-                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-200">
-                            {multiple.correlationLevel} correlation
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          {multiple.legs.map((leg) => (
-                            <p
-                              key={`${leg.analysisId}-${leg.market}`}
-                              className="text-sm text-white/75"
-                            >
-                              {leg.match} · {leg.market}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 xl:min-w-[420px]">
-                        <MetricBlock
-                          label="Combined Odds"
-                          value={multiple.combinedOdds.toFixed(2)}
-                        />
-                        <MetricBlock
-                          label="Confidence"
-                          value={`${multiple.adjustedConfidence.toFixed(1)}/10`}
-                        />
-                        <MetricBlock
-                          label="P/L"
-                          value={`EUR ${multiple.tracking.profitLoss.toFixed(2)}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="flex items-center gap-3 text-sm text-white">
-                          <input
-                            type="checkbox"
-                            checked={multiple.tracking.betPlaced}
-                            onChange={(e) =>
-                              handleMultipleTrackingChange(multiple.id, {
-                                betPlaced: e.target.checked,
-                                stakeUsed: e.target.checked
-                                  ? multiple.tracking.stakeUsed ??
-                                    Number(multiple.recommendedStakeAmount.toFixed(2))
-                                  : null,
-                                oddUsed: e.target.checked
-                                  ? multiple.tracking.oddUsed ??
-                                    Number(multiple.combinedOdds.toFixed(2))
-                                  : null,
-                              })
-                            }
-                            className="h-4 w-4 rounded border-white/20 bg-transparent"
-                          />
-                          I placed this multiple
-                        </label>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Stake Used
-                        </label>
-                        <input
-                          type="number"
-                          value={multiple.tracking.stakeUsed ?? ""}
-                          onChange={(e) =>
-                            handleMultipleStakeInputChange(
-                              multiple.id,
-                              e.target.value,
-                              multiple.tracking.oddUsed ??
-                                Number(multiple.combinedOdds.toFixed(2))
-                            )
-                          }
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                        />
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Result Status
-                        </label>
-                        <select
-                          value={multiple.tracking.resultStatus}
-                          onChange={(e) =>
-                            handleMultipleTrackingChange(multiple.id, {
-                              betPlaced: true,
-                              resultStatus: e.target.value as BetStatus,
-                            })
-                          }
-                          className={`${darkSelectClass} w-full`}
-                          style={darkSelectStyle}
-                        >
-                          <option value="pending" className="bg-slate-900 text-white">Pending</option>
-                          <option value="green" className="bg-slate-900 text-white">Green</option>
-                          <option value="red" className="bg-slate-900 text-white">Red</option>
-                          <option value="void" className="bg-slate-900 text-white">Void</option>
-                        </select>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Delete
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMultiple(multiple.id)}
-                          className="h-11 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
-                        >
-                          Delete Multiple
-                        </button>
-                      </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </PremiumCard>
-        </div>
-
-        <PremiumCard
           title="Filters & Search"
-          description="Refine the history and focus only on the analyses that matter."
+          description="Filter first, then focus on the picks and tracking states that actually need attention."
           badge="Controls"
         >
           <div className="space-y-4">
@@ -972,6 +703,291 @@ export default function History() {
           </div>
         </PremiumCard>
 
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <PremiumCard
+            title="Multiple Builder"
+            description="Build multiples from saved analyses, check correlation and save the combo only when it still looks disciplined."
+            badge="Multiples"
+          >
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers3 className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium text-white">Current legs</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
+                    {multipleDraft.length} selected
+                  </span>
+                </div>
+
+                {multipleDraft.length === 0 ? (
+                  <p className="text-sm text-white/55">
+                    Add picks from the analysis cards below to start building a multiple.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {multipleDraft.map((leg) => (
+                      <div
+                        key={`${leg.analysisId}-${leg.market}`}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-white">{leg.match}</p>
+                          <p className="mt-1 text-xs text-white/55">
+                            {leg.market} · {leg.odds.toFixed(2)} · {leg.confidence.toFixed(1)}/10 confidence
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleRemoveMultipleLeg(leg.analysisId, leg.market)
+                          }
+                          className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/15"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MetricBlock label="Combined Odds" value={multipleMetrics.combinedOdds ? multipleMetrics.combinedOdds.toFixed(2) : "-"} />
+                <MetricBlock label="Model %" value={multipleMetrics.combinedModelProb ? `${multipleMetrics.combinedModelProb.toFixed(2)}%` : "-"} />
+                <MetricBlock label="Implied %" value={multipleMetrics.combinedImpliedProb ? `${multipleMetrics.combinedImpliedProb.toFixed(2)}%` : "-"} />
+                <MetricBlock label="Confidence" value={multipleMetrics.adjustedConfidence ? `${multipleMetrics.adjustedConfidence.toFixed(1)}/10` : "-"} />
+              </div>
+
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                  Correlation
+                </p>
+                <p className="mt-1.5 text-sm font-medium text-white">
+                  {multipleMetrics.correlationLevel} ({multipleMetrics.correlationScore})
+                </p>
+                {multipleMetrics.correlationReasons.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    {multipleMetrics.correlationReasons.map((reason) => (
+                      <p key={reason} className="text-xs leading-5 text-white/55">
+                        {reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs leading-5 text-white/55">
+                    No same-game correlation warning detected.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                  Stake To Place (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={multipleStakeInput}
+                  onChange={(e) => setMultipleStakeInput(e.target.value)}
+                  placeholder={multipleMetrics.recommendedStakeAmount
+                    ? multipleMetrics.recommendedStakeAmount.toFixed(2)
+                    : "0.00"}
+                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+                <p className="mt-2 text-xs leading-5 text-white/50">
+                  If you enter a stake here, the multiple is saved as already placed and tracking starts immediately.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveMultiple}
+                  disabled={multipleDraft.length < 2}
+                  className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Save Multiple
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearMultipleDraft();
+                    refreshMultiples();
+                  }}
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:bg-white/[0.08]"
+                >
+                  Clear Builder
+                </button>
+              </div>
+            </div>
+          </PremiumCard>
+
+          <div ref={savedMultiplesRef}>
+            <PremiumCard
+              title="Saved Multiples"
+              description="Your saved combos stay here in order, ready for quick updates without getting buried below the whole history list."
+              badge="Tracking"
+            >
+              {savedMultiples.length === 0 ? (
+                <p className="text-sm text-white/55">
+                  No saved multiples yet. Build one from your saved analyses.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-sm text-white/60">
+                      {showResolvedMultiples
+                        ? "Showing all saved multiples."
+                        : hiddenResolvedMultiplesCount > 0
+                        ? `${hiddenResolvedMultiplesCount} resolved multiples hidden.`
+                        : "Showing only open multiples."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowResolvedMultiples((prev) => !prev)}
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/70 transition hover:bg-white/[0.08]"
+                    >
+                      {showResolvedMultiples ? "Hide Resolved" : "Show All"}
+                    </button>
+                  </div>
+
+                  {visibleSavedMultiples.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-white/55">
+                      No open multiples right now.
+                    </div>
+                  ) : (
+                    visibleSavedMultiples.map((multiple) => (
+                      <div
+                        key={multiple.id}
+                        className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+                      >
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
+                              {multiple.legs.length} legs
+                            </span>
+                            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-200">
+                              {multiple.correlationLevel} correlation
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <MetricBlock
+                              label="Combined Odds"
+                              value={multiple.combinedOdds.toFixed(2)}
+                            />
+                            <MetricBlock
+                              label="Confidence"
+                              value={`${multiple.adjustedConfidence.toFixed(1)}/10`}
+                            />
+                            <MetricBlock
+                              label="P/L"
+                              value={`EUR ${multiple.tracking.profitLoss.toFixed(2)}`}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            {multiple.legs.map((leg) => (
+                              <p
+                                key={`${leg.analysisId}-${leg.market}`}
+                                className="text-sm text-white/72"
+                              >
+                                {leg.match} · {leg.market}
+                              </p>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <label className="flex items-center gap-3 text-sm text-white">
+                                <input
+                                  type="checkbox"
+                                  checked={multiple.tracking.betPlaced}
+                                  onChange={(e) =>
+                                    handleMultipleTrackingChange(multiple.id, {
+                                      betPlaced: e.target.checked,
+                                      stakeUsed: e.target.checked
+                                        ? multiple.tracking.stakeUsed ??
+                                          Number(multiple.recommendedStakeAmount.toFixed(2))
+                                        : null,
+                                      oddUsed: e.target.checked
+                                        ? multiple.tracking.oddUsed ??
+                                          Number(multiple.combinedOdds.toFixed(2))
+                                        : null,
+                                    })
+                                  }
+                                  className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                />
+                                I placed this multiple
+                              </label>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
+                                Stake Used
+                              </label>
+                              <input
+                                type="number"
+                                value={multiple.tracking.stakeUsed ?? ""}
+                                onChange={(e) =>
+                                  handleMultipleStakeInputChange(
+                                    multiple.id,
+                                    e.target.value,
+                                    multiple.tracking.oddUsed ??
+                                      Number(multiple.combinedOdds.toFixed(2))
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                              />
+                            </div>
+
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
+                                Result Status
+                              </label>
+                              <select
+                                value={multiple.tracking.resultStatus}
+                                onChange={(e) =>
+                                  handleMultipleTrackingChange(multiple.id, {
+                                    betPlaced: true,
+                                    resultStatus: e.target.value as BetStatus,
+                                  })
+                                }
+                                className={`${darkSelectClass} w-full`}
+                                style={darkSelectStyle}
+                              >
+                                <option value="pending" className="bg-slate-900 text-white">Pending</option>
+                                <option value="green" className="bg-slate-900 text-white">Green</option>
+                                <option value="red" className="bg-slate-900 text-white">Red</option>
+                                <option value="void" className="bg-slate-900 text-white">Void</option>
+                              </select>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
+                                Delete
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMultiple(multiple.id)}
+                                className="h-11 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
+                              >
+                                Delete Multiple
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </PremiumCard>
+          </div>
+        </div>
+
         <div className="space-y-6">
           {filteredAnalyses.length === 0 ? (
             <PremiumCard
@@ -1005,7 +1021,7 @@ export default function History() {
                   ref={(el) => {
                     analysisRefs.current[analysis.id] = el;
                   }}
-                  className={`relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)] transition-all duration-300 ${
+                  className={`relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
                     highlightedAnalysisId === analysis.id
                       ? "ring-2 ring-emerald-500/30"
                       : ""
@@ -1013,17 +1029,17 @@ export default function History() {
                 >
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
 
-                  <div className="relative space-y-5">
+                  <div className="relative space-y-4">
                     <button
                       type="button"
                       onClick={() => toggleExpanded(analysis.id)}
-                      className="w-full rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.05]"
+                      className="w-full rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5 text-left transition hover:bg-white/[0.05]"
                     >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                              Saved Analysis
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                              Analysis
                             </p>
                             {needsAttention ? (
                               <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-300">
@@ -1040,10 +1056,10 @@ export default function History() {
                               </span>
                             )}
                           </div>
-                          <h3 className="mt-2 truncate text-xl font-semibold text-white">
+                          <h3 className="mt-2 truncate text-[1.1rem] font-semibold text-white md:text-[1.2rem]">
                             {matchLabel}
                           </h3>
-                          <p className="mt-1 text-sm text-white/55">
+                          <p className="mt-1 text-[13px] text-white/52">
                             {formatDateTime(analysis.createdAt)}
                           </p>
                         </div>
@@ -1060,16 +1076,16 @@ export default function History() {
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
-                            <MetricBlock
+                          <div className="flex flex-wrap gap-2 xl:justify-end">
+                            <InlineStat
                               label={tracking.selectedMarket ? "Selected" : "Best"}
                               value={displayBet ? displayBet.market : "-"}
                             />
-                            <MetricBlock
+                            <InlineStat
                               label="Edge"
                               value={displayBet ? <ValueBadge value={displayBet.valueBet} /> : "-"}
                             />
-                            <MetricBlock
+                            <InlineStat
                               label="Confidence"
                               value={
                                 displayBet ? (
@@ -1079,11 +1095,11 @@ export default function History() {
                                 )
                               }
                             />
-                            <MetricBlock
+                            <InlineStat
                               label="P/L"
                               value={`EUR ${tracking.profitLoss.toFixed(2)}`}
                             />
-                            <MetricBlock
+                            <InlineStat
                               label="Status"
                               value={<span className="capitalize">{tracking.resultStatus}</span>}
                             />
@@ -1122,10 +1138,10 @@ export default function History() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm text-white/50">
+                        <p className="text-[13px] text-white/48">
                           {isExpanded
-                            ? "Expanded tracking details"
-                            : "Expand to update stake, result, bankroll impact and notes."}
+                            ? "Tracking panel open"
+                            : "Expand to update stake, result and bankroll impact."}
                         </p>
                         <button
                           onClick={() => handleDeleteAnalysis(analysis.id, matchLabel)}
@@ -1145,7 +1161,7 @@ export default function History() {
                       transition={{ duration: 0.25 }}
                       className="overflow-hidden"
                     >
-                      <div className="space-y-5 pt-1">
+                      <div className="space-y-4 pt-1">
                         {displayBet && (
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                             <MetricBlock
