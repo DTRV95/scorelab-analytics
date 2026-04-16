@@ -2,6 +2,7 @@
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
+import { AITypewriter } from "@/components/AITypewriter";
 import {
   XAxis,
   YAxis,
@@ -347,10 +348,12 @@ function AIReviewColumn({
   title,
   tone,
   items,
+  startDelay = 0,
 }: {
   title: string;
   tone: "emerald" | "red" | "cyan";
   items: string[];
+  startDelay?: number;
 }) {
   const toneClasses =
     tone === "emerald"
@@ -370,7 +373,9 @@ function AIReviewColumn({
             <span className="mt-[3px] inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-current/20 text-[9px] font-semibold opacity-75">
               {index + 1}
             </span>
-            <p className="text-[13px] leading-6 text-white/78">{item}</p>
+            <p className="text-[13px] leading-6 text-white/78">
+              <AITypewriter text={item} startDelay={startDelay + index * 220} />
+            </p>
           </div>
         ))}
       </div>
@@ -757,13 +762,16 @@ export default function Dashboard() {
                     {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
                   </span>
                 </div>
-                <p className="mt-2.5 text-sm leading-7 text-white/75">{aiSummary.summary}</p>
+                <p className="mt-2.5 text-sm leading-7 text-white/75">
+                  <AITypewriter text={aiSummary.summary} startDelay={120} />
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                 <AIReviewColumn
                   title="Strengths"
                   tone="emerald"
+                  startDelay={380}
                   items={
                     aiSummary.strengths.length
                       ? aiSummary.strengths
@@ -773,6 +781,7 @@ export default function Dashboard() {
                 <AIReviewColumn
                   title="Risks"
                   tone="red"
+                  startDelay={760}
                   items={
                     aiSummary.risks.length
                       ? aiSummary.risks
@@ -782,6 +791,7 @@ export default function Dashboard() {
                 <AIReviewColumn
                   title="Next Actions"
                   tone="cyan"
+                  startDelay={1140}
                   items={
                     aiSummary.next_actions.length
                       ? aiSummary.next_actions

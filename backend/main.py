@@ -7,9 +7,15 @@ from schemas import (
     AIBankrollReviewResponse,
     AIDashboardSummaryRequest,
     AIDashboardSummaryResponse,
+    AIHistoryReviewRequest,
+    AIHistoryReviewResponse,
 )
 from model import analisar_jogo
-from ai_service import generate_bankroll_ai_review, generate_dashboard_ai_summary
+from ai_service import (
+    generate_bankroll_ai_review,
+    generate_dashboard_ai_summary,
+    generate_history_ai_review,
+)
 
 app = FastAPI(title="ScoreLab API")
 
@@ -38,3 +44,8 @@ def ai_dashboard_summary(data: AIDashboardSummaryRequest):
 @app.post("/ai/bankroll-review", response_model=AIBankrollReviewResponse)
 def ai_bankroll_review(data: AIBankrollReviewRequest):
     return generate_bankroll_ai_review(data)
+
+
+@app.post("/ai/history-review", response_model=AIHistoryReviewResponse)
+def ai_history_review(data: AIHistoryReviewRequest):
+    return generate_history_ai_review(data)

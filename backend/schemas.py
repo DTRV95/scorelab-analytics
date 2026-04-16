@@ -153,3 +153,32 @@ class AIBankrollReviewResponse(BaseModel):
     risks: List[str]
     next_actions: List[str]
     disclaimer: str
+
+
+class AIHistoryReviewRequest(BaseModel):
+    visible_analyses: int
+    placed_bets: int
+    settled_bets: int
+    pending_bets: int
+    greens: int
+    reds: int
+    needs_update: int
+    avg_confidence: float
+    avg_edge: float
+    filter_summary: str
+    strongest_market: Optional[str] = None
+    weakest_market: Optional[str] = None
+    top_markets: List[AIMarketSnapshot] = Field(default_factory=list)
+    recent_matches: List[str] = Field(default_factory=list)
+    multiple_draft_legs: int
+    pending_multiples: int
+    settled_multiples: int
+
+
+class AIHistoryReviewResponse(BaseModel):
+    configured: bool
+    summary: str
+    strengths: List[str]
+    risks: List[str]
+    next_actions: List[str]
+    disclaimer: str

@@ -3,13 +3,16 @@ import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ChevronDown, Layers3, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { AITypewriter } from "@/components/AITypewriter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ANALYSES_UPDATED_EVENT,
   getAnalyses,
   updateAnalysisTracking,
   deleteAnalysis,
 } from "@/lib/analysisStorage";
 import {
+  MULTIPLES_UPDATED_EVENT,
   addLegToMultipleDraft,
   clearMultipleDraft,
   createMultipleLeg,
@@ -23,6 +26,41 @@ import {
 } from "@/lib/multipleStorage";
 import type { SavedAnalysis, BetStatus } from "@/types/analysis";
 import { useSearchParams } from "react-router-dom";
+
+interface HistoryAISummary {
+  configured: boolean;
+  summary: string;
+  strengths: string[];
+  risks: string[];
+  next_actions: string[];
+  disclaimer: string;
+}
+
+interface HistoryAISummaryPayload {
+  visible_analyses: number;
+  placed_bets: number;
+  settled_bets: number;
+  pending_bets: number;
+  greens: number;
+  reds: number;
+  needs_update: number;
+  avg_confidence: number;
+  avg_edge: number;
+  filter_summary: string;
+  strongest_market: string | null;
+  weakest_market: string | null;
+  top_markets: Array<{
+    market: string;
+    bets: number;
+    roi: number;
+    hit_rate: number;
+    profit_loss: number;
+  }>;
+  recent_matches: string[];
+  multiple_draft_legs: number;
+  pending_multiples: number;
+  settled_multiples: number;
+}
 
 const darkSelectClass =
   "h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
@@ -127,11 +165,12 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+    <div className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+      <div className="mb-2 h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
         {label}
       </p>
-      <div className="mt-1.5 text-sm font-medium text-white">{value}</div>
+      <div className="mt-1.5 text-base font-semibold text-white">{value}</div>
     </div>
   );
 }
@@ -144,11 +183,79 @@ function InlineStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
         {label}
       </p>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
+    </div>
+  );
+}
+
+function ActiveFilterPill({
+  label,
+  tone = "neutral",
+}: {
+  label: string;
+  tone?: "neutral" | "emerald" | "amber" | "red" | "cyan";
+}) {
+  const toneClasses =
+    tone === "emerald"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      : tone === "amber"
+      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
+      : tone === "red"
+      ? "border-red-400/20 bg-red-400/10 text-red-200"
+      : tone === "cyan"
+      ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-200"
+      : "border-white/10 bg-white/[0.04] text-white/65";
+
+  return (
+    <span
+      className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[0.04em] ${toneClasses}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function DetailSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+      <div className="mb-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+          {title}
+        </p>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-white/50">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InputField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }
@@ -174,6 +281,112 @@ function getTrackingMissingFields(analysis: SavedAnalysis) {
   if (!tracking.notes.trim()) missing.push("notes");
 
   return missing;
+}
+
+function buildHistoryFallbackSummary(
+  payload: HistoryAISummaryPayload
+): HistoryAISummary {
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  const nextActions: string[] = [];
+
+  if (payload.strongest_market) {
+    strengths.push(
+      `${payload.strongest_market} is the strongest visible market inside the current history view.`
+    );
+  }
+
+  if (payload.settled_bets > 0) {
+    strengths.push(
+      `This filtered history already contains ${payload.settled_bets} settled bets, so it can start validating real patterns.`
+    );
+  }
+
+  if (payload.needs_update > 0) {
+    risks.push(
+      `${payload.needs_update} tracked bets still need cleanup, so the review is not fully clean yet.`
+    );
+  }
+
+  if (payload.weakest_market) {
+    risks.push(
+      `${payload.weakest_market} is the weakest visible market right now, so it deserves more caution.`
+    );
+  }
+
+  if (
+    payload.pending_bets > payload.settled_bets &&
+    payload.pending_bets > 0
+  ) {
+    risks.push(
+      `There are more pending bets than settled ones in this view, so recent conclusions are still fragile.`
+    );
+  }
+
+  if (payload.multiple_draft_legs > 0) {
+    nextActions.push(
+      `You already have ${payload.multiple_draft_legs} legs in the multiple builder, so compare them against the strongest history zones before saving.`
+    );
+  }
+
+  nextActions.push(
+    "Keep the tracking fields clean first so the history review reflects the real decision quality."
+  );
+  nextActions.push(
+    "Use the strongest visible markets as the base for the next selections."
+  );
+
+  return {
+    configured: false,
+    summary: `This history view shows ${payload.visible_analyses} analyses, ${payload.placed_bets} tracked bets and ${payload.settled_bets} settled results, with ${payload.avg_confidence.toFixed(1)} average confidence and ${payload.avg_edge.toFixed(1)}% average edge.`,
+    strengths: strengths.slice(0, 3),
+    risks: risks.slice(0, 3),
+    next_actions: nextActions.slice(0, 3),
+    disclaimer:
+      "This review interprets the visible history and tracking data. It supports review discipline, but it does not replace the betting model.",
+  };
+}
+
+function AIReviewColumn({
+  title,
+  tone,
+  items,
+  startDelay = 0,
+}: {
+  title: string;
+  tone: "emerald" | "red" | "cyan";
+  items: string[];
+  startDelay?: number;
+}) {
+  const toneClasses =
+    tone === "emerald"
+      ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
+      : tone === "red"
+      ? "border-red-400/15 bg-red-400/[0.04] text-red-200"
+      : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200";
+
+  return (
+    <div className={`rounded-xl border p-3.5 ${toneClasses}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+        {title}
+      </p>
+      <div className="mt-3 space-y-2.5">
+        {items.map((item, index) => (
+          <div
+            key={`${title}-${index}`}
+            className="flex items-start gap-2 text-sm leading-6"
+          >
+            <span className="mt-[2px] inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-current/20 text-[10px] font-semibold opacity-80">
+              {index + 1}
+            </span>
+            <p className="text-current/90">
+              <AITypewriter text={item} startDelay={startDelay + index * 220} />
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function History() {
@@ -202,11 +415,31 @@ export default function History() {
     "newest" | "oldest" | "edge" | "confidence" | "profitLoss"
   >("newest");
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [aiSummary, setAiSummary] = useState<HistoryAISummary | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const refreshAnalyses = () => {
+    setAnalyses(getAnalyses());
+  };
 
   useEffect(() => {
-    setAnalyses(getAnalyses());
+    refreshAnalyses();
     setMultipleDraft(getMultipleDraft());
     setSavedMultiples(getSavedMultiples());
+
+    const handleAnalysesUpdated = () => refreshAnalyses();
+    const handleMultiplesUpdated = () => {
+      setMultipleDraft(getMultipleDraft());
+      setSavedMultiples(getSavedMultiples());
+    };
+
+    window.addEventListener(ANALYSES_UPDATED_EVENT, handleAnalysesUpdated);
+    window.addEventListener(MULTIPLES_UPDATED_EVENT, handleMultiplesUpdated);
+
+    return () => {
+      window.removeEventListener(ANALYSES_UPDATED_EVENT, handleAnalysesUpdated);
+      window.removeEventListener(MULTIPLES_UPDATED_EVENT, handleMultiplesUpdated);
+    };
   }, []);
 
   const refreshMultiples = () => {
@@ -467,6 +700,215 @@ export default function History() {
     savedMultiples.length - visibleSavedMultiples.length
   );
 
+  const historyAiPayload = useMemo<HistoryAISummaryPayload>(() => {
+    const viewBets = filteredAnalyses.filter((analysis) => analysis.tracking.betPlaced);
+    const settledBets = viewBets.filter((analysis) =>
+      ["green", "red", "void"].includes(analysis.tracking.resultStatus)
+    );
+    const pendingBets = viewBets.filter(
+      (analysis) => analysis.tracking.resultStatus === "pending"
+    );
+
+    const displayResults = filteredAnalyses
+      .map((analysis) => {
+        const result = analysis.tracking.selectedMarket
+          ? analysis.results.find((entry) => entry.market === analysis.tracking.selectedMarket)
+          : getBestBet(analysis.results);
+
+        return result
+          ? {
+              analysis,
+              result,
+            }
+          : null;
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          analysis: SavedAnalysis;
+          result: NonNullable<ReturnType<typeof getBestBet>>;
+        } => item !== null
+      );
+
+    const avgConfidence =
+      displayResults.length > 0
+        ? displayResults.reduce((sum, item) => sum + item.result.confidence, 0) /
+          displayResults.length
+        : 0;
+    const avgEdge =
+      displayResults.length > 0
+        ? displayResults.reduce((sum, item) => sum + item.result.valueBet, 0) /
+          displayResults.length
+        : 0;
+
+    const marketMap = new Map<
+      string,
+      {
+        market: string;
+        bets: number;
+        greens: number;
+        reds: number;
+        profit_loss: number;
+        hit_rate: number;
+        roi: number;
+        totalStake: number;
+      }
+    >();
+
+    settledBets.forEach((analysis) => {
+      const market = analysis.tracking.selectedMarket;
+      if (!market) return;
+
+      const current = marketMap.get(market) || {
+        market,
+        bets: 0,
+        greens: 0,
+        reds: 0,
+        profit_loss: 0,
+        hit_rate: 0,
+        roi: 0,
+        totalStake: 0,
+      };
+
+      current.bets += 1;
+      current.profit_loss += analysis.tracking.profitLoss || 0;
+      current.totalStake += analysis.tracking.stakeUsed || 0;
+      if (analysis.tracking.resultStatus === "green") current.greens += 1;
+      if (analysis.tracking.resultStatus === "red") current.reds += 1;
+
+      const settled = current.greens + current.reds;
+      current.hit_rate = settled > 0 ? (current.greens / settled) * 100 : 0;
+      current.roi =
+        current.totalStake > 0
+          ? (current.profit_loss / current.totalStake) * 100
+          : 0;
+
+      marketMap.set(market, current);
+    });
+
+    const rankedMarkets = Array.from(marketMap.values())
+      .filter((item) => item.bets > 0)
+      .sort((a, b) => b.roi - a.roi);
+
+    const strongestMarket = rankedMarkets[0]?.market ?? null;
+    const weakestMarket =
+      rankedMarkets.length > 1
+        ? rankedMarkets[rankedMarkets.length - 1]?.market ?? null
+        : null;
+
+    const filterSummary = [
+      `status:${statusFilter}`,
+      `bet:${betPlacedFilter}`,
+      `market:${marketFilter}`,
+      `date:${dateFilter}`,
+      `sort:${sortBy}`,
+      searchTerm.trim() ? `search:${searchTerm.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    return {
+      visible_analyses: filteredAnalyses.length,
+      placed_bets: viewBets.length,
+      settled_bets: settledBets.length,
+      pending_bets: pendingBets.length,
+      greens: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "green").length,
+      reds: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "red").length,
+      needs_update: filteredAnalyses.filter(needsTrackingAttention).length,
+      avg_confidence: Number(avgConfidence.toFixed(1)),
+      avg_edge: Number(avgEdge.toFixed(2)),
+      filter_summary: filterSummary,
+      strongest_market: strongestMarket,
+      weakest_market: weakestMarket,
+      top_markets: rankedMarkets.slice(0, 3).map((item) => ({
+        market: item.market,
+        bets: item.bets,
+        roi: Number(item.roi.toFixed(2)),
+        hit_rate: Number(item.hit_rate.toFixed(2)),
+        profit_loss: Number(item.profit_loss.toFixed(2)),
+      })),
+      recent_matches: filteredAnalyses
+        .slice(0, 3)
+        .map((analysis) => `${analysis.homeTeam} vs ${analysis.awayTeam}`),
+      multiple_draft_legs: multipleDraft.length,
+      pending_multiples: savedMultiples.filter(
+        (multiple) =>
+          multiple.tracking.betPlaced &&
+          multiple.tracking.resultStatus === "pending"
+      ).length,
+      settled_multiples: savedMultiples.filter((multiple) =>
+        ["green", "red", "void"].includes(multiple.tracking.resultStatus)
+      ).length,
+    };
+  }, [
+    filteredAnalyses,
+    multipleDraft.length,
+    savedMultiples,
+    statusFilter,
+    betPlacedFilter,
+    marketFilter,
+    dateFilter,
+    sortBy,
+    searchTerm,
+  ]);
+
+  const historyAiPayloadKey = useMemo(
+    () => JSON.stringify(historyAiPayload),
+    [historyAiPayload]
+  );
+
+  useEffect(() => {
+    let isCancelled = false;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, 8000);
+
+    const run = async () => {
+      setAiLoading(true);
+      try {
+        const response = await fetch("http://localhost:8000/ai/history-review", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+          body: historyAiPayloadKey,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load history AI review (${response.status})`);
+        }
+
+        const data = (await response.json()) as HistoryAISummary;
+        if (!isCancelled) {
+          setAiSummary(data);
+        }
+      } catch {
+        if (!isCancelled) {
+          const parsedPayload = JSON.parse(
+            historyAiPayloadKey
+          ) as HistoryAISummaryPayload;
+          setAiSummary(buildHistoryFallbackSummary(parsedPayload));
+        }
+      } finally {
+        window.clearTimeout(timeoutId);
+        if (!isCancelled) {
+          setAiLoading(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [historyAiPayloadKey]);
+
   const handleAddToMultiple = (
     analysis: SavedAnalysis,
     result: SavedAnalysis["results"][number] | null
@@ -541,16 +983,27 @@ export default function History() {
         variants={stagger}
         className="space-y-8 p-6"
       >
-        <motion.div variants={fadeUp}>
-          <h1 className="text-2xl font-bold text-foreground">Analysis History</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review, filter and track all your saved analyses with the same premium workflow.
-          </p>
+        <motion.div
+          variants={fadeUp}
+          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
+          <div className="relative max-w-3xl">
+              <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
+                History Workspace
+              </div>
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                Analysis History
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+                Review saved analyses, update tracking, build disciplined multiples and use the filtered history to understand what is really validating.
+              </p>
+          </div>
         </motion.div>
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
+          className="grid grid-cols-2 gap-3 xl:grid-cols-5"
         >
           <MetricBlock label="Visible Analyses" value={summary.total} />
           <MetricBlock label="Bets Placed" value={summary.placed} />
@@ -571,11 +1024,98 @@ export default function History() {
         </motion.div>
 
         <PremiumCard
+          title="AI History Review"
+          description="A quick reading of what the current history view is validating, where the tracking still needs work and what deserves more care next."
+          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
+        >
+          {aiLoading ? (
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
+              Building history review...
+            </div>
+          ) : aiSummary ? (
+            <div className="space-y-3.5">
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                    History Read
+                  </p>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                    {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                  </span>
+                </div>
+                <p className="mt-2.5 text-sm leading-7 text-white/75">
+                  <AITypewriter text={aiSummary.summary} startDelay={120} />
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <AIReviewColumn
+                  title="Strengths"
+                  tone="emerald"
+                  startDelay={380}
+                  items={
+                    aiSummary.strengths.length
+                      ? aiSummary.strengths
+                      : ["No clear strength is standing out strongly enough yet."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Risks"
+                  tone="red"
+                  startDelay={760}
+                  items={
+                    aiSummary.risks.length
+                      ? aiSummary.risks
+                      : ["No major history risk is standing out strongly right now."]
+                  }
+                />
+                <AIReviewColumn
+                  title="Next Actions"
+                  tone="cyan"
+                  startDelay={1140}
+                  items={
+                    aiSummary.next_actions.length
+                      ? aiSummary.next_actions
+                      : ["Keep logging results cleanly so the history read stays useful."]
+                  }
+                />
+              </div>
+
+              <p className="text-xs leading-6 text-white/40">
+                {aiSummary.disclaimer}
+              </p>
+            </div>
+          ) : null}
+        </PremiumCard>
+
+        <PremiumCard
           title="Filters & Search"
           description="Filter first, then focus on the picks and tracking states that actually need attention."
           badge="Controls"
         >
           <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <ActiveFilterPill label={`Sort · ${sortBy}`} tone="cyan" />
+              {statusFilter !== "all" && (
+                <ActiveFilterPill label={`Status · ${statusFilter}`} tone="amber" />
+              )}
+              {betPlacedFilter !== "all" && (
+                <ActiveFilterPill
+                  label={betPlacedFilter === "placed" ? "Tracked Only" : "Analysis Only"}
+                  tone="emerald"
+                />
+              )}
+              {marketFilter !== "all" && (
+                <ActiveFilterPill label={`Market · ${marketFilter}`} tone="cyan" />
+              )}
+              {dateFilter !== "all" && (
+                <ActiveFilterPill label={`Date · ${dateFilter}`} tone="neutral" />
+              )}
+              {searchTerm.trim() && (
+                <ActiveFilterPill label={`Search · ${searchTerm.trim()}`} tone="neutral" />
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
               <input
                 type="text"
@@ -673,19 +1213,31 @@ export default function History() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setStatusFilter("pending")}
-                className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 text-xs text-yellow-300 transition hover:bg-yellow-500/15"
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  statusFilter === "pending"
+                    ? "border-yellow-400/30 bg-yellow-400/15 text-yellow-200"
+                    : "border-yellow-500/20 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/15"
+                }`}
               >
                 Pending
               </button>
               <button
                 onClick={() => setStatusFilter("green")}
-                className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 transition hover:bg-emerald-500/15"
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  statusFilter === "green"
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                }`}
               >
                 Greens
               </button>
               <button
                 onClick={() => setStatusFilter("red")}
-                className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/15"
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  statusFilter === "red"
+                    ? "border-red-400/30 bg-red-400/15 text-red-200"
+                    : "border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/15"
+                }`}
               >
                 Reds
               </button>
@@ -703,7 +1255,7 @@ export default function History() {
           </div>
         </PremiumCard>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.02fr_0.98fr]">
           <PremiumCard
             title="Multiple Builder"
             description="Build multiples from saved analyses, check correlation and save the combo only when it still looks disciplined."
@@ -1163,7 +1715,7 @@ export default function History() {
                     >
                       <div className="space-y-4 pt-1">
                         {displayBet && (
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
                             <MetricBlock
                               label={tracking.selectedMarket ? "Selected Market" : "Best Market"}
                               value={displayBet.market}
@@ -1191,160 +1743,159 @@ export default function History() {
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="flex items-center gap-3 text-sm text-white">
-                          <input
-                            type="checkbox"
-                            checked={tracking.betPlaced}
-                            onChange={(e) =>
-                              handleBetPlacedToggle(analysis, e.target.checked)
-                            }
-                            className="h-4 w-4 rounded border-white/20 bg-transparent"
-                          />
-                          I placed this bet
-                        </label>
-                      </div>
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                          <DetailSection
+                            title="Tracking Inputs"
+                            description="Update the actual bet details that should feed bankroll and performance."
+                          >
+                            <div className="space-y-3.5">
+                              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                                <label className="flex items-center gap-3 text-sm text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={tracking.betPlaced}
+                                    onChange={(e) =>
+                                      handleBetPlacedToggle(analysis, e.target.checked)
+                                    }
+                                    className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                  />
+                                  I placed this bet
+                                </label>
+                              </div>
 
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Selected Market
-                        </label>
-                        <select
-                          value={tracking.selectedMarket ?? ""}
-                          onChange={(e) =>
-                            handleSelectedMarketChange(analysis, e.target.value)
-                          }
-                          className={`${darkSelectClass} w-full`}
-                          style={darkSelectStyle}
-                          disabled={!tracking.betPlaced}
-                        >
-                          <option value="" className="bg-slate-900 text-white">
-                            Select market
-                          </option>
-                          {analysis.results.map((result) => (
-                            <option
-                              key={result.market}
-                              value={result.market}
-                              className="bg-slate-900 text-white"
-                            >
-                              {result.market}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <InputField label="Selected Market">
+                                  <select
+                                    value={tracking.selectedMarket ?? ""}
+                                    onChange={(e) =>
+                                      handleSelectedMarketChange(analysis, e.target.value)
+                                    }
+                                    className={`${darkSelectClass} w-full`}
+                                    style={darkSelectStyle}
+                                    disabled={!tracking.betPlaced}
+                                  >
+                                    <option value="" className="bg-slate-900 text-white">
+                                      Select market
+                                    </option>
+                                    {analysis.results.map((result) => (
+                                      <option
+                                        key={result.market}
+                                        value={result.market}
+                                        className="bg-slate-900 text-white"
+                                      >
+                                        {result.market}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </InputField>
 
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Stake Used
-                        </label>
-                        <input
-                          type="number"
-                          value={tracking.stakeUsed ?? ""}
-                          onChange={(e) =>
-                            handleTrackingChange(analysis.id, {
-                              stakeUsed:
-                                e.target.value === "" ? null : Number(e.target.value),
-                            })
-                          }
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                          disabled={!tracking.betPlaced}
-                        />
-                      </div>
+                                <InputField label="Result Status">
+                                  <select
+                                    value={tracking.resultStatus}
+                                    onChange={(e) =>
+                                      handleTrackingChange(analysis.id, {
+                                        resultStatus: e.target.value as BetStatus,
+                                      })
+                                    }
+                                    className={`${darkSelectClass} w-full`}
+                                    style={darkSelectStyle}
+                                    disabled={!tracking.betPlaced}
+                                  >
+                                    <option value="pending" className="bg-slate-900 text-white">
+                                      Pending
+                                    </option>
+                                    <option value="green" className="bg-slate-900 text-white">
+                                      Green
+                                    </option>
+                                    <option value="red" className="bg-slate-900 text-white">
+                                      Red
+                                    </option>
+                                    <option value="void" className="bg-slate-900 text-white">
+                                      Void
+                                    </option>
+                                  </select>
+                                </InputField>
 
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Odd Used
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={tracking.oddUsed ?? ""}
-                          onChange={(e) =>
-                            handleTrackingChange(analysis.id, {
-                              oddUsed:
-                                e.target.value === "" ? null : Number(e.target.value),
-                            })
-                          }
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                          disabled={!tracking.betPlaced}
-                        />
-                      </div>
+                                <InputField label="Stake Used">
+                                  <input
+                                    type="number"
+                                    value={tracking.stakeUsed ?? ""}
+                                    onChange={(e) =>
+                                      handleTrackingChange(analysis.id, {
+                                        stakeUsed:
+                                          e.target.value === "" ? null : Number(e.target.value),
+                                      })
+                                    }
+                                    className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                    disabled={!tracking.betPlaced}
+                                  />
+                                </InputField>
 
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Result Status
-                        </label>
-                        <select
-                          value={tracking.resultStatus}
-                          onChange={(e) =>
-                            handleTrackingChange(analysis.id, {
-                              resultStatus: e.target.value as BetStatus,
-                            })
-                          }
-                          className={`${darkSelectClass} w-full`}
-                          style={darkSelectStyle}
-                          disabled={!tracking.betPlaced}
-                        >
-                          <option value="pending" className="bg-slate-900 text-white">
-                            Pending
-                          </option>
-                          <option value="green" className="bg-slate-900 text-white">
-                            Green
-                          </option>
-                          <option value="red" className="bg-slate-900 text-white">
-                            Red
-                          </option>
-                          <option value="void" className="bg-slate-900 text-white">
-                            Void
-                          </option>
-                        </select>
-                      </div>
+                                <InputField label="Odd Used">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={tracking.oddUsed ?? ""}
+                                    onChange={(e) =>
+                                      handleTrackingChange(analysis.id, {
+                                        oddUsed:
+                                          e.target.value === "" ? null : Number(e.target.value),
+                                      })
+                                    }
+                                    className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                    disabled={!tracking.betPlaced}
+                                  />
+                                </InputField>
+                              </div>
 
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <label className="mb-2 block text-xs uppercase tracking-wider text-white/45">
-                          Notes
-                        </label>
-                        <input
-                          type="text"
-                          value={tracking.notes}
-                          onChange={(e) =>
-                            handleTrackingChange(analysis.id, {
-                              notes: e.target.value,
-                            })
-                          }
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                          disabled={!tracking.betPlaced}
-                        />
-                      </div>
-                    </div>
+                              <InputField label="Notes">
+                                <input
+                                  type="text"
+                                  value={tracking.notes}
+                                  onChange={(e) =>
+                                    handleTrackingChange(analysis.id, {
+                                      notes: e.target.value,
+                                    })
+                                  }
+                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                  disabled={!tracking.betPlaced}
+                                />
+                              </InputField>
+                            </div>
+                          </DetailSection>
 
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                      <MetricBlock
-                        label="Bankroll Before"
-                        value={
-                          tracking.bankrollBefore !== null
-                            ? `EUR ${tracking.bankrollBefore.toFixed(2)}`
-                            : "-"
-                        }
-                      />
-                      <MetricBlock
-                        label="Profit / Loss"
-                        value={`EUR ${tracking.profitLoss.toFixed(2)}`}
-                      />
-                      <MetricBlock
-                        label="Bankroll After"
-                        value={
-                          tracking.bankrollAfter !== null
-                            ? `EUR ${tracking.bankrollAfter.toFixed(2)}`
-                            : "-"
-                        }
-                      />
-                      <MetricBlock
-                        label="Tracked Status"
-                        value={<span className="capitalize">{tracking.resultStatus}</span>}
-                      />
-                    </div>
+                          <DetailSection
+                            title="Bankroll Impact"
+                            description="A compact read of how this tracked bet is affecting the bankroll flow."
+                          >
+                            <div className="grid grid-cols-2 gap-3">
+                              <MetricBlock
+                                label="Bankroll Before"
+                                value={
+                                  tracking.bankrollBefore !== null
+                                    ? `EUR ${tracking.bankrollBefore.toFixed(2)}`
+                                    : "-"
+                                }
+                              />
+                              <MetricBlock
+                                label="Profit / Loss"
+                                value={`EUR ${tracking.profitLoss.toFixed(2)}`}
+                              />
+                              <MetricBlock
+                                label="Bankroll After"
+                                value={
+                                  tracking.bankrollAfter !== null
+                                    ? `EUR ${tracking.bankrollAfter.toFixed(2)}`
+                                    : "-"
+                                }
+                              />
+                              <MetricBlock
+                                label="Tracked Status"
+                                value={<span className="capitalize">{tracking.resultStatus}</span>}
+                              />
+                            </div>
+                          </DetailSection>
+                        </div>
                       </div>
                     </motion.div>
                   </div>
