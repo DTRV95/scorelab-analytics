@@ -51,6 +51,7 @@ export interface SavedAnalysis {
   createdAt: string;
   homeTeam: string;
   awayTeam: string;
+  league: string;
   summary: AnalysisSummary;
   results: AnalysisResult[];
   tracking: TrackedBet;

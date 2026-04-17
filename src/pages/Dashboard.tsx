@@ -21,9 +21,14 @@ import {
   getAnalyses,
   getBankrollStats,
 } from "@/lib/analysisStorage";
-import { getSavedMultiples, MULTIPLES_UPDATED_EVENT } from "@/lib/multipleStorage";
+import {
+  getMultipleMarketPerformance,
+  getSavedMultiples,
+  MULTIPLES_UPDATED_EVENT,
+} from "@/lib/multipleStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
+import type { MarketPerformance } from "@/lib/portofolioEngine";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
 
 const stagger = {
@@ -80,6 +85,22 @@ interface DashboardAISummaryPayload {
     odds: number;
     decision: string;
   } | null;
+}
+
+interface LeaguePerformanceRow {
+  league: string;
+  bets: number;
+  wins: number;
+  losses: number;
+  voids: number;
+  hitRate: number;
+  avgConfidence: number;
+  avgEdge: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+  bestMarket: string;
+  status: "Strong" | "Stable" | "Weak" | "Too Early";
 }
 
 function buildLocalAiSummary(
@@ -224,6 +245,173 @@ function getBestBet(results: AnalysisResult[]) {
   if (!positiveBets.length) return null;
 
   return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
+}
+
+function getLeagueStatus(
+  bets: number,
+  roi: number,
+  hitRate: number
+): LeaguePerformanceRow["status"] {
+  if (bets < 3) return "Too Early";
+  if (roi >= 12 && hitRate >= 55) return "Strong";
+  if (roi >= 0 && hitRate >= 50) return "Stable";
+  return "Weak";
+}
+
+function getLeagueStatusTone(status: LeaguePerformanceRow["status"]) {
+  if (status === "Strong") {
+    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
+  }
+
+  if (status === "Stable") {
+    return "border-cyan-400/20 bg-cyan-400/10 text-cyan-200";
+  }
+
+  if (status === "Weak") {
+    return "border-red-400/20 bg-red-400/10 text-red-200";
+  }
+
+  return "border-white/10 bg-white/[0.05] text-white/55";
+}
+
+function mergeMarketPerformanceRows(
+  singles: MarketPerformance[],
+  multiples: ReturnType<typeof getMultipleMarketPerformance>
+): MarketPerformance[] {
+  const merged = new Map<
+    string,
+    {
+      market: string;
+      marketGroup: string;
+      bets: number;
+      wins: number;
+      losses: number;
+      voids: number;
+      avgOddsWeighted: number;
+      avgConfidenceWeighted: number;
+      avgEdgeWeighted: number;
+      avgEdgeLowerBoundWeighted: number;
+      avgRobustnessWeighted: number;
+      totalStake: number;
+      profitLoss: number;
+    }
+  >();
+
+  const upsert = (
+    market: string,
+    marketGroup: string,
+    bets: number,
+    wins: number,
+    losses: number,
+    voids: number,
+    avgOdds: number,
+    avgConfidence: number,
+    avgEdge: number,
+    avgEdgeLowerBound: number,
+    avgRobustness: number,
+    totalStake: number,
+    profitLoss: number
+  ) => {
+    const current = merged.get(market) || {
+      market,
+      marketGroup,
+      bets: 0,
+      wins: 0,
+      losses: 0,
+      voids: 0,
+      avgOddsWeighted: 0,
+      avgConfidenceWeighted: 0,
+      avgEdgeWeighted: 0,
+      avgEdgeLowerBoundWeighted: 0,
+      avgRobustnessWeighted: 0,
+      totalStake: 0,
+      profitLoss: 0,
+    };
+
+    current.bets += bets;
+    current.wins += wins;
+    current.losses += losses;
+    current.voids += voids;
+    current.avgOddsWeighted += avgOdds * bets;
+    current.avgConfidenceWeighted += avgConfidence * bets;
+    current.avgEdgeWeighted += avgEdge * bets;
+    current.avgEdgeLowerBoundWeighted += avgEdgeLowerBound * bets;
+    current.avgRobustnessWeighted += avgRobustness * bets;
+    current.totalStake += totalStake;
+    current.profitLoss += profitLoss;
+
+    merged.set(market, current);
+  };
+
+  singles.forEach((row) => {
+    upsert(
+      row.market,
+      row.marketGroup,
+      row.bets,
+      row.wins,
+      row.losses,
+      row.voids,
+      row.avgOdds,
+      row.avgConfidence,
+      row.avgEdge,
+      row.avgEdgeLowerBound,
+      row.avgRobustness,
+      row.totalStake,
+      row.profitLoss
+    );
+  });
+
+  multiples.forEach((row) => {
+    upsert(
+      row.market,
+      row.marketGroup,
+      row.bets,
+      row.greens,
+      row.reds,
+      row.voids,
+      row.avgOdds,
+      row.avgConfidence,
+      row.avgEdge,
+      0,
+      0,
+      row.totalStake,
+      row.profitLoss
+    );
+  });
+
+  return Array.from(merged.values())
+    .map((row) => ({
+      market: row.market,
+      marketGroup: row.marketGroup,
+      bets: row.bets,
+      wins: row.wins,
+      losses: row.losses,
+      voids: row.voids,
+      hitRate: row.bets > 0 ? Number(((row.wins / row.bets) * 100).toFixed(1)) : 0,
+      avgOdds:
+        row.bets > 0 ? Number((row.avgOddsWeighted / row.bets).toFixed(2)) : 0,
+      avgConfidence:
+        row.bets > 0
+          ? Number((row.avgConfidenceWeighted / row.bets).toFixed(2))
+          : 0,
+      avgEdge:
+        row.bets > 0 ? Number((row.avgEdgeWeighted / row.bets).toFixed(2)) : 0,
+      avgEdgeLowerBound:
+        row.bets > 0
+          ? Number((row.avgEdgeLowerBoundWeighted / row.bets).toFixed(2))
+          : 0,
+      avgRobustness:
+        row.bets > 0
+          ? Number((row.avgRobustnessWeighted / row.bets).toFixed(2))
+          : 0,
+      totalStake: Number(row.totalStake.toFixed(2)),
+      profitLoss: Number(row.profitLoss.toFixed(2)),
+      roi:
+        row.totalStake > 0
+          ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1))
+          : 0,
+    }))
+    .sort((a, b) => b.hitRate - a.hitRate);
 }
 
 function isSameDay(dateA: Date, dateB: Date) {
@@ -484,11 +672,15 @@ export default function Dashboard() {
       .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
 
     const openExposure = singlesOpenExposure + multiplesOpenExposure;
+    const openExposurePct =
+      bankrollStats.currentBankroll > 0
+        ? (openExposure / bankrollStats.currentBankroll) * 100
+        : 0;
 
     const riskLevel =
-      openExposure <= bankrollStats.currentBankroll * 0.03
+      openExposurePct <= 3
         ? "Low"
-        : openExposure <= bankrollStats.currentBankroll * 0.08
+        : openExposurePct <= 8
         ? "Moderate"
         : "High";
 
@@ -503,6 +695,7 @@ export default function Dashboard() {
       avgXg,
       topValueTodayEntry,
       openExposure,
+      openExposurePct,
       riskLevel,
       performance,
       autoInsights,
@@ -536,13 +729,133 @@ export default function Dashboard() {
       ...item,
     })) ?? [];
 
+  const multipleMarketPerformance = getMultipleMarketPerformance({
+    excludeDuplicateSingles: true,
+  });
+
   const marketPerformanceRows = useMemo(
     () =>
-      [...(dashboardData.performance?.marketPerformance ?? [])].sort(
-        (a, b) => b.hitRate - a.hitRate
+      mergeMarketPerformanceRows(
+        dashboardData.performance?.marketPerformance ?? [],
+        multipleMarketPerformance
       ),
-    [dashboardData.performance?.marketPerformance]
+    [dashboardData.performance?.marketPerformance, multipleMarketPerformance]
   );
+
+  const leaguePerformanceRows = useMemo<LeaguePerformanceRow[]>(() => {
+    const settledAnalyses = analyses.filter(
+      (analysis) =>
+        analysis.tracking.betPlaced &&
+        (analysis.tracking.resultStatus === "green" ||
+          analysis.tracking.resultStatus === "red" ||
+          analysis.tracking.resultStatus === "void") &&
+        analysis.tracking.selectedMarket
+    );
+
+    const leagueMap = new Map<
+      string,
+      {
+        bets: number;
+        wins: number;
+        losses: number;
+        voids: number;
+        totalStake: number;
+        profitLoss: number;
+        confidenceSum: number;
+        edgeSum: number;
+        marketMap: Map<string, { bets: number; totalStake: number; profitLoss: number }>;
+      }
+    >();
+
+    settledAnalyses.forEach((analysis) => {
+      const league = analysis.league?.trim() || "Unspecified";
+      const selectedResult = analysis.results.find(
+        (result) => result.market === analysis.tracking.selectedMarket
+      );
+
+      if (!selectedResult) return;
+
+      if (!leagueMap.has(league)) {
+        leagueMap.set(league, {
+          bets: 0,
+          wins: 0,
+          losses: 0,
+          voids: 0,
+          totalStake: 0,
+          profitLoss: 0,
+          confidenceSum: 0,
+          edgeSum: 0,
+          marketMap: new Map(),
+        });
+      }
+
+      const current = leagueMap.get(league)!;
+      const stake = analysis.tracking.stakeUsed || 0;
+      const profitLoss = analysis.tracking.profitLoss || 0;
+      const market = selectedResult.market;
+
+      current.bets += 1;
+      current.totalStake += stake;
+      current.profitLoss += profitLoss;
+      current.confidenceSum += selectedResult.confidence || 0;
+      current.edgeSum += selectedResult.valueBet || 0;
+
+      if (analysis.tracking.resultStatus === "green") current.wins += 1;
+      if (analysis.tracking.resultStatus === "red") current.losses += 1;
+      if (analysis.tracking.resultStatus === "void") current.voids += 1;
+
+      const existingMarket = current.marketMap.get(market) || {
+        bets: 0,
+        totalStake: 0,
+        profitLoss: 0,
+      };
+
+      existingMarket.bets += 1;
+      existingMarket.totalStake += stake;
+      existingMarket.profitLoss += profitLoss;
+      current.marketMap.set(market, existingMarket);
+    });
+
+    return Array.from(leagueMap.entries())
+      .map(([league, row]) => {
+        const hitRate = row.bets > 0 ? (row.wins / row.bets) * 100 : 0;
+        const roi = row.totalStake > 0 ? (row.profitLoss / row.totalStake) * 100 : 0;
+        const avgConfidence = row.bets > 0 ? row.confidenceSum / row.bets : 0;
+        const avgEdge = row.bets > 0 ? row.edgeSum / row.bets : 0;
+
+        const bestMarketEntry =
+          Array.from(row.marketMap.entries()).sort((a, b) => {
+            const aRoi =
+              a[1].totalStake > 0 ? (a[1].profitLoss / a[1].totalStake) * 100 : 0;
+            const bRoi =
+              b[1].totalStake > 0 ? (b[1].profitLoss / b[1].totalStake) * 100 : 0;
+
+            if (bRoi !== aRoi) return bRoi - aRoi;
+            return b[1].bets - a[1].bets;
+          })[0];
+
+        return {
+          league,
+          bets: row.bets,
+          wins: row.wins,
+          losses: row.losses,
+          voids: row.voids,
+          hitRate: Number(hitRate.toFixed(1)),
+          avgConfidence: Number(avgConfidence.toFixed(2)),
+          avgEdge: Number(avgEdge.toFixed(2)),
+          totalStake: Number(row.totalStake.toFixed(2)),
+          profitLoss: Number(row.profitLoss.toFixed(2)),
+          roi: Number(roi.toFixed(1)),
+          bestMarket: bestMarketEntry?.[0] ?? "No clear read yet",
+          status: getLeagueStatus(row.bets, roi, hitRate),
+        };
+      })
+      .sort((a, b) => {
+        if (a.status === "Too Early" && b.status !== "Too Early") return 1;
+        if (b.status === "Too Early" && a.status !== "Too Early") return -1;
+        return b.roi - a.roi;
+      });
+  }, [analyses]);
 
   const riskChartData: ChartRow[] =
     dashboardData.performance?.riskPerformance?.map((item) => ({
@@ -668,15 +981,24 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-8"
+        className="space-y-8 p-6"
       >
-        <motion.div variants={fadeUp} className="space-y-2">
-          <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground md:text-[1.8rem]">
-            Performance Intelligence
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Use historical betting performance to find where ScoreLab really wins.
-          </p>
+        <motion.div
+          variants={fadeUp}
+          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
+          <div className="relative max-w-3xl">
+            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
+              Dashboard Workspace
+            </div>
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+              Performance Intelligence
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+              Use historical betting performance to find where ScoreLab is really validating and where discipline matters most.
+            </p>
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
@@ -1029,6 +1351,85 @@ export default function Dashboard() {
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       No settled tracked bets yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="League Performance"
+          description="Validate which leagues are earning trust, which ones still need sample and which market is carrying each competition."
+          badge="Leagues"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead className="border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                  <th className="py-3 pr-4">League</th>
+                  <th className="py-3 pr-4">Bets</th>
+                  <th className="py-3 pr-4">Hit Rate</th>
+                  <th className="py-3 pr-4">Avg Conf.</th>
+                  <th className="py-3 pr-4">Avg Edge</th>
+                  <th className="py-3 pr-4">Best Market</th>
+                  <th className="py-3 pr-4">Stake</th>
+                  <th className="py-3 pr-4">P/L</th>
+                  <th className="py-3 pr-4">ROI</th>
+                  <th className="py-3 pr-4">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {leaguePerformanceRows.length > 0 ? (
+                  leaguePerformanceRows.map((row) => (
+                    <tr key={row.league} className="border-t border-white/5">
+                      <td className="py-3 pr-4 font-medium text-foreground">
+                        {row.league}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.bets}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.hitRate}%
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.avgConfidence}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.avgEdge}%
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {row.bestMarket}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        €{row.totalStake.toFixed(2)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        €{row.profitLoss.toFixed(2)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
+                        {row.roi}%
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getLeagueStatusTone(
+                            row.status
+                          )}`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      No settled league data yet. Start tracking results so ScoreLab can validate competitions properly.
                     </td>
                   </tr>
                 )}

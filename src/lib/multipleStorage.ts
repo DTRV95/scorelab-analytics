@@ -91,6 +91,27 @@ export interface MultipleSegmentPerformance {
   hitRate: number;
 }
 
+export interface MultipleMarketPerformanceItem {
+  market: string;
+  marketGroup: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  voids: number;
+  pending: number;
+  hitRate: number;
+  avgOdds: number;
+  avgConfidence: number;
+  avgEdge: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+}
+
+interface MultipleMarketPerformanceOptions {
+  excludeDuplicateSingles?: boolean;
+}
+
 function emitMultiplesUpdated() {
   window.dispatchEvent(new CustomEvent(MULTIPLES_UPDATED_EVENT));
 }
@@ -123,6 +144,16 @@ function getMarketGroup(market: string) {
   if (normalized.includes("under")) return "totals-under";
   if (["home", "draw", "away"].includes(normalized)) return "1x2";
   return "other";
+}
+
+function getMarketGroupLabel(market: string) {
+  const group = getMarketGroup(market);
+
+  if (group === "btts") return "BTTS";
+  if (group === "totals-over") return "Over";
+  if (group === "totals-under") return "Under";
+  if (group === "1x2") return "1X2";
+  return "Other";
 }
 
 function getPairCorrelationScore(a: MultipleLeg, b: MultipleLeg) {
@@ -592,6 +623,122 @@ export function getMultipleCorrelationPerformance(): MultipleSegmentPerformance[
       ...buildPerformanceRow(items),
     }))
     .sort((a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket));
+}
+
+export function getMultipleMarketPerformance(
+  options: MultipleMarketPerformanceOptions = {}
+): MultipleMarketPerformanceItem[] {
+  const duplicateSingleKeys = options.excludeDuplicateSingles
+    ? new Set(
+        getAnalyses()
+          .filter(
+            (analysis) =>
+              analysis.tracking.betPlaced && analysis.tracking.selectedMarket
+          )
+          .map(
+            (analysis) =>
+              `${analysis.id}::${normalizeMarketName(
+                analysis.tracking.selectedMarket || ""
+              )}`
+          )
+      )
+    : null;
+
+  const marketMap = new Map<
+    string,
+    {
+      market: string;
+      marketGroup: string;
+      bets: number;
+      greens: number;
+      reds: number;
+      voids: number;
+      pending: number;
+      oddsSum: number;
+      confidenceSum: number;
+      edgeSum: number;
+      totalStake: number;
+      profitLoss: number;
+    }
+  >();
+
+  getSavedMultiples()
+    .filter((bet) => bet.tracking.betPlaced && bet.legs.length > 0)
+    .forEach((bet) => {
+      const legCount = bet.legs.length;
+      const stakeShare = (bet.tracking.stakeUsed || 0) / legCount;
+      const profitShare =
+        bet.tracking.resultStatus === "green" ||
+        bet.tracking.resultStatus === "red" ||
+        bet.tracking.resultStatus === "void"
+          ? bet.tracking.profitLoss / legCount
+          : 0;
+
+      bet.legs.forEach((leg) => {
+        const market = normalizeMarketName(leg.market);
+        const legKey = `${leg.analysisId}::${market}`;
+
+        if (duplicateSingleKeys?.has(legKey)) {
+          return;
+        }
+
+        const current = marketMap.get(market) || {
+          market,
+          marketGroup: getMarketGroupLabel(market),
+          bets: 0,
+          greens: 0,
+          reds: 0,
+          voids: 0,
+          pending: 0,
+          oddsSum: 0,
+          confidenceSum: 0,
+          edgeSum: 0,
+          totalStake: 0,
+          profitLoss: 0,
+        };
+
+        current.bets += 1;
+        current.oddsSum += leg.odds || 0;
+        current.confidenceSum += leg.confidence || 0;
+        current.edgeSum += leg.valueBet || 0;
+        current.totalStake += stakeShare;
+        current.profitLoss += profitShare;
+
+        if (bet.tracking.resultStatus === "green") current.greens += 1;
+        if (bet.tracking.resultStatus === "red") current.reds += 1;
+        if (bet.tracking.resultStatus === "void") current.voids += 1;
+        if (bet.tracking.resultStatus === "pending") current.pending += 1;
+
+        marketMap.set(market, current);
+      });
+    });
+
+  return Array.from(marketMap.values())
+    .map((row) => {
+      const settled = row.greens + row.reds;
+
+      return {
+        market: row.market,
+        marketGroup: row.marketGroup,
+        bets: row.bets,
+        greens: row.greens,
+        reds: row.reds,
+        voids: row.voids,
+        pending: row.pending,
+        hitRate: settled > 0 ? Number(((row.greens / settled) * 100).toFixed(1)) : 0,
+        avgOdds: row.bets > 0 ? Number((row.oddsSum / row.bets).toFixed(2)) : 0,
+        avgConfidence:
+          row.bets > 0 ? Number((row.confidenceSum / row.bets).toFixed(2)) : 0,
+        avgEdge: row.bets > 0 ? Number((row.edgeSum / row.bets).toFixed(2)) : 0,
+        totalStake: Number(row.totalStake.toFixed(2)),
+        profitLoss: Number(row.profitLoss.toFixed(2)),
+        roi:
+          row.totalStake > 0
+            ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1))
+            : 0,
+      };
+    })
+    .sort((a, b) => b.profitLoss - a.profitLoss);
 }
 
 export function getTierWeight(tier: MultipleTier) {

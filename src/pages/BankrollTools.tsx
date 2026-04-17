@@ -3,6 +3,7 @@ import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
   MULTIPLES_UPDATED_EVENT,
   getBetTypePerformance,
+  getMultipleMarketPerformance,
   getMultipleCorrelationPerformance,
   getMultipleLegCountPerformance,
   getMultiplePerformanceSummary,
@@ -87,6 +88,87 @@ interface BankrollAISummaryPayload {
     value: number;
     context: string;
   }>;
+}
+
+function mergeSimpleAndMultipleMarketPerformance(
+  singles: ReturnType<typeof getMarketPerformance>,
+  multiples: ReturnType<typeof getMultipleMarketPerformance>
+) {
+  const merged = new Map<
+    string,
+    {
+      market: string;
+      bets: number;
+      greens: number;
+      reds: number;
+      voids: number;
+      pending: number;
+      profitLoss: number;
+    }
+  >();
+
+  const upsert = (
+    market: string,
+    bets: number,
+    greens: number,
+    reds: number,
+    voids: number,
+    pending: number,
+    profitLoss: number
+  ) => {
+    const current = merged.get(market) || {
+      market,
+      bets: 0,
+      greens: 0,
+      reds: 0,
+      voids: 0,
+      pending: 0,
+      profitLoss: 0,
+    };
+
+    current.bets += bets;
+    current.greens += greens;
+    current.reds += reds;
+    current.voids += voids;
+    current.pending += pending;
+    current.profitLoss += profitLoss;
+
+    merged.set(market, current);
+  };
+
+  singles.forEach((item) => {
+    upsert(
+      item.market,
+      item.bets,
+      item.greens,
+      item.reds,
+      item.voids,
+      item.pending,
+      item.profitLoss
+    );
+  });
+
+  multiples.forEach((item) => {
+    upsert(
+      item.market,
+      item.bets,
+      item.greens,
+      item.reds,
+      item.voids,
+      item.pending,
+      item.profitLoss
+    );
+  });
+
+  return Array.from(merged.values()).map((item) => {
+    const settled = item.greens + item.reds;
+
+    return {
+      ...item,
+      profitLoss: Number(item.profitLoss.toFixed(2)),
+      hitRate: settled > 0 ? Number(((item.greens / settled) * 100).toFixed(1)) : 0,
+    };
+  });
 }
 
 function buildLocalBankrollAiSummary(
@@ -429,7 +511,10 @@ export default function BankrollTools() {
   const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
   const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
 
-  const marketPerformance = getMarketPerformance();
+  const marketPerformance = mergeSimpleAndMultipleMarketPerformance(
+    getMarketPerformance(),
+    getMultipleMarketPerformance({ excludeDuplicateSingles: true })
+  );
   const edgeBucketPerformance = getEdgeBucketPerformance();
   const confidenceBucketPerformance = getConfidenceBucketPerformance();
   const edgeZoneSummary = getEdgeZoneSummary();
@@ -899,14 +984,24 @@ export default function BankrollTools() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-5"
+        className="space-y-8 p-6"
       >
-        <motion.div variants={fadeUp} className="space-y-2">
-          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Bankroll Tools</h1>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Treat the bankroll as an operating system: set the baseline, track the
-            pressure on capital and understand where performance is coming from.
-          </p>
+        <motion.div
+          variants={fadeUp}
+          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
+          <div className="relative max-w-3xl">
+            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
+              Bankroll Workspace
+            </div>
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+              Bankroll Tools
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+              Treat the bankroll as an operating system: set the baseline, track pressure on capital and understand where performance is really coming from.
+            </p>
+          </div>
         </motion.div>
 
         <SectionCard
@@ -931,7 +1026,7 @@ export default function BankrollTools() {
               <button
                 type="button"
                 onClick={handleSaveBankroll}
-                className="h-11 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+                className="h-11 rounded-2xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
               >
                 Save baseline
               </button>

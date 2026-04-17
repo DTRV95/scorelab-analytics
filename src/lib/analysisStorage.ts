@@ -110,8 +110,25 @@ function normalizeMarketName(market: string | null | undefined): string | null {
 }
 
 function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
+  const legacySource = analysis as SavedAnalysis & {
+    liga?: string;
+    competition?: string;
+  };
+  const legacyLeague =
+    typeof legacySource.liga === "string"
+      ? legacySource.liga
+      : typeof legacySource.competition === "string"
+      ? legacySource.competition
+      : "";
+
   return {
     ...analysis,
+    league:
+      typeof analysis.league === "string" && analysis.league.trim().length > 0
+        ? analysis.league
+        : legacyLeague.trim().length > 0
+        ? legacyLeague
+        : "Unspecified",
     results: analysis.results.map((result) => ({
       ...result,
       market: normalizeMarketName(result.market) || result.market,

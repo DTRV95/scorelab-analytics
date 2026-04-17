@@ -20,6 +20,8 @@ Super Lig,1.31,1.29,-0.08,6,BetExplorer,https://www.betexplorer.com/football/tur
 Saudi Pro League,1.56,1.41,-0.05,5,BetExplorer,https://www.betexplorer.com/football/saudi-arabia/saudi-professional-league/stats/,2025/26 snapshot with real league scoring averages and recommended model tuning.
 Argelia Ligue 1,1.27,0.89,-0.10,8,FootyStats,https://footystats.org/algeria/ligue-1,2025/26 snapshot based on current home and away scoring averages across the competition.
 Bahraini Premier League,1.25,1.12,-0.08,7,FootyStats,https://footystats.org/bahrain/bahraini-premier-league,2025/26 snapshot based on current home and away scoring averages across the competition.
+Liga Primera,1.64,1.29,-0.05,6,FootyStats,https://footystats.org/nicaragua/primera-division,2025/26 snapshot based on current home and away scoring averages across the competition.
+Liga Nacional de Futbol de Guatemala,1.54,0.81,-0.10,7,FootyStats,https://footystats.org/guatemala/liga-nacional-de-futbol-de-guatemala,2025/26 snapshot based on current home and away scoring averages across the competition.
 Primera Categoria Serie A,1.11,0.86,-0.11,8,FootyStats,https://footystats.org/ecuador/primera-categoria-serie-a,2026 snapshot based on current home and away scoring averages across the competition.
 Primera Categoria Serie B,1.43,0.82,-0.10,8,SoccerStats,https://www.soccerstats.com/trends.asp?league=ecuador2,2025 season snapshot used because the 2026 secondary-league feed is still incomplete on the primary source.
 PrvaLiga,1.69,1.42,-0.04,5,FootyStats,https://footystats.org/slovenia/prvaliga,2025/26 snapshot based on current home and away scoring averages across the competition.

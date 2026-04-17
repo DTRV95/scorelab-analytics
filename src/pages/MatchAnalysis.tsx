@@ -603,6 +603,7 @@ export default function MatchAnalysis() {
         createdAt: new Date().toISOString(),
         homeTeam: formData.equipa_casa,
         awayTeam: formData.equipa_fora,
+        league: formData.liga,
         summary: summaryData,
         results: mappedResults,
         tracking: {

@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import MatchAnalysis from "./pages/MatchAnalysis";
 import ValueRadar from "./pages/ValueRadar";
 import History from "./pages/History";
+import HistoryMultiples from "./pages/HistoryMultiples";
 import BankrollTools from "./pages/BankrollTools";
 import PricingPage from "./pages/PricingPage";
 import Settings from "./pages/Settings";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/analysis" element={<MatchAnalysis />} />
             <Route path="/radar" element={<ValueRadar />} />
             <Route path="/history" element={<History />} />
+            <Route path="/history-multiples" element={<HistoryMultiples />} />
             <Route path="/bankroll" element={<BankrollTools />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/settings" element={<Settings />} />
