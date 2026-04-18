@@ -39,6 +39,7 @@ type RadarPoint = {
   awayTeam: string;
   market: string;
   edge: number;
+  modelProb: number;
   confidence: number;
   odds: number;
   kelly: number;
@@ -130,6 +131,10 @@ function CustomTooltip({
         <div className="rounded-lg bg-white/[0.03] p-2">
           <p className="text-white/45">Edge</p>
           <p className="font-mono-data text-white">{point.edge.toFixed(2)}%</p>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-2">
+          <p className="text-white/45">Model</p>
+          <p className="font-mono-data text-white">{point.modelProb.toFixed(1)}%</p>
         </div>
         <div className="rounded-lg bg-white/[0.03] p-2">
           <p className="text-white/45">Confidence</p>
@@ -248,6 +253,7 @@ export default function ValueRadar() {
           awayTeam: analysis.awayTeam,
           market: result.market,
           edge: result.valueBet,
+          modelProb: result.modelProb,
           confidence: result.confidence,
           odds: result.odds,
           kelly: result.kelly,
@@ -277,7 +283,7 @@ export default function ValueRadar() {
 
         return true;
       })
-      .sort((a, b) => b.confidence - a.confidence);
+      .sort((a, b) => b.modelProb - a.modelProb);
   }, [radarPoints, tierFilter, decisionFilter, marketSearch]);
 
   const selectedPoint =
@@ -443,6 +449,7 @@ export default function ValueRadar() {
                   <tr className="text-left text-xs uppercase tracking-wider text-white/45">
                     <th className="py-3 pr-4">Match</th>
                     <th className="py-3 pr-4">Market</th>
+                    <th className="py-3 pr-4">Model %</th>
                     <th className="py-3 pr-4">Edge</th>
                     <th className="py-3 pr-4">Confidence</th>
                     <th className="py-3 pr-4">Odds</th>
@@ -462,6 +469,9 @@ export default function ValueRadar() {
                     >
                       <td className="py-3 pr-4 font-medium text-white">{point.match}</td>
                       <td className="py-3 pr-4 text-white/65">{point.market}</td>
+                      <td className="py-3 pr-4 font-mono-data text-white">
+                        {point.modelProb.toFixed(1)}%
+                      </td>
                       <td className="py-3 pr-4">
                         <ValueBadge value={point.edge} />
                       </td>
@@ -700,6 +710,10 @@ export default function ValueRadar() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                 <MetricBlock label="Market" value={selectedPoint.market} />
+                <MetricBlock
+                  label="Model Probability"
+                  value={`${selectedPoint.modelProb.toFixed(1)}%`}
+                />
                 <MetricBlock
                   label="Confidence"
                   value={<ConfidenceMeter score={selectedPoint.confidence} className="w-24" />}

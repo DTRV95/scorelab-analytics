@@ -19,6 +19,7 @@ interface MultipleLeg {
   confidence: number;
   risk: MultipleRiskLevel;
   tier: MultipleTier;
+  resultStatus: BetStatus;
 }
 
 interface MultipleTracking {
@@ -290,13 +291,17 @@ export function createMultipleLeg(
     confidence: Number(result.confidence.toFixed(1)),
     risk: result.risk,
     tier: result.tier || "discard",
+    resultStatus: "pending",
   };
 }
 
 function normalizeMultipleLeg(leg: MultipleLeg): MultipleLeg {
-  return { ...leg, market: normalizeMarketName(leg.market) };
+  return {
+    ...leg,
+    market: normalizeMarketName(leg.market),
+    resultStatus: leg.resultStatus || "pending",
+  };
 }
-
 function normalizeMultipleBet(bet: MultipleBet): MultipleBet {
   return {
     ...bet,
@@ -354,7 +359,17 @@ export function getSavedMultiples(): MultipleBet[] {
   try {
     const raw = localStorage.getItem(MULTIPLES_KEY);
     if (!raw) return [];
-    return (JSON.parse(raw) as MultipleBet[]).map(normalizeMultipleBet);
+    const normalized = (JSON.parse(raw) as MultipleBet[]).map(normalizeMultipleBet);
+    const derived = normalized.map((bet) => ({
+      ...bet,
+      tracking: deriveMultipleTrackingFromLegs(bet, bet.tracking),
+    }));
+
+    if (JSON.stringify(normalized) !== JSON.stringify(derived)) {
+      localStorage.setItem(MULTIPLES_KEY, JSON.stringify(derived.map(normalizeMultipleBet)));
+    }
+
+    return derived;
   } catch {
     return [];
   }
@@ -412,6 +427,51 @@ function recalculateMultipleTracking(
   };
 }
 
+function deriveMultipleTrackingFromLegs(
+  bet: MultipleBet,
+  tracking: MultipleBet["tracking"]
+): MultipleBet["tracking"] {
+  if (!tracking.betPlaced) {
+    return recalculateMultipleTracking({
+      ...tracking,
+      resultStatus: "pending",
+      oddUsed: null,
+    });
+  }
+
+  const legStatuses = bet.legs.map((leg) => leg.resultStatus || "pending");
+  const hasRed = legStatuses.some((status) => status === "red");
+  const hasPending = legStatuses.some((status) => status === "pending");
+  const allVoid = legStatuses.every((status) => status === "void");
+  const allResolvedWithoutRed = legStatuses.every(
+    (status) => status === "green" || status === "void"
+  );
+
+  let resultStatus: BetStatus = "pending";
+  let oddUsed = tracking.oddUsed ?? Number(bet.combinedOdds.toFixed(2));
+
+  if (hasRed) {
+    resultStatus = "red";
+  } else if (allVoid) {
+    resultStatus = "void";
+    oddUsed = 1;
+  } else if (!hasPending && allResolvedWithoutRed) {
+    resultStatus = "green";
+    oddUsed = Number(
+      bet.legs
+        .filter((leg) => leg.resultStatus !== "void")
+        .reduce((product, leg) => product * leg.odds, 1)
+        .toFixed(2)
+    );
+  }
+
+  return recalculateMultipleTracking({
+    ...tracking,
+    resultStatus,
+    oddUsed,
+  });
+}
+
 export function saveMultipleFromDraft(
   stakeUsed?: number | null
 ): MultipleBet | null {
@@ -452,10 +512,14 @@ export function saveMultipleFromDraft(
     },
   };
 
-  const updated = [newMultiple, ...getSavedMultiples()];
+  const derivedMultiple = {
+    ...newMultiple,
+    tracking: deriveMultipleTrackingFromLegs(newMultiple, newMultiple.tracking),
+  };
+  const updated = [derivedMultiple, ...getSavedMultiples()];
   saveMultiples(updated);
   clearMultipleDraft();
-  return newMultiple;
+  return derivedMultiple;
 }
 
 export function updateMultipleTracking(
@@ -466,10 +530,38 @@ export function updateMultipleTracking(
     if (bet.id !== multipleId) return bet;
     return {
       ...bet,
-      tracking: recalculateMultipleTracking({
+      tracking: deriveMultipleTrackingFromLegs(bet, {
         ...bet.tracking,
         ...updates,
       }),
+    };
+  });
+
+  saveMultiples(updated);
+  return updated;
+}
+
+export function updateMultipleLegStatus(
+  multipleId: string,
+  analysisId: string,
+  market: string,
+  resultStatus: BetStatus
+) {
+  const updated = getSavedMultiples().map((bet) => {
+    if (bet.id !== multipleId) return bet;
+
+    const nextBet = {
+      ...bet,
+      legs: bet.legs.map((leg) =>
+        leg.analysisId === analysisId && normalizeMarketName(leg.market) === normalizeMarketName(market)
+          ? { ...leg, resultStatus }
+          : leg
+      ),
+    };
+
+    return {
+      ...nextBet,
+      tracking: deriveMultipleTrackingFromLegs(nextBet, nextBet.tracking),
     };
   });
 

@@ -408,6 +408,7 @@ export default function History() {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [aiSummary, setAiSummary] = useState<HistoryAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const hasLoadedAiReviewRef = useRef(false);
 
   const refreshAnalyses = () => {
     setAnalyses(getAnalyses());
@@ -832,9 +833,12 @@ export default function History() {
     const timeoutId = window.setTimeout(() => {
       controller.abort();
     }, 8000);
+    const showLoadingState = !hasLoadedAiReviewRef.current;
 
     const run = async () => {
-      setAiLoading(true);
+      if (showLoadingState) {
+        setAiLoading(true);
+      }
       try {
         const response = await fetch("http://localhost:8000/ai/history-review", {
           method: "POST",
@@ -852,6 +856,7 @@ export default function History() {
         const data = (await response.json()) as HistoryAISummary;
         if (!isCancelled) {
           setAiSummary(data);
+          hasLoadedAiReviewRef.current = true;
         }
       } catch {
         if (!isCancelled) {
@@ -859,10 +864,11 @@ export default function History() {
             historyAiPayloadKey
           ) as HistoryAISummaryPayload;
           setAiSummary(buildHistoryFallbackSummary(parsedPayload));
+          hasLoadedAiReviewRef.current = true;
         }
       } finally {
         window.clearTimeout(timeoutId);
-        if (!isCancelled) {
+        if (!isCancelled && showLoadingState) {
           setAiLoading(false);
         }
       }

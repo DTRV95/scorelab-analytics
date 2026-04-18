@@ -11,6 +11,7 @@ import {
   getSavedMultiples,
   removeLegFromMultipleDraft,
   saveMultipleFromDraft,
+  updateMultipleLegStatus,
   updateMultipleTracking,
 } from "@/lib/multipleStorage";
 import type { BetStatus } from "@/types/analysis";
@@ -206,6 +207,16 @@ export default function HistoryMultiples() {
 
   const handleDeleteMultiple = (multipleId: string) => {
     deleteMultipleBet(multipleId);
+    refreshMultiples();
+  };
+
+  const handleLegStatusChange = (
+    multipleId: string,
+    analysisId: string,
+    market: string,
+    resultStatus: BetStatus
+  ) => {
+    updateMultipleLegStatus(multipleId, analysisId, market, resultStatus);
     refreshMultiples();
   };
 
@@ -521,14 +532,55 @@ export default function HistoryMultiples() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
+                          <div className="space-y-2.5">
                             {multiple.legs.map((leg) => (
-                              <span
+                              <div
                                 key={`${leg.analysisId}-${leg.market}`}
-                                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-white/68"
+                                className="rounded-2xl border border-white/8 bg-white/[0.03] px-3.5 py-3"
                               >
-                                {leg.market}
-                              </span>
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-white">
+                                      {leg.homeTeam} vs {leg.awayTeam}
+                                    </p>
+                                    <p className="mt-1 text-xs text-white/48">
+                                      {leg.market}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    {(["pending", "green", "red", "void"] as BetStatus[]).map(
+                                      (status) => (
+                                        <button
+                                          key={status}
+                                          type="button"
+                                          onClick={() =>
+                                            handleLegStatusChange(
+                                              multiple.id,
+                                              leg.analysisId,
+                                              leg.market,
+                                              status
+                                            )
+                                          }
+                                          className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                                            leg.resultStatus === status
+                                              ? status === "green"
+                                                ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                                                : status === "red"
+                                                ? "border-red-400/30 bg-red-400/15 text-red-200"
+                                                : status === "void"
+                                                ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
+                                                : "border-cyan-400/30 bg-cyan-400/15 text-cyan-200"
+                                              : "border-white/10 bg-white/[0.03] text-white/52 hover:bg-white/[0.06]"
+                                          }`}
+                                        >
+                                          {status}
+                                        </button>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             ))}
                           </div>
 
@@ -579,22 +631,18 @@ export default function HistoryMultiples() {
                               <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
                                 Result Status
                               </label>
-                              <select
-                                value={multiple.tracking.resultStatus}
-                                onChange={(e) =>
-                                  handleMultipleTrackingChange(multiple.id, {
-                                    betPlaced: true,
-                                    resultStatus: e.target.value as BetStatus,
-                                  })
-                                }
-                                className={`${darkSelectClass} w-full`}
-                                style={darkSelectStyle}
-                              >
-                                <option value="pending" className="bg-slate-900 text-white">Pending</option>
-                                <option value="green" className="bg-slate-900 text-white">Green</option>
-                                <option value="red" className="bg-slate-900 text-white">Red</option>
-                                <option value="void" className="bg-slate-900 text-white">Void</option>
-                              </select>
+                              <div className="flex h-11 items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-4">
+                                <span className="text-sm text-white">
+                                  {multiple.tracking.resultStatus.charAt(0).toUpperCase() +
+                                    multiple.tracking.resultStatus.slice(1)}
+                                </span>
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                                  Auto
+                                </span>
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-white/42">
+                                This status is now derived automatically from the leg statuses above.
+                              </p>
                             </div>
 
                             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AITypewriterProps {
   text: string;
@@ -14,13 +14,19 @@ export function AITypewriter({
   className,
 }: AITypewriterProps) {
   const [displayed, setDisplayed] = useState("");
+  const hasAnimatedRef = useRef(false);
 
   const normalizedText = useMemo(() => text ?? "", [text]);
 
   useEffect(() => {
-    setDisplayed("");
-
     if (!normalizedText) return;
+
+    if (hasAnimatedRef.current) {
+      setDisplayed(normalizedText);
+      return;
+    }
+
+    setDisplayed("");
 
     let intervalId: number | undefined;
     let index = 0;
@@ -31,6 +37,7 @@ export function AITypewriter({
         setDisplayed(normalizedText.slice(0, index));
 
         if (index >= normalizedText.length && intervalId) {
+          hasAnimatedRef.current = true;
           window.clearInterval(intervalId);
         }
       }, speed);

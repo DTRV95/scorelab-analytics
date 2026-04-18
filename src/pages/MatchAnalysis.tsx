@@ -726,10 +726,16 @@ export default function MatchAnalysis() {
                       label="Competition"
                       value={formData.liga}
                       onChange={handleLeagueChange}
-                      options={LEAGUE_PRESETS.map((preset) => ({
-                        value: preset.key,
-                        label: `${preset.country} · ${preset.label}`,
-                      }))}
+                      options={[...LEAGUE_PRESETS]
+                        .sort((a, b) =>
+                          `${a.country} ${a.label}`.localeCompare(
+                            `${b.country} ${b.label}`
+                          )
+                        )
+                        .map((preset) => ({
+                          value: preset.key,
+                          label: `${preset.country} · ${preset.label}`,
+                        }))}
                       description="Pick the league first so the model starts from the right scoring baseline."
                     />
 

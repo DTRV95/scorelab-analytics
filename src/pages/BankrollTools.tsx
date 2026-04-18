@@ -673,7 +673,7 @@ export default function BankrollTools() {
             Math.max(
               0,
               (multiple.tracking.stakeUsed || 0) *
-                ((multiple.tracking.oddUsed || 0) - 1)
+                (((multiple.tracking.oddUsed || multiple.combinedOdds || 0)) - 1)
             ),
           0
         ),
