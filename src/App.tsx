@@ -14,6 +14,7 @@ import ValueRadar from "./pages/ValueRadar";
 import History from "./pages/History";
 import HistoryMultiples from "./pages/HistoryMultiples";
 import BankrollTools from "./pages/BankrollTools";
+import RoadmapPlanner from "./pages/RoadmapPlanner";
 import PricingPage from "./pages/PricingPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/history" element={<History />} />
             <Route path="/history-multiples" element={<HistoryMultiples />} />
             <Route path="/bankroll" element={<BankrollTools />} />
+            <Route path="/roadmap" element={<RoadmapPlanner />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

@@ -7,6 +7,7 @@ import {
   Clock,
   Layers3,
   Wallet,
+  Flag,
   CreditCard,
   Settings,
   BarChart3,
@@ -23,6 +24,7 @@ const navItems = [
   { title: "Simple Bet", url: "/history", icon: Clock },
   { title: "Multiples Bet", url: "/history-multiples", icon: Layers3 },
   { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
+  { title: "Roadmap", url: "/roadmap", icon: Flag },
   { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
