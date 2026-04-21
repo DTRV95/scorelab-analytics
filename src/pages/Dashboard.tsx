@@ -459,18 +459,22 @@ function ChartCard({
   data,
   xKey,
   barKey = "roi",
+  cardClassName = "",
+  chartHeightClassName = "h-[240px]",
 }: {
   title: string;
   description: string;
   data: ChartRow[];
   xKey: string;
   barKey?: string;
+  cardClassName?: string;
+  chartHeightClassName?: string;
 }) {
   const safeData: ChartRow[] = Array.isArray(data) ? data : [];
 
   return (
-    <SectionCard title={title} description={description} badge="ROI">
-      <div className="h-[240px]">
+    <SectionCard title={title} description={description} badge="ROI" className={cardClassName}>
+      <div className={chartHeightClassName}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={safeData}
@@ -742,7 +746,11 @@ export default function Dashboard() {
     [dashboardData.performance?.marketPerformance, multipleMarketPerformance]
   );
 
+  const leadingMarket = marketPerformanceRows[0] ?? null;
+
   const leaguePerformanceRows = useMemo<LeaguePerformanceRow[]>(() => {
+    const savedMultiples = getSavedMultiples();
+    const analysisMap = new Map(analyses.map((analysis) => [analysis.id, analysis]));
     const settledAnalyses = analyses.filter(
       (analysis) =>
         analysis.tracking.betPlaced &&
@@ -816,6 +824,73 @@ export default function Dashboard() {
       current.marketMap.set(market, existingMarket);
     });
 
+    const settledMultiples = savedMultiples.filter(
+      (multiple) =>
+        multiple.tracking.betPlaced &&
+        (multiple.tracking.resultStatus === "green" ||
+          multiple.tracking.resultStatus === "red" ||
+          multiple.tracking.resultStatus === "void")
+    );
+
+    settledMultiples.forEach((multiple) => {
+      const resolvedLegs = multiple.legs.filter(
+        (leg) =>
+          leg.resultStatus === "green" ||
+          leg.resultStatus === "red" ||
+          leg.resultStatus === "void"
+      );
+
+      if (!resolvedLegs.length) return;
+
+      const allocatedStake =
+        (multiple.tracking.stakeUsed || 0) / resolvedLegs.length;
+      const allocatedProfitLoss =
+        (multiple.tracking.profitLoss || 0) / resolvedLegs.length;
+
+      resolvedLegs.forEach((leg) => {
+        const sourceAnalysis = analysisMap.get(leg.analysisId);
+        const league = sourceAnalysis?.league?.trim() || "Unspecified";
+
+        if (!leagueMap.has(league)) {
+          leagueMap.set(league, {
+            bets: 0,
+            wins: 0,
+            losses: 0,
+            voids: 0,
+            totalStake: 0,
+            profitLoss: 0,
+            confidenceSum: 0,
+            edgeSum: 0,
+            marketMap: new Map(),
+          });
+        }
+
+        const current = leagueMap.get(league)!;
+        const market = leg.market;
+
+        current.bets += 1;
+        current.totalStake += allocatedStake;
+        current.profitLoss += allocatedProfitLoss;
+        current.confidenceSum += leg.confidence || 0;
+        current.edgeSum += leg.valueBet || 0;
+
+        if (leg.resultStatus === "green") current.wins += 1;
+        if (leg.resultStatus === "red") current.losses += 1;
+        if (leg.resultStatus === "void") current.voids += 1;
+
+        const existingMarket = current.marketMap.get(market) || {
+          bets: 0,
+          totalStake: 0,
+          profitLoss: 0,
+        };
+
+        existingMarket.bets += 1;
+        existingMarket.totalStake += allocatedStake;
+        existingMarket.profitLoss += allocatedProfitLoss;
+        current.marketMap.set(market, existingMarket);
+      });
+    });
+
     return Array.from(leagueMap.entries())
       .map(([league, row]) => {
         const hitRate = row.bets > 0 ? (row.wins / row.bets) * 100 : 0;
@@ -857,6 +932,8 @@ export default function Dashboard() {
       });
   }, [analyses]);
 
+  const leadingLeague = leaguePerformanceRows.find((row) => row.status !== "Too Early") ?? leaguePerformanceRows[0] ?? null;
+
   const riskChartData: ChartRow[] =
     dashboardData.performance?.riskPerformance?.map((item) => ({
       ...item,
@@ -868,9 +945,10 @@ export default function Dashboard() {
       bankroll_growth_pct: bankrollStats.bankrollGrowthPct,
       open_exposure: dashboardData.openExposure,
       risk_level: dashboardData.riskLevel,
-      settled_bets: dashboardData.performance?.summary?.totalSettledBets ?? 0,
-      roi_pct: dashboardData.performance?.summary?.overallRoi ?? 0,
-      profit_loss: dashboardData.performance?.summary?.totalProfitLoss ?? 0,
+      settled_bets:
+        bankrollStats.totalGreens + bankrollStats.totalReds + bankrollStats.totalVoids,
+      roi_pct: bankrollStats.roi,
+      profit_loss: bankrollStats.totalProfitLoss,
       avg_confidence: Number(dashboardData.avgConfidence.toFixed(2)),
       analyses_today: dashboardData.analysesToday,
       value_bets_found: dashboardData.valueBetsFound,
@@ -904,13 +982,15 @@ export default function Dashboard() {
     [
       bankrollStats.bankrollGrowthPct,
       bankrollStats.currentBankroll,
+      bankrollStats.roi,
+      bankrollStats.totalGreens,
+      bankrollStats.totalProfitLoss,
+      bankrollStats.totalReds,
+      bankrollStats.totalVoids,
       dashboardData.analysesToday,
       dashboardData.autoInsights,
       dashboardData.avgConfidence,
       dashboardData.openExposure,
-      dashboardData.performance?.summary?.overallRoi,
-      dashboardData.performance?.summary?.totalProfitLoss,
-      dashboardData.performance?.summary?.totalSettledBets,
       dashboardData.performance?.tierPerformance,
       dashboardData.riskLevel,
       dashboardData.valueBetsFound,
@@ -1004,18 +1084,18 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <CompactStatCard
             label="Settled Bets"
-            value={dashboardData.performance?.summary?.totalSettledBets ?? 0}
-            change={`${dashboardData.performance?.summary?.hitRate ?? 0}% hit rate`}
+            value={
+              bankrollStats.totalGreens +
+              bankrollStats.totalReds +
+              bankrollStats.totalVoids
+            }
+            change={`${bankrollStats.hitRate.toFixed(1)}% hit rate`}
           />
           <CompactStatCard
             label="ROI"
-            value={`${dashboardData.performance?.summary?.overallRoi ?? 0}%`}
-            change={`P/L €${(dashboardData.performance?.summary?.totalProfitLoss ?? 0).toFixed(2)}`}
-            changeType={
-              (dashboardData.performance?.summary?.overallRoi ?? 0) >= 0
-                ? "positive"
-                : "negative"
-            }
+            value={`${bankrollStats.roi.toFixed(2)}%`}
+            change={`P/L €${bankrollStats.totalProfitLoss.toFixed(2)}`}
+            changeType={bankrollStats.roi >= 0 ? "positive" : "negative"}
           />
           <CompactStatCard
             label="Avg Confidence"
@@ -1064,86 +1144,104 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        <SectionCard
-          title="AI Dashboard Read"
-          description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
-          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
-        >
-          {aiLoading ? (
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
-              Building AI summary...
-            </div>
-          ) : aiSummary ? (
-            <div className="space-y-3.5">
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
-                    Operational Read
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.95fr]">
+          <SectionCard
+            title="AI Dashboard Read"
+            description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
+            badge={aiSummary?.configured ? "AI Live" : "Fallback"}
+            className="relative overflow-hidden"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.07),transparent_24%)]" />
+            <div className="relative">
+              {aiLoading ? (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
+                  Building AI summary...
+                </div>
+              ) : aiSummary ? (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-cyan-400/12 bg-[linear-gradient(180deg,rgba(34,211,238,0.05)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                        Operational Read
+                      </p>
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                        {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-[14px] leading-7 text-white/78">
+                      <AITypewriter text={aiSummary.summary} startDelay={120} />
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                    <AIReviewColumn
+                      title="Strengths"
+                      tone="emerald"
+                      startDelay={380}
+                      items={
+                        aiSummary.strengths.length
+                          ? aiSummary.strengths
+                          : ["No clear strength has stood out strongly enough yet."]
+                      }
+                    />
+                    <AIReviewColumn
+                      title="Risks"
+                      tone="red"
+                      startDelay={760}
+                      items={
+                        aiSummary.risks.length
+                          ? aiSummary.risks
+                          : ["No major operational risk is being flagged right now."]
+                      }
+                    />
+                    <AIReviewColumn
+                      title="Next Actions"
+                      tone="cyan"
+                      startDelay={1140}
+                      items={
+                        aiSummary.next_actions.length
+                          ? aiSummary.next_actions
+                          : ["Keep tracking outcomes so the review can get sharper."]
+                      }
+                    />
+                  </div>
+
+                  <p className="text-[11px] leading-5 text-white/42">
+                    {aiSummary.disclaimer}
                   </p>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
-                    {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
+                  The AI summary could not be loaded right now.
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          {topValueToday ? (
+            <motion.div
+              variants={fadeUp}
+              className="relative overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.08),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_24%)]" />
+              <div className="relative space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
+                      Top Value Today
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-white md:text-[1.5rem]">
+                      {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-white/58">
+                      Best live angle on today's board.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-emerald-400/18 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-200">
+                    {topValueToday.bestBet.market}
                   </span>
                 </div>
-                <p className="mt-2.5 text-sm leading-7 text-white/75">
-                  <AITypewriter text={aiSummary.summary} startDelay={120} />
-                </p>
-              </div>
 
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                <AIReviewColumn
-                  title="Strengths"
-                  tone="emerald"
-                  startDelay={380}
-                  items={
-                    aiSummary.strengths.length
-                      ? aiSummary.strengths
-                      : ["No clear strength has stood out strongly enough yet."]
-                  }
-                />
-                <AIReviewColumn
-                  title="Risks"
-                  tone="red"
-                  startDelay={760}
-                  items={
-                    aiSummary.risks.length
-                      ? aiSummary.risks
-                      : ["No major operational risk is being flagged right now."]
-                  }
-                />
-                <AIReviewColumn
-                  title="Next Actions"
-                  tone="cyan"
-                  startDelay={1140}
-                  items={
-                    aiSummary.next_actions.length
-                      ? aiSummary.next_actions
-                      : ["Keep tracking outcomes so the review can get sharper."]
-                  }
-                />
-              </div>
-
-              <p className="text-[11px] leading-5 text-white/42">{aiSummary.disclaimer}</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
-              The AI summary could not be loaded right now.
-            </div>
-          )}
-        </SectionCard>
-
-        {topValueToday && (
-          <motion.div
-            variants={fadeUp}
-            className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
-          >
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Top Value Today
-                </p>
-                <h2 className="text-lg font-semibold text-foreground md:text-xl">
-                  {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
-                </h2>
                 <div className="flex flex-wrap items-center gap-3">
                   <ValueBadge value={topValueToday.bestBet.valueBet} />
                   <DecisionBadge decision={topValueToday.bestBet.decision} />
@@ -1151,34 +1249,43 @@ export default function Dashboard() {
                     <TierBadge tier={topValueToday.bestBet.tier} />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Market:{" "}
-                  <span className="font-medium text-foreground">
-                    {topValueToday.bestBet.market}
-                  </span>
-                </p>
-              </div>
 
-              <div className="min-w-[220px] space-y-3">
-                <ConfidenceMeter score={topValueToday.bestBet.confidence} />
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
-                    <p className="text-muted-foreground">Odds</p>
-                    <p className="font-mono-data text-foreground">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                  <ConfidenceMeter score={topValueToday.bestBet.confidence} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                      Odds
+                    </p>
+                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-white">
                       {topValueToday.bestBet.odds}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
-                    <p className="text-muted-foreground">Kelly</p>
-                    <p className="font-mono-data text-foreground">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                      Kelly
+                    </p>
+                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-white">
                       {topValueToday.bestBet.kelly.toFixed(2)}%
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          ) : (
+            <SectionCard
+              title="Top Value Today"
+              description="No standout value pick has been tracked today yet."
+              badge="Live Board"
+            >
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
+                Run today's analyses and the strongest live angle will appear here.
+              </div>
+            </SectionCard>
+          )}
+        </div>
 
         <SectionCard
           title="Daily Profit Trend"
@@ -1269,20 +1376,6 @@ export default function Dashboard() {
           />
 
           <ChartCard
-            title="ROI by Edge Lower Bound"
-            description="Validates whether stronger edge safety margins are paying off."
-            data={edgeLowerBoundChartData}
-            xKey="bucket"
-          />
-
-          <ChartCard
-            title="ROI by Robustness"
-            description="Shows whether robust picks are actually winning more money."
-            data={robustnessChartData}
-            xKey="bucket"
-          />
-
-          <ChartCard
             title="ROI by Risk"
             description="Find out whether Low, Medium or High risk is damaging returns."
             data={riskChartData}
@@ -1290,151 +1383,241 @@ export default function Dashboard() {
           />
         </div>
 
-        <SectionCard
-          title="Performance by Market"
-          description="This is the most important table to discover which market types deserve trust."
-          badge="Markets"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="border-b border-white/5">
-                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
-                  <th className="py-3 pr-4">Market</th>
-                  <th className="py-3 pr-4">Group</th>
-                  <th className="py-3 pr-4">Bets</th>
-                  <th className="py-3 pr-4">Wins</th>
-                  <th className="py-3 pr-4">Losses</th>
-                  <th className="py-3 pr-4">Hit Rate</th>
-                  <th className="py-3 pr-4">Avg Odds</th>
-                  <th className="py-3 pr-4">Avg Conf.</th>
-                  <th className="py-3 pr-4">Avg Edge</th>
-                  <th className="py-3 pr-4">Avg Edge LB</th>
-                  <th className="py-3 pr-4">Avg Robust.</th>
-                  <th className="py-3 pr-4">Stake</th>
-                  <th className="py-3 pr-4">P/L</th>
-                  <th className="py-3 pr-4">ROI</th>
-                </tr>
-              </thead>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          <ChartCard
+            title="ROI by Edge Lower Bound"
+            description="Checks whether stronger edge safety margins are adding value."
+            data={edgeLowerBoundChartData}
+            xKey="bucket"
+            cardClassName="border-white/6 opacity-[0.94]"
+            chartHeightClassName="h-[205px]"
+          />
 
-              <tbody>
-                {marketPerformanceRows.length > 0 ? (
-                  marketPerformanceRows.map((row) => (
-                    <tr key={row.market} className="border-t border-white/5">
-                      <td className="py-3 pr-4 font-medium text-foreground">
-                        {row.market}
-                      </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {row.marketGroup}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data">{row.bets}</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.wins}</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.losses}</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.hitRate}%</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.avgOdds}</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.avgConfidence}</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.avgEdge}%</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.avgEdgeLowerBound}%</td>
-                      <td className="py-3 pr-4 font-mono-data">{row.avgRobustness}</td>
-                      <td className="py-3 pr-4 font-mono-data">
-                        €{row.totalStake.toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data">
-                        €{row.profitLoss.toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data">{row.roi}%</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={14}
-                      className="py-8 text-center text-sm text-muted-foreground"
-                    >
-                      No settled tracked bets yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
+          <ChartCard
+            title="ROI by Robustness"
+            description="A lighter read on whether robust picks are paying off."
+            data={robustnessChartData}
+            xKey="bucket"
+            cardClassName="border-white/6 opacity-[0.94]"
+            chartHeightClassName="h-[205px]"
+          />
+        </div>
 
         <SectionCard
-          title="League Performance"
-          description="Validate which leagues are earning trust, which ones still need sample and which market is carrying each competition."
-          badge="Leagues"
+          title="Validation Core"
+          description="This is the central read on what the model is validating by market and by league."
+          badge="Core"
+          className="relative overflow-hidden"
         >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
-              <thead className="border-b border-white/5">
-                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
-                  <th className="py-3 pr-4">League</th>
-                  <th className="py-3 pr-4">Bets</th>
-                  <th className="py-3 pr-4">Hit Rate</th>
-                  <th className="py-3 pr-4">Avg Conf.</th>
-                  <th className="py-3 pr-4">Avg Edge</th>
-                  <th className="py-3 pr-4">Best Market</th>
-                  <th className="py-3 pr-4">Stake</th>
-                  <th className="py-3 pr-4">P/L</th>
-                  <th className="py-3 pr-4">ROI</th>
-                  <th className="py-3 pr-4">Status</th>
-                </tr>
-              </thead>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.06),transparent_24%)]" />
+          <div className="relative space-y-5">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  Market Lead
+                </p>
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                  {leadingMarket?.market ?? "No clear lead yet"}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  {leadingMarket
+                    ? `${leadingMarket.roi}% ROI across ${leadingMarket.bets} bets`
+                    : "Need more settled market data"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  League Lead
+                </p>
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                  {leadingLeague?.league ?? "No clear lead yet"}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  {leadingLeague
+                    ? `${leadingLeague.roi}% ROI · ${leadingLeague.bestMarket}`
+                    : "Need more settled league data"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  Validation Focus
+                </p>
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                  Markets + Leagues
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  Read these two tables together before changing trust levels or exposure.
+                </p>
+              </div>
+            </div>
 
-              <tbody>
-                {leaguePerformanceRows.length > 0 ? (
-                  leaguePerformanceRows.map((row) => (
-                    <tr key={row.league} className="border-t border-white/5">
-                      <td className="py-3 pr-4 font-medium text-foreground">
-                        {row.league}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        {row.bets}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        {row.hitRate}%
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        {row.avgConfidence}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        {row.avgEdge}%
-                      </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {row.bestMarket}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        €{row.totalStake.toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        €{row.profitLoss.toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4 font-mono-data text-foreground">
-                        {row.roi}%
-                      </td>
-                      <td className="py-3 pr-4">
-                        <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getLeagueStatusTone(
-                            row.status
-                          )}`}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={10}
-                      className="py-8 text-center text-sm text-muted-foreground"
-                    >
-                      No settled league data yet. Start tracking results so ScoreLab can validate competitions properly.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <div className="space-y-5">
+              <div className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white md:text-[15px]">
+                      Performance by Market
+                    </h3>
+                    <p className="mt-1 text-xs leading-6 text-white/56 md:text-[13px]">
+                      The main table for deciding which market types deserve trust.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+                    Markets
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1100px] text-sm">
+                    <thead className="border-b border-white/5">
+                      <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                        <th className="py-3 pr-4">Market</th>
+                        <th className="py-3 pr-4">Group</th>
+                        <th className="py-3 pr-4">Bets</th>
+                        <th className="py-3 pr-4">Wins</th>
+                        <th className="py-3 pr-4">Losses</th>
+                        <th className="py-3 pr-4">Hit Rate</th>
+                        <th className="py-3 pr-4">Avg Odds</th>
+                        <th className="py-3 pr-4">Avg Conf.</th>
+                        <th className="py-3 pr-4">Avg Edge</th>
+                        <th className="py-3 pr-4">Avg Edge LB</th>
+                        <th className="py-3 pr-4">Avg Robust.</th>
+                        <th className="py-3 pr-4">Stake</th>
+                        <th className="py-3 pr-4">P/L</th>
+                        <th className="py-3 pr-4">ROI</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {marketPerformanceRows.length > 0 ? (
+                        marketPerformanceRows.map((row) => (
+                          <tr key={row.market} className="border-t border-white/5">
+                            <td className="py-3 pr-4 font-medium text-foreground">
+                              {row.market}
+                            </td>
+                            <td className="py-3 pr-4 text-muted-foreground">
+                              {row.marketGroup}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data">{row.bets}</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.wins}</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.losses}</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.hitRate}%</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.avgOdds}</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.avgConfidence}</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.avgEdge}%</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.avgEdgeLowerBound}%</td>
+                            <td className="py-3 pr-4 font-mono-data">{row.avgRobustness}</td>
+                            <td className="py-3 pr-4 font-mono-data">
+                              €{row.totalStake.toFixed(2)}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data">
+                              €{row.profitLoss.toFixed(2)}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data">{row.roi}%</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={14}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            No settled tracked bets yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white md:text-[15px]">
+                      League Performance
+                    </h3>
+                    <p className="mt-1 text-xs leading-6 text-white/56 md:text-[13px]">
+                      See which competitions are earning trust and which market is carrying each one.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+                    Leagues
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px] text-sm">
+                    <thead className="border-b border-white/5">
+                      <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                        <th className="py-3 pr-4">League</th>
+                        <th className="py-3 pr-4">Bets</th>
+                        <th className="py-3 pr-4">Hit Rate</th>
+                        <th className="py-3 pr-4">Avg Conf.</th>
+                        <th className="py-3 pr-4">Avg Edge</th>
+                        <th className="py-3 pr-4">Best Market</th>
+                        <th className="py-3 pr-4">Stake</th>
+                        <th className="py-3 pr-4">P/L</th>
+                        <th className="py-3 pr-4">ROI</th>
+                        <th className="py-3 pr-4">Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {leaguePerformanceRows.length > 0 ? (
+                        leaguePerformanceRows.map((row) => (
+                          <tr key={row.league} className="border-t border-white/5">
+                            <td className="py-3 pr-4 font-medium text-foreground">
+                              {row.league}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              {row.bets}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              {row.hitRate}%
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              {row.avgConfidence}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              {row.avgEdge}%
+                            </td>
+                            <td className="py-3 pr-4 text-muted-foreground">
+                              {row.bestMarket}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              €{row.totalStake.toFixed(2)}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              €{row.profitLoss.toFixed(2)}
+                            </td>
+                            <td className="py-3 pr-4 font-mono-data text-foreground">
+                              {row.roi}%
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getLeagueStatusTone(
+                                  row.status
+                                )}`}
+                              >
+                                {row.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            No settled league data yet. Start tracking results so ScoreLab can validate competitions properly.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </SectionCard>
 

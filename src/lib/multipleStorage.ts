@@ -27,6 +27,7 @@ interface MultipleTracking {
   stakeUsed: number | null;
   oddUsed: number | null;
   resultStatus: BetStatus;
+  settledAt?: string | null;
   profitLoss: number;
   bankrollBefore: number | null;
   bankrollAfter: number | null;
@@ -389,6 +390,7 @@ export function createEmptyMultipleTracking(): MultipleBet["tracking"] {
     stakeUsed: null,
     oddUsed: null,
     resultStatus: "pending",
+    settledAt: null,
     profitLoss: 0,
     bankrollBefore: null,
     bankrollAfter: null,
@@ -405,6 +407,7 @@ function recalculateMultipleTracking(
       stakeUsed: null,
       oddUsed: null,
       resultStatus: "pending",
+      settledAt: null,
       profitLoss: 0,
       bankrollAfter: tracking.bankrollBefore,
     };
@@ -418,9 +421,16 @@ function recalculateMultipleTracking(
   if (tracking.resultStatus === "green") profitLoss = stake * (odd - 1);
   if (tracking.resultStatus === "red") profitLoss = -stake;
   if (tracking.resultStatus === "void") profitLoss = 0;
+  const settledAt =
+    tracking.resultStatus === "pending"
+      ? null
+      : tracking.settledAt && typeof tracking.settledAt === "string"
+      ? tracking.settledAt
+      : new Date().toISOString();
 
   return {
     ...tracking,
+    settledAt,
     profitLoss,
     bankrollAfter:
       bankrollBefore !== null ? bankrollBefore + profitLoss : bankrollBefore,
@@ -796,10 +806,10 @@ export function getMultipleMarketPerformance(
         current.totalStake += stakeShare;
         current.profitLoss += profitShare;
 
-        if (bet.tracking.resultStatus === "green") current.greens += 1;
-        if (bet.tracking.resultStatus === "red") current.reds += 1;
-        if (bet.tracking.resultStatus === "void") current.voids += 1;
-        if (bet.tracking.resultStatus === "pending") current.pending += 1;
+        if (leg.resultStatus === "green") current.greens += 1;
+        if (leg.resultStatus === "red") current.reds += 1;
+        if (leg.resultStatus === "void") current.voids += 1;
+        if (leg.resultStatus === "pending") current.pending += 1;
 
         marketMap.set(market, current);
       });

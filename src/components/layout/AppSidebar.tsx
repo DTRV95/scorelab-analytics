@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Target,
-  TrendingUp,
   Clock,
   Layers3,
   Wallet,
@@ -12,26 +11,60 @@ import {
   Settings,
   BarChart3,
   ChevronLeft,
+  ChevronDown,
   Radar,
 } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Match Analysis", url: "/analysis", icon: Target },
-  { title: "Value Radar", url: "/radar", icon: Radar },
-  { title: "Simple Bet", url: "/history", icon: Clock },
-  { title: "Multiples Bet", url: "/history-multiples", icon: Layers3 },
-  { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
-  { title: "Roadmap", url: "/roadmap", icon: Flag },
-  { title: "Pricing", url: "/pricing", icon: CreditCard },
-  { title: "Settings", url: "/settings", icon: Settings },
+const navGroups = [
+  {
+    title: "Overview",
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
+      { title: "Roadmap", url: "/roadmap", icon: Flag },
+    ],
+  },
+  {
+    title: "Analysis",
+    items: [
+      { title: "Match Analysis", url: "/analysis", icon: Target },
+      { title: "Value Radar", url: "/radar", icon: Radar },
+    ],
+  },
+  {
+    title: "Tracking",
+    items: [
+      { title: "Simple Bet", url: "/history", icon: Clock },
+      { title: "Multiples Bet", url: "/history-multiples", icon: Layers3 },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { title: "Pricing", url: "/pricing", icon: CreditCard },
+      { title: "Settings", url: "/settings", icon: Settings },
+    ],
+  },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Overview: true,
+    Analysis: true,
+    Tracking: true,
+    System: false,
+  });
+
+  const toggleGroup = (groupTitle: string) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !prev[groupTitle],
+    }));
+  };
 
   return (
     <div className={cn("relative shrink-0 transition-all duration-300", collapsed ? "w-16" : "w-60")}>
@@ -53,45 +86,66 @@ export function AppSidebar() {
           </Link>
         </div>
 
-        <nav className="relative flex-1 p-3 space-y-1">
-          {!collapsed && (
-            <div className="mb-3 px-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/35">
-                Workspace
-              </p>
-            </div>
-          )}
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.url;
-            return (
-              <Link
-                key={item.url}
-                to={item.url}
-                className={cn(
-                  "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
-                  isActive
-                    ? "text-foreground"
-                    : "text-sidebar-foreground hover:bg-white/[0.05] hover:text-foreground"
+        <nav className="relative flex-1 overflow-y-auto p-3">
+          <div className="space-y-4">
+            {navGroups.map((group) => (
+              <div key={group.title} className="space-y-1">
+                {!collapsed && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
+                    className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/28">
+                      {group.title}
+                    </p>
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5 text-white/30 transition-transform duration-200",
+                        openGroups[group.title] && "rotate-180"
+                      )}
+                      strokeWidth={1.7}
+                    />
+                  </button>
                 )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] shadow-[0_14px_36px_-22px_rgba(34,211,238,0.45)]"
-                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <item.icon className={cn(
-                  "w-4 h-4 flex-shrink-0 relative z-10 transition-colors duration-200",
-                  isActive && "text-primary"
-                )} strokeWidth={1.5} />
-                {!collapsed && <span className="relative z-10">{item.title}</span>}
-                {isActive && !collapsed && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary relative z-10" />
-                )}
-              </Link>
-            );
-          })}
+                {(collapsed || openGroups[group.title]) &&
+                  group.items.map((item) => {
+                  const isActive = location.pathname === item.url;
+                  return (
+                    <Link
+                      key={item.url}
+                      to={item.url}
+                      className={cn(
+                        "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
+                        isActive
+                          ? "text-foreground"
+                          : "text-sidebar-foreground hover:bg-white/[0.05] hover:text-foreground"
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="sidebar-active"
+                          className="absolute inset-0 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] shadow-[0_14px_36px_-22px_rgba(34,211,238,0.45)]"
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                        />
+                      )}
+                      <item.icon
+                        className={cn(
+                          "relative z-10 h-4 w-4 flex-shrink-0 transition-colors duration-200",
+                          isActive && "text-primary"
+                        )}
+                        strokeWidth={1.5}
+                      />
+                      {!collapsed && <span className="relative z-10">{item.title}</span>}
+                      {isActive && !collapsed && (
+                        <div className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </nav>
 
         <div className="relative border-t border-sidebar-border/80 p-3">

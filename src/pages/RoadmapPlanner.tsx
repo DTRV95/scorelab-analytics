@@ -1,36 +1,34 @@
-import { AppLayout } from "@/components/layout/AppLayout";
+﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  CheckCircle2,
   Flag,
   Goal,
   Route,
-  ShieldAlert,
   TrendingUp,
-  TriangleAlert,
   Wallet,
 } from "lucide-react";
 import {
   ANALYSES_UPDATED_EVENT,
   getAnalyses,
+  getBestPerformingZone,
   getBankrollStats,
 } from "@/lib/analysisStorage";
-import { MULTIPLES_UPDATED_EVENT, getSavedMultiples } from "@/lib/multipleStorage";
+import {
+  MULTIPLES_UPDATED_EVENT,
+  getMultiplePerformanceSummary,
+  getSavedMultiples,
+} from "@/lib/multipleStorage";
 import {
   DEFAULT_ROADMAP_SETTINGS,
+  getRoadmapDayMemories,
   getRoadmapSettings,
   saveRoadmapSettings,
+  syncRoadmapDayMemories,
+  type RoadmapDayMemory,
   type RoadmapSettings,
 } from "@/lib/roadmapStorage";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -43,8 +41,15 @@ const stagger = {
 };
 
 const HEALTHY_RETURN_ON_STAKE_PCT = 10;
-const MIN_DAILY_STAKE_PCT = 6;
-const MAX_DAILY_STAKE_PCT = 18;
+const MIN_DAILY_STAKE_PCT = 8;
+const MAX_DAILY_STAKE_PCT = 65;
+const MAX_REALISTIC_RETURN_ON_STAKE_PCT = 20;
+const MAX_STRETCH_RETURN_ON_STAKE_PCT = 30;
+const ROADMAP_TIMEZONE = "Europe/Lisbon";
+const surfaceCardClass =
+  "rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 shadow-[0_12px_28px_rgba(0,0,0,0.16)] backdrop-blur-sm";
+const compactSurfaceCardClass =
+  "rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm";
 
 function formatCurrency(value: number) {
   return `EUR ${value.toFixed(2)}`;
@@ -70,41 +75,50 @@ function getOpenExposure() {
   return singles + multiples;
 }
 
-function getTodayIsoDate() {
-  return new Date().toISOString().split("T")[0];
+function getIsoDateOnly(value: string | Date) {
+  if (typeof value === "string") {
+    const isoLikeMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoLikeMatch) {
+      return isoLikeMatch[1];
+    }
+  }
+
+  return getDateKeyInTimezone(value);
 }
 
-function getTodayOperationalStats() {
-  const today = getTodayIsoDate();
+function getDateKeyInTimezone(value: string | Date, timeZone = ROADMAP_TIMEZONE) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
 
-  const analyses = getAnalyses().filter((analysis) => analysis.createdAt.startsWith(today));
-  const multiples = getSavedMultiples().filter((multiple) => multiple.createdAt.startsWith(today));
+function parseDateOnly(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
 
-  const placedSingles = analyses.filter((analysis) => analysis.tracking.betPlaced);
-  const placedMultiples = multiples.filter((multiple) => multiple.tracking.betPlaced);
+function getDayOffset(startedAt: string, index: number) {
+  const base = parseDateOnly(getIsoDateOnly(startedAt));
+  base.setDate(base.getDate() + index);
+  return getIsoDateOnly(base);
+}
 
-  const stakedToday =
-    placedSingles.reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
-    placedMultiples.reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
+function getLocalDayDifference(from: string, to: string) {
+  const fromLocalMidnight = parseDateOnly(from);
+  const toLocalMidnight = parseDateOnly(to);
 
-  const settledProfitToday =
-    placedSingles
-      .filter((analysis) => analysis.tracking.resultStatus !== "pending")
-      .reduce((acc, analysis) => acc + (analysis.tracking.profitLoss || 0), 0) +
-    placedMultiples
-      .filter((multiple) => multiple.tracking.resultStatus !== "pending")
-      .reduce((acc, multiple) => acc + (multiple.tracking.profitLoss || 0), 0);
-
-  const activeTickets =
-    placedSingles.filter((analysis) => analysis.tracking.resultStatus === "pending").length +
-    placedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending").length;
-
-  return {
-    stakedToday,
-    settledProfitToday,
-    ticketsPlacedToday: placedSingles.length + placedMultiples.length,
-    activeTickets,
-  };
+  return Math.floor(
+    (toLocalMidnight.getTime() - fromLocalMidnight.getTime()) / 86400000
+  );
 }
 
 function getOddsRange(requiredReturnOnStakePct: number) {
@@ -115,11 +129,208 @@ function getOddsRange(requiredReturnOnStakePct: number) {
   return "2.10 - 2.80";
 }
 
+function getOddsExecutionOptions(requiredReturnOnStakePct: number) {
+  if (requiredReturnOnStakePct <= 8) {
+    return [
+      "3 singles around 1.35-1.45",
+      "2 singles around 1.45-1.55",
+      "1 clean single around 1.60",
+    ];
+  }
+
+  if (requiredReturnOnStakePct <= 12) {
+    return [
+      "3 singles around 1.40-1.50",
+      "2 singles around 1.55-1.65",
+      "1 single around 1.75-1.85",
+    ];
+  }
+
+  if (requiredReturnOnStakePct <= 18) {
+    return [
+      "3 singles around 1.45-1.60",
+      "2 singles around 1.60-1.75",
+      "1 single around 1.90-2.10",
+    ];
+  }
+
+  if (requiredReturnOnStakePct <= 24) {
+    return [
+      "3 singles around 1.50-1.65",
+      "2 singles around 1.70-1.90",
+      "1 higher-risk single around 2.10-2.35",
+    ];
+  }
+
+  return [
+    "3 singles around 1.55-1.75",
+    "2 singles around 1.85-2.05",
+    "1 aggressive single around 2.30+",
+  ];
+}
+
+function getExecutionMode(
+  requiredReturnOnStakePct: number,
+  exposurePctOfMission: number,
+  targetRealism: string
+) {
+  if (requiredReturnOnStakePct <= 10) {
+    return {
+      mode: "Single-Focused",
+      badge: "Low Variance",
+      tone: "positive" as const,
+      summary: "Today's target can be reached with disciplined singles, so the system prefers cleaner execution over complexity.",
+      guidance: [
+        "Prioritize one or two premium singles.",
+        "Stay inside the lower end of the suggested odds range.",
+        "Avoid forcing a multiple just to speed things up.",
+      ],
+    };
+  }
+
+  if (requiredReturnOnStakePct <= 18) {
+    return {
+      mode: "Split Execution",
+      badge: "Balanced",
+      tone: "neutral" as const,
+      summary: "The target is better approached by spreading risk across two or three controlled positions instead of one oversized ticket.",
+      guidance: [
+        "Split the mission across two or three selections.",
+        "Keep average odds in the structured execution zone.",
+        "Let the mission build steadily rather than chasing one big return.",
+      ],
+    };
+  }
+
+  if (targetRealism === "Unrealistic" || requiredReturnOnStakePct > 24) {
+    return {
+      mode: "Deadline Pressure",
+      badge: "Stretch",
+      tone: "negative" as const,
+      summary: "The roadmap is under too much pressure for clean execution, so the system prefers extending the timeline over escalating risk.",
+      guidance: [
+        "Reduce urgency instead of forcing high-risk structures.",
+        "Only consider a multiple if every leg is already premium quality.",
+        "Extending the plan is healthier than chasing the target in one day.",
+      ],
+    };
+  }
+
+  return {
+    mode: "Multiple-Assisted",
+    badge: "Selective Combo",
+    tone: "neutral" as const,
+    summary: "A carefully selected combo can assist the mission, but only if the legs are already strong on their own.",
+    guidance: [
+      "Use singles first, and only add a multiple if the board is strong.",
+      "Keep the combo short and correlation-aware.",
+      "Do not let the multiple become the whole plan.",
+    ],
+  };
+}
+
 function getMissionTone(requiredReturnOnStakePct: number) {
   if (requiredReturnOnStakePct <= 10) return "Comfortable";
   if (requiredReturnOnStakePct <= 16) return "Balanced";
   if (requiredReturnOnStakePct <= 22) return "Aggressive";
   return "Stretch";
+}
+
+function getTargetRealism(requiredReturnOnStakePct: number) {
+  if (requiredReturnOnStakePct <= 12) return "Realistic";
+  if (requiredReturnOnStakePct <= 18) return "Demanding";
+  if (requiredReturnOnStakePct <= MAX_STRETCH_RETURN_ON_STAKE_PCT) return "Stretched";
+  return "Unrealistic";
+}
+
+function getAdaptiveMission(bankroll: number, targetAmount: number, remainingDays: number) {
+  const safeBankroll = Math.max(0, bankroll);
+  const safeRemainingDays = Math.max(1, remainingDays);
+  const targetGap = Math.max(0, targetAmount - safeBankroll);
+  const requiredDailyGrowthRate =
+    safeBankroll > 0 && targetAmount > safeBankroll
+      ? Math.pow(targetAmount / safeBankroll, 1 / safeRemainingDays) - 1
+      : 0;
+  const requiredProfit = safeBankroll * requiredDailyGrowthRate;
+
+  if (safeBankroll <= 0 || requiredProfit <= 0) {
+    return {
+      targetGap,
+      requiredProfit: 0,
+      requiredDailyGrowthRate: 0,
+      recommendedStakePct: 0,
+      missionStake: 0,
+      requiredReturnOnStakePct: 0,
+      plannedReturnOnStakePct: 0,
+      plannedProfit: 0,
+      pressureGap: 0,
+    };
+  }
+
+  let selectedStakePct = MAX_DAILY_STAKE_PCT;
+  let selectedReturnPct = 0;
+
+  for (let stakePct = MIN_DAILY_STAKE_PCT; stakePct <= MAX_DAILY_STAKE_PCT; stakePct += 0.5) {
+    const stakeAmount = safeBankroll * (stakePct / 100);
+    const neededReturnPct = stakeAmount > 0 ? (requiredProfit / stakeAmount) * 100 : 0;
+    if (neededReturnPct <= MAX_REALISTIC_RETURN_ON_STAKE_PCT) {
+      selectedStakePct = stakePct;
+      selectedReturnPct = neededReturnPct;
+      break;
+    }
+  }
+
+  if (selectedReturnPct === 0) {
+    for (let stakePct = MIN_DAILY_STAKE_PCT; stakePct <= MAX_DAILY_STAKE_PCT; stakePct += 0.5) {
+      const stakeAmount = safeBankroll * (stakePct / 100);
+      const neededReturnPct = stakeAmount > 0 ? (requiredProfit / stakeAmount) * 100 : 0;
+      if (neededReturnPct <= MAX_STRETCH_RETURN_ON_STAKE_PCT) {
+        selectedStakePct = stakePct;
+        selectedReturnPct = neededReturnPct;
+        break;
+      }
+    }
+  }
+
+  const missionStake = safeBankroll * (selectedStakePct / 100);
+  const requiredReturnOnStakePct =
+    missionStake > 0 ? (requiredProfit / missionStake) * 100 : 0;
+  const maxPossibleProfit =
+    safeBankroll * (MAX_DAILY_STAKE_PCT / 100) * (MAX_STRETCH_RETURN_ON_STAKE_PCT / 100);
+  const plannedReturnOnStakePct =
+    selectedReturnPct > 0 ? selectedReturnPct : MAX_STRETCH_RETURN_ON_STAKE_PCT;
+  const plannedProfit =
+    selectedReturnPct > 0 ? requiredProfit : Math.min(requiredProfit, maxPossibleProfit);
+  const pressureGap = Math.max(0, requiredProfit - plannedProfit);
+
+  return {
+    targetGap,
+    requiredProfit,
+    requiredDailyGrowthRate,
+    recommendedStakePct: selectedStakePct,
+    missionStake,
+    requiredReturnOnStakePct,
+    plannedReturnOnStakePct,
+    plannedProfit,
+    pressureGap,
+  };
+}
+
+function classifyRoadmapDay(
+  targetStake: number,
+  actualStake: number,
+  targetProfit: number,
+  actualProfit: number
+): RoadmapDayMemory["classification"] {
+  if (actualStake <= 0) return "quiet";
+  if (targetStake > 0 && actualStake > targetStake * 1.05) return "overexposed";
+  if (targetProfit > 0 && actualProfit >= targetProfit && actualStake <= targetStake) {
+    return "efficient";
+  }
+  if (targetStake > 0 && actualStake >= targetStake && actualProfit < targetProfit) {
+    return "forced";
+  }
+  return "disciplined";
 }
 
 function PremiumCard({
@@ -141,16 +352,18 @@ function PremiumCard({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/42">
-            Roadmap
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/45">
+            Mission System
           </p>
-          <h2 className="mt-2 text-base font-semibold text-white md:text-lg">{title}</h2>
+          <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-white md:text-[1.2rem]">
+            {title}
+          </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-6 text-white/58">{description}</p>
+            <p className="mt-1 text-sm leading-6 text-white/56">{description}</p>
           ) : null}
         </div>
         {badge ? (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-white/50">
             {badge}
           </div>
         ) : null}
@@ -178,16 +391,16 @@ function MetricCard({
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
       <div className="relative">
-        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-100/38">
           {label}
         </p>
         <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-        <div className="mt-3 font-mono-data text-[1.18rem] font-semibold tracking-[-0.03em] text-white md:text-[1.38rem]">
+        <div className="mt-3 text-[1rem] font-semibold tracking-[-0.03em] text-white md:text-[1.14rem]">
           {value}
         </div>
         {change ? (
           <p
-            className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+            className={`mt-2.5 text-[9px] font-semibold uppercase tracking-[0.15em] leading-4 ${
               tone === "positive"
                 ? "text-emerald-300"
                 : tone === "negative"
@@ -216,7 +429,7 @@ function InputField({
 }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/40">
         {label}
       </label>
       <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4">
@@ -227,7 +440,7 @@ function InputField({
           className="h-11 w-full bg-transparent text-sm text-white outline-none"
         />
         {suffix ? (
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/42">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
             {suffix}
           </span>
         ) : null}
@@ -239,11 +452,21 @@ function InputField({
 export default function RoadmapPlanner() {
   const [stats, setStats] = useState(() => getBankrollStats());
   const [settings, setSettings] = useState<RoadmapSettings>(() => getRoadmapSettings());
+  const [dayMemories, setDayMemories] = useState(() => getRoadmapDayMemories());
   const [inputs, setInputs] = useState({
     targetAmount: String(getRoadmapSettings().targetAmount),
     targetDays: String(getRoadmapSettings().targetDays),
   });
   const [savedMessage, setSavedMessage] = useState("");
+
+  const effectiveStartedAt = useMemo(() => {
+    const candidates = [getIsoDateOnly(settings.startedAt)];
+    const memoryDates = dayMemories.map((memory) => memory.date).filter(Boolean);
+    if (memoryDates.length > 0) {
+      candidates.push(...memoryDates);
+    }
+    return candidates.sort((a, b) => a.localeCompare(b))[0];
+  }, [dayMemories, settings.startedAt]);
 
   useEffect(() => {
     const refresh = () => setStats(getBankrollStats());
@@ -262,54 +485,195 @@ export default function RoadmapPlanner() {
   }, [inputs, settings]);
 
   const roadmap = useMemo(() => {
-    const currentBankroll = Math.max(stats.currentBankroll, 0);
-    const todayStats = getTodayOperationalStats();
+    const availableBankroll = Math.max(stats.currentBankroll, 0);
+    const startingBankroll = Math.max(stats.initialBankroll, 0);
+    const startedAt = effectiveStartedAt || getDateKeyInTimezone(new Date());
+    const today = getDateKeyInTimezone(new Date());
+    const existingMemoryByDate = new Map(dayMemories.map((memory) => [memory.date, memory]));
     const targetAmount = parsedInputs.targetAmount;
     const targetDays = parsedInputs.targetDays;
+    const analyses = getAnalyses();
+    const multiples = getSavedMultiples();
     const openExposure = getOpenExposure();
-    const targetGap = Math.max(0, targetAmount - currentBankroll);
-    const progressPct = targetAmount > 0 ? Math.max(0, Math.min(100, (currentBankroll / targetAmount) * 100)) : 0;
-    const requiredDailyGrowthRate =
-      currentBankroll > 0 && targetAmount > currentBankroll
-        ? Math.pow(targetAmount / currentBankroll, 1 / targetDays) - 1
-        : 0;
-    const recommendedDailyStakePct =
-      currentBankroll > 0 && requiredDailyGrowthRate > 0
-        ? Math.min(
-            MAX_DAILY_STAKE_PCT,
-            Math.max(
-              MIN_DAILY_STAKE_PCT,
-              (requiredDailyGrowthRate * 100) / HEALTHY_RETURN_ON_STAKE_PCT * 100
-            )
-          )
-        : 0;
-    const missionStake = currentBankroll * (recommendedDailyStakePct / 100);
-    const requiredProfitToday = currentBankroll * requiredDailyGrowthRate;
-    const requiredReturnOnStakePct = missionStake > 0 ? (requiredProfitToday / missionStake) * 100 : 0;
-    const healthyDailyGrowthRate =
-      (recommendedDailyStakePct / 100) * (HEALTHY_RETURN_ON_STAKE_PCT / 100);
-    const healthyProjection =
-      currentBankroll > 0 ? currentBankroll * Math.pow(1 + healthyDailyGrowthRate, targetDays) : 0;
-    const oddsRange = getOddsRange(requiredReturnOnStakePct);
-    const missionTone = getMissionTone(requiredReturnOnStakePct);
-    const exposurePctOfMission = missionStake > 0 ? (openExposure / missionStake) * 100 : 0;
-    const remainingMissionCapacity = Math.max(0, missionStake - openExposure);
-    const missionProgressPct = missionStake > 0 ? (todayStats.stakedToday / missionStake) * 100 : 0;
-    const profitProgressPct =
-      requiredProfitToday > 0 ? (todayStats.settledProfitToday / requiredProfitToday) * 100 : 0;
+    const missionCapital = availableBankroll + openExposure;
     const elapsedDays = Math.max(
       0,
-      Math.floor(
-        (new Date(getTodayIsoDate()).getTime() -
-          new Date(settings.startedAt.split("T")[0]).getTime()) /
-          86400000
-      )
+      getLocalDayDifference(getIsoDateOnly(startedAt), today)
     );
     const currentPlanDay = Math.min(targetDays, elapsedDays + 1);
     const remainingDays = Math.max(1, targetDays - elapsedDays);
+    const adaptiveMission = getAdaptiveMission(availableBankroll, targetAmount, remainingDays);
+    const targetGap = Math.max(0, targetAmount - missionCapital);
+    const availableTargetGap = adaptiveMission.targetGap;
+    const missionProgressToTargetPct =
+      targetAmount > 0 ? Math.max(0, Math.min(100, (availableBankroll / targetAmount) * 100)) : 0;
+    const bankrollProgressToTargetPct =
+      targetAmount > 0 ? Math.max(0, Math.min(100, (availableBankroll / targetAmount) * 100)) : 0;
 
+    const dailyLog = Array.from({ length: targetDays }, (_, index) => {
+      const date = getDayOffset(startedAt, index);
+      const existingMemory = existingMemoryByDate.get(date);
+      const dayCreatedAnalyses = analyses.filter(
+        (analysis) =>
+          analysis.tracking.betPlaced &&
+          getDateKeyInTimezone(analysis.createdAt) === date
+      );
+      const dayCreatedMultiples = multiples.filter(
+        (multiple) =>
+          multiple.tracking.betPlaced &&
+          getDateKeyInTimezone(multiple.createdAt) === date
+      );
+      const daySettledAnalyses = analyses.filter(
+        (analysis) =>
+          analysis.tracking.betPlaced &&
+          analysis.tracking.resultStatus !== "pending" &&
+          getDateKeyInTimezone(analysis.tracking.settledAt || analysis.createdAt) === date
+      );
+      const daySettledMultiples = multiples.filter(
+        (multiple) =>
+          multiple.tracking.betPlaced &&
+          multiple.tracking.resultStatus !== "pending" &&
+          getDateKeyInTimezone(multiple.tracking.settledAt || multiple.createdAt) === date
+      );
+
+      const actualStake =
+        dayCreatedAnalyses.reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
+        dayCreatedMultiples.reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
+      const legacyCreatedSettledAnalyses = dayCreatedAnalyses.filter(
+        (analysis) => analysis.tracking.resultStatus !== "pending"
+      );
+      const legacyCreatedSettledMultiples = dayCreatedMultiples.filter(
+        (multiple) => multiple.tracking.resultStatus !== "pending"
+      );
+
+      const settledAnalysesProfit = daySettledAnalyses.reduce(
+        (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
+        0
+      );
+      const settledMultiplesProfit = daySettledMultiples.reduce(
+        (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
+        0
+      );
+      const resolvedItemsCount = daySettledAnalyses.length + daySettledMultiples.length;
+      const legacyCreatedSettledProfit =
+        legacyCreatedSettledAnalyses.reduce(
+          (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
+          0
+        ) +
+        legacyCreatedSettledMultiples.reduce(
+          (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
+          0
+        );
+      const legacyCreatedSettledCount =
+        legacyCreatedSettledAnalyses.length + legacyCreatedSettledMultiples.length;
+
+      const actualProfit =
+        resolvedItemsCount > 0
+          ? settledAnalysesProfit + settledMultiplesProfit
+          : legacyCreatedSettledCount > 0
+          ? legacyCreatedSettledProfit
+          : date < today && existingMemory
+          ? existingMemory.actualProfit
+          : 0;
+
+      return {
+        day: index + 1,
+        date,
+        actualStake,
+        actualProfit,
+        tickets: dayCreatedAnalyses.length + dayCreatedMultiples.length,
+        activeTickets:
+          dayCreatedAnalyses.filter((analysis) => analysis.tracking.resultStatus === "pending").length +
+          dayCreatedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending").length,
+      };
+    });
+
+    const todayActualEntry = dailyLog[Math.min(elapsedDays, dailyLog.length - 1)] ?? {
+      day: 1,
+      date: today,
+      actualStake: 0,
+      actualProfit: 0,
+      tickets: 0,
+      activeTickets: 0,
+    };
+
+    const requiredDailyGrowthRate = adaptiveMission.requiredDailyGrowthRate;
+    const recommendedDailyStakePct = adaptiveMission.recommendedStakePct;
+    const missionStake = adaptiveMission.missionStake;
+    const requiredProfitToday = adaptiveMission.plannedProfit;
+    const theoreticalRequiredProfitToday = adaptiveMission.requiredProfit;
+    const requiredReturnOnStakePct = adaptiveMission.requiredReturnOnStakePct;
+    const practicalReturnOnStakePct = adaptiveMission.plannedReturnOnStakePct;
+    const missionPressureGap = adaptiveMission.pressureGap;
+    const oddsRange = getOddsRange(requiredReturnOnStakePct);
+    const oddsExecutionOptions = getOddsExecutionOptions(requiredReturnOnStakePct);
+    const missionTone = getMissionTone(requiredReturnOnStakePct);
+    const exposurePctOfMission = missionStake > 0 ? (openExposure / missionStake) * 100 : 0;
+    const remainingMissionCapacity = Math.max(0, missionStake - openExposure);
+    const missionProgressPct = missionStake > 0 ? (todayActualEntry.actualStake / missionStake) * 100 : 0;
+    const profitProgressPct = requiredProfitToday > 0 ? (todayActualEntry.actualProfit / requiredProfitToday) * 100 : 0;
+    const healthyDailyGrowthRate = (recommendedDailyStakePct / 100) * (HEALTHY_RETURN_ON_STAKE_PCT / 100);
+    const healthyProjection =
+      availableBankroll > 0 ? availableBankroll * Math.pow(1 + healthyDailyGrowthRate, remainingDays) : 0;
+    const targetRealism = getTargetRealism(requiredReturnOnStakePct);
+    const executionMode = getExecutionMode(
+      requiredReturnOnStakePct,
+      exposurePctOfMission,
+      targetRealism
+    );
+    const bestZone = getBestPerformingZone();
+    const multipleSummary = getMultiplePerformanceSummary();
+    const favoredMarket =
+      bestZone.bestMarket && bestZone.bestMarket.roi > 0 ? bestZone.bestMarket : null;
+    const favoredEdgeZone =
+      bestZone.bestEdgeBucket && bestZone.bestEdgeBucket.roi > 0
+        ? bestZone.bestEdgeBucket
+        : null;
+    const favoredConfidenceZone =
+      bestZone.bestConfidenceBucket && bestZone.bestConfidenceBucket.roi > 0
+        ? bestZone.bestConfidenceBucket
+        : null;
+    const multipleStance =
+      multipleSummary.settledMultiples >= 3
+        ? multipleSummary.roi > 0
+          ? {
+              label: "Multiples Supportive",
+              tone: "positive" as const,
+              detail: `${formatPct(multipleSummary.roi)} ROI across ${multipleSummary.settledMultiples} settled multiples.`,
+            }
+          : {
+              label: "Multiples Dragging",
+              tone: "negative" as const,
+              detail: `${formatPct(multipleSummary.roi)} ROI across ${multipleSummary.settledMultiples} settled multiples.`,
+            }
+        : {
+            label: "Multiples Under Sample",
+            tone: "neutral" as const,
+            detail: `${multipleSummary.settledMultiples} settled multiples tracked so far.`,
+          };
+    const missionIntelligenceSummary = favoredMarket
+      ? `${favoredMarket.market} is the strongest settled market, so today's mission should lean there when the board allows it.`
+      : "There is not enough settled market data yet to lean into one clear profile.";
+    const missionIntelligenceNote =
+      favoredConfidenceZone && favoredEdgeZone
+        ? `Best validation sits in confidence ${favoredConfidenceZone.bucket} and edge ${favoredEdgeZone.bucket}.`
+        : favoredConfidenceZone
+        ? `Best validation sits in confidence ${favoredConfidenceZone.bucket}.`
+        : favoredEdgeZone
+        ? `Best validation sits in edge ${favoredEdgeZone.bucket}.`
+        : "Confidence and edge still need more validation.";
+    const missionStatus =
+      openExposure >= missionStake && missionStake > 0
+        ? "Overexposed"
+        : requiredReturnOnStakePct > 22
+        ? "Stretch"
+        : profitProgressPct >= 100
+        ? "On Track"
+        : missionProgressPct >= 100 && profitProgressPct < 100
+        ? "Watch"
+        : "Active";
     const alert =
-      currentBankroll <= 0
+      availableBankroll <= 0
         ? {
             tone: "negative" as const,
             title: "No bankroll base",
@@ -326,6 +690,12 @@ export default function RoadmapPlanner() {
             tone: "negative" as const,
             title: "Daily cap reached",
             body: `Open exposure already stands at ${formatCurrency(openExposure)}, so the roadmap wants you to stop adding risk today.`,
+          }
+        : missionProgressPct >= 100 && profitProgressPct < 100
+        ? {
+            tone: "negative" as const,
+            title: "Mission used, return still short",
+            body: "The daily stake budget is already consumed but the required profit has not yet been reached. Do not force extra volume.",
           }
         : exposurePctOfMission >= 80
         ? {
@@ -345,77 +715,257 @@ export default function RoadmapPlanner() {
             body: `The roadmap still leaves ${formatCurrency(remainingMissionCapacity)} of controlled daily capacity available.`,
           };
 
+    const intelligenceActions = [
+      favoredMarket
+        ? `Favor ${favoredMarket.market} when the board quality is there; it is validating at ${formatPct(favoredMarket.roi)} ROI across ${favoredMarket.bets} settled bets.`
+        : null,
+      favoredConfidenceZone
+        ? `Trust the ${favoredConfidenceZone.bucket} confidence zone more than weaker buckets; it is your best settled confidence cluster so far.`
+        : null,
+      favoredEdgeZone
+        ? `Prefer setups landing in edge bucket ${favoredEdgeZone.bucket}; that zone is validating best in settled results.`
+        : null,
+      multipleSummary.settledMultiples >= 3 && multipleSummary.roi < 0
+        ? "Keep the roadmap single-led for now; multiples are still dragging the execution profile."
+        : multipleSummary.settledMultiples >= 3 && multipleSummary.roi > 0
+        ? "Multiples can assist selectively, but only after the single-led mission is already clean."
+        : null,
+    ].filter(Boolean) as string[];
+
     const nextActions =
-      currentBankroll <= 0
+      availableBankroll <= 0
         ? [
-            "Define a bankroll baseline before using the roadmap.",
-            "Do not force action until the capital base is stable.",
-            "Reopen the planner after resetting the bankroll.",
+            "Define a bankroll baseline first.",
+            "Pause execution until the capital base is stable.",
+            "Restart the roadmap after the reset.",
           ]
         : openExposure >= missionStake && missionStake > 0
         ? [
-            "Stop adding new bets for today.",
-            "Let existing exposure resolve before redeploying capital.",
-            "Review whether tomorrow's target or deadline should be softened.",
+            "Do not add more bets today.",
+            "Let current exposure resolve before deploying more capital.",
+            "Reassess tomorrow's mission after settlement.",
+          ]
+        : missionProgressPct >= 100 && profitProgressPct < 100
+        ? [
+            "Do not chase low-edge bets to rescue the day.",
+            "Accept that today may close below plan if quality is not there.",
+            "Let the system recalibrate tomorrow.",
           ]
         : requiredReturnOnStakePct > 22
         ? [
-            "Focus only on premium spots inside the suggested odds zone.",
-            "Avoid low-edge volume just to fill the mission.",
-            "Consider extending the deadline to reduce pressure.",
+            ...intelligenceActions,
+            "Work only premium-quality spots inside the suggested odds zone.",
+            `If you want lower variance, use structures like ${oddsExecutionOptions[0].toLowerCase()}.`,
+            `Execution mode today: ${executionMode.mode}.`,
+            "Extend the deadline if you want cleaner execution.",
+            "Avoid using multiples to artificially accelerate the path.",
           ]
         : [
-            `Keep total risk close to ${formatCurrency(missionStake)} today.`,
-            `Work mainly in the ${oddsRange} odds zone.`,
-            `Do not chase above ${formatPct(requiredReturnOnStakePct)} required return on stake.`,
-          ];
+            ...intelligenceActions,
+            `Keep total risk near ${formatCurrency(missionStake)} today.`,
+            `Prefer selections in the ${oddsRange} odds zone.`,
+            `Safer structures today: ${oddsExecutionOptions.slice(0, 2).join(" or ")}.`,
+            `Execution mode today: ${executionMode.mode}.`,
+            `Stop adding bets when open exposure reaches ${formatCurrency(missionStake)}.`,
+          ].slice(0, 5);
 
-    const path = Array.from({ length: targetDays }, (_, index) => {
+    const path = Array.from({ length: remainingDays }, (_, index) => {
       const day = index + 1;
       return {
         day: `D${day}`,
-        targetPath: Number((currentBankroll * Math.pow(1 + requiredDailyGrowthRate, day)).toFixed(2)),
-        healthyPath: Number((currentBankroll * Math.pow(1 + healthyDailyGrowthRate, day)).toFixed(2)),
+        targetPath: Number((availableBankroll * Math.pow(1 + requiredDailyGrowthRate, day)).toFixed(2)),
+        healthyPath: Number((availableBankroll * Math.pow(1 + healthyDailyGrowthRate, day)).toFixed(2)),
       };
     });
 
+    let rollingBankroll = startingBankroll;
+
+    const logWithTargets = dailyLog.map((entry, index) => {
+      const daysRemainingIncludingThis = Math.max(1, targetDays - index);
+      const dayMission = getAdaptiveMission(
+        rollingBankroll,
+        targetAmount,
+        daysRemainingIncludingThis
+      );
+      const targetStake = dayMission.missionStake;
+      const targetProfit = dayMission.requiredProfit;
+      const status =
+        entry.actualProfit >= targetProfit && targetProfit > 0
+          ? "Completed"
+          : entry.actualStake >= targetStake && entry.actualProfit < targetProfit
+          ? "Used"
+          : entry.tickets > 0
+          ? "In Play"
+          : index + 1 < currentPlanDay
+          ? "Quiet"
+          : "Pending";
+
+      const classification = classifyRoadmapDay(
+        targetStake,
+        entry.actualStake,
+        targetProfit,
+        entry.actualProfit
+      );
+
+      const row = { ...entry, targetStake, targetProfit, status, classification };
+      const realizedOrProjectedProfit = index + 1 < currentPlanDay ? entry.actualProfit : targetProfit;
+      rollingBankroll += realizedOrProjectedProfit;
+      return row;
+    });
+
+    const todayLog =
+      logWithTargets[Math.min(elapsedDays, logWithTargets.length - 1)] ?? {
+        day: 1,
+        date: today,
+        actualStake: 0,
+        actualProfit: 0,
+        tickets: 0,
+        activeTickets: 0,
+        targetStake: missionStake,
+        targetProfit: requiredProfitToday,
+        status: "Pending",
+        classification: "quiet" as const,
+      };
+    const todayMissionCompletionPct = Math.max(
+      0,
+      Math.min(100, Math.max(missionProgressPct, profitProgressPct))
+    );
+    const todayMissionVisual =
+      todayLog.status === "Completed" || profitProgressPct >= 100
+        ? {
+            label: "Completed",
+            tone: "positive" as const,
+            description: "Today's mission is on target and the daily profit objective has been reached.",
+          }
+        : missionStatus === "Overexposed"
+        ? {
+            label: "Cap Reached",
+            tone: "negative" as const,
+            description: "The daily stake budget is already used, so the mission should now be protected rather than expanded.",
+          }
+        : missionStatus === "Watch"
+        ? {
+            label: "In Play",
+            tone: "neutral" as const,
+            description: "The mission has deployment, but the profit target still needs settlement support to complete cleanly.",
+          }
+        : {
+            label: "Building",
+            tone: "neutral" as const,
+            description: "The mission is still progressing and the roadmap is tracking execution against today's plan.",
+          };
+
+    const tomorrowStakePct =
+      missionStatus === "Overexposed" || missionStatus === "Stretch"
+        ? Math.max(MIN_DAILY_STAKE_PCT, recommendedDailyStakePct - 2)
+        : missionStatus === "On Track"
+        ? Math.max(MIN_DAILY_STAKE_PCT, recommendedDailyStakePct - 0.5)
+        : recommendedDailyStakePct;
+    const tomorrowStakeAmount = availableBankroll * (tomorrowStakePct / 100);
+    const tomorrowMission = getAdaptiveMission(
+      availableBankroll,
+      targetAmount,
+      Math.max(1, remainingDays - 1)
+    );
+    const tomorrowTargetProfit = tomorrowMission.plannedProfit;
+    const suggestedExtraDays =
+      targetRealism === "Unrealistic" ? Math.ceil(requiredReturnOnStakePct / 6) : 0;
+
     return {
-      currentBankroll,
+      currentBankroll: availableBankroll,
+      availableBankroll,
+      startingBankroll,
+      missionCapital,
       targetAmount,
       targetGap,
-      progressPct,
+      availableTargetGap,
+      missionProgressToTargetPct,
+      bankrollProgressToTargetPct,
+      remainingDays,
+      currentPlanDay,
       requiredDailyGrowthRate,
       recommendedDailyStakePct,
       missionStake,
       requiredProfitToday,
+      theoreticalRequiredProfitToday,
+      missionPressureGap,
+      practicalReturnOnStakePct,
       requiredReturnOnStakePct,
       openExposure,
       exposurePctOfMission,
       remainingMissionCapacity,
       healthyProjection,
       oddsRange,
+      oddsExecutionOptions,
+      executionMode,
+      missionIntelligenceSummary,
+      missionIntelligenceNote,
+      favoredMarket,
+      favoredEdgeZone,
+      favoredConfidenceZone,
+      multipleStance,
       missionTone,
+      targetRealism,
+      missionStatus,
+      todayMissionCompletionPct,
+      todayMissionVisual,
       alert,
-      todayStats,
+      todayLog,
       missionProgressPct,
       profitProgressPct,
-      currentPlanDay,
-      remainingDays,
       nextActions,
+      tomorrowStakePct,
+      tomorrowStakeAmount,
+      tomorrowTargetProfit,
+      suggestedExtraDays,
+      dailyLog: logWithTargets,
       path,
     };
-  }, [parsedInputs, settings.startedAt, stats.currentBankroll]);
+  }, [dayMemories, effectiveStartedAt, parsedInputs, stats]);
 
-  const visiblePath = useMemo(() => {
-    if (roadmap.path.length <= 10) return roadmap.path;
-    return [...roadmap.path.slice(0, 6), roadmap.path[roadmap.path.length - 1]];
-  }, [roadmap.path]);
+  useEffect(() => {
+    syncRoadmapDayMemories(roadmap.dailyLog);
+    setDayMemories(getRoadmapDayMemories());
+  }, [roadmap.dailyLog]);
+
+  const visibleLog = useMemo(
+    () => roadmap.dailyLog.slice(0, Math.min(10, roadmap.dailyLog.length)),
+    [roadmap.dailyLog]
+  );
+
+  const missionTracker = useMemo(() => {
+    const missionState =
+      roadmap.missionProgressToTargetPct >= 100
+        ? {
+            label: "Completed",
+            tone: "positive" as const,
+            description: "The roadmap target has been reached.",
+          }
+        : roadmap.currentPlanDay >= parsedInputs.targetDays && roadmap.missionProgressToTargetPct < 100
+        ? {
+            label: "Behind Target",
+            tone: "negative" as const,
+            description: "Time is nearly gone and the target gap is still meaningful.",
+          }
+        : {
+            label: "In Progress",
+            tone: "neutral" as const,
+            description: "The mission is live and moving toward the target.",
+          };
+
+    return {
+      state: missionState,
+      completionRate: roadmap.missionProgressToTargetPct,
+      completedCheckpoints: roadmap.dailyLog.filter((entry) => entry.status === "Completed").length,
+      remainingCheckpoints: roadmap.dailyLog.filter((entry) => entry.day >= roadmap.currentPlanDay).length,
+    };
+  }, [parsedInputs.targetDays, roadmap.currentPlanDay, roadmap.dailyLog, roadmap.missionProgressToTargetPct]);
 
   const handleSavePlan = () => {
     const nextSettings: RoadmapSettings = {
       targetAmount: parsedInputs.targetAmount,
       targetDays: parsedInputs.targetDays,
-      startedAt: settings.startedAt || new Date().toISOString(),
+      startedAt: effectiveStartedAt || getDateKeyInTimezone(new Date()),
     };
     saveRoadmapSettings(nextSettings);
     setSettings(nextSettings);
@@ -432,42 +982,76 @@ export default function RoadmapPlanner() {
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
           <div className="relative max-w-3xl">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
-              Target Planner
+            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100/80">
+              Mission Control
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
-              Financial Roadmap
+            <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.04em] text-white md:text-[2.6rem]">
+              <span className="text-white">Intelligent </span>
+              <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
+                Roadmap
+              </span>
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
-              Define the target and the deadline. The system will suggest the daily bankroll percentage to risk, the return needed, the odds zone to work in, and alerts when today's risk budget is already full.
+            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/58">
+              Know the target, the stake, and the next move.
             </p>
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <MetricCard label="Current Bankroll" value={formatCurrency(roadmap.currentBankroll)} change="Live bankroll" />
-          <MetricCard label="Target" value={formatCurrency(roadmap.targetAmount)} change={`${formatPct(roadmap.progressPct)} reached`} tone="positive" />
-          <MetricCard label="Gap" value={formatCurrency(roadmap.targetGap)} change={`${roadmap.remainingDays} days left`} />
-          <MetricCard label="Daily Stake %" value={formatPct(roadmap.recommendedDailyStakePct)} change={roadmap.missionTone} tone={roadmap.missionTone === "Comfortable" || roadmap.missionTone === "Balanced" ? "positive" : roadmap.missionTone === "Aggressive" ? "neutral" : "negative"} />
-          <MetricCard label="Suggested Odds" value={roadmap.oddsRange} change="Working zone" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Free Bankroll"
+            value={formatCurrency(roadmap.availableBankroll)}
+            change={`${formatCurrency(roadmap.openExposure)} currently open`}
+          />
+          <MetricCard
+            label="Target Gap"
+            value={formatCurrency(roadmap.availableTargetGap)}
+            change={`${formatPct(roadmap.bankrollProgressToTargetPct)} of target already reached`}
+            tone={roadmap.availableTargetGap <= 0 ? "positive" : "neutral"}
+          />
+          <MetricCard
+            label="Plan Day"
+            value={`${roadmap.currentPlanDay}/${parsedInputs.targetDays}`}
+            change={`${roadmap.remainingDays} days left`}
+          />
+          <MetricCard
+            label="Today's Target"
+            value={formatCurrency(roadmap.requiredProfitToday)}
+            change={`${formatCurrency(roadmap.missionStake)} max stake · ${roadmap.oddsRange}`}
+            tone={roadmap.targetRealism === "Realistic" ? "positive" : roadmap.targetRealism === "Demanding" ? "neutral" : "negative"}
+          />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <PremiumCard
-            title="Roadmap Inputs"
-            description="You only define the destination. The daily mission is calculated by the system."
-            badge="Controls"
+            title="Mission Control"
+            description="Set the target and the deadline."
+            badge="Planner"
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <InputField label="Target Amount" value={inputs.targetAmount} suffix="EUR" onChange={(value) => setInputs((prev) => ({ ...prev, targetAmount: value }))} />
-              <InputField label="Target Days" value={inputs.targetDays} suffix="days" onChange={(value) => setInputs((prev) => ({ ...prev, targetDays: value }))} />
+              <InputField
+                label="Target Amount"
+                value={inputs.targetAmount}
+                suffix="EUR"
+                onChange={(value) =>
+                  setInputs((prev) => ({ ...prev, targetAmount: value }))
+                }
+              />
+              <InputField
+                label="Target Days"
+                value={inputs.targetDays}
+                suffix="days"
+                onChange={(value) =>
+                  setInputs((prev) => ({ ...prev, targetDays: value }))
+                }
+              />
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={handleSavePlan}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-sm font-medium text-emerald-200 transition hover:bg-emerald-400/15"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-400/15"
               >
                 Save Roadmap
               </button>
@@ -479,206 +1063,274 @@ export default function RoadmapPlanner() {
                     targetDays: String(DEFAULT_ROADMAP_SETTINGS.targetDays),
                   })
                 }
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white/70 transition hover:bg-white/[0.08]"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/[0.08]"
               >
                 Reset Inputs
               </button>
-              {savedMessage ? <span className="text-sm text-emerald-300">{savedMessage}</span> : null}
+              {savedMessage ? (
+                <span className="text-sm text-emerald-300">{savedMessage}</span>
+              ) : null}
             </div>
-            <p className="mt-4 text-xs uppercase tracking-[0.14em] text-white/42">
-              Plan started on {settings.startedAt.split("T")[0]} · day {roadmap.currentPlanDay} of {parsedInputs.targetDays}
+
+            <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-white/42">
+              Plan started on {effectiveStartedAt}.
             </p>
           </PremiumCard>
 
           <PremiumCard
-            title="Today's Mission"
-            description="The roadmap now defines the mission itself, instead of asking you to guess it."
-            badge="Auto"
+            title="Today's Orders"
+            description="Today's stake, profit, and odds zone."
+            badge="Orders"
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div className={surfaceCardClass}>
                 <div className="flex items-center gap-2 text-emerald-200">
                   <Wallet className="h-4 w-4" strokeWidth={1.6} />
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Stake Limit</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                    Max Stake Today
+                  </p>
                 </div>
-                <p className="mt-2 font-mono-data text-2xl font-semibold text-white">{formatCurrency(roadmap.missionStake)}</p>
-                <p className="mt-2 text-sm leading-6 text-white/58">
-                  The system wants to risk around {formatPct(roadmap.recommendedDailyStakePct)} of the live bankroll today.
+                <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
+                  {formatCurrency(roadmap.missionStake)}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/56">
+                  {formatPct(roadmap.recommendedDailyStakePct)} of bankroll.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div className={surfaceCardClass}>
                 <div className="flex items-center gap-2 text-cyan-200">
                   <TrendingUp className="h-4 w-4" strokeWidth={1.6} />
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Return Needed</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                    Target Profit Today
+                  </p>
                 </div>
-                <p className="mt-2 font-mono-data text-2xl font-semibold text-white">{formatPct(roadmap.requiredReturnOnStakePct)}</p>
-                <p className="mt-2 text-sm leading-6 text-white/58">
-                  That is the return needed on the daily stake to stay on the roadmap.
+                <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
+                  {formatCurrency(roadmap.requiredProfitToday)}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/56">
+                  {formatPct(roadmap.practicalReturnOnStakePct)} return on today's stake.
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">Profit Needed Today</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.requiredProfitToday)}</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">Open Exposure</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.openExposure)}</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">Capacity Left</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.remainingMissionCapacity)}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">Staked Today</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.todayStats.stakedToday)}</p>
-                <p className="mt-2 text-xs uppercase tracking-[0.12em] text-white/45">
-                  {formatPct(Math.max(0, roadmap.missionProgressPct))} of mission
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">P/L Today</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.todayStats.settledProfitToday)}</p>
-                <p className="mt-2 text-xs uppercase tracking-[0.12em] text-white/45">
-                  {formatPct(roadmap.profitProgressPct)} of profit target
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">Open Tickets</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{roadmap.todayStats.activeTickets}</p>
-                <p className="mt-2 text-xs uppercase tracking-[0.12em] text-white/45">
-                  {roadmap.todayStats.ticketsPlacedToday} placed today
-                </p>
-              </div>
+            <div className="mt-3 rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                Odds Zone
+              </p>
+              <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+                {roadmap.oddsRange}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-white/56">
+                {roadmap.oddsExecutionOptions[0]}
+              </p>
             </div>
           </PremiumCard>
         </div>
 
-        <PremiumCard
-          title="System Alerts"
-          description="The roadmap should also protect the bankroll, not only chase the target."
-          badge={roadmap.alert.title}
-        >
+          <PremiumCard
+            title="Mission Tracker"
+            description="Mission status."
+            badge="Progress"
+          >
           <div
-            className={`rounded-[24px] border p-4 ${
-              roadmap.alert.tone === "positive"
+            className={`rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] ${
+              missionTracker.state.tone === "positive"
                 ? "border-emerald-400/20 bg-emerald-400/10"
-                : roadmap.alert.tone === "negative"
+                : missionTracker.state.tone === "negative"
                 ? "border-red-400/20 bg-red-400/10"
                 : "border-cyan-400/20 bg-cyan-400/10"
             }`}
           >
-            <div className="flex items-center gap-2">
-              {roadmap.alert.tone === "negative" ? (
-                <ShieldAlert className="h-4 w-4 text-red-200" strokeWidth={1.7} />
-              ) : roadmap.alert.tone === "positive" ? (
-                <Goal className="h-4 w-4 text-emerald-200" strokeWidth={1.7} />
-              ) : (
-                <TriangleAlert className="h-4 w-4 text-cyan-200" strokeWidth={1.7} />
-              )}
-              <p className="text-sm font-medium text-white">{roadmap.alert.title}</p>
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl ${
+                    missionTracker.state.tone === "positive"
+                      ? "bg-emerald-400/15 text-emerald-200"
+                      : missionTracker.state.tone === "negative"
+                      ? "bg-red-400/15 text-red-200"
+                      : "bg-cyan-400/15 text-cyan-200"
+                  }`}
+                >
+                  <CheckCircle2 className="h-5 w-5" strokeWidth={1.8} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
+                    Primary Mission
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-white">
+                    {missionTracker.state.label}
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                    {missionTracker.state.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="min-w-[180px] rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+                  Mission Completion
+                </p>
+                <p className="mt-2 text-[1.3rem] font-semibold tracking-[-0.03em] text-white">
+                  {formatPct(missionTracker.completionRate)}
+                </p>
+                <div className="mt-3 h-2 rounded-full bg-white/10">
+                  <div
+                    className="h-2 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9),rgba(34,197,94,0.9))]"
+                    style={{ width: `${Math.max(0, Math.min(100, missionTracker.completionRate))}%` }}
+                  />
+                </div>
+              </div>
             </div>
-            <p className="mt-2 text-sm leading-7 text-white/70">{roadmap.alert.body}</p>
-            <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-white/48">
-              Exposure used: {formatPct(Math.min(999, roadmap.exposurePctOfMission))}
-            </p>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <MetricCard
+              label="Target Gap"
+              value={formatCurrency(roadmap.availableTargetGap)}
+              change={`${formatCurrency(roadmap.targetGap)} incl. mission capital`}
+              tone={roadmap.availableTargetGap <= 0 ? "positive" : "neutral"}
+            />
+            <MetricCard
+              label="Current Day"
+              value={`Day ${roadmap.currentPlanDay}`}
+              change={`${roadmap.remainingDays} days left`}
+            />
+            <MetricCard
+              label="Open Exposure"
+              value={formatCurrency(roadmap.openExposure)}
+              change={`${formatPct(Math.min(999, roadmap.exposurePctOfMission))} of today's cap`}
+              tone={roadmap.missionStatus === "Overexposed" ? "negative" : "neutral"}
+            />
           </div>
         </PremiumCard>
 
-        <PremiumCard
-          title="Roadmap Path"
-          description="Compare the exact path to the target with a healthier path based on cleaner daily return expectations."
-          badge={roadmap.missionTone}
-        >
-          <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={visiblePath} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10} tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tickMargin={10} tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(222,47%,7%)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 16,
-                    color: "white",
-                  }}
-                />
-                <Line type="monotone" dataKey="targetPath" stroke="rgba(56,189,248,0.95)" strokeWidth={2.5} dot={false} name="Target Path" />
-                <Line type="monotone" dataKey="healthyPath" stroke="rgba(34,197,94,0.95)" strokeWidth={2.5} dot={false} name="Healthy Path" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </PremiumCard>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-          <PremiumCard title="Plan Read" description="A direct read of what the roadmap is asking from the operation." badge="Read">
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+        <div className="space-y-6">
+          <PremiumCard title="Recalibrated Plan" description="Adjust the plan from today's bankroll state." badge="Adaptive">
+            <div className="space-y-4">
+              <div className={surfaceCardClass}>
                 <div className="flex items-center gap-2">
                   <Flag className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
-                  <p className="text-sm font-medium text-white">Target pressure</p>
+                  <p className="text-sm font-medium tracking-[-0.01em] text-white">Target pressure</p>
                 </div>
-                <p className="mt-2 text-sm leading-7 text-white/62">
-                  To go from {formatCurrency(roadmap.currentBankroll)} to {formatCurrency(roadmap.targetAmount)} in {parsedInputs.targetDays} days, the bankroll needs roughly {formatPct(roadmap.requiredDailyGrowthRate * 100)} growth per day.
+                <p className="mt-3 text-sm leading-7 text-white/60">
+                  To move from {formatCurrency(roadmap.availableBankroll)} to {formatCurrency(roadmap.targetAmount)} in {roadmap.remainingDays} days, the plan needs about {formatPct(roadmap.requiredDailyGrowthRate * 100)} growth per day.
+                </p>
+                <p className="mt-3 text-xs leading-6 text-white/44">
+                  Open exposure is separate at {formatCurrency(roadmap.openExposure)}.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <div className="flex items-center gap-2">
-                  <Route className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
-                  <p className="text-sm font-medium text-white">Suggested execution zone</p>
-                </div>
-                <p className="mt-2 text-sm leading-7 text-white/62">
-                  Today the system would work with around {formatPct(roadmap.recommendedDailyStakePct)} bankroll exposure and odds in the {roadmap.oddsRange} area. That mission is currently classified as <span className="font-semibold text-white">{roadmap.missionTone}</span>.
-                </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                  label="Best Market"
+                  value={roadmap.favoredMarket?.market ?? "Still forming"}
+                  change={
+                    roadmap.favoredMarket
+                      ? `${formatPct(roadmap.favoredMarket.roi)} ROI · ${roadmap.favoredMarket.bets} bets`
+                      : "Need more settled market data"
+                  }
+                  tone={roadmap.favoredMarket ? "positive" : "neutral"}
+                />
+                <MetricCard
+                  label="Confidence Lead"
+                  value={roadmap.favoredConfidenceZone?.bucket ?? "Under sample"}
+                  change={
+                    roadmap.favoredConfidenceZone
+                      ? `${formatPct(roadmap.favoredConfidenceZone.roi)} ROI · ${roadmap.favoredConfidenceZone.bets} bets`
+                      : "No validated confidence lead yet"
+                  }
+                  tone={roadmap.favoredConfidenceZone ? "positive" : "neutral"}
+                />
+                <MetricCard
+                  label="Edge Lead"
+                  value={roadmap.favoredEdgeZone?.bucket ?? "Under sample"}
+                  change={
+                    roadmap.favoredEdgeZone
+                      ? `${formatPct(roadmap.favoredEdgeZone.roi)} ROI · ${roadmap.favoredEdgeZone.bets} bets`
+                      : "No validated edge lead yet"
+                  }
+                  tone={roadmap.favoredEdgeZone ? "positive" : "neutral"}
+                />
+                <MetricCard
+                  label="Multiple Stance"
+                  value={roadmap.multipleStance.label}
+                  change={roadmap.multipleStance.detail}
+                  tone={roadmap.multipleStance.tone}
+                />
               </div>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white">Healthy projection</p>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">{formatCurrency(roadmap.healthyProjection)}</p>
-                <p className="mt-2 text-sm leading-7 text-white/62">
-                  This is where the bankroll would land if the stake plan is respected but the daily return stays around a cleaner {formatPct(HEALTHY_RETURN_ON_STAKE_PCT)} on the staked amount.
-                </p>
-              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className={surfaceCardClass}>
+                  <div className="flex items-center gap-2">
+                    <Goal className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
+                    <p className="text-sm font-medium tracking-[-0.01em] text-white">Mission bias</p>
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-white/64">
+                    {roadmap.missionIntelligenceSummary}
+                  </p>
+                  <p className="mt-3 text-xs leading-6 text-white/44">
+                    {roadmap.missionIntelligenceNote}
+                  </p>
+                </div>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white">System actions</p>
-                <div className="mt-2 space-y-2 text-sm leading-7 text-white/62">
-                  {roadmap.nextActions.map((action) => (
-                    <p key={action}>{action}</p>
-                  ))}
+                <div className="space-y-3">
+                  <div className={surfaceCardClass}>
+                    <div className="flex items-center gap-2">
+                      <Route className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
+                      <p className="text-sm font-medium tracking-[-0.01em] text-white">Essential actions</p>
+                    </div>
+                    <div className="mt-3 space-y-2.5 text-sm leading-7 text-white/60">
+                      {roadmap.nextActions.slice(0, 3).map((action, index) => (
+                        <p key={action}>
+                          <span className="mr-2 text-white/38">{index + 1}.</span>
+                          {action}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={surfaceCardClass}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">Tomorrow's mission</p>
+                    <p className="mt-3 text-[1.22rem] font-semibold tracking-[-0.03em] text-white">{formatCurrency(roadmap.tomorrowStakeAmount)}</p>
+                    <p className="mt-3 text-sm leading-7 text-white/60">
+                      About {formatPct(roadmap.tomorrowStakePct)} of bankroll for {formatCurrency(roadmap.tomorrowTargetProfit)} profit.
+                    </p>
+                    {roadmap.suggestedExtraDays > 0 ? (
+                      <p className="mt-3 text-[10px] uppercase tracking-[0.16em] text-red-300">
+                        Extend by about {roadmap.suggestedExtraDays} days.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               </div>
+
             </div>
           </PremiumCard>
 
-          <PremiumCard title="Milestones" description="Short table to compare the exact path with the healthier one." badge="Path">
+          <PremiumCard title="Daily Log" description="Track execution day by day so tomorrow's mission stays grounded in reality." badge="Log">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-sm">
+              <table className="w-full min-w-[680px] text-sm">
                 <thead className="border-b border-white/5">
                   <tr className="text-left text-xs uppercase tracking-wider text-white/45">
                     <th className="py-3 pr-4">Day</th>
-                    <th className="py-3 pr-4">Target Path</th>
-                    <th className="py-3 pr-4">Healthy Path</th>
-                    <th className="py-3 pr-4">Gap</th>
+                    <th className="py-3 pr-4">Target Stake</th>
+                    <th className="py-3 pr-4">Actual Stake</th>
+                    <th className="py-3 pr-4">Target Profit</th>
+                    <th className="py-3 pr-4">Actual P/L</th>
+                    <th className="py-3 pr-4">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visiblePath.map((row) => (
-                    <tr key={row.day} className="border-t border-white/5">
-                      <td className="py-3 pr-4 font-medium text-white">{row.day}</td>
-                      <td className="py-3 pr-4 font-mono-data text-white">{formatCurrency(row.targetPath)}</td>
-                      <td className="py-3 pr-4 font-mono-data text-white">{formatCurrency(row.healthyPath)}</td>
-                      <td className={`py-3 pr-4 font-mono-data ${row.healthyPath >= row.targetPath ? "text-emerald-300" : "text-red-300"}`}>
-                        {formatCurrency(row.healthyPath - row.targetPath)}
-                      </td>
+                  {visibleLog.map((row) => (
+                    <tr key={`${row.day}-${row.date}`} className="border-t border-white/5">
+                      <td className="py-3 pr-4 font-medium text-white">D{row.day}</td>
+                      <td className="py-3 pr-4 text-white">{formatCurrency(row.targetStake)}</td>
+                      <td className="py-3 pr-4 text-white">{formatCurrency(row.actualStake)}</td>
+                      <td className="py-3 pr-4 text-white">{formatCurrency(row.targetProfit)}</td>
+                      <td className="py-3 pr-4 text-white">{formatCurrency(row.actualProfit)}</td>
+                      <td className="py-3 pr-4 text-white/70">{row.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -690,3 +1342,7 @@ export default function RoadmapPlanner() {
     </AppLayout>
   );
 }
+
+
+
+

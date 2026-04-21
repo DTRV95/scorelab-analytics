@@ -87,6 +87,19 @@ export interface CumulativeMarketSeries {
   data: Array<Record<string, string | number>>;
 }
 
+function getLocalDateKey(dateInput: string | null | undefined): string | null {
+  if (!dateInput) return null;
+
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function normalizeMarketName(market: string | null | undefined): string | null {
   if (!market) return null;
 
@@ -135,6 +148,10 @@ function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
     })),
     tracking: {
       ...analysis.tracking,
+      settledAt:
+        typeof analysis.tracking.settledAt === "string"
+          ? analysis.tracking.settledAt
+          : null,
       selectedMarket: normalizeMarketName(analysis.tracking.selectedMarket),
     },
   };
@@ -220,6 +237,7 @@ function recalculateTracking(
       stakeUsed: null,
       oddUsed: null,
       resultStatus: "pending",
+      settledAt: null,
       profitLoss: 0,
       bankrollAfter: tracking.bankrollBefore,
     };
@@ -241,9 +259,16 @@ function recalculateTracking(
 
   const bankrollAfter =
     bankrollBefore !== null ? bankrollBefore + profitLoss : null;
+  const settledAt =
+    tracking.resultStatus === "pending"
+      ? null
+      : tracking.settledAt && typeof tracking.settledAt === "string"
+      ? tracking.settledAt
+      : new Date().toISOString();
 
   return {
     ...tracking,
+    settledAt,
     profitLoss,
     bankrollAfter,
   };
@@ -346,6 +371,7 @@ export function createEmptyTracking(): SavedAnalysis["tracking"] {
     stakeUsed: null,
     oddUsed: null,
     resultStatus: "pending",
+    settledAt: null,
     profitLoss: 0,
     bankrollBefore: null,
     bankrollAfter: null,
@@ -420,14 +446,20 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
     )
     .sort(
       (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        new Date(a.tracking.settledAt || a.createdAt).getTime() -
+        new Date(b.tracking.settledAt || b.createdAt).getTime()
     );
 
   const grouped = new Map<string, DailyPerformanceItem>();
   let runningBankroll = initialBankroll;
 
   settledAnalyses.forEach((analysis) => {
-    const date = new Date(analysis.createdAt).toISOString().split("T")[0];
+    const date =
+      getLocalDateKey(analysis.tracking.settledAt) ||
+      getLocalDateKey(analysis.createdAt);
+
+    if (!date) return;
+
     const profitLoss = analysis.tracking.profitLoss || 0;
 
     if (!grouped.has(date)) {

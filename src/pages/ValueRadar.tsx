@@ -360,14 +360,8 @@ export default function ValueRadar() {
           <MetricBlock label="Visible Points" value={summary.total} />
           <MetricBlock label="Bets" value={summary.bets} />
           <MetricBlock label="Cautions" value={summary.cautions} />
-          <MetricBlock
-            label="Avg Edge"
-            value={`${summary.avgEdge.toFixed(2)}%`}
-          />
-          <MetricBlock
-            label="Avg Confidence"
-            value={summary.avgConfidence.toFixed(2)}
-          />
+          <MetricBlock label="Avg Edge" value={`${summary.avgEdge.toFixed(2)}%`} />
+          <MetricBlock label="Avg Confidence" value={summary.avgConfidence.toFixed(2)} />
         </motion.div>
 
         <PremiumCard

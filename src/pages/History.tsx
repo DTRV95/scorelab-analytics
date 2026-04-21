@@ -1128,6 +1128,16 @@ export default function History() {
 
             <div className="flex flex-wrap items-center gap-2">
               <button
+                onClick={() => setBetPlacedFilter("placed")}
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  betPlacedFilter === "placed"
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                }`}
+              >
+                Bet Placed
+              </button>
+              <button
                 onClick={() => setStatusFilter("pending")}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   statusFilter === "pending"

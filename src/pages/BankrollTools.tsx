@@ -245,6 +245,19 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function getLocalDateKey(dateInput: string | null | undefined) {
+  if (!dateInput) return null;
+
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function ToolTipCard({
   active,
   payload,
@@ -578,7 +591,7 @@ export default function BankrollTools() {
               analysis.tracking.resultStatus === "void")
         )
         .map((analysis) => ({
-          createdAt: analysis.createdAt,
+          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
           profitLoss: analysis.tracking?.profitLoss || 0,
         })),
       ...savedMultiples
@@ -590,11 +603,11 @@ export default function BankrollTools() {
               multiple.tracking.resultStatus === "void")
         )
         .map((multiple) => ({
-          createdAt: multiple.createdAt,
+          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
           profitLoss: multiple.tracking.profitLoss || 0,
         })),
     ].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
     );
 
     const data: { name: string; bankroll: number }[] = [
@@ -696,7 +709,7 @@ export default function BankrollTools() {
               analysis.tracking.resultStatus === "void")
         )
         .map((analysis) => ({
-          createdAt: analysis.createdAt,
+          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
           profitLoss: analysis.tracking.profitLoss || 0,
         })),
       ...savedMultiples
@@ -708,17 +721,18 @@ export default function BankrollTools() {
               multiple.tracking.resultStatus === "void")
         )
         .map((multiple) => ({
-          createdAt: multiple.createdAt,
+          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
           profitLoss: multiple.tracking.profitLoss || 0,
         })),
     ].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
     );
 
     let runningBankroll = stats.initialBankroll;
 
     settledEntries.forEach((entry) => {
-      const date = new Date(entry.createdAt).toISOString().split("T")[0];
+      const date = getLocalDateKey(entry.occurredAt);
+      if (!date) return;
       const current = grouped.get(date) || {
         date,
         profitLoss: 0,
@@ -758,7 +772,14 @@ export default function BankrollTools() {
     });
   }, [analyses, savedMultiples, stats.initialBankroll]);
 
-  const todayPerformance = combinedDailyPerformance[0] || null;
+  const todayPerformance = useMemo(() => {
+    const todayKey = getLocalDateKey(new Date());
+    if (!todayKey) return null;
+
+    return (
+      combinedDailyPerformance.find((item) => item.date === todayKey) || null
+    );
+  }, [combinedDailyPerformance]);
   const combinedDrawdownSeries = useMemo(() => {
     let peak = stats.initialBankroll;
     let bankroll = stats.initialBankroll;
@@ -773,7 +794,7 @@ export default function BankrollTools() {
               analysis.tracking.resultStatus === "void")
         )
         .map((analysis) => ({
-          createdAt: analysis.createdAt,
+          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
           profitLoss: analysis.tracking.profitLoss || 0,
         })),
       ...savedMultiples
@@ -785,11 +806,11 @@ export default function BankrollTools() {
               multiple.tracking.resultStatus === "void")
         )
         .map((multiple) => ({
-          createdAt: multiple.createdAt,
+          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
           profitLoss: multiple.tracking.profitLoss || 0,
         })),
     ].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
     );
 
     const series: { step: string; bankroll: number; peak: number; drawdownPct: number }[] = [
@@ -831,7 +852,14 @@ export default function BankrollTools() {
   const multipleLegCountPerformance = getMultipleLegCountPerformance();
   const multipleCorrelationPerformance = getMultipleCorrelationPerformance();
   const multipleSummary = getMultiplePerformanceSummary();
-  const strongestMarket = marketPerformance[0] || null;
+  const strongestMarket = useMemo(
+    () =>
+      [...marketPerformance].sort((a, b) => {
+        if (b.profitLoss !== a.profitLoss) return b.profitLoss - a.profitLoss;
+        return b.hitRate - a.hitRate;
+      })[0] || null,
+    [marketPerformance]
+  );
   const betResultsTotal = performanceData.reduce((acc, item) => acc + item.value, 0);
   const combinedDailyProfitSeries = useMemo(
     () =>

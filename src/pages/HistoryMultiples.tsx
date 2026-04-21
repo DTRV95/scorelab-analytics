@@ -140,6 +140,7 @@ export default function HistoryMultiples() {
   const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
   const [multipleStakeInput, setMultipleStakeInput] = useState("");
   const [showResolvedMultiples, setShowResolvedMultiples] = useState(false);
+  const [showPlacedOnly, setShowPlacedOnly] = useState(false);
   const savedMultiplesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -169,10 +170,11 @@ export default function HistoryMultiples() {
 
   const visibleSavedMultiples = useMemo(
     () =>
-      showResolvedMultiples
+      (showResolvedMultiples
         ? savedMultiples
-        : savedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending"),
-    [savedMultiples, showResolvedMultiples]
+        : savedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending")
+      ).filter((multiple) => (showPlacedOnly ? multiple.tracking.betPlaced : true)),
+    [savedMultiples, showResolvedMultiples, showPlacedOnly]
   );
 
   const hiddenResolvedMultiplesCount = Math.max(
@@ -295,10 +297,27 @@ export default function HistoryMultiples() {
               <ActiveFilterPill label={`Draft · ${multipleDraft.length} legs`} tone="cyan" />
               <ActiveFilterPill label={`Open · ${pendingMultiples}`} tone="amber" />
               <ActiveFilterPill label={`Placed · ${placedMultiples}`} tone="emerald" />
+              {showPlacedOnly ? (
+                <ActiveFilterPill label="Placed Only" tone="emerald" />
+              ) : null}
               <ActiveFilterPill
                 label={showResolvedMultiples ? "Showing All" : "Open Only"}
                 tone="neutral"
               />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPlacedOnly((prev) => !prev)}
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  showPlacedOnly
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                }`}
+              >
+                Placed Only
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
