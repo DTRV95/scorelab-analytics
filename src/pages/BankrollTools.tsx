@@ -37,6 +37,7 @@ import {
   YAxis,
 } from "recharts";
 import { AITypewriter } from "@/components/AITypewriter";
+import { buildFinancialSnapshot } from "@/lib/financialEngine";
 
 const stagger = {
   hidden: {},
@@ -579,51 +580,17 @@ export default function BankrollTools() {
     }, 2500);
   };
 
-  const bankrollEvolutionData = useMemo(() => {
-    let runningBankroll = stats.initialBankroll;
-    const settledEntries = [
-      ...analyses
-        .filter(
-          (analysis) =>
-            analysis.tracking?.betPlaced &&
-            (analysis.tracking.resultStatus === "green" ||
-              analysis.tracking.resultStatus === "red" ||
-              analysis.tracking.resultStatus === "void")
-        )
-        .map((analysis) => ({
-          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
-          profitLoss: analysis.tracking?.profitLoss || 0,
-        })),
-      ...savedMultiples
-        .filter(
-          (multiple) =>
-            multiple.tracking.betPlaced &&
-            (multiple.tracking.resultStatus === "green" ||
-              multiple.tracking.resultStatus === "red" ||
-              multiple.tracking.resultStatus === "void")
-        )
-        .map((multiple) => ({
-          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
-          profitLoss: multiple.tracking.profitLoss || 0,
-        })),
-    ].sort(
-      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-    );
+  const financialSnapshot = useMemo(
+    () =>
+      buildFinancialSnapshot({
+        analyses,
+        multiples: savedMultiples,
+        initialBankroll: stats.initialBankroll,
+      }),
+    [analyses, savedMultiples, stats.initialBankroll]
+  );
 
-    const data: { name: string; bankroll: number }[] = [
-      { name: "Start", bankroll: Number(runningBankroll.toFixed(2)) },
-    ];
-
-    settledEntries.forEach((entry, index) => {
-      runningBankroll += entry.profitLoss;
-      data.push({
-        name: `${index + 1}`,
-        bankroll: Number(runningBankroll.toFixed(2)),
-      });
-    });
-
-    return data;
-  }, [analyses, savedMultiples, stats.initialBankroll]);
+  const bankrollEvolutionData = financialSnapshot.bankrollEvolution;
 
   const performanceData = useMemo(
     () => [
@@ -635,208 +602,14 @@ export default function BankrollTools() {
     [stats]
   );
 
-  const openExposure = useMemo(
-    () =>
-      analyses
-        .filter(
-          (analysis) =>
-            analysis.tracking.betPlaced &&
-            analysis.tracking.resultStatus === "pending"
-        )
-        .reduce((sum, analysis) => sum + (analysis.tracking.stakeUsed || 0), 0) +
-      savedMultiples
-        .filter(
-          (multiple) =>
-            multiple.tracking.betPlaced &&
-            multiple.tracking.resultStatus === "pending"
-        )
-        .reduce((sum, multiple) => sum + (multiple.tracking.stakeUsed || 0), 0),
-    [analyses, savedMultiples]
-  );
+  const openExposure = financialSnapshot.openExposure;
 
   const openExposurePct =
     stats.currentBankroll > 0 ? (openExposure / stats.currentBankroll) * 100 : 0;
-  const openPotentialProfit = useMemo(
-    () =>
-      analyses
-        .filter(
-          (analysis) =>
-            analysis.tracking.betPlaced &&
-            analysis.tracking.resultStatus === "pending"
-        )
-        .reduce(
-          (sum, analysis) =>
-            sum +
-            Math.max(
-              0,
-              (analysis.tracking.stakeUsed || 0) *
-                ((analysis.tracking.oddUsed || 0) - 1)
-            ),
-          0
-        ) +
-      savedMultiples
-        .filter(
-          (multiple) =>
-            multiple.tracking.betPlaced &&
-            multiple.tracking.resultStatus === "pending"
-        )
-        .reduce(
-          (sum, multiple) =>
-            sum +
-            Math.max(
-              0,
-              (multiple.tracking.stakeUsed || 0) *
-                (((multiple.tracking.oddUsed || multiple.combinedOdds || 0)) - 1)
-            ),
-          0
-        ),
-    [analyses, savedMultiples]
-  );
-
-  const combinedDailyPerformance = useMemo(() => {
-    const grouped = new Map<
-      string,
-      { date: string; profitLoss: number; settledBets: number }
-    >();
-
-    const settledEntries = [
-      ...analyses
-        .filter(
-          (analysis) =>
-            analysis.tracking.betPlaced &&
-            (analysis.tracking.resultStatus === "green" ||
-              analysis.tracking.resultStatus === "red" ||
-              analysis.tracking.resultStatus === "void")
-        )
-        .map((analysis) => ({
-          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
-          profitLoss: analysis.tracking.profitLoss || 0,
-        })),
-      ...savedMultiples
-        .filter(
-          (multiple) =>
-            multiple.tracking.betPlaced &&
-            (multiple.tracking.resultStatus === "green" ||
-              multiple.tracking.resultStatus === "red" ||
-              multiple.tracking.resultStatus === "void")
-        )
-        .map((multiple) => ({
-          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
-          profitLoss: multiple.tracking.profitLoss || 0,
-        })),
-    ].sort(
-      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-    );
-
-    let runningBankroll = stats.initialBankroll;
-
-    settledEntries.forEach((entry) => {
-      const date = getLocalDateKey(entry.occurredAt);
-      if (!date) return;
-      const current = grouped.get(date) || {
-        date,
-        profitLoss: 0,
-        settledBets: 0,
-      };
-
-      current.profitLoss += entry.profitLoss;
-      current.settledBets += 1;
-      grouped.set(date, current);
-      runningBankroll += entry.profitLoss;
-    });
-
-    const ordered = Array.from(grouped.values()).sort((a, b) =>
-      b.date.localeCompare(a.date)
-    );
-
-    let backfillBankroll =
-      stats.initialBankroll +
-      ordered.reduce((sum, item) => sum + item.profitLoss, 0);
-
-    return ordered.map((item) => {
-      const endBankroll = backfillBankroll;
-      const startBankroll = endBankroll - item.profitLoss;
-      backfillBankroll = startBankroll;
-
-      return {
-        date: item.date,
-        startBankroll: Number(startBankroll.toFixed(2)),
-        endBankroll: Number(endBankroll.toFixed(2)),
-        profitLoss: Number(item.profitLoss.toFixed(2)),
-        growthPct:
-          startBankroll > 0
-            ? Number(((item.profitLoss / startBankroll) * 100).toFixed(2))
-            : 0,
-        settledBets: item.settledBets,
-      };
-    });
-  }, [analyses, savedMultiples, stats.initialBankroll]);
-
-  const todayPerformance = useMemo(() => {
-    const todayKey = getLocalDateKey(new Date());
-    if (!todayKey) return null;
-
-    return (
-      combinedDailyPerformance.find((item) => item.date === todayKey) || null
-    );
-  }, [combinedDailyPerformance]);
-  const combinedDrawdownSeries = useMemo(() => {
-    let peak = stats.initialBankroll;
-    let bankroll = stats.initialBankroll;
-
-    const settledEntries = [
-      ...analyses
-        .filter(
-          (analysis) =>
-            analysis.tracking.betPlaced &&
-            (analysis.tracking.resultStatus === "green" ||
-              analysis.tracking.resultStatus === "red" ||
-              analysis.tracking.resultStatus === "void")
-        )
-        .map((analysis) => ({
-          occurredAt: analysis.tracking.settledAt || analysis.createdAt,
-          profitLoss: analysis.tracking.profitLoss || 0,
-        })),
-      ...savedMultiples
-        .filter(
-          (multiple) =>
-            multiple.tracking.betPlaced &&
-            (multiple.tracking.resultStatus === "green" ||
-              multiple.tracking.resultStatus === "red" ||
-              multiple.tracking.resultStatus === "void")
-        )
-        .map((multiple) => ({
-          occurredAt: multiple.tracking.settledAt || multiple.createdAt,
-          profitLoss: multiple.tracking.profitLoss || 0,
-        })),
-    ].sort(
-      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-    );
-
-    const series: { step: string; bankroll: number; peak: number; drawdownPct: number }[] = [
-      {
-        step: "Start",
-        bankroll: Number(stats.initialBankroll.toFixed(2)),
-        peak: Number(stats.initialBankroll.toFixed(2)),
-        drawdownPct: 0,
-      },
-    ];
-
-    settledEntries.forEach((entry) => {
-      bankroll += entry.profitLoss;
-      peak = Math.max(peak, bankroll);
-      const drawdownPct = peak > 0 ? ((bankroll - peak) / peak) * 100 : 0;
-
-      series.push({
-        step: `${series.length}`,
-        bankroll: Number(bankroll.toFixed(2)),
-        peak: Number(peak.toFixed(2)),
-        drawdownPct: Number(drawdownPct.toFixed(2)),
-      });
-    });
-
-    return series;
-  }, [analyses, savedMultiples, stats.initialBankroll]);
+  const openPotentialProfit = financialSnapshot.openPotentialProfit;
+  const combinedDailyPerformance = financialSnapshot.dailyPerformance;
+  const todayPerformance = financialSnapshot.todayPerformance;
+  const combinedDrawdownSeries = financialSnapshot.drawdownSeries;
   const currentDrawdown = combinedDrawdownSeries.at(-1)?.drawdownPct ?? 0;
   const maxDrawdown = combinedDrawdownSeries.reduce(
     (worst, point) => Math.min(worst, point.drawdownPct),

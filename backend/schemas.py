@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class AnalyzeRequest(BaseModel):
@@ -182,3 +182,16 @@ class AIHistoryReviewResponse(BaseModel):
     risks: List[str]
     next_actions: List[str]
     disclaimer: str
+
+
+class StorageSnapshot(BaseModel):
+    analyses: List[Dict[str, Any]] = Field(default_factory=list)
+    multiples: List[Dict[str, Any]] = Field(default_factory=list)
+    multiple_draft: List[Dict[str, Any]] = Field(default_factory=list)
+    bankroll_settings: Dict[str, Any] = Field(default_factory=dict)
+    roadmap_settings: Dict[str, Any] = Field(default_factory=dict)
+    roadmap_day_memories: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class StorageSnapshotResponse(BaseModel):
+    snapshot: StorageSnapshot

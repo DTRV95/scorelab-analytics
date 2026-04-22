@@ -1,4 +1,5 @@
 import type { SavedAnalysis } from "@/types/analysis";
+import { buildFinancialSnapshot } from "@/lib/financialEngine";
 import {
   getTierPerformance,
   getOddsBucketPerformance,
@@ -53,34 +54,21 @@ function isValidTrackedBet(analysis: SavedAnalysis): boolean {
 export function getPerformanceSummary(
   analyses: SavedAnalysis[]
 ): PerformanceSummary {
-  const settled = analyses.filter(isValidTrackedBet);
-
-  const totalStake = settled.reduce(
-    (sum, item) => sum + (item.tracking.stakeUsed || 0),
-    0
-  );
-
-  const totalProfitLoss = settled.reduce(
-    (sum, item) => sum + (item.tracking.profitLoss || 0),
-    0
-  );
-
-  const wins = settled.filter(
-    (item) => item.tracking.resultStatus === "green"
-  ).length;
+  const snapshot = buildFinancialSnapshot({
+    analyses: analyses.filter(isValidTrackedBet),
+    multiples: [],
+    initialBankroll: 0,
+  });
 
   return {
-    totalSettledBets: settled.length,
-    totalProfitLoss: Number(totalProfitLoss.toFixed(2)),
-    totalStake: Number(totalStake.toFixed(2)),
-    overallRoi:
-      totalStake > 0
-        ? Number(((totalProfitLoss / totalStake) * 100).toFixed(1))
-        : 0,
-    hitRate:
-      settled.length > 0
-        ? Number(((wins / settled.length) * 100).toFixed(1))
-        : 0,
+    totalSettledBets:
+      snapshot.stats.totalGreens +
+      snapshot.stats.totalReds +
+      snapshot.stats.totalVoids,
+    totalProfitLoss: snapshot.stats.totalProfitLoss,
+    totalStake: snapshot.stats.totalStaked,
+    overallRoi: Number(snapshot.stats.roi.toFixed(1)),
+    hitRate: Number(snapshot.stats.hitRate.toFixed(1)),
   };
 }
 
@@ -88,17 +76,16 @@ export function getDailyProfitTrend(
   analyses: SavedAnalysis[]
 ): DailyProfitPoint[] {
   const settled = analyses.filter(isValidTrackedBet);
-
   const grouped = new Map<
     string,
     { profitLoss: number; stake: number; bets: number; ts: number }
   >();
 
   settled.forEach((analysis) => {
-    const dateObj = new Date(analysis.createdAt);
+    const occurredAt = analysis.tracking.settledAt || analysis.createdAt;
+    const dateObj = new Date(occurredAt);
     const safeTime = Number.isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
-
-    const dateKey = new Date(safeTime).toLocaleDateString();
+    const dateKey = dateObj.toLocaleDateString();
 
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, {
@@ -113,6 +100,7 @@ export function getDailyProfitTrend(
     row.profitLoss += analysis.tracking.profitLoss || 0;
     row.stake += analysis.tracking.stakeUsed || 0;
     row.bets += 1;
+    row.ts = Math.min(row.ts, safeTime);
   });
 
   return Array.from(grouped.entries())

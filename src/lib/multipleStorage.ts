@@ -1,4 +1,5 @@
 import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
+import { queueStorageSnapshotSync } from "@/lib/persistenceSync";
 type AnalysisResult = import("../types/analysis").AnalysisResult;
 type BetStatus = import("../types/analysis").BetStatus;
 type SavedAnalysis = import("../types/analysis").SavedAnalysis;
@@ -325,6 +326,7 @@ function saveMultipleDraft(legs: MultipleLeg[]) {
     MULTIPLE_DRAFT_KEY,
     JSON.stringify(legs.map(normalizeMultipleLeg))
   );
+  queueStorageSnapshotSync();
   emitMultiplesUpdated();
 }
 
@@ -368,6 +370,7 @@ export function getSavedMultiples(): MultipleBet[] {
 
     if (JSON.stringify(normalized) !== JSON.stringify(derived)) {
       localStorage.setItem(MULTIPLES_KEY, JSON.stringify(derived.map(normalizeMultipleBet)));
+      queueStorageSnapshotSync();
     }
 
     return derived;
@@ -381,6 +384,7 @@ function saveMultiples(bets: MultipleBet[]) {
     MULTIPLES_KEY,
     JSON.stringify(bets.map(normalizeMultipleBet))
   );
+  queueStorageSnapshotSync();
   emitMultiplesUpdated();
 }
 

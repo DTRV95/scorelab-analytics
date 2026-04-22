@@ -1,5 +1,8 @@
 ﻿import type { SavedAnalysis } from "../types/analysis";
 
+import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { queueStorageSnapshotSync } from "@/lib/persistenceSync";
+
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
 const MULTIPLES_KEY = "scorelab_multiples";
@@ -181,6 +184,7 @@ export function saveAnalysis(analysis: SavedAnalysis): void {
   const existing = getAnalyses();
   const updated = [normalizeSavedAnalysis(analysis), ...existing];
   localStorage.setItem(ANALYSES_KEY, JSON.stringify(updated));
+  queueStorageSnapshotSync();
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
@@ -189,6 +193,7 @@ export function overwriteAnalyses(analyses: SavedAnalysis[]): void {
     ANALYSES_KEY,
     JSON.stringify(analyses.map(normalizeSavedAnalysis))
   );
+  queueStorageSnapshotSync();
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
@@ -288,6 +293,7 @@ export function getBankrollSettings(): BankrollSettings {
 
 export function saveBankrollSettings(settings: BankrollSettings): void {
   localStorage.setItem(BANKROLL_SETTINGS_KEY, JSON.stringify(settings));
+  queueStorageSnapshotSync();
 }
 
 export function getBankrollStats(): BankrollStats {
@@ -295,73 +301,11 @@ export function getBankrollStats(): BankrollStats {
   const multiples = getSavedMultiplesForBankroll();
   const { initialBankroll } = getBankrollSettings();
 
-  const placedSingles = analyses.filter((a) => a.tracking.betPlaced);
-  const placedMultiples = multiples.filter((m) => m.tracking.betPlaced);
-
-  const totalProfitLoss =
-    placedSingles.reduce(
-      (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
-      0
-    ) +
-    placedMultiples.reduce(
-      (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
-      0
-    );
-
-  const totalStaked =
-    placedSingles.reduce(
-      (acc, analysis) => acc + (analysis.tracking.stakeUsed || 0),
-      0
-    ) +
-    placedMultiples.reduce(
-      (acc, multiple) => acc + (multiple.tracking.stakeUsed || 0),
-      0
-    );
-
-  const totalGreens =
-    placedSingles.filter((a) => a.tracking.resultStatus === "green").length +
-    placedMultiples.filter((a) => a.tracking.resultStatus === "green").length;
-
-  const totalReds =
-    placedSingles.filter((a) => a.tracking.resultStatus === "red").length +
-    placedMultiples.filter((a) => a.tracking.resultStatus === "red").length;
-
-  const totalVoids =
-    placedSingles.filter((a) => a.tracking.resultStatus === "void").length +
-    placedMultiples.filter((a) => a.tracking.resultStatus === "void").length;
-
-  const totalPending =
-    placedSingles.filter((a) => a.tracking.resultStatus === "pending").length +
-    placedMultiples.filter((a) => a.tracking.resultStatus === "pending").length;
-
-  const pendingExposure =
-    placedSingles
-      .filter((a) => a.tracking.resultStatus === "pending")
-      .reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
-    placedMultiples
-      .filter((a) => a.tracking.resultStatus === "pending")
-      .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
-
-  const settledBets = totalGreens + totalReds;
-  const hitRate = settledBets > 0 ? (totalGreens / settledBets) * 100 : 0;
-  const roi = totalStaked > 0 ? (totalProfitLoss / totalStaked) * 100 : 0;
-  const bankrollGrowthPct =
-    initialBankroll > 0 ? (totalProfitLoss / initialBankroll) * 100 : 0;
-
-  return {
+  return buildFinancialSnapshot({
+    analyses,
+    multiples,
     initialBankroll,
-    currentBankroll: initialBankroll + totalProfitLoss - pendingExposure,
-    totalProfitLoss,
-    totalStaked,
-    totalBetsPlaced: placedSingles.length + placedMultiples.length,
-    totalGreens,
-    totalReds,
-    totalVoids,
-    totalPending,
-    hitRate,
-    roi,
-    bankrollGrowthPct,
-  };
+  }).stats;
 }
 
 export function createEmptyTracking(): SavedAnalysis["tracking"] {

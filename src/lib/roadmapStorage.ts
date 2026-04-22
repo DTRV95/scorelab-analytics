@@ -1,3 +1,5 @@
+import { queueStorageSnapshotSync } from "@/lib/persistenceSync";
+
 const ROADMAP_SETTINGS_KEY = "scorelab_roadmap_settings";
 const ROADMAP_DAY_MEMORIES_KEY = "scorelab_roadmap_day_memories";
 
@@ -54,6 +56,7 @@ export function getRoadmapSettings(): RoadmapSettings {
 
 export function saveRoadmapSettings(settings: RoadmapSettings) {
   localStorage.setItem(ROADMAP_SETTINGS_KEY, JSON.stringify(settings));
+  queueStorageSnapshotSync();
 }
 
 export function getRoadmapDayMemories(): RoadmapDayMemory[] {
@@ -68,6 +71,7 @@ export function getRoadmapDayMemories(): RoadmapDayMemory[] {
 
 export function overwriteRoadmapDayMemories(memories: RoadmapDayMemory[]) {
   localStorage.setItem(ROADMAP_DAY_MEMORIES_KEY, JSON.stringify(memories));
+  queueStorageSnapshotSync();
 }
 
 export function syncRoadmapDayMemories(memories: RoadmapDayMemory[]) {

@@ -30,6 +30,7 @@ import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import type { MarketPerformance } from "@/lib/portofolioEngine";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
+import { buildFinancialSnapshot } from "@/lib/financialEngine";
 
 const stagger = {
   hidden: {},
@@ -659,23 +660,12 @@ export default function Dashboard() {
           )
         : null;
 
-    const singlesOpenExposure = validAnalyses
-      .filter(
-        (analysis) =>
-          analysis.tracking.betPlaced &&
-          analysis.tracking.resultStatus === "pending"
-      )
-      .reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0);
-
-    const multiplesOpenExposure = savedMultiples
-      .filter(
-        (multiple) =>
-          multiple.tracking.betPlaced &&
-          multiple.tracking.resultStatus === "pending"
-      )
-      .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
-
-    const openExposure = singlesOpenExposure + multiplesOpenExposure;
+    const financialSnapshot = buildFinancialSnapshot({
+      analyses,
+      multiples: savedMultiples,
+      initialBankroll: bankrollStats.initialBankroll,
+    });
+    const openExposure = financialSnapshot.openExposure;
     const openExposurePct =
       bankrollStats.currentBankroll > 0
         ? (openExposure / bankrollStats.currentBankroll) * 100
@@ -704,7 +694,7 @@ export default function Dashboard() {
       performance,
       autoInsights,
     };
-  }, [analyses, bankrollStats.currentBankroll]);
+  }, [analyses, bankrollStats.currentBankroll, bankrollStats.initialBankroll]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
 

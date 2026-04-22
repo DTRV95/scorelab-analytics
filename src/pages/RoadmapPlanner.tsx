@@ -29,6 +29,7 @@ import {
   type RoadmapDayMemory,
   type RoadmapSettings,
 } from "@/lib/roadmapStorage";
+import { buildFinancialSnapshot } from "@/lib/financialEngine";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -61,18 +62,6 @@ function formatPct(value: number) {
 
 function clampPositive(value: number, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
-}
-
-function getOpenExposure() {
-  const singles = getAnalyses()
-    .filter((analysis) => analysis.tracking.betPlaced && analysis.tracking.resultStatus === "pending")
-    .reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0);
-
-  const multiples = getSavedMultiples()
-    .filter((multiple) => multiple.tracking.betPlaced && multiple.tracking.resultStatus === "pending")
-    .reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
-
-  return singles + multiples;
 }
 
 function getIsoDateOnly(value: string | Date) {
@@ -494,7 +483,12 @@ export default function RoadmapPlanner() {
     const targetDays = parsedInputs.targetDays;
     const analyses = getAnalyses();
     const multiples = getSavedMultiples();
-    const openExposure = getOpenExposure();
+    const financialSnapshot = buildFinancialSnapshot({
+      analyses,
+      multiples,
+      initialBankroll: startingBankroll,
+    });
+    const openExposure = financialSnapshot.openExposure;
     const missionCapital = availableBankroll + openExposure;
     const elapsedDays = Math.max(
       0,
