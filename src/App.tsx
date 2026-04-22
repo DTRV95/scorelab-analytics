@@ -19,7 +19,11 @@ import RoadmapPlanner from "./pages/RoadmapPlanner";
 import PricingPage from "./pages/PricingPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import { hydrateStorageFromServer } from "@/lib/persistenceSync";
+import {
+  hydrateAnalysesFromServer,
+  hydrateMultiplesFromServer,
+  hydrateStorageFromServer,
+} from "@/lib/persistenceSync";
 
 
 const queryClient = new QueryClient();
@@ -31,6 +35,8 @@ const App = () => {
     let isMounted = true;
 
     const run = async () => {
+      await hydrateAnalysesFromServer();
+      await hydrateMultiplesFromServer();
       await hydrateStorageFromServer();
       if (isMounted) {
         setIsHydrating(false);

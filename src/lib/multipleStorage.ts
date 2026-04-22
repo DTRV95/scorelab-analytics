@@ -1,5 +1,9 @@
 import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
-import { queueStorageSnapshotSync } from "@/lib/persistenceSync";
+import {
+  deleteMultipleRecord,
+  persistMultipleRecord,
+  queueEntitySync,
+} from "@/lib/persistenceSync";
 type AnalysisResult = import("../types/analysis").AnalysisResult;
 type BetStatus = import("../types/analysis").BetStatus;
 type SavedAnalysis = import("../types/analysis").SavedAnalysis;
@@ -326,7 +330,7 @@ function saveMultipleDraft(legs: MultipleLeg[]) {
     MULTIPLE_DRAFT_KEY,
     JSON.stringify(legs.map(normalizeMultipleLeg))
   );
-  queueStorageSnapshotSync();
+  queueEntitySync("multiple_draft");
   emitMultiplesUpdated();
 }
 
@@ -370,7 +374,10 @@ export function getSavedMultiples(): MultipleBet[] {
 
     if (JSON.stringify(normalized) !== JSON.stringify(derived)) {
       localStorage.setItem(MULTIPLES_KEY, JSON.stringify(derived.map(normalizeMultipleBet)));
-      queueStorageSnapshotSync();
+      derived.forEach((bet) => {
+        persistMultipleRecord(bet as unknown as Record<string, unknown> & { id: string });
+      });
+      queueEntitySync("multiples");
     }
 
     return derived;
@@ -380,11 +387,21 @@ export function getSavedMultiples(): MultipleBet[] {
 }
 
 function saveMultiples(bets: MultipleBet[]) {
+  const previousIds = new Set(getSavedMultiples().map((bet) => bet.id));
+  const nextIds = new Set(bets.map((bet) => bet.id));
   localStorage.setItem(
     MULTIPLES_KEY,
     JSON.stringify(bets.map(normalizeMultipleBet))
   );
-  queueStorageSnapshotSync();
+  bets.forEach((bet) => {
+    persistMultipleRecord(bet as unknown as Record<string, unknown> & { id: string });
+  });
+  previousIds.forEach((id) => {
+    if (!nextIds.has(id)) {
+      deleteMultipleRecord(id);
+    }
+  });
+  queueEntitySync("multiples");
   emitMultiplesUpdated();
 }
 

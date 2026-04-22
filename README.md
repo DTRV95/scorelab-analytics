@@ -1,73 +1,240 @@
-# Welcome to your Lovable project
+# ScoreLab Analytics
 
-## Project info
+ScoreLab is a local analysis and bankroll management app with:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- React + Vite frontend
+- FastAPI backend
+- local cache in the browser
+- backend persistence for analyses, multiples, roadmap and settings
 
-## How can I edit this code?
+This guide is written for the practical use case: `run the app on another computer`.
 
-There are several ways of editing your application.
+## What you need on the other computer
 
-**Use Lovable**
+Install these 3 things first:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+1. `Node.js`
+   Install the `LTS` version from [nodejs.org](https://nodejs.org/)
 
-Changes made via Lovable will be committed automatically to this repo.
+2. `Python`
+   Install Python `3.11` or `3.12` from [python.org](https://www.python.org/downloads/)
+   During installation, enable `Add Python to PATH`
 
-**Use your preferred IDE**
+3. `VS Code`
+   Install normally from [code.visualstudio.com](https://code.visualstudio.com/)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Copy the project
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Copy the whole folder `scorelab-analytics` to the other computer and open it in VS Code.
 
-Follow these steps:
+Example path:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```powershell
+C:\Projects\scorelab-analytics
 ```
 
-**Edit a file directly in GitHub**
+## Frontend setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Open a terminal in the project root and run:
 
-**Use GitHub Codespaces**
+```powershell
+cd "C:\Projects\scorelab-analytics"
+npm install
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create a `.env` file in the project root based on `.env.example`.
 
-## What technologies are used for this project?
+Example `.env`:
 
-This project is built with:
+```env
+VITE_API_URL=http://localhost:8000
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Start the frontend:
 
-## How can I deploy this project?
+```powershell
+npm run dev -- --host
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Frontend URL:
 
-## Can I connect a custom domain to my Lovable project?
+```text
+http://localhost:8080
+```
 
-Yes, you can!
+## Backend setup
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Open a second terminal in VS Code and run:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```powershell
+cd "C:\Projects\scorelab-analytics\backend"
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+If PowerShell blocks the virtual environment activation, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\venv\Scripts\Activate.ps1
+```
+
+Create a `backend\.env` file based on `backend\.env.example`.
+
+Example `backend\.env`:
+
+```env
+SCORELAB_ALLOWED_ORIGINS=http://localhost:8080
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Start the backend:
+
+```powershell
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend URL:
+
+```text
+http://localhost:8000
+```
+
+## How to open the app
+
+After both terminals are running:
+
+1. open the browser
+2. go to:
+
+```text
+http://localhost:8080
+```
+
+The backend health check is:
+
+```text
+http://localhost:8000
+```
+
+If the backend is running correctly, it should return:
+
+```text
+ScoreLab API is running
+```
+
+## Quick checklist
+
+Use this order:
+
+1. install Node.js
+2. install Python
+3. open the project in VS Code
+4. run `npm install`
+5. create root `.env`
+6. create backend venv
+7. run `pip install -r requirements.txt`
+8. create `backend\.env`
+9. start backend
+10. start frontend
+11. open `http://localhost:8080`
+
+## AI features
+
+The AI blocks in Dashboard, Bankroll Tools and History need a valid OpenAI key in:
+
+```text
+backend\.env
+```
+
+If there is no key, some parts may fall back locally, but live AI summaries need:
+
+```env
+OPENAI_API_KEY=your_openai_key_here
+```
+
+## Storage and persistence
+
+ScoreLab now stores data in 2 places:
+
+1. browser local cache
+2. backend SQLite database
+
+Backend database file:
+
+```text
+backend\scorelab_storage.db
+```
+
+This means:
+
+- the app is no longer relying only on browser localStorage
+- analyses and multiples are persisted in the backend
+- roadmap and settings also sync to the backend
+
+## Moving data to another computer
+
+If you want the other computer to keep the same backend data, copy:
+
+```text
+backend\scorelab_storage.db
+```
+
+If you do not copy it, the new computer will start with a fresh backend database.
+
+## Common problems
+
+### Frontend opens but backend calls fail
+
+Check:
+
+- backend terminal is running
+- `VITE_API_URL` points to `http://localhost:8000`
+- `SCORELAB_ALLOWED_ORIGINS` includes `http://localhost:8080`
+
+### PowerShell blocks the venv
+
+Use:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\venv\Scripts\Activate.ps1
+```
+
+### AI blocks do not work
+
+Check:
+
+- `OPENAI_API_KEY` exists in `backend\.env`
+- backend was restarted after adding the key
+
+### Build or tests fail with `spawn EPERM`
+
+This can happen in restricted Windows/OneDrive environments with `esbuild`.
+In that case:
+
+- development mode can still work
+- lint and TypeScript checks can still pass
+- moving the project outside a restricted OneDrive folder may help
+
+## Useful commands
+
+Frontend:
+
+```powershell
+cd "C:\Projects\scorelab-analytics"
+npm install
+npm run dev -- --host
+```
+
+Backend:
+
+```powershell
+cd "C:\Projects\scorelab-analytics\backend"
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```

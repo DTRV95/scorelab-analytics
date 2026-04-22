@@ -3,6 +3,7 @@ import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
+import { buildApiUrl } from "@/lib/apiConfig";
 import {
   XAxis,
   YAxis,
@@ -1004,7 +1005,7 @@ export default function Dashboard() {
     const run = async () => {
       setAiLoading(true);
       try {
-        const response = await fetch("http://localhost:8000/ai/dashboard-summary", {
+        const response = await fetch(buildApiUrl("/ai/dashboard-summary"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1134,79 +1135,78 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.95fr]">
-          <SectionCard
-            title="AI Dashboard Read"
-            description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
-            badge={aiSummary?.configured ? "AI Live" : "Fallback"}
-            className="relative overflow-hidden"
-          >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.07),transparent_24%)]" />
-            <div className="relative">
-              {aiLoading ? (
-                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
-                  Building AI summary...
-                </div>
-              ) : aiSummary ? (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-cyan-400/12 bg-[linear-gradient(180deg,rgba(34,211,238,0.05)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
-                        Operational Read
-                      </p>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
-                        {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-[14px] leading-7 text-white/78">
-                      <AITypewriter text={aiSummary.summary} startDelay={120} />
+        <SectionCard
+          title="AI Dashboard Read"
+          description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
+          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
+          className="relative overflow-hidden"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.07),transparent_24%)]" />
+          <div className="relative">
+            {aiLoading ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
+                Building AI summary...
+              </div>
+            ) : aiSummary ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-cyan-400/12 bg-[linear-gradient(180deg,rgba(34,211,238,0.05)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                      Operational Read
                     </p>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                      {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
+                    </span>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                    <AIReviewColumn
-                      title="Strengths"
-                      tone="emerald"
-                      startDelay={380}
-                      items={
-                        aiSummary.strengths.length
-                          ? aiSummary.strengths
-                          : ["No clear strength has stood out strongly enough yet."]
-                      }
-                    />
-                    <AIReviewColumn
-                      title="Risks"
-                      tone="red"
-                      startDelay={760}
-                      items={
-                        aiSummary.risks.length
-                          ? aiSummary.risks
-                          : ["No major operational risk is being flagged right now."]
-                      }
-                    />
-                    <AIReviewColumn
-                      title="Next Actions"
-                      tone="cyan"
-                      startDelay={1140}
-                      items={
-                        aiSummary.next_actions.length
-                          ? aiSummary.next_actions
-                          : ["Keep tracking outcomes so the review can get sharper."]
-                      }
-                    />
-                  </div>
-
-                  <p className="text-[11px] leading-5 text-white/42">
-                    {aiSummary.disclaimer}
+                  <p className="mt-3 text-[14px] leading-7 text-white/78">
+                    <AITypewriter text={aiSummary.summary} startDelay={120} />
                   </p>
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
-                  The AI summary could not be loaded right now.
+
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                  <AIReviewColumn
+                    title="Strengths"
+                    tone="emerald"
+                    startDelay={380}
+                    items={
+                      aiSummary.strengths.length
+                        ? aiSummary.strengths
+                        : ["No clear strength has stood out strongly enough yet."]
+                    }
+                  />
+                  <AIReviewColumn
+                    title="Risks"
+                    tone="red"
+                    startDelay={760}
+                    items={
+                      aiSummary.risks.length
+                        ? aiSummary.risks
+                        : ["No major operational risk is being flagged right now."]
+                    }
+                  />
+                  <AIReviewColumn
+                    title="Next Actions"
+                    tone="cyan"
+                    startDelay={1140}
+                    items={
+                      aiSummary.next_actions.length
+                        ? aiSummary.next_actions
+                        : ["Keep tracking outcomes so the review can get sharper."]
+                    }
+                  />
                 </div>
-              )}
-            </div>
-          </SectionCard>
+
+                <p className="text-[11px] leading-5 text-white/42">
+                  {aiSummary.disclaimer}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
+                The AI summary could not be loaded right now.
+              </div>
+            )}
+          </div>
+        </SectionCard>
 
           {topValueToday ? (
             <motion.div
@@ -1275,8 +1275,6 @@ export default function Dashboard() {
               </div>
             </SectionCard>
           )}
-        </div>
-
         <SectionCard
           title="Daily Profit Trend"
           description="Real betting performance by settled day."

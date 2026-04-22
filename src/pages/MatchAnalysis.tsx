@@ -11,6 +11,7 @@ import {
   getRecommendedStake,
 } from "@/lib/portofolioEngine";
 import { decorateResult } from "@/lib/eliteBetSystem";
+import { buildApiUrl } from "@/lib/apiConfig";
 import {
   getDecisionFromMetrics,
   getOddsBand,
@@ -535,7 +536,7 @@ export default function MatchAnalysis() {
         shrinkage_matches: Number(formData.shrinkage_matches),
       };
 
-      const response = await fetch("http://localhost:8000/analyze", {
+      const response = await fetch(buildApiUrl("/analyze"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

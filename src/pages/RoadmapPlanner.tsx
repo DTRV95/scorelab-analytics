@@ -30,6 +30,7 @@ import {
   type RoadmapSettings,
 } from "@/lib/roadmapStorage";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { PERSISTENCE_HYDRATED_EVENT } from "@/lib/persistenceSync";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -322,6 +323,122 @@ function classifyRoadmapDay(
   return "disciplined";
 }
 
+function getDisciplineProfile(memories: Array<{ classification: RoadmapDayMemory["classification"] }>) {
+  if (memories.length === 0) {
+    return {
+      score: 50,
+      label: "Building",
+      note: "The roadmap needs a few tracked days before discipline quality becomes meaningful.",
+    };
+  }
+
+  const weights: Record<RoadmapDayMemory["classification"], number> = {
+    efficient: 100,
+    disciplined: 82,
+    quiet: 60,
+    forced: 34,
+    overexposed: 18,
+  };
+
+  const score =
+    memories.reduce((sum, memory) => sum + weights[memory.classification], 0) /
+    memories.length;
+
+  if (score >= 85) {
+    return {
+      score,
+      label: "Elite",
+      note: "Execution has been clean, efficient and well controlled across recent sessions.",
+    };
+  }
+
+  if (score >= 70) {
+    return {
+      score,
+      label: "Stable",
+      note: "The roadmap is being followed with decent discipline and limited forcing.",
+    };
+  }
+
+  if (score >= 50) {
+    return {
+      score,
+      label: "Mixed",
+      note: "Execution is uneven. The mission still needs more consistency day to day.",
+    };
+  }
+
+  return {
+    score,
+    label: "Fragile",
+    note: "The recent pattern is too reactive, so the roadmap should prioritize control over speed.",
+  };
+}
+
+function getSystemCommand({
+  availableBankroll,
+  targetGap,
+  openExposure,
+  missionStake,
+  missionStatus,
+  targetRealism,
+  remainingMissionCapacity,
+}: {
+  availableBankroll: number;
+  targetGap: number;
+  openExposure: number;
+  missionStake: number;
+  missionStatus: string;
+  targetRealism: string;
+  remainingMissionCapacity: number;
+}) {
+  if (availableBankroll <= 0) {
+    return {
+      label: "Reset",
+      tone: "negative" as const,
+      body: "Pause execution and restore the bankroll base before continuing the mission.",
+    };
+  }
+
+  if (targetGap <= 0) {
+    return {
+      label: "Protect",
+      tone: "positive" as const,
+      body: "The target has already been reached, so the mission should focus on protection rather than new risk.",
+    };
+  }
+
+  if (missionStatus === "Overexposed" || (missionStake > 0 && openExposure >= missionStake)) {
+    return {
+      label: "Stop",
+      tone: "negative" as const,
+      body: "Open exposure has already consumed the day's risk budget. Let positions settle before adding more.",
+    };
+  }
+
+  if (targetRealism === "Unrealistic") {
+    return {
+      label: "Reduce Pressure",
+      tone: "negative" as const,
+      body: "The mission is asking for too much from the current bankroll. Extend the timeline instead of forcing execution.",
+    };
+  }
+
+  if (remainingMissionCapacity <= 0) {
+    return {
+      label: "Hold",
+      tone: "neutral" as const,
+      body: "There is no clean daily capacity left. Hold position and reassess after settlement.",
+    };
+  }
+
+  return {
+    label: "Deploy",
+    tone: "positive" as const,
+    body: `The roadmap still allows ${formatCurrency(remainingMissionCapacity)} of controlled capacity for today's plan.`,
+  };
+}
+
 function PremiumCard({
   title,
   description,
@@ -440,6 +557,8 @@ function InputField({
 
 export default function RoadmapPlanner() {
   const [stats, setStats] = useState(() => getBankrollStats());
+  const [analyses, setAnalyses] = useState(() => getAnalyses());
+  const [multiples, setMultiples] = useState(() => getSavedMultiples());
   const [settings, setSettings] = useState<RoadmapSettings>(() => getRoadmapSettings());
   const [dayMemories, setDayMemories] = useState(() => getRoadmapDayMemories());
   const [inputs, setInputs] = useState({
@@ -458,12 +577,21 @@ export default function RoadmapPlanner() {
   }, [dayMemories, settings.startedAt]);
 
   useEffect(() => {
-    const refresh = () => setStats(getBankrollStats());
+    const refresh = () => {
+      setStats(getBankrollStats());
+      setAnalyses(getAnalyses());
+      setMultiples(getSavedMultiples());
+      setDayMemories(getRoadmapDayMemories());
+      setSettings(getRoadmapSettings());
+    };
+
     window.addEventListener(ANALYSES_UPDATED_EVENT, refresh);
     window.addEventListener(MULTIPLES_UPDATED_EVENT, refresh);
+    window.addEventListener(PERSISTENCE_HYDRATED_EVENT, refresh);
     return () => {
       window.removeEventListener(ANALYSES_UPDATED_EVENT, refresh);
       window.removeEventListener(MULTIPLES_UPDATED_EVENT, refresh);
+      window.removeEventListener(PERSISTENCE_HYDRATED_EVENT, refresh);
     };
   }, []);
 
@@ -481,13 +609,14 @@ export default function RoadmapPlanner() {
     const existingMemoryByDate = new Map(dayMemories.map((memory) => [memory.date, memory]));
     const targetAmount = parsedInputs.targetAmount;
     const targetDays = parsedInputs.targetDays;
-    const analyses = getAnalyses();
-    const multiples = getSavedMultiples();
     const financialSnapshot = buildFinancialSnapshot({
       analyses,
       multiples,
       initialBankroll: startingBankroll,
     });
+    const dailyPerformanceMap = new Map(
+      financialSnapshot.dailyPerformance.map((entry) => [entry.date, entry])
+    );
     const openExposure = financialSnapshot.openExposure;
     const missionCapital = availableBankroll + openExposure;
     const elapsedDays = Math.max(
@@ -517,55 +646,15 @@ export default function RoadmapPlanner() {
           multiple.tracking.betPlaced &&
           getDateKeyInTimezone(multiple.createdAt) === date
       );
-      const daySettledAnalyses = analyses.filter(
-        (analysis) =>
-          analysis.tracking.betPlaced &&
-          analysis.tracking.resultStatus !== "pending" &&
-          getDateKeyInTimezone(analysis.tracking.settledAt || analysis.createdAt) === date
-      );
-      const daySettledMultiples = multiples.filter(
-        (multiple) =>
-          multiple.tracking.betPlaced &&
-          multiple.tracking.resultStatus !== "pending" &&
-          getDateKeyInTimezone(multiple.tracking.settledAt || multiple.createdAt) === date
-      );
+      const dayPerformance = dailyPerformanceMap.get(date) || null;
 
       const actualStake =
         dayCreatedAnalyses.reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
         dayCreatedMultiples.reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
-      const legacyCreatedSettledAnalyses = dayCreatedAnalyses.filter(
-        (analysis) => analysis.tracking.resultStatus !== "pending"
-      );
-      const legacyCreatedSettledMultiples = dayCreatedMultiples.filter(
-        (multiple) => multiple.tracking.resultStatus !== "pending"
-      );
-
-      const settledAnalysesProfit = daySettledAnalyses.reduce(
-        (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
-        0
-      );
-      const settledMultiplesProfit = daySettledMultiples.reduce(
-        (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
-        0
-      );
-      const resolvedItemsCount = daySettledAnalyses.length + daySettledMultiples.length;
-      const legacyCreatedSettledProfit =
-        legacyCreatedSettledAnalyses.reduce(
-          (acc, analysis) => acc + (analysis.tracking.profitLoss || 0),
-          0
-        ) +
-        legacyCreatedSettledMultiples.reduce(
-          (acc, multiple) => acc + (multiple.tracking.profitLoss || 0),
-          0
-        );
-      const legacyCreatedSettledCount =
-        legacyCreatedSettledAnalyses.length + legacyCreatedSettledMultiples.length;
 
       const actualProfit =
-        resolvedItemsCount > 0
-          ? settledAnalysesProfit + settledMultiplesProfit
-          : legacyCreatedSettledCount > 0
-          ? legacyCreatedSettledProfit
+        dayPerformance
+          ? dayPerformance.profitLoss
           : date < today && existingMemory
           ? existingMemory.actualProfit
           : 0;
@@ -579,6 +668,7 @@ export default function RoadmapPlanner() {
         activeTickets:
           dayCreatedAnalyses.filter((analysis) => analysis.tracking.resultStatus === "pending").length +
           dayCreatedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending").length,
+        settledBets: dayPerformance?.settledBets || 0,
       };
     });
 
@@ -589,6 +679,7 @@ export default function RoadmapPlanner() {
       actualProfit: 0,
       tickets: 0,
       activeTickets: 0,
+      settledBets: 0,
     };
 
     const requiredDailyGrowthRate = adaptiveMission.requiredDailyGrowthRate;
@@ -815,6 +906,7 @@ export default function RoadmapPlanner() {
         actualProfit: 0,
         tickets: 0,
         activeTickets: 0,
+        settledBets: 0,
         targetStake: missionStake,
         targetProfit: requiredProfitToday,
         status: "Pending",
@@ -848,6 +940,19 @@ export default function RoadmapPlanner() {
             tone: "neutral" as const,
             description: "The mission is still progressing and the roadmap is tracking execution against today's plan.",
           };
+    const recentExecutionMemories = [...logWithTargets]
+      .filter((entry) => entry.day < currentPlanDay)
+      .slice(-7);
+    const disciplineProfile = getDisciplineProfile(recentExecutionMemories);
+    const systemCommand = getSystemCommand({
+      availableBankroll,
+      targetGap,
+      openExposure,
+      missionStake,
+      missionStatus,
+      targetRealism,
+      remainingMissionCapacity,
+    });
 
     const tomorrowStakePct =
       missionStatus === "Overexposed" || missionStatus === "Stretch"
@@ -903,6 +1008,8 @@ export default function RoadmapPlanner() {
       missionStatus,
       todayMissionCompletionPct,
       todayMissionVisual,
+      disciplineProfile,
+      systemCommand,
       alert,
       todayLog,
       missionProgressPct,
@@ -915,7 +1022,7 @@ export default function RoadmapPlanner() {
       dailyLog: logWithTargets,
       path,
     };
-  }, [dayMemories, effectiveStartedAt, parsedInputs, stats]);
+  }, [analyses, dayMemories, effectiveStartedAt, multiples, parsedInputs, stats]);
 
   useEffect(() => {
     syncRoadmapDayMemories(roadmap.dailyLog);
@@ -995,23 +1102,23 @@ export default function RoadmapPlanner() {
           <MetricCard
             label="Free Bankroll"
             value={formatCurrency(roadmap.availableBankroll)}
-            change={`${formatCurrency(roadmap.openExposure)} currently open`}
+            change={`${formatCurrency(roadmap.openExposure)} still open`}
           />
           <MetricCard
             label="Target Gap"
             value={formatCurrency(roadmap.availableTargetGap)}
-            change={`${formatPct(roadmap.bankrollProgressToTargetPct)} of target already reached`}
+            change={`${formatPct(roadmap.bankrollProgressToTargetPct)} reached from free bankroll`}
             tone={roadmap.availableTargetGap <= 0 ? "positive" : "neutral"}
           />
           <MetricCard
             label="Plan Day"
             value={`${roadmap.currentPlanDay}/${parsedInputs.targetDays}`}
-            change={`${roadmap.remainingDays} days left`}
+            change={`${roadmap.remainingDays} days remaining`}
           />
           <MetricCard
-            label="Today's Target"
+            label="Profit Target"
             value={formatCurrency(roadmap.requiredProfitToday)}
-            change={`${formatCurrency(roadmap.missionStake)} max stake · ${roadmap.oddsRange}`}
+            change={`${formatCurrency(roadmap.missionStake)} planned stake · ${roadmap.oddsRange}`}
             tone={roadmap.targetRealism === "Realistic" ? "positive" : roadmap.targetRealism === "Demanding" ? "neutral" : "negative"}
           />
         </div>
@@ -1019,7 +1126,7 @@ export default function RoadmapPlanner() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <PremiumCard
             title="Mission Control"
-            description="Set the target and the deadline."
+            description="Set the target and the time allowed to reach it."
             badge="Planner"
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1067,13 +1174,13 @@ export default function RoadmapPlanner() {
             </div>
 
             <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-white/42">
-              Plan started on {effectiveStartedAt}.
+              Mission started on {effectiveStartedAt}.
             </p>
           </PremiumCard>
 
           <PremiumCard
             title="Today's Orders"
-            description="Today's stake, profit, and odds zone."
+            description="Today's stake plan, profit target, and execution range."
             badge="Orders"
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1081,14 +1188,14 @@ export default function RoadmapPlanner() {
                 <div className="flex items-center gap-2 text-emerald-200">
                   <Wallet className="h-4 w-4" strokeWidth={1.6} />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    Max Stake Today
+                    Planned Stake
                   </p>
                 </div>
                 <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
                   {formatCurrency(roadmap.missionStake)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
-                  {formatPct(roadmap.recommendedDailyStakePct)} of bankroll.
+                  Up to {formatPct(roadmap.recommendedDailyStakePct)} of free bankroll.
                 </p>
               </div>
 
@@ -1096,14 +1203,14 @@ export default function RoadmapPlanner() {
                 <div className="flex items-center gap-2 text-cyan-200">
                   <TrendingUp className="h-4 w-4" strokeWidth={1.6} />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    Target Profit Today
+                    Profit Target
                   </p>
                 </div>
                 <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
                   {formatCurrency(roadmap.requiredProfitToday)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
-                  {formatPct(roadmap.practicalReturnOnStakePct)} return on today's stake.
+                  Needs about {formatPct(roadmap.practicalReturnOnStakePct)} return on planned stake.
                 </p>
               </div>
             </div>
@@ -1116,7 +1223,7 @@ export default function RoadmapPlanner() {
                 {roadmap.oddsRange}
               </p>
               <p className="mt-3 text-sm leading-6 text-white/56">
-                {roadmap.oddsExecutionOptions[0]}
+                Suggested structure: {roadmap.oddsExecutionOptions[0]}
               </p>
             </div>
           </PremiumCard>
@@ -1179,6 +1286,46 @@ export default function RoadmapPlanner() {
             </div>
           </div>
 
+          <div
+            className={`mt-4 rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] ${
+              roadmap.systemCommand.tone === "positive"
+                ? "border-emerald-400/20 bg-emerald-400/10"
+                : roadmap.systemCommand.tone === "negative"
+                ? "border-red-400/20 bg-red-400/10"
+                : "border-cyan-400/20 bg-cyan-400/10"
+            }`}
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
+                  System Command
+                </p>
+                <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-white">
+                  {roadmap.systemCommand.label}
+                </h3>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                  {roadmap.systemCommand.body}
+                </p>
+              </div>
+
+              <div
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                  roadmap.systemCommand.tone === "positive"
+                    ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                    : roadmap.systemCommand.tone === "negative"
+                    ? "border-red-300/30 bg-red-300/10 text-red-200"
+                    : "border-cyan-300/30 bg-cyan-300/10 text-cyan-200"
+                }`}
+              >
+                {roadmap.systemCommand.tone === "positive"
+                  ? "Go"
+                  : roadmap.systemCommand.tone === "negative"
+                  ? "Protect"
+                  : "Hold"}
+              </div>
+            </div>
+          </div>
+
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard
               label="Target Gap"
@@ -1187,9 +1334,16 @@ export default function RoadmapPlanner() {
               tone={roadmap.availableTargetGap <= 0 ? "positive" : "neutral"}
             />
             <MetricCard
-              label="Current Day"
-              value={`Day ${roadmap.currentPlanDay}`}
-              change={`${roadmap.remainingDays} days left`}
+              label="Discipline Score"
+              value={formatPct(roadmap.disciplineProfile.score)}
+              change={`${roadmap.disciplineProfile.label} · ${roadmap.disciplineProfile.note}`}
+              tone={
+                roadmap.disciplineProfile.score >= 70
+                  ? "positive"
+                  : roadmap.disciplineProfile.score < 50
+                  ? "negative"
+                  : "neutral"
+              }
             />
             <MetricCard
               label="Open Exposure"
@@ -1303,16 +1457,17 @@ export default function RoadmapPlanner() {
             </div>
           </PremiumCard>
 
-          <PremiumCard title="Daily Log" description="Track execution day by day so tomorrow's mission stays grounded in reality." badge="Log">
+          <PremiumCard title="Daily Log" description="See what was placed each day and what actually settled that day." badge="Log">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b border-white/5">
                   <tr className="text-left text-xs uppercase tracking-wider text-white/45">
                     <th className="py-3 pr-4">Day</th>
                     <th className="py-3 pr-4">Target Stake</th>
-                    <th className="py-3 pr-4">Actual Stake</th>
-                    <th className="py-3 pr-4">Target Profit</th>
-                    <th className="py-3 pr-4">Actual P/L</th>
+                    <th className="py-3 pr-4">Placed Stake</th>
+                    <th className="py-3 pr-4">Profit Target</th>
+                    <th className="py-3 pr-4">Settled P/L</th>
+                    <th className="py-3 pr-4">Settled Bets</th>
                     <th className="py-3 pr-4">Status</th>
                   </tr>
                 </thead>
@@ -1324,6 +1479,7 @@ export default function RoadmapPlanner() {
                       <td className="py-3 pr-4 text-white">{formatCurrency(row.actualStake)}</td>
                       <td className="py-3 pr-4 text-white">{formatCurrency(row.targetProfit)}</td>
                       <td className="py-3 pr-4 text-white">{formatCurrency(row.actualProfit)}</td>
+                      <td className="py-3 pr-4 text-white">{row.settledBets}</td>
                       <td className="py-3 pr-4 text-white/70">{row.status}</td>
                     </tr>
                   ))}

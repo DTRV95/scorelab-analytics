@@ -37,6 +37,7 @@ import {
   YAxis,
 } from "recharts";
 import { AITypewriter } from "@/components/AITypewriter";
+import { buildApiUrl } from "@/lib/apiConfig";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
 
 const stagger = {
@@ -738,7 +739,7 @@ export default function BankrollTools() {
     const run = async () => {
       setAiLoading(true);
       try {
-        const response = await fetch("http://localhost:8000/ai/bankroll-review", {
+        const response = await fetch(buildApiUrl("/ai/bankroll-review"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -842,48 +843,48 @@ export default function BankrollTools() {
           variants={fadeUp}
           className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
         >
-          <CompactStatCard
-            label="Current Bankroll"
-            value={formatCurrency(stats.currentBankroll)}
-            change={`${stats.totalBetsPlaced} tracked bets`}
-            changeType="neutral"
-          />
-          <CompactStatCard
-            label="Total P/L"
-            value={formatCurrency(stats.totalProfitLoss)}
-            change={`${stats.roi.toFixed(2)}% ROI`}
-            changeType={stats.totalProfitLoss >= 0 ? "positive" : "negative"}
-          />
-          <CompactStatCard
-            label="Open Exposure"
-            value={formatCurrency(openExposure)}
-            change={`${openExposurePct.toFixed(1)}% of live bankroll`}
-            changeType={openExposurePct > 8 ? "negative" : "neutral"}
-          />
-          <CompactStatCard
-            label="Max Drawdown"
-            value={`${maxDrawdown.toFixed(2)}%`}
-            change={`Current drawdown ${currentDrawdown.toFixed(2)}%`}
-            changeType={maxDrawdown < -8 ? "negative" : "neutral"}
-          />
+            <CompactStatCard
+              label="Free Bankroll"
+              value={formatCurrency(stats.currentBankroll)}
+              change={`${stats.totalBetsPlaced} tracked bets`}
+              changeType="neutral"
+            />
+            <CompactStatCard
+              label="Net P/L"
+              value={formatCurrency(stats.totalProfitLoss)}
+              change={`${stats.roi.toFixed(2)}% return on total staked`}
+              changeType={stats.totalProfitLoss >= 0 ? "positive" : "negative"}
+            />
+            <CompactStatCard
+              label="Open Exposure"
+              value={formatCurrency(openExposure)}
+              change={`${openExposurePct.toFixed(1)}% of free bankroll`}
+              changeType={openExposurePct > 8 ? "negative" : "neutral"}
+            />
+            <CompactStatCard
+              label="Max Drawdown"
+              value={`${maxDrawdown.toFixed(2)}%`}
+              change={`Live drawdown ${currentDrawdown.toFixed(2)}%`}
+              changeType={maxDrawdown < -8 ? "negative" : "neutral"}
+            />
         </motion.div>
 
         <motion.div
           variants={fadeUp}
           className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
         >
-          <CompactStatCard
-            label="Potential Profit"
-            value={formatCurrency(openPotentialProfit)}
-            change="If every open bet wins"
-            changeType={openPotentialProfit > 0 ? "positive" : "neutral"}
-          />
-          <CompactStatCard
-            label="Multiple P/L"
-            value={formatCurrency(multipleSummary.profitLoss)}
-            change={`${multipleSummary.roi.toFixed(2)}% ROI`}
-            changeType={multipleSummary.profitLoss >= 0 ? "positive" : "negative"}
-          />
+            <CompactStatCard
+              label="Potential Profit"
+              value={formatCurrency(openPotentialProfit)}
+              change="If every open position wins"
+              changeType={openPotentialProfit > 0 ? "positive" : "neutral"}
+            />
+            <CompactStatCard
+              label="Multiple P/L"
+              value={formatCurrency(multipleSummary.profitLoss)}
+              change={`${multipleSummary.roi.toFixed(2)}% return on multiple stake`}
+              changeType={multipleSummary.profitLoss >= 0 ? "positive" : "negative"}
+            />
           <CompactStatCard
             label="Multiple Hit Rate"
             value={`${multipleSummary.hitRate.toFixed(2)}%`}
@@ -981,16 +982,16 @@ export default function BankrollTools() {
                 label="Pending Bets"
                 value={String(stats.totalPending)}
                 detail="Open positions still affecting your risk"
-              />
-              <FocusMetric
-                label="Today"
-                value={todayPerformance ? `${todayPerformance.growthPct.toFixed(2)}%` : "0.00%"}
-                detail={
-                  todayPerformance
-                    ? `${formatCurrency(todayPerformance.profitLoss)} on ${todayPerformance.settledBets} settled bets`
-                    : "No settled bets today"
-                }
-              />
+                />
+                <FocusMetric
+                  label="Settled Today"
+                  value={todayPerformance ? `${todayPerformance.growthPct.toFixed(2)}%` : "0.00%"}
+                  detail={
+                    todayPerformance
+                      ? `${formatCurrency(todayPerformance.profitLoss)} across ${todayPerformance.settledBets} settled bets`
+                      : "No settled bets today"
+                  }
+                />
               <FocusMetric
                 label="Best Market"
                 value={strongestMarket?.market ?? "N/A"}

@@ -1,7 +1,11 @@
 ﻿import type { SavedAnalysis } from "../types/analysis";
 
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
-import { queueStorageSnapshotSync } from "@/lib/persistenceSync";
+import {
+  deleteAnalysisRecord,
+  persistAnalysisRecord,
+  queueEntitySync,
+} from "@/lib/persistenceSync";
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
@@ -181,25 +185,32 @@ export function getAnalyses(): SavedAnalysis[] {
 }
 
 export function saveAnalysis(analysis: SavedAnalysis): void {
+  const normalizedAnalysis = normalizeSavedAnalysis(analysis);
   const existing = getAnalyses();
-  const updated = [normalizeSavedAnalysis(analysis), ...existing];
+  const updated = [normalizedAnalysis, ...existing];
   localStorage.setItem(ANALYSES_KEY, JSON.stringify(updated));
-  queueStorageSnapshotSync();
+  persistAnalysisRecord(normalizedAnalysis as unknown as Record<string, unknown> & { id: string });
+  queueEntitySync("analyses");
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
 export function overwriteAnalyses(analyses: SavedAnalysis[]): void {
+  const normalized = analyses.map(normalizeSavedAnalysis);
   localStorage.setItem(
     ANALYSES_KEY,
-    JSON.stringify(analyses.map(normalizeSavedAnalysis))
+    JSON.stringify(normalized)
   );
-  queueStorageSnapshotSync();
+  normalized.forEach((analysis) => {
+    persistAnalysisRecord(analysis as unknown as Record<string, unknown> & { id: string });
+  });
+  queueEntitySync("analyses");
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
 }
 
 export function deleteAnalysis(analysisId: string): SavedAnalysis[] {
   const analyses = getAnalyses();
   const updated = analyses.filter((analysis) => analysis.id !== analysisId);
+  deleteAnalysisRecord(analysisId);
   overwriteAnalyses(updated);
   return updated;
 }
@@ -293,7 +304,7 @@ export function getBankrollSettings(): BankrollSettings {
 
 export function saveBankrollSettings(settings: BankrollSettings): void {
   localStorage.setItem(BANKROLL_SETTINGS_KEY, JSON.stringify(settings));
-  queueStorageSnapshotSync();
+  queueEntitySync("bankroll_settings");
 }
 
 export function getBankrollStats(): BankrollStats {

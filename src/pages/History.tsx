@@ -4,6 +4,7 @@ import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
+import { buildApiUrl } from "@/lib/apiConfig";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ANALYSES_UPDATED_EVENT,
@@ -840,7 +841,7 @@ export default function History() {
         setAiLoading(true);
       }
       try {
-        const response = await fetch("http://localhost:8000/ai/history-review", {
+        const response = await fetch(buildApiUrl("/ai/history-review"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

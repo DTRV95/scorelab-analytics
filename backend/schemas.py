@@ -184,7 +184,14 @@ class AIHistoryReviewResponse(BaseModel):
     disclaimer: str
 
 
+class StorageSnapshotMetadata(BaseModel):
+    schema_version: int = 1
+    updated_at: str
+    client_id: Optional[str] = None
+
+
 class StorageSnapshot(BaseModel):
+    metadata: StorageSnapshotMetadata
     analyses: List[Dict[str, Any]] = Field(default_factory=list)
     multiples: List[Dict[str, Any]] = Field(default_factory=list)
     multiple_draft: List[Dict[str, Any]] = Field(default_factory=list)
@@ -195,3 +202,65 @@ class StorageSnapshot(BaseModel):
 
 class StorageSnapshotResponse(BaseModel):
     snapshot: StorageSnapshot
+    ignored_due_to_staleness: bool = False
+
+
+class EntityStateMetadata(BaseModel):
+    schema_version: int = 1
+    updated_at: str
+    client_id: Optional[str] = None
+    entity_key: str
+
+
+class EntityState(BaseModel):
+    metadata: EntityStateMetadata
+    data: Any
+
+
+class EntityStateResponse(BaseModel):
+    entity: EntityState
+    ignored_due_to_staleness: bool = False
+
+
+class EntityStatesResponse(BaseModel):
+    entities: Dict[str, EntityState]
+
+
+class AnalysisRecord(BaseModel):
+    id: str
+    payload: Dict[str, Any]
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class AnalysisRecordListResponse(BaseModel):
+    analyses: List[AnalysisRecord]
+
+
+class AnalysisRecordResponse(BaseModel):
+    analysis: AnalysisRecord
+    ignored_due_to_staleness: bool = False
+
+
+class AnalysisDeleteResponse(BaseModel):
+    deleted: bool
+
+
+class MultipleRecord(BaseModel):
+    id: str
+    payload: Dict[str, Any]
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class MultipleRecordListResponse(BaseModel):
+    multiples: List[MultipleRecord]
+
+
+class MultipleRecordResponse(BaseModel):
+    multiple: MultipleRecord
+    ignored_due_to_staleness: bool = False
+
+
+class MultipleDeleteResponse(BaseModel):
+    deleted: bool
