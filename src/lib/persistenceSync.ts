@@ -6,6 +6,7 @@ const MULTIPLE_DRAFT_KEY = "scorelab_multiple_draft";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
 const ROADMAP_SETTINGS_KEY = "scorelab_roadmap_settings";
 const ROADMAP_DAY_MEMORIES_KEY = "scorelab_roadmap_day_memories";
+const ROADMAP_MISSIONS_KEY = "scorelab_roadmap_missions";
 const STORAGE_METADATA_KEY = "scorelab_storage_metadata";
 
 const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
@@ -26,6 +27,10 @@ const ENTITY_CONFIG = {
   },
   roadmap_day_memories: {
     storageKey: ROADMAP_DAY_MEMORIES_KEY,
+    fallback: [] as unknown[],
+  },
+  roadmap_missions: {
+    storageKey: ROADMAP_MISSIONS_KEY,
     fallback: [] as unknown[],
   },
 } as const;
@@ -58,6 +63,7 @@ export interface StorageSnapshotPayload {
   bankroll_settings: Record<string, unknown>;
   roadmap_settings: Record<string, unknown>;
   roadmap_day_memories: unknown[];
+  roadmap_missions: unknown[];
 }
 
 let queuedPersistTimeout: number | null = null;
@@ -158,6 +164,7 @@ export function getLocalStorageSnapshot(): StorageSnapshotPayload {
     bankroll_settings: readJson(BANKROLL_SETTINGS_KEY, {}),
     roadmap_settings: readJson(ROADMAP_SETTINGS_KEY, {}),
     roadmap_day_memories: readJson(ROADMAP_DAY_MEMORIES_KEY, []),
+    roadmap_missions: readJson(ROADMAP_MISSIONS_KEY, []),
   };
 }
 
@@ -168,7 +175,8 @@ function snapshotHasMeaningfulData(snapshot: StorageSnapshotPayload) {
     snapshot.multiple_draft.length > 0 ||
     Object.keys(snapshot.bankroll_settings).length > 0 ||
     Object.keys(snapshot.roadmap_settings).length > 0 ||
-    snapshot.roadmap_day_memories.length > 0
+    snapshot.roadmap_day_memories.length > 0 ||
+    snapshot.roadmap_missions.length > 0
   );
 }
 

@@ -3,11 +3,13 @@ import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ANALYSES_UPDATED_EVENT,
   getAnalyses,
 } from "@/lib/analysisStorage";
-import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
+import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
+import type { SavedAnalysis } from "@/types/analysis";
 import {
   ResponsiveContainer,
   XAxis,
@@ -32,24 +34,7 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-type RadarPoint = {
-  id: string;
-  match: string;
-  homeTeam: string;
-  awayTeam: string;
-  market: string;
-  edge: number;
-  modelProb: number;
-  confidence: number;
-  odds: number;
-  kelly: number;
-  decision: "Bet" | "Caution" | "No Bet";
-  tier?: "premium" | "elite" | "bet" | "watchlist" | "discard";
-  risk: "Low" | "Medium" | "High";
-  createdAt: string;
-  xg: number;
-  profitLoss?: number;
-};
+type RadarPoint = RadarOpportunity;
 
 type ChartRow = Record<string, string | number | null | undefined>;
 
@@ -161,19 +146,6 @@ function getResultColor(point: RadarPoint) {
   return "rgba(148,163,184,0.9)";
 }
 
-function getTrackedOrBestResult(analysis: SavedAnalysis): AnalysisResult | null {
-  if (analysis.tracking?.selectedMarket) {
-    const tracked = analysis.results.find(
-      (r) => r.market === analysis.tracking.selectedMarket
-    );
-    if (tracked) return tracked;
-  }
-
-  if (!analysis.results.length) return null;
-
-  return analysis.results.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
-}
-
 function isToday(dateString: string) {
   const d = new Date(dateString);
   const now = new Date();
@@ -213,6 +185,7 @@ function RadarLegend() {
 }
 
 export default function ValueRadar() {
+  const navigate = useNavigate();
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [tierFilter, setTierFilter] = useState<
     "all" | "premium" | "elite" | "bet" | "watchlist" | "discard"
@@ -241,31 +214,7 @@ export default function ValueRadar() {
   }, []);
 
   const radarPoints = useMemo<RadarPoint[]>(() => {
-    return analyses
-      .map((analysis) => {
-        const result = getTrackedOrBestResult(analysis);
-        if (!result) return null;
-
-        return {
-          id: analysis.id,
-          match: `${analysis.homeTeam} vs ${analysis.awayTeam}`,
-          homeTeam: analysis.homeTeam,
-          awayTeam: analysis.awayTeam,
-          market: result.market,
-          edge: result.valueBet,
-          modelProb: result.modelProb,
-          confidence: result.confidence,
-          odds: result.odds,
-          kelly: result.kelly,
-          decision: result.decision,
-          tier: result.tier,
-          risk: result.risk,
-          createdAt: analysis.createdAt,
-          xg: analysis.summary.totalXg,
-          profitLoss: analysis.tracking?.profitLoss ?? 0,
-        };
-      })
-      .filter(Boolean) as RadarPoint[];
+    return buildRadarOpportunities(analyses);
   }, [analyses]);
 
   const filteredPoints = useMemo(() => {
@@ -288,6 +237,18 @@ export default function ValueRadar() {
 
   const selectedPoint =
     filteredPoints.find((point) => point.id === selectedPointId) || filteredPoints[0] || null;
+
+  const openPointInSimpleBet = (point: RadarPoint) => {
+    const params = new URLSearchParams({
+      analysisId: point.id,
+      prepareBet: "1",
+      market: point.market,
+      stake: String(Number(point.stake.toFixed(2))),
+      odd: String(Number(point.odds.toFixed(2))),
+    });
+
+    navigate(`/history?${params.toString()}`);
+  };
 
   const summary = useMemo(() => {
     const total = filteredPoints.length;
@@ -450,6 +411,7 @@ export default function ValueRadar() {
                     <th className="py-3 pr-4">Kelly</th>
                     <th className="py-3 pr-4">Decision</th>
                     <th className="py-3 pr-4">Tier</th>
+                    <th className="py-3 pr-4">Track</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -483,6 +445,18 @@ export default function ValueRadar() {
                       </td>
                       <td className="py-3 pr-4">
                         {point.tier ? <TierBadge tier={point.tier} /> : "-"}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openPointInSimpleBet(point);
+                          }}
+                          className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 transition hover:bg-emerald-400/15"
+                        >
+                          Simple Bet
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -699,6 +673,13 @@ export default function ValueRadar() {
                   {selectedPoint.tier && <TierBadge tier={selectedPoint.tier} />}
                   <DecisionBadge decision={selectedPoint.decision} />
                   <ValueBadge value={selectedPoint.edge} />
+                  <button
+                    type="button"
+                    onClick={() => openPointInSimpleBet(selectedPoint)}
+                    className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 transition hover:bg-emerald-400/15"
+                  >
+                    Open In Simple Bet
+                  </button>
                 </div>
               </div>
 

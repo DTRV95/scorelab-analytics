@@ -390,7 +390,12 @@ export default function History() {
   const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
   const [searchParams] = useSearchParams();
   const highlightedAnalysisId = searchParams.get("analysisId");
+  const prepareBetFromRoadmap = searchParams.get("prepareBet") === "1";
+  const preparedMarket = searchParams.get("market");
+  const preparedStake = searchParams.get("stake");
+  const preparedOdd = searchParams.get("odd");
   const analysisRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const preparedBetAppliedRef = useRef<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -574,6 +579,43 @@ export default function History() {
       prev.includes(highlightedAnalysisId) ? prev : [...prev, highlightedAnalysisId]
     );
   }, [highlightedAnalysisId, filteredAnalyses]);
+
+  useEffect(() => {
+    if (!highlightedAnalysisId || !prepareBetFromRoadmap) return;
+    if (preparedBetAppliedRef.current === highlightedAnalysisId) return;
+
+    const targetAnalysis = analyses.find((analysis) => analysis.id === highlightedAnalysisId);
+    if (!targetAnalysis) return;
+
+    const selectedResult = targetAnalysis.results.find(
+      (result) => result.market === preparedMarket
+    );
+    if (!selectedResult) return;
+
+    const parsedStake = preparedStake === null ? Number.NaN : Number(preparedStake);
+    const parsedOdd = preparedOdd === null ? Number.NaN : Number(preparedOdd);
+
+    const updatedAnalyses = updateAnalysisTracking(highlightedAnalysisId, {
+      betPlaced: true,
+      selectedMarket: selectedResult.market,
+      stakeUsed: Number.isFinite(parsedStake)
+        ? Number(parsedStake.toFixed(2))
+        : Number(selectedResult.stake.toFixed(2)),
+      oddUsed: Number.isFinite(parsedOdd)
+        ? Number(parsedOdd.toFixed(2))
+        : Number(selectedResult.odds.toFixed(2)),
+    });
+
+    preparedBetAppliedRef.current = highlightedAnalysisId;
+    setAnalyses(updatedAnalyses);
+  }, [
+    analyses,
+    highlightedAnalysisId,
+    prepareBetFromRoadmap,
+    preparedMarket,
+    preparedOdd,
+    preparedStake,
+  ]);
 
   const handleTrackingChange = (
     analysisId: string,

@@ -198,6 +198,7 @@ class StorageSnapshot(BaseModel):
     bankroll_settings: Dict[str, Any] = Field(default_factory=dict)
     roadmap_settings: Dict[str, Any] = Field(default_factory=dict)
     roadmap_day_memories: List[Dict[str, Any]] = Field(default_factory=list)
+    roadmap_missions: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class StorageSnapshotResponse(BaseModel):

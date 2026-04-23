@@ -1,6 +1,7 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   Flag,
@@ -22,15 +23,21 @@ import {
 } from "@/lib/multipleStorage";
 import {
   DEFAULT_ROADMAP_SETTINGS,
+  createRoadmapMissionId,
   getRoadmapDayMemories,
+  getRoadmapMissions,
   getRoadmapSettings,
+  overwriteRoadmapDayMemories,
+  saveRoadmapMission,
   saveRoadmapSettings,
   syncRoadmapDayMemories,
   type RoadmapDayMemory,
+  type RoadmapMissionRecord,
   type RoadmapSettings,
 } from "@/lib/roadmapStorage";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
 import { PERSISTENCE_HYDRATED_EVENT } from "@/lib/persistenceSync";
+import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -47,6 +54,7 @@ const MIN_DAILY_STAKE_PCT = 8;
 const MAX_DAILY_STAKE_PCT = 65;
 const MAX_REALISTIC_RETURN_ON_STAKE_PCT = 20;
 const MAX_STRETCH_RETURN_ON_STAKE_PCT = 30;
+const ROADMAP_RADAR_MIN_MODEL_PROB = 75;
 const ROADMAP_TIMEZONE = "Europe/Lisbon";
 const surfaceCardClass =
   "rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 shadow-[0_12px_28px_rgba(0,0,0,0.16)] backdrop-blur-sm";
@@ -59,6 +67,11 @@ function formatCurrency(value: number) {
 
 function formatPct(value: number) {
   return `${value.toFixed(2)}%`;
+}
+
+function normalizeProbabilityPct(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return value <= 1 ? value * 100 : value;
 }
 
 function clampPositive(value: number, fallback: number) {
@@ -439,6 +452,85 @@ function getSystemCommand({
   };
 }
 
+function getRadarExecutionPlan({
+  opportunities,
+  stakeBudget,
+  profitTarget,
+}: {
+  opportunities: RadarOpportunity[];
+  stakeBudget: number;
+  profitTarget: number;
+}) {
+  const cleanStakeBudget = Math.max(0, stakeBudget);
+  const cleanProfitTarget = Math.max(0, profitTarget);
+
+  const candidates = opportunities
+    .filter((opportunity) => {
+      if (!Number.isFinite(opportunity.odds) || opportunity.odds <= 1) return false;
+      if (normalizeProbabilityPct(opportunity.modelProb) <= ROADMAP_RADAR_MIN_MODEL_PROB) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const tierWeight = { premium: 4, elite: 3, bet: 2, watchlist: 1, discard: 0 };
+      const bModelProb = normalizeProbabilityPct(b.modelProb);
+      const aModelProb = normalizeProbabilityPct(a.modelProb);
+      if (bModelProb !== aModelProb) return bModelProb - aModelProb;
+      if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+      const tierDiff = (tierWeight[b.tier ?? "discard"] || 0) - (tierWeight[a.tier ?? "discard"] || 0);
+      if (tierDiff !== 0) return tierDiff;
+      return b.edge - a.edge;
+    })
+    .slice(0, 4);
+
+  const picks = candidates.slice(0, 4).map((opportunity) => {
+    const profitPerEuro = opportunity.odds - 1;
+    const requiredStake = profitPerEuro > 0 ? cleanProfitTarget / profitPerEuro : 0;
+    const projectedProfit = requiredStake * profitPerEuro;
+
+    return {
+      ...opportunity,
+      suggestedStake: Number(requiredStake.toFixed(2)),
+      projectedProfit: Number(projectedProfit.toFixed(2)),
+      fitsCapacity: requiredStake <= cleanStakeBudget,
+    };
+  });
+  const bestCapacityFit = picks.find((pick) => pick.fitsCapacity) ?? null;
+
+  if (cleanProfitTarget <= 0 || candidates.length === 0) {
+    return {
+      candidates,
+      picks: [] as Array<
+        RadarOpportunity & {
+          suggestedStake: number;
+          projectedProfit: number;
+          fitsCapacity: boolean;
+        }
+      >,
+      totalStake: 0,
+      projectedProfit: 0,
+      coveragePct: 0,
+      fullyCovered: false,
+      bestCapacityFit: null as
+        | (RadarOpportunity & {
+            suggestedStake: number;
+            projectedProfit: number;
+            fitsCapacity: boolean;
+          })
+        | null,
+    };
+  }
+
+  return {
+    candidates,
+    picks,
+    totalStake: bestCapacityFit ? bestCapacityFit.suggestedStake : 0,
+    projectedProfit: bestCapacityFit ? bestCapacityFit.projectedProfit : 0,
+    coveragePct: bestCapacityFit ? 100 : 0,
+    fullyCovered: Boolean(bestCapacityFit),
+    bestCapacityFit,
+  };
+}
+
 function PremiumCard({
   title,
   description,
@@ -556,11 +648,15 @@ function InputField({
 }
 
 export default function RoadmapPlanner() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(() => getBankrollStats());
   const [analyses, setAnalyses] = useState(() => getAnalyses());
   const [multiples, setMultiples] = useState(() => getSavedMultiples());
   const [settings, setSettings] = useState<RoadmapSettings>(() => getRoadmapSettings());
   const [dayMemories, setDayMemories] = useState(() => getRoadmapDayMemories());
+  const [missionHistory, setMissionHistory] = useState<RoadmapMissionRecord[]>(() =>
+    getRoadmapMissions()
+  );
   const [inputs, setInputs] = useState({
     targetAmount: String(getRoadmapSettings().targetAmount),
     targetDays: String(getRoadmapSettings().targetDays),
@@ -583,6 +679,7 @@ export default function RoadmapPlanner() {
       setMultiples(getSavedMultiples());
       setDayMemories(getRoadmapDayMemories());
       setSettings(getRoadmapSettings());
+      setMissionHistory(getRoadmapMissions());
     };
 
     window.addEventListener(ANALYSES_UPDATED_EVENT, refresh);
@@ -695,6 +792,31 @@ export default function RoadmapPlanner() {
     const missionTone = getMissionTone(requiredReturnOnStakePct);
     const exposurePctOfMission = missionStake > 0 ? (openExposure / missionStake) * 100 : 0;
     const remainingMissionCapacity = Math.max(0, missionStake - openExposure);
+    const allRadarOpportunities = buildRadarOpportunities(analyses);
+    const todayRadarOpportunities = allRadarOpportunities.filter(
+      (opportunity) => getDateKeyInTimezone(opportunity.createdAt) === today
+    );
+    const latestRadarDate =
+      allRadarOpportunities
+        .map((opportunity) => getDateKeyInTimezone(opportunity.createdAt))
+        .sort((a, b) => b.localeCompare(a))[0] ?? today;
+    const latestRadarOpportunities = allRadarOpportunities.filter(
+      (opportunity) => getDateKeyInTimezone(opportunity.createdAt) === latestRadarDate
+    );
+    const todayHighProbabilityCount = todayRadarOpportunities.filter(
+      (opportunity) =>
+        Number.isFinite(opportunity.odds) &&
+        opportunity.odds > 1 &&
+        normalizeProbabilityPct(opportunity.modelProb) > ROADMAP_RADAR_MIN_MODEL_PROB
+    ).length;
+    const radarExecutionSourceDate =
+      todayHighProbabilityCount > 0 ? today : latestRadarDate;
+    const radarExecutionPlan = getRadarExecutionPlan({
+      opportunities:
+        todayHighProbabilityCount > 0 ? todayRadarOpportunities : latestRadarOpportunities,
+      stakeBudget: remainingMissionCapacity,
+      profitTarget: requiredProfitToday,
+    });
     const missionProgressPct = missionStake > 0 ? (todayActualEntry.actualStake / missionStake) * 100 : 0;
     const profitProgressPct = requiredProfitToday > 0 ? (todayActualEntry.actualProfit / requiredProfitToday) * 100 : 0;
     const healthyDailyGrowthRate = (recommendedDailyStakePct / 100) * (HEALTHY_RETURN_ON_STAKE_PCT / 100);
@@ -996,6 +1118,9 @@ export default function RoadmapPlanner() {
       healthyProjection,
       oddsRange,
       oddsExecutionOptions,
+      radarExecutionPlan,
+      radarExecutionSourceDate,
+      isRadarExecutionFromToday: radarExecutionSourceDate === today,
       executionMode,
       missionIntelligenceSummary,
       missionIntelligenceNote,
@@ -1074,6 +1199,63 @@ export default function RoadmapPlanner() {
     window.setTimeout(() => setSavedMessage(""), 2500);
   };
 
+  const archiveCurrentMission = (status: RoadmapMissionRecord["status"]) => {
+    const mission: RoadmapMissionRecord = {
+      id: createRoadmapMissionId(),
+      targetAmount: roadmap.targetAmount,
+      targetDays: parsedInputs.targetDays,
+      startedAt: effectiveStartedAt || getDateKeyInTimezone(new Date()),
+      endedAt: new Date().toISOString(),
+      status,
+      startingBankroll: roadmap.startingBankroll,
+      finalBankroll: roadmap.availableBankroll,
+      progressPct: roadmap.missionProgressToTargetPct,
+      netProfit: roadmap.availableBankroll - roadmap.startingBankroll,
+    };
+
+    saveRoadmapMission(mission);
+    setMissionHistory(getRoadmapMissions());
+    setSavedMessage(status === "success" ? "Mission saved as successful." : "Mission saved as failed.");
+    window.setTimeout(() => setSavedMessage(""), 2500);
+  };
+
+  const handleStartNewMission = () => {
+    const currentStatus: RoadmapMissionRecord["status"] =
+      roadmap.missionProgressToTargetPct >= 100 ? "success" : "failed";
+    archiveCurrentMission(currentStatus);
+
+    const nextSettings: RoadmapSettings = {
+      targetAmount: parsedInputs.targetAmount,
+      targetDays: parsedInputs.targetDays,
+      startedAt: new Date().toISOString(),
+    };
+
+    saveRoadmapSettings(nextSettings);
+    overwriteRoadmapDayMemories([]);
+    setSettings(nextSettings);
+    setDayMemories([]);
+    setMissionHistory(getRoadmapMissions());
+    setSavedMessage("New mission started.");
+    window.setTimeout(() => setSavedMessage(""), 2500);
+  };
+
+  const handleOpenRadarPick = (pick: {
+    id: string;
+    market: string;
+    odds: number;
+    suggestedStake: number;
+  }) => {
+    const params = new URLSearchParams({
+      analysisId: pick.id,
+      prepareBet: "1",
+      market: pick.market,
+      stake: String(pick.suggestedStake),
+      odd: String(pick.odds),
+    });
+
+    navigate(`/history?${params.toString()}`);
+  };
+
   return (
     <AppLayout>
       <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8 p-6">
@@ -1123,12 +1305,48 @@ export default function RoadmapPlanner() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="space-y-6">
           <PremiumCard
             title="Mission Control"
-            description="Set the target and the time allowed to reach it."
-            badge="Planner"
+            description="Manage the active mission and keep a record of completed plans."
+            badge="Control"
           >
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className={compactSurfaceCardClass}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                  Active Mission
+                </p>
+                <p className="mt-2 text-base font-semibold text-white">
+                  {formatCurrency(roadmap.startingBankroll)} to {formatCurrency(roadmap.targetAmount)}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-white/46">
+                  Day {roadmap.currentPlanDay} of {parsedInputs.targetDays} · started {effectiveStartedAt}
+                </p>
+              </div>
+              <div className={compactSurfaceCardClass}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                  Mission Status
+                </p>
+                <p className="mt-2 text-base font-semibold text-white">
+                  {missionTracker.state.label}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-white/46">
+                  {formatPct(missionTracker.completionRate)} complete
+                </p>
+              </div>
+              <div className={compactSurfaceCardClass}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                  Mission History
+                </p>
+                <p className="mt-2 text-base font-semibold text-white">
+                  {missionHistory.length} saved
+                </p>
+                <p className="mt-2 text-xs leading-5 text-white/46">
+                  {missionHistory.filter((mission) => mission.status === "success").length} successful · {missionHistory.filter((mission) => mission.status === "failed").length} failed
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <InputField
                 label="Target Amount"
@@ -1154,7 +1372,28 @@ export default function RoadmapPlanner() {
                 onClick={handleSavePlan}
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-400/15"
               >
-                Save Roadmap
+                Save Active Mission
+              </button>
+              <button
+                type="button"
+                onClick={() => archiveCurrentMission("success")}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition hover:bg-cyan-400/15"
+              >
+                Close As Success
+              </button>
+              <button
+                type="button"
+                onClick={() => archiveCurrentMission("failed")}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-red-400/20 bg-red-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-200 transition hover:bg-red-400/15"
+              >
+                Close As Failed
+              </button>
+              <button
+                type="button"
+                onClick={handleStartNewMission}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/78 transition hover:bg-white/[0.1]"
+              >
+                Start New Mission
               </button>
               <button
                 type="button"
@@ -1176,6 +1415,49 @@ export default function RoadmapPlanner() {
             <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-white/42">
               Mission started on {effectiveStartedAt}.
             </p>
+
+            <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                  Recent Missions
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/34">
+                  Last {Math.min(3, missionHistory.length)}
+                </p>
+              </div>
+              {missionHistory.length === 0 ? (
+                <p className="mt-3 text-sm leading-6 text-white/52">
+                  No closed missions yet. When a plan ends, close it as success or failed and it will appear here.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {missionHistory.slice(0, 3).map((mission) => (
+                    <div
+                      key={mission.id}
+                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/8 bg-white/[0.035] p-3 md:grid-cols-[1fr_auto]"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          {formatCurrency(mission.startingBankroll)} to {formatCurrency(mission.targetAmount)}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-white/46">
+                          {getIsoDateOnly(mission.startedAt)} to {getIsoDateOnly(mission.endedAt)} · {formatPct(mission.progressPct)} complete
+                        </p>
+                      </div>
+                      <div
+                        className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                          mission.status === "success"
+                            ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
+                            : "border-red-300/25 bg-red-300/10 text-red-200"
+                        }`}
+                      >
+                        {mission.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </PremiumCard>
 
           <PremiumCard
@@ -1191,7 +1473,7 @@ export default function RoadmapPlanner() {
                     Planned Stake
                   </p>
                 </div>
-                <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
+                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-white md:text-[1.28rem]">
                   {formatCurrency(roadmap.missionStake)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
@@ -1206,7 +1488,7 @@ export default function RoadmapPlanner() {
                     Profit Target
                   </p>
                 </div>
-                <p className="mt-3 text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
+                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-white md:text-[1.28rem]">
                   {formatCurrency(roadmap.requiredProfitToday)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
@@ -1219,12 +1501,102 @@ export default function RoadmapPlanner() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
                 Odds Zone
               </p>
-              <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              <p className="mt-3 text-[1rem] font-semibold tracking-[-0.02em] text-white">
                 {roadmap.oddsRange}
               </p>
               <p className="mt-3 text-sm leading-6 text-white/56">
                 Suggested structure: {roadmap.oddsExecutionOptions[0]}
               </p>
+            </div>
+
+            <div className="mt-3 rounded-[22px] border border-emerald-300/12 bg-emerald-300/[0.055] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/48">
+                    Radar Execution
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/62">
+                    Highest-probability radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% and the stake each one needs to hit the daily profit target.
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/40">
+                    {roadmap.isRadarExecutionFromToday
+                      ? "Using today's radar board."
+                      : `Using latest available radar board from ${roadmap.radarExecutionSourceDate}.`}
+                  </p>
+                </div>
+                <div
+                  className={`rounded-2xl border px-3 py-2 text-right ${
+                    roadmap.radarExecutionPlan.fullyCovered
+                      ? "border-emerald-300/20 bg-emerald-300/10"
+                      : "border-amber-300/20 bg-amber-300/10"
+                  }`}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                    Fit
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {roadmap.radarExecutionPlan.fullyCovered ? "Ready" : "Short"}
+                  </p>
+                </div>
+              </div>
+
+              {roadmap.radarExecutionPlan.picks.length > 0 ? (
+                <div className="mt-4 space-y-2.5">
+                  {roadmap.radarExecutionPlan.picks.map((pick, index) => (
+                    <button
+                      type="button"
+                      key={`${pick.id}-${pick.market}`}
+                      onClick={() => handleOpenRadarPick(pick)}
+                      className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-white/8 bg-white/[0.035] p-3 text-left transition hover:border-emerald-300/25 hover:bg-emerald-300/[0.06] md:grid-cols-[1fr_auto]"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          {index + 1}. {pick.match}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-white/52">
+                          {pick.market} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 md:justify-end">
+                        <div
+                          className={`rounded-xl border px-3 py-2 ${
+                            pick.fitsCapacity
+                              ? "border-emerald-300/20 bg-emerald-300/10"
+                              : "border-amber-300/20 bg-amber-300/10"
+                          }`}
+                        >
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                            Required Stake
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-white">
+                            {formatCurrency(pick.suggestedStake)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                            Profit
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-emerald-200">
+                            {formatCurrency(pick.projectedProfit)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <p className="text-xs leading-5 text-white/42">
+                    Green highlight means the required stake fits inside today's remaining planned stake.
+                  </p>
+                  {!roadmap.radarExecutionPlan.fullyCovered ? (
+                    <p className="text-xs leading-5 text-amber-200/72">
+                      None of the highest-probability radar events can hit today's profit target inside the remaining stake capacity.
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-white/8 bg-white/[0.035] p-3 text-sm leading-6 text-white/54">
+                  No radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% are available in the latest board. Keep the plan on hold instead of forcing lower-probability picks.
+                </p>
+              )}
             </div>
           </PremiumCard>
         </div>
@@ -1260,7 +1632,7 @@ export default function RoadmapPlanner() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
                     Primary Mission
                   </p>
-                  <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-white">
+                  <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-white">
                     {missionTracker.state.label}
                   </h3>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
@@ -1273,7 +1645,7 @@ export default function RoadmapPlanner() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
                   Mission Completion
                 </p>
-                <p className="mt-2 text-[1.3rem] font-semibold tracking-[-0.03em] text-white">
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
                   {formatPct(missionTracker.completionRate)}
                 </p>
                 <div className="mt-3 h-2 rounded-full bg-white/10">
@@ -1300,7 +1672,7 @@ export default function RoadmapPlanner() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
                   System Command
                 </p>
-                <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-white">
+                <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-white">
                   {roadmap.systemCommand.label}
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">

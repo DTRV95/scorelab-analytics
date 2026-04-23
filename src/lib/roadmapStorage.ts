@@ -2,6 +2,7 @@ import { queueEntitySync } from "@/lib/persistenceSync";
 
 const ROADMAP_SETTINGS_KEY = "scorelab_roadmap_settings";
 const ROADMAP_DAY_MEMORIES_KEY = "scorelab_roadmap_day_memories";
+const ROADMAP_MISSIONS_KEY = "scorelab_roadmap_missions";
 
 export interface RoadmapSettings {
   targetAmount: number;
@@ -21,6 +22,19 @@ export interface RoadmapDayMemory {
   settledBets?: number;
   status: string;
   classification: "disciplined" | "efficient" | "forced" | "overexposed" | "quiet";
+}
+
+export interface RoadmapMissionRecord {
+  id: string;
+  targetAmount: number;
+  targetDays: number;
+  startedAt: string;
+  endedAt: string;
+  status: "success" | "failed";
+  startingBankroll: number;
+  finalBankroll: number;
+  progressPct: number;
+  netProfit: number;
 }
 
 export const DEFAULT_ROADMAP_SETTINGS: RoadmapSettings = {
@@ -86,4 +100,25 @@ export function syncRoadmapDayMemories(memories: RoadmapDayMemory[]) {
   overwriteRoadmapDayMemories(
     Array.from(nextMap.values()).sort((a, b) => a.date.localeCompare(b.date))
   );
+}
+
+export function getRoadmapMissions(): RoadmapMissionRecord[] {
+  try {
+    const raw = localStorage.getItem(ROADMAP_MISSIONS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as RoadmapMissionRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRoadmapMission(mission: RoadmapMissionRecord) {
+  const existing = getRoadmapMissions();
+  const next = [mission, ...existing.filter((item) => item.id !== mission.id)];
+  localStorage.setItem(ROADMAP_MISSIONS_KEY, JSON.stringify(next));
+  queueEntitySync("roadmap_missions");
+}
+
+export function createRoadmapMissionId() {
+  return `mission-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }

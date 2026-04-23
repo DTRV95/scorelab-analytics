@@ -17,6 +17,7 @@ import {
   Bar,
 } from "recharts";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ANALYSES_UPDATED_EVENT,
   getAnalyses,
@@ -578,6 +579,7 @@ function AIReviewColumn({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [refreshTick, setRefreshTick] = useState(0);
   const [analyses, setAnalyses] = useState(() => getAnalyses());
   const [bankrollStats, setBankrollStats] = useState(() => getBankrollStats());
@@ -698,6 +700,18 @@ export default function Dashboard() {
   }, [analyses, bankrollStats.currentBankroll, bankrollStats.initialBankroll]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
+
+  const openAnalysisInSimpleBet = (analysis: SavedAnalysis, result: AnalysisResult) => {
+    const params = new URLSearchParams({
+      analysisId: analysis.id,
+      prepareBet: "1",
+      market: result.market,
+      stake: String(Number(result.stake.toFixed(2))),
+      odd: String(Number(result.odds.toFixed(2))),
+    });
+
+    navigate(`/history?${params.toString()}`);
+  };
 
   const oddsBucketChartData: ChartRow[] =
     dashboardData.performance?.oddsBucketPerformance?.map((item) => ({
@@ -1262,6 +1276,16 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    openAnalysisInSimpleBet(topValueToday.analysis, topValueToday.bestBet)
+                  }
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-400/15"
+                >
+                  Open In Simple Bet
+                </button>
               </div>
             </motion.div>
           ) : (
