@@ -1,6 +1,7 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -21,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ANALYSES_UPDATED_EVENT,
   getAnalyses,
+  getAllAnalysisTrackingEntries,
   getBankrollStats,
 } from "@/lib/analysisStorage";
 import {
@@ -174,9 +176,9 @@ function CompactStatCard({
 }) {
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ y: -3 }}
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className="relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+      className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
       <div className="relative">
@@ -221,7 +223,7 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+      className={`scorelab-board-3d overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] ${className}`}
     >
       <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
@@ -664,7 +666,10 @@ export default function Dashboard() {
         : null;
 
     const financialSnapshot = buildFinancialSnapshot({
-      analyses,
+      analyses: getAllAnalysisTrackingEntries(analyses).map((entry) => ({
+        createdAt: entry.createdAt,
+        tracking: entry.tracking,
+      })),
       multiples: savedMultiples,
       initialBankroll: bankrollStats.initialBankroll,
     });
@@ -756,13 +761,13 @@ export default function Dashboard() {
   const leaguePerformanceRows = useMemo<LeaguePerformanceRow[]>(() => {
     const savedMultiples = getSavedMultiples();
     const analysisMap = new Map(analyses.map((analysis) => [analysis.id, analysis]));
-    const settledAnalyses = analyses.filter(
-      (analysis) =>
-        analysis.tracking.betPlaced &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void") &&
-        analysis.tracking.selectedMarket
+    const settledAnalyses = getAllAnalysisTrackingEntries(analyses).filter(
+      (entry) =>
+        entry.tracking.betPlaced &&
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red" ||
+          entry.tracking.resultStatus === "void") &&
+        entry.tracking.selectedMarket
     );
 
     const leagueMap = new Map<
@@ -780,10 +785,10 @@ export default function Dashboard() {
       }
     >();
 
-    settledAnalyses.forEach((analysis) => {
-      const league = analysis.league?.trim() || "Unspecified";
-      const selectedResult = analysis.results.find(
-        (result) => result.market === analysis.tracking.selectedMarket
+    settledAnalyses.forEach((entry) => {
+      const league = entry.league?.trim() || "Unspecified";
+      const selectedResult = entry.analysis.results.find(
+        (result) => result.market === entry.tracking.selectedMarket
       );
 
       if (!selectedResult) return;
@@ -803,8 +808,8 @@ export default function Dashboard() {
       }
 
       const current = leagueMap.get(league)!;
-      const stake = analysis.tracking.stakeUsed || 0;
-      const profitLoss = analysis.tracking.profitLoss || 0;
+      const stake = entry.tracking.stakeUsed || 0;
+      const profitLoss = entry.tracking.profitLoss || 0;
       const market = selectedResult.market;
 
       current.bets += 1;
@@ -813,9 +818,9 @@ export default function Dashboard() {
       current.confidenceSum += selectedResult.confidence || 0;
       current.edgeSum += selectedResult.valueBet || 0;
 
-      if (analysis.tracking.resultStatus === "green") current.wins += 1;
-      if (analysis.tracking.resultStatus === "red") current.losses += 1;
-      if (analysis.tracking.resultStatus === "void") current.voids += 1;
+      if (entry.tracking.resultStatus === "green") current.wins += 1;
+      if (entry.tracking.resultStatus === "red") current.losses += 1;
+      if (entry.tracking.resultStatus === "void") current.voids += 1;
 
       const existingMarket = current.marketMap.get(market) || {
         bets: 0,
@@ -1060,6 +1065,15 @@ export default function Dashboard() {
     };
   }, [dashboardAiPayloadKey]);
 
+  const dashboardPulseTone =
+    dashboardData.riskLevel === "High"
+      ? "red"
+      : dashboardData.riskLevel === "Moderate"
+      ? "amber"
+      : bankrollStats.roi >= 0
+      ? "emerald"
+      : "cyan";
+
   return (
     <AppLayout>
       <motion.div
@@ -1070,19 +1084,39 @@ export default function Dashboard() {
       >
         <motion.div
           variants={fadeUp}
-          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+          className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(8,18,40,0.96)_0%,rgba(5,16,28,0.98)_48%,rgba(13,22,34,0.98)_100%)] p-5"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
-          <div className="relative max-w-3xl">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
-              Dashboard Workspace
+          <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
+          <div className="relative grid gap-5 xl:grid-cols-[1fr_360px] xl:items-stretch">
+            <div className="flex min-h-[180px] flex-col justify-center">
+              <div className="inline-flex w-fit items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase text-cyan-100/80">
+                Dashboard Workspace
+              </div>
+              <h1 className="mt-4 text-2xl font-semibold text-white md:text-3xl">
+                Performance Intelligence
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+                Use historical betting performance to find where ScoreLab is really validating and where discipline matters most.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  {dashboardData.riskLevel} exposure
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  {bankrollStats.totalPending} pending positions
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  {marketPerformanceRows.length} markets tracked
+                </span>
+              </div>
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
-              Performance Intelligence
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
-              Use historical betting performance to find where ScoreLab is really validating and where discipline matters most.
-            </p>
+            <SystemPulse3D
+              label="System Pulse"
+              value={`${bankrollStats.roi.toFixed(1)}% ROI`}
+              detail={`Live risk is ${dashboardData.riskLevel.toLowerCase()} with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
+              tone={dashboardPulseTone}
+            />
           </div>
         </motion.div>
 

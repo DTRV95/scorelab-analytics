@@ -19,11 +19,8 @@ import RoadmapPlanner from "./pages/RoadmapPlanner";
 import PricingPage from "./pages/PricingPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import {
-  hydrateAnalysesFromServer,
-  hydrateMultiplesFromServer,
-  hydrateStorageFromServer,
-} from "@/lib/persistenceSync";
+import { hydrateStorageFromServer } from "@/lib/persistenceSync";
+import { ScoreLabCommandCenter } from "@/components/ScoreLabCommandCenter";
 
 
 const queryClient = new QueryClient();
@@ -35,8 +32,6 @@ const App = () => {
     let isMounted = true;
 
     const run = async () => {
-      await hydrateAnalysesFromServer();
-      await hydrateMultiplesFromServer();
       await hydrateStorageFromServer();
       if (isMounted) {
         setIsHydrating(false);
@@ -68,6 +63,7 @@ const App = () => {
           </div>
         ) : (
           <BrowserRouter>
+            <ScoreLabCommandCenter />
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Landing />} />

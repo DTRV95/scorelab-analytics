@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "recovered_at": "2026-04-26T10:55:00+01:00",
+    "source": "chrome-local-storage-fragments",
+    "confidence": "partial"
+  },
+  "entities": {
+    "analyses": [
+      {
+        "id": "1777193758823-yfb856x",
+        "createdAt": "2026-04-26T08:55:58.823Z",
+        "homeTeam": "Oviedo",
+        "awayTeam": "Elche",
+        "league": "LaLiga2",
+        "summary": {
+          "homeXg": 1.14,
+          "awayXg": 0.69,
+          "totalXg": 1.83,
+          "confidence": 7.6
+        },
+        "results": [
+          {
+            "market": "Under 2.5",
+            "odds": 1.85,
+            "modelProb": 27.5,
+            "impliedProb": 47.9,
+            "valueBet": -20.4,
+            "kelly": 0,
+            "stake": 0,
+            "risk": "Medium",
+            "confidence": 7.6,
+            "decision": "No Bet",
+            "tier": "discard"
+          }
+        ],
+        "tracking": {
+          "betPlaced": false,
+          "selectedMarket": null,
+          "stakeUsed": null,
+          "oddUsed": null,
+          "resultStatus": "pending",
+          "settledAt": null,
+          "profitLoss": 0,
+          "bankrollBefore": 60,
+          "bankrollAfter": 60,
+          "notes": "Recovered from Chrome fragment on 2026-04-26. Some result fields may be approximate."
+        }
+      }
+    ],
+    "multiples": [],
+    "multiple_draft": [],
+    "bankroll_settings": {
+      "initialBankroll": 60
+    },
+    "roadmap_settings": {
+      "targetAmount": 150,
+      "targetDays": 10,
+      "startedAt": "2026-04-20T00:00:00.000Z"
+    },
+    "roadmap_day_memories": [
+      {
+        "day": 1,
+        "date": "2026-04-20",
+        "targetStake": 8.79,
+        "actualStake": 27.74,
+        "targetProfit": 5.757493583113034,
+        "actualProfit": 17.15,
+        "tickets": 4,
+        "activeTickets": 0,
+        "settledBets": 3,
+        "status": "Completed",
+        "classification": "efficient"
+      }
+    ],
+    "roadmap_missions": []
+  },
+  "limitations": [
+    "Backend persistent storage was empty at the time of recovery.",
+    "Most analysis and multiple records in Chrome had already been overwritten by newer empty localStorage writes.",
+    "This recovery only contains entries that could be reconstructed with reasonable confidence."
+  ]
+}

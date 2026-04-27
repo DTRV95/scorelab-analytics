@@ -265,3 +265,7 @@ class MultipleRecordResponse(BaseModel):
 
 class MultipleDeleteResponse(BaseModel):
     deleted: bool
+
+
+class StorageResetResponse(BaseModel):
+    reset: bool

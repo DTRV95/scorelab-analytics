@@ -8,6 +8,7 @@ const ROADMAP_SETTINGS_KEY = "scorelab_roadmap_settings";
 const ROADMAP_DAY_MEMORIES_KEY = "scorelab_roadmap_day_memories";
 const ROADMAP_MISSIONS_KEY = "scorelab_roadmap_missions";
 const STORAGE_METADATA_KEY = "scorelab_storage_metadata";
+const STORAGE_BACKUP_KEY = "scorelab_storage_backup_latest";
 
 const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
 const MULTIPLES_UPDATED_EVENT = "scorelab:multiples-updated";
@@ -70,6 +71,18 @@ let queuedPersistTimeout: number | null = null;
 let persistInFlight = false;
 const queuedEntityTimeouts = new Map<EntityKey, number>();
 const entitySyncInFlight = new Set<EntityKey>();
+const LOCAL_RESET_KEYS = [
+  ANALYSES_KEY,
+  MULTIPLES_KEY,
+  MULTIPLE_DRAFT_KEY,
+  BANKROLL_SETTINGS_KEY,
+  ROADMAP_SETTINGS_KEY,
+  ROADMAP_DAY_MEMORIES_KEY,
+  ROADMAP_MISSIONS_KEY,
+  STORAGE_METADATA_KEY,
+  STORAGE_BACKUP_KEY,
+  `${STORAGE_METADATA_KEY}_snapshot`,
+] as const;
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -85,6 +98,10 @@ function writeJson(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function getStoredBackupSnapshot() {
+  return readJson<StorageSnapshotPayload | null>(STORAGE_BACKUP_KEY, null);
+}
+
 function setSnapshotMetadata(metadata: StorageSnapshotPayload["metadata"]) {
   writeJson(`${STORAGE_METADATA_KEY}_snapshot`, metadata);
 }
@@ -95,6 +112,12 @@ function getEntityMetadataStorageKey(entityKey: EntityKey) {
 
 function setEntityMetadata(entityKey: EntityKey, metadata: EntityMetadata) {
   writeJson(getEntityMetadataStorageKey(entityKey), metadata);
+}
+
+function clearEntityMetadata() {
+  (Object.keys(ENTITY_CONFIG) as EntityKey[]).forEach((entityKey) => {
+    localStorage.removeItem(getEntityMetadataStorageKey(entityKey));
+  });
 }
 
 function getClientId() {
@@ -188,6 +211,31 @@ function entityHasMeaningfulData(entity: EntityStatePayload) {
   return Boolean(entity.data);
 }
 
+function backupLocalSnapshotIfMeaningful() {
+  const snapshot = getLocalStorageSnapshot();
+  if (!snapshotHasMeaningfulData(snapshot)) return;
+
+  const currentBackup = getStoredBackupSnapshot();
+  if (
+    currentBackup &&
+    getSnapshotUpdatedAt(currentBackup) >= getSnapshotUpdatedAt(snapshot)
+  ) {
+    return;
+  }
+
+  writeJson(STORAGE_BACKUP_KEY, snapshot);
+}
+
+function canApplyIncomingEntityState(entityKey: EntityKey, entity: EntityStatePayload) {
+  const localEntity = getLocalEntityState(entityKey);
+
+  if (entityHasMeaningfulData(entity)) {
+    return true;
+  }
+
+  return !entityHasMeaningfulData(localEntity);
+}
+
 function dispatchPersistenceEvents(entityKey?: EntityKey) {
   if (!entityKey || entityKey === "analyses") {
     window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
@@ -206,12 +254,19 @@ function dispatchPersistenceEvents(entityKey?: EntityKey) {
 
 export function applyEntityState(entityKey: EntityKey, entity: EntityStatePayload) {
   const config = ENTITY_CONFIG[entityKey];
+  if (!canApplyIncomingEntityState(entityKey, entity)) {
+    return false;
+  }
+
+  backupLocalSnapshotIfMeaningful();
   setEntityMetadata(entityKey, entity.metadata);
   writeJson(config.storageKey, entity.data);
   dispatchPersistenceEvents(entityKey);
+  return true;
 }
 
 export function applyStorageSnapshot(snapshot: StorageSnapshotPayload) {
+  backupLocalSnapshotIfMeaningful();
   setSnapshotMetadata(snapshot.metadata);
 
   (Object.keys(ENTITY_CONFIG) as EntityKey[]).forEach((entityKey) => {
@@ -328,6 +383,22 @@ async function fetchAnalysisRecordsFromServer() {
   };
 }
 
+async function fetchMultipleRecordsFromServer() {
+  const response = await fetch(buildApiUrl("/storage/multiples"));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch multiples (${response.status})`);
+  }
+
+  return (await response.json()) as {
+    multiples: Array<{
+      id: string;
+      payload: Record<string, unknown>;
+      created_at?: string | null;
+      updated_at?: string | null;
+    }>;
+  };
+}
+
 export async function hydrateAnalysesFromServer() {
   const localAnalyses = readJson<unknown[]>(ANALYSES_KEY, []);
 
@@ -336,6 +407,7 @@ export async function hydrateAnalysesFromServer() {
     const remoteAnalyses = data.analyses.map((record) => record.payload);
 
     if (remoteAnalyses.length > 0) {
+      backupLocalSnapshotIfMeaningful();
       applyAnalysesList(remoteAnalyses);
       setEntityMetadata("analyses", {
         schema_version: 1,
@@ -343,6 +415,7 @@ export async function hydrateAnalysesFromServer() {
         client_id: getClientId(),
         entity_key: "analyses",
       });
+      queueEntitySync("analyses");
       return { hydrated: true, source: "analysis-records" as const };
     }
 
@@ -395,27 +468,11 @@ export function persistAnalysisRecord(analysis: AnalysisRecordPayload) {
 }
 
 export function deleteAnalysisRecord(analysisId: string) {
-  fetch(buildApiUrl(`/storage/analyses/${analysisId}`), {
+  return fetch(buildApiUrl(`/storage/analyses/${analysisId}`), {
     method: "DELETE",
   }).catch(() => {
     // Keep local delete path non-blocking if backend is unavailable.
   });
-}
-
-async function fetchMultipleRecordsFromServer() {
-  const response = await fetch(buildApiUrl("/storage/multiples"));
-  if (!response.ok) {
-    throw new Error(`Failed to fetch multiples (${response.status})`);
-  }
-
-  return (await response.json()) as {
-    multiples: Array<{
-      id: string;
-      payload: Record<string, unknown>;
-      created_at?: string | null;
-      updated_at?: string | null;
-    }>;
-  };
 }
 
 export async function hydrateMultiplesFromServer() {
@@ -426,6 +483,7 @@ export async function hydrateMultiplesFromServer() {
     const remoteMultiples = data.multiples.map((record) => record.payload);
 
     if (remoteMultiples.length > 0) {
+      backupLocalSnapshotIfMeaningful();
       writeJson(MULTIPLES_KEY, remoteMultiples);
       dispatchPersistenceEvents("multiples");
       setEntityMetadata("multiples", {
@@ -434,6 +492,7 @@ export async function hydrateMultiplesFromServer() {
         client_id: getClientId(),
         entity_key: "multiples",
       });
+      queueEntitySync("multiples");
       return { hydrated: true, source: "multiple-records" as const };
     }
 
@@ -486,7 +545,7 @@ export function persistMultipleRecord(multiple: MultipleRecordPayload) {
 }
 
 export function deleteMultipleRecord(multipleId: string) {
-  fetch(buildApiUrl(`/storage/multiples/${multipleId}`), {
+  return fetch(buildApiUrl(`/storage/multiples/${multipleId}`), {
     method: "DELETE",
   }).catch(() => {
     // Keep local delete path non-blocking if backend is unavailable.
@@ -506,11 +565,12 @@ export function queueStorageSnapshotSync() {
     persistInFlight = true;
     try {
       const outbound = buildOutboundSnapshot();
-      setSnapshotMetadata(outbound.metadata);
       const result = await persistSnapshotToServer(outbound);
 
       if (result.ignored_due_to_staleness) {
         applyStorageSnapshot(result.snapshot);
+      } else {
+        setSnapshotMetadata(outbound.metadata);
       }
     } catch {
       // Keep local cache usable even if backend sync is unavailable.
@@ -535,11 +595,12 @@ export function queueEntitySync(entityKey: EntityKey) {
     entitySyncInFlight.add(entityKey);
     try {
       const outbound = buildOutboundEntityState(entityKey);
-      setEntityMetadata(entityKey, outbound.metadata);
       const result = await persistEntityToServer(entityKey, outbound);
 
       if (result.ignored_due_to_staleness) {
         applyEntityState(entityKey, result.entity);
+      } else {
+        setEntityMetadata(entityKey, outbound.metadata);
       }
     } catch {
       // Keep local cache usable even if backend sync is unavailable.
@@ -554,6 +615,7 @@ export function queueEntitySync(entityKey: EntityKey) {
 }
 
 async function hydrateEntitiesFromServer() {
+  backupLocalSnapshotIfMeaningful();
   const response = await fetch(buildApiUrl("/storage/entities"));
   if (!response.ok) {
     throw new Error(`Failed to hydrate entity storage (${response.status})`);
@@ -567,10 +629,15 @@ async function hydrateEntitiesFromServer() {
   const entityKeys = Object.keys(ENTITY_CONFIG) as EntityKey[];
   let anyRemoteApplied = false;
   let anyLocalPushed = false;
+  let anyRemoteMeaningful = false;
 
   for (const entityKey of entityKeys) {
     const remoteEntity = remoteEntities[entityKey];
     const localEntity = getLocalEntityState(entityKey);
+
+    if (remoteEntity && entityHasMeaningfulData(remoteEntity)) {
+      anyRemoteMeaningful = true;
+    }
 
     if (
       remoteEntity &&
@@ -584,13 +651,13 @@ async function hydrateEntitiesFromServer() {
 
     if (entityHasMeaningfulData(localEntity)) {
       const outbound = buildOutboundEntityState(entityKey);
-      setEntityMetadata(entityKey, outbound.metadata);
       const result = await persistEntityToServer(entityKey, outbound);
 
       if (result.ignored_due_to_staleness) {
         applyEntityState(entityKey, result.entity);
         anyRemoteApplied = true;
       } else {
+        setEntityMetadata(entityKey, outbound.metadata);
         anyLocalPushed = true;
       }
     }
@@ -598,12 +665,32 @@ async function hydrateEntitiesFromServer() {
 
   if (anyRemoteApplied) return { hydrated: true, source: "remote-entities" as const };
   if (anyLocalPushed) return { hydrated: true, source: "local-entities-pushed" as const };
+  if (!anyRemoteMeaningful) {
+    const backupSnapshot = getStoredBackupSnapshot();
+    if (backupSnapshot && snapshotHasMeaningfulData(backupSnapshot)) {
+      applyStorageSnapshot(backupSnapshot);
+      return { hydrated: true, source: "backup-restored" as const };
+    }
+  }
   return { hydrated: true, source: "empty-entities" as const };
 }
 
 export async function hydrateStorageFromServer() {
   try {
-    return await hydrateEntitiesFromServer();
+    const entityResult = await hydrateEntitiesFromServer();
+
+    const currentAnalyses = readJson<unknown[]>(ANALYSES_KEY, []);
+    const currentMultiples = readJson<unknown[]>(MULTIPLES_KEY, []);
+
+    if (currentAnalyses.length === 0) {
+      await hydrateAnalysesFromServer();
+    }
+
+    if (currentMultiples.length === 0) {
+      await hydrateMultiplesFromServer();
+    }
+
+    return entityResult;
   } catch {
     try {
       const response = await fetch(buildApiUrl("/storage/snapshot"));
@@ -614,6 +701,7 @@ export async function hydrateStorageFromServer() {
       const data = (await response.json()) as { snapshot: StorageSnapshotPayload };
       const remoteSnapshot = data.snapshot;
       const localSnapshot = getLocalStorageSnapshot();
+      backupLocalSnapshotIfMeaningful();
 
       if (
         snapshotHasMeaningfulData(remoteSnapshot) &&
@@ -625,13 +713,30 @@ export async function hydrateStorageFromServer() {
 
       if (snapshotHasMeaningfulData(localSnapshot)) {
         const outbound = buildOutboundSnapshot();
-        setSnapshotMetadata(outbound.metadata);
         const result = await persistSnapshotToServer(outbound);
         if (result.ignored_due_to_staleness) {
           applyStorageSnapshot(result.snapshot);
           return { hydrated: true, source: "remote-snapshot-won" as const };
         }
+        setSnapshotMetadata(outbound.metadata);
         return { hydrated: true, source: "local-snapshot-pushed" as const };
+      }
+
+      const backupSnapshot = getStoredBackupSnapshot();
+      if (backupSnapshot && snapshotHasMeaningfulData(backupSnapshot)) {
+        applyStorageSnapshot(backupSnapshot);
+        return { hydrated: true, source: "backup-restored" as const };
+      }
+
+      const currentAnalyses = readJson<unknown[]>(ANALYSES_KEY, []);
+      const currentMultiples = readJson<unknown[]>(MULTIPLES_KEY, []);
+
+      if (currentAnalyses.length === 0) {
+        await hydrateAnalysesFromServer();
+      }
+
+      if (currentMultiples.length === 0) {
+        await hydrateMultiplesFromServer();
       }
 
       return { hydrated: true, source: "empty" as const };
@@ -642,3 +747,85 @@ export async function hydrateStorageFromServer() {
 }
 
 export { PERSISTENCE_HYDRATED_EVENT };
+
+export async function resetAllScorelabData() {
+  try {
+    const response = await fetch(buildApiUrl("/storage/reset"), {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      throw new Error(`Reset endpoint unavailable (${response.status})`);
+    }
+  } catch {
+    try {
+      const analysesResponse = await fetchAnalysisRecordsFromServer();
+      await Promise.all(
+        analysesResponse.analyses.map((analysis) => deleteAnalysisRecord(analysis.id))
+      );
+    } catch {
+      // Keep going with local reset fallback.
+    }
+
+    try {
+      const multiplesResponse = await fetchMultipleRecordsFromServer();
+      await Promise.all(
+        multiplesResponse.multiples.map((multiple) => deleteMultipleRecord(multiple.id))
+      );
+    } catch {
+      // Keep going with local reset fallback.
+    }
+
+    const emptySnapshot = {
+      metadata: {
+        schema_version: 1,
+        updated_at: new Date().toISOString(),
+        client_id: getClientId(),
+      },
+      analyses: [],
+      multiples: [],
+      multiple_draft: [],
+      bankroll_settings: {},
+      roadmap_settings: {},
+      roadmap_day_memories: [],
+      roadmap_missions: [],
+    } satisfies StorageSnapshotPayload;
+
+    await Promise.allSettled(
+      (Object.keys(ENTITY_CONFIG) as EntityKey[]).map((entityKey) =>
+        persistEntityToServer(entityKey, {
+          metadata: {
+            schema_version: 1,
+            updated_at: emptySnapshot.metadata.updated_at,
+            client_id: emptySnapshot.metadata.client_id,
+            entity_key: entityKey,
+          },
+          data: emptySnapshot[entityKey],
+        })
+      )
+    );
+
+    await Promise.allSettled([
+      persistSnapshotToServer(emptySnapshot),
+    ]);
+  }
+
+  if (typeof window !== "undefined") {
+    if (queuedPersistTimeout !== null) {
+      window.clearTimeout(queuedPersistTimeout);
+      queuedPersistTimeout = null;
+    }
+
+    queuedEntityTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+  }
+
+  persistInFlight = false;
+  entitySyncInFlight.clear();
+  queuedEntityTimeouts.clear();
+
+  LOCAL_RESET_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+  });
+  clearEntityMetadata();
+
+  dispatchPersistenceEvents();
+}

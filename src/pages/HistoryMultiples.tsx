@@ -49,8 +49,9 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
     >
+      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
@@ -83,7 +84,7 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
       <div className="mb-2 h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
         {label}
@@ -101,7 +102,7 @@ function InlineStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
         {label}
       </p>
@@ -523,7 +524,7 @@ export default function HistoryMultiples() {
                     visibleSavedMultiples.map((multiple) => (
                       <div
                         key={multiple.id}
-                        className="overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
+                        className="scorelab-board-3d scorelab-tilt-3d overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
                       >
                         <div className="flex flex-col gap-4">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

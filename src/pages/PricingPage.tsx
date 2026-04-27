@@ -2,7 +2,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const plans = [
   {
@@ -44,7 +43,7 @@ export default function PricingPage() {
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`rounded-xl p-6 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${
+              className={`scorelab-stage-3d scorelab-board-3d scorelab-tilt-3d rounded-xl p-6 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${
                 plan.highlighted ? "bg-card ring-2 ring-primary/30 relative" : "bg-card ring-surface"
               }`}
             >

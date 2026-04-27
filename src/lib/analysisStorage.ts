@@ -6,6 +6,7 @@ import {
   persistAnalysisRecord,
   queueEntitySync,
 } from "@/lib/persistenceSync";
+import type { TrackedAnalysisBet, TrackedBet } from "@/types/analysis";
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
@@ -20,6 +21,21 @@ interface StoredMultipleForBankroll {
     profitLoss: number;
   };
 }
+
+export interface AnalysisTrackingEntry {
+  analysisId: string;
+  betId: string;
+  isPrimary: boolean;
+  label: string;
+  createdAt: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  tracking: TrackedAnalysisBet;
+  analysis: SavedAnalysis;
+}
+
+const PRIMARY_TRACKING_BET_ID = "primary";
 
 export interface BankrollSettings {
   initialBankroll: number;
@@ -47,8 +63,10 @@ export interface MarketPerformanceItem {
   reds: number;
   voids: number;
   pending: number;
+  totalStake: number;
   profitLoss: number;
   hitRate: number;
+  roi: number;
 }
 
 export interface DailyPerformanceItem {
@@ -129,6 +147,26 @@ function normalizeMarketName(market: string | null | undefined): string | null {
   return market;
 }
 
+function createTrackingBetId() {
+  return `bet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeTrackingBet(
+  tracking: TrackedBet | TrackedAnalysisBet,
+  fallbackId = createTrackingBetId()
+): TrackedAnalysisBet {
+  return {
+    ...tracking,
+    id:
+      typeof tracking.id === "string" && tracking.id.trim().length > 0
+        ? tracking.id
+        : fallbackId,
+    settledAt:
+      typeof tracking.settledAt === "string" ? tracking.settledAt : null,
+    selectedMarket: normalizeMarketName(tracking.selectedMarket),
+  };
+}
+
 function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
   const legacySource = analysis as SavedAnalysis & {
     liga?: string;
@@ -153,14 +191,12 @@ function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
       ...result,
       market: normalizeMarketName(result.market) || result.market,
     })),
-    tracking: {
-      ...analysis.tracking,
-      settledAt:
-        typeof analysis.tracking.settledAt === "string"
-          ? analysis.tracking.settledAt
-          : null,
-      selectedMarket: normalizeMarketName(analysis.tracking.selectedMarket),
-    },
+    tracking: normalizeTrackingBet(analysis.tracking, PRIMARY_TRACKING_BET_ID),
+    extraBets: Array.isArray(analysis.extraBets)
+      ? analysis.extraBets.map((bet, index) =>
+          normalizeTrackingBet(bet, `extra-${index + 1}`)
+        )
+      : [],
   };
 }
 
@@ -182,6 +218,33 @@ export function getAnalyses(): SavedAnalysis[] {
   } catch {
     return [];
   }
+}
+
+export function getAnalysisTrackingEntries(
+  analysis: SavedAnalysis
+): AnalysisTrackingEntry[] {
+  const primary = normalizeTrackingBet(analysis.tracking, PRIMARY_TRACKING_BET_ID);
+  const extraBets = Array.isArray(analysis.extraBets) ? analysis.extraBets : [];
+
+  return [primary, ...extraBets.map((bet) => normalizeTrackingBet(bet))]
+    .map((tracking, index) => ({
+      analysisId: analysis.id,
+      betId: tracking.id,
+      isPrimary: tracking.id === PRIMARY_TRACKING_BET_ID,
+      label: `Bet ${index + 1}`,
+      createdAt: analysis.createdAt,
+      league: analysis.league,
+      homeTeam: analysis.homeTeam,
+      awayTeam: analysis.awayTeam,
+      tracking,
+      analysis,
+    }));
+}
+
+export function getAllAnalysisTrackingEntries(
+  analyses: SavedAnalysis[] = getAnalyses()
+): AnalysisTrackingEntry[] {
+  return analyses.flatMap((analysis) => getAnalysisTrackingEntries(analysis));
 }
 
 export function saveAnalysis(analysis: SavedAnalysis): void {
@@ -236,6 +299,91 @@ export function updateAnalysisTracking(
       tracking: recalculatedTracking,
     };
   });
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export function updateTrackedBet(
+  analysisId: string,
+  betId: string,
+  updates: Partial<TrackedBet>
+): SavedAnalysis[] {
+  const analyses = getAnalyses();
+
+  const updated = analyses.map((analysis) => {
+    if (analysis.id !== analysisId) return analysis;
+
+    if (betId === PRIMARY_TRACKING_BET_ID) {
+      const mergedTracking = {
+        ...analysis.tracking,
+        ...updates,
+      };
+
+      return {
+        ...analysis,
+        tracking: recalculateTracking(mergedTracking),
+      };
+    }
+
+    const extraBets = (analysis.extraBets || []).map((bet) =>
+      bet.id === betId
+        ? recalculateTracking({
+            ...bet,
+            ...updates,
+          })
+        : bet
+    );
+
+    return {
+      ...analysis,
+      extraBets,
+    };
+  });
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export function addExtraTrackedBet(
+  analysisId: string,
+  seed?: Partial<TrackedBet>
+): SavedAnalysis[] {
+  const analyses = getAnalyses();
+  const updated = analyses.map((analysis) => {
+    if (analysis.id !== analysisId) return analysis;
+
+    const nextBet = normalizeTrackingBet(
+      recalculateTracking({
+        ...createEmptyTracking(),
+        ...seed,
+      }),
+      createTrackingBetId()
+    );
+
+    return {
+      ...analysis,
+      extraBets: [...(analysis.extraBets || []), nextBet],
+    };
+  });
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export function deleteExtraTrackedBet(
+  analysisId: string,
+  betId: string
+): SavedAnalysis[] {
+  const analyses = getAnalyses();
+  const updated = analyses.map((analysis) =>
+    analysis.id === analysisId
+      ? {
+          ...analysis,
+          extraBets: (analysis.extraBets || []).filter((bet) => bet.id !== betId),
+        }
+      : analysis
+  );
 
   overwriteAnalyses(updated);
   return updated;
@@ -313,7 +461,10 @@ export function getBankrollStats(): BankrollStats {
   const { initialBankroll } = getBankrollSettings();
 
   return buildFinancialSnapshot({
-    analyses,
+    analyses: getAllAnalysisTrackingEntries(analyses).map((entry) => ({
+      createdAt: entry.createdAt,
+      tracking: entry.tracking,
+    })),
     multiples,
     initialBankroll,
   }).stats;
@@ -343,19 +494,27 @@ export function calculateNextBankrollBefore(): number {
   return stats.currentBankroll;
 }
 
-export function getMarketPerformance(): MarketPerformanceItem[] {
-  const analyses = getAnalyses();
+function getSelectedResultForEntry(entry: AnalysisTrackingEntry) {
+  if (!entry.tracking.selectedMarket) return null;
 
-  const placedBets = analyses.filter(
-    (analysis) => analysis.tracking.betPlaced && analysis.tracking.selectedMarket
+  return (
+    entry.analysis.results.find(
+      (result) => result.market === entry.tracking.selectedMarket
+    ) || null
+  );
+}
+
+export function getMarketPerformance(): MarketPerformanceItem[] {
+  const placedBets = getAllAnalysisTrackingEntries().filter(
+    (entry) => entry.tracking.betPlaced && entry.tracking.selectedMarket
   );
 
   const marketMap = new Map<string, MarketPerformanceItem>();
 
-  placedBets.forEach((analysis) => {
-    const market = analysis.tracking.selectedMarket!;
-    const status = analysis.tracking.resultStatus;
-    const profitLoss = analysis.tracking.profitLoss || 0;
+  placedBets.forEach((entry) => {
+    const market = entry.tracking.selectedMarket!;
+    const status = entry.tracking.resultStatus;
+    const profitLoss = entry.tracking.profitLoss || 0;
 
     const existing = marketMap.get(market) || {
       market,
@@ -364,11 +523,14 @@ export function getMarketPerformance(): MarketPerformanceItem[] {
       reds: 0,
       voids: 0,
       pending: 0,
+      totalStake: 0,
       profitLoss: 0,
       hitRate: 0,
+      roi: 0,
     };
 
     existing.bets += 1;
+    existing.totalStake += entry.tracking.stakeUsed || 0;
     existing.profitLoss += profitLoss;
 
     if (status === "green") existing.greens += 1;
@@ -378,6 +540,8 @@ export function getMarketPerformance(): MarketPerformanceItem[] {
 
     const settled = existing.greens + existing.reds;
     existing.hitRate = settled > 0 ? (existing.greens / settled) * 100 : 0;
+    existing.roi =
+      existing.totalStake > 0 ? (existing.profitLoss / existing.totalStake) * 100 : 0;
 
     marketMap.set(market, existing);
   });
@@ -388,16 +552,15 @@ export function getMarketPerformance(): MarketPerformanceItem[] {
 }
 
 export function getDailyPerformance(): DailyPerformanceItem[] {
-  const analyses = getAnalyses();
   const { initialBankroll } = getBankrollSettings();
 
-  const settledAnalyses = analyses
+  const settledAnalyses = getAllAnalysisTrackingEntries()
     .filter(
-      (analysis) =>
-        analysis.tracking.betPlaced &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void")
+      (entry) =>
+        entry.tracking.betPlaced &&
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red" ||
+          entry.tracking.resultStatus === "void")
     )
     .sort(
       (a, b) =>
@@ -451,29 +614,26 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
 }
 
 function getSettledBetsWithContext() {
-  const analyses = getAnalyses();
-
-  return analyses
+  return getAllAnalysisTrackingEntries()
     .filter(
-      (analysis) =>
-        analysis.tracking.betPlaced &&
-        analysis.tracking.selectedMarket &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void")
+      (entry) =>
+        entry.tracking.betPlaced &&
+        entry.tracking.selectedMarket &&
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red" ||
+          entry.tracking.resultStatus === "void")
     )
-    .map((analysis) => {
-      const selectedMarket = analysis.tracking.selectedMarket!;
-      const selectedResult =
-        analysis.results.find((r) => r.market === selectedMarket) || null;
+    .map((entry) => {
+      const selectedMarket = entry.tracking.selectedMarket!;
+      const selectedResult = getSelectedResultForEntry(entry);
 
       return {
-        analysis,
+        analysis: entry.analysis,
         selectedResult,
         market: selectedMarket,
-        stake: analysis.tracking.stakeUsed || 0,
-        profitLoss: analysis.tracking.profitLoss || 0,
-        status: analysis.tracking.resultStatus,
+        stake: entry.tracking.stakeUsed || 0,
+        profitLoss: entry.tracking.profitLoss || 0,
+        status: entry.tracking.resultStatus,
       };
     })
     .sort(
@@ -681,39 +841,7 @@ export function getBestPerformingZone(): BestPerformingZone {
   const bestMarket =
     validMarkets.length > 0
       ? validMarkets.reduce((best, current) => {
-          const currentRoi =
-            current.bets > 0
-              ? (current.profitLoss /
-                  Math.max(
-                    1,
-                    getAnalyses()
-                      .filter(
-                        (a) =>
-                          a.tracking.betPlaced &&
-                          a.tracking.selectedMarket === current.market
-                      )
-                      .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
-                )) *
-                100
-              : 0;
-
-          const bestRoi =
-            best.bets > 0
-              ? (best.profitLoss /
-                  Math.max(
-                    1,
-                    getAnalyses()
-                      .filter(
-                        (a) =>
-                          a.tracking.betPlaced &&
-                          a.tracking.selectedMarket === best.market
-                      )
-                      .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
-                )) *
-                100
-              : 0;
-
-          return currentRoi > bestRoi ? current : best;
+          return current.roi > best.roi ? current : best;
         })
       : null;
 
@@ -739,22 +867,7 @@ export function getBestPerformingZone(): BestPerformingZone {
     bestMarket: bestMarket
       ? {
           market: bestMarket.market,
-          roi: Number(
-            (
-              (bestMarket.profitLoss /
-                Math.max(
-                  1,
-                  getAnalyses()
-                    .filter(
-                      (a) =>
-                        a.tracking.betPlaced &&
-                        a.tracking.selectedMarket === bestMarket.market
-                    )
-                    .reduce((acc, a) => acc + (a.tracking.stakeUsed || 0), 0)
-                )) *
-              100
-            ).toFixed(2)
-          ),
+          roi: Number(bestMarket.roi.toFixed(2)),
           bets: bestMarket.bets,
           profitLoss: Number(bestMarket.profitLoss.toFixed(2)),
         }

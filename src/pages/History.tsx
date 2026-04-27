@@ -8,8 +8,12 @@ import { buildApiUrl } from "@/lib/apiConfig";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ANALYSES_UPDATED_EVENT,
+  addExtraTrackedBet,
+  deleteExtraTrackedBet,
   getAnalyses,
+  getAnalysisTrackingEntries,
   updateAnalysisTracking,
+  updateTrackedBet,
   deleteAnalysis,
 } from "@/lib/analysisStorage";
 import {
@@ -19,7 +23,7 @@ import {
   getMultipleDraft,
   getSavedMultiples,
 } from "@/lib/multipleStorage";
-import type { SavedAnalysis, BetStatus } from "@/types/analysis";
+import type { SavedAnalysis, BetStatus, TrackedAnalysisBet } from "@/types/analysis";
 import { useSearchParams } from "react-router-dom";
 
 interface HistoryAISummary {
@@ -124,8 +128,9 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
     >
+      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
@@ -160,7 +165,7 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
       <div className="mb-2 h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
         {label}
@@ -178,7 +183,7 @@ function InlineStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
         {label}
       </p>
@@ -224,7 +229,7 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+    <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
       <div className="mb-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
           {title}
@@ -246,7 +251,7 @@ function InputField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+    <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
       <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
         {label}
       </label>
@@ -255,9 +260,7 @@ function InputField({
   );
 }
 
-function needsTrackingAttention(analysis: SavedAnalysis) {
-  const tracking = analysis.tracking;
-
+function needsTrackedBetAttention(tracking: TrackedAnalysisBet) {
   if (!tracking.betPlaced) return false;
   if (!tracking.selectedMarket) return true;
   if (tracking.stakeUsed === null || tracking.stakeUsed <= 0) return true;
@@ -265,8 +268,7 @@ function needsTrackingAttention(analysis: SavedAnalysis) {
   return false;
 }
 
-function getTrackingMissingFields(analysis: SavedAnalysis) {
-  const tracking = analysis.tracking;
+function getTrackedBetMissingFields(tracking: TrackedAnalysisBet) {
   const missing: string[] = [];
 
   if (!tracking.betPlaced) return missing;
@@ -456,7 +458,9 @@ export default function History() {
     return Array.from(
       new Set(
         safeAnalyses
-          .map((analysis) => analysis.tracking.selectedMarket)
+          .flatMap((analysis) =>
+            getAnalysisTrackingEntries(analysis).map((entry) => entry.tracking.selectedMarket)
+          )
           .filter(Boolean)
       )
     ) as string[];
@@ -467,7 +471,10 @@ export default function History() {
 
     items = items.filter((analysis) => {
       const match = `${analysis.homeTeam} vs ${analysis.awayTeam}`.toLowerCase();
-      const market = (analysis.tracking.selectedMarket || "").toLowerCase();
+      const trackedEntries = getAnalysisTrackingEntries(analysis);
+      const trackedMarkets = trackedEntries
+        .map((entry) => (entry.tracking.selectedMarket || "").toLowerCase())
+        .filter(Boolean);
       const search = searchTerm.trim().toLowerCase();
 
       const matchesSearch =
@@ -475,28 +482,31 @@ export default function History() {
         match.includes(search) ||
         analysis.homeTeam.toLowerCase().includes(search) ||
         analysis.awayTeam.toLowerCase().includes(search) ||
-        market.includes(search);
+        trackedMarkets.some((market) => market.includes(search));
 
       if (!matchesSearch) return false;
 
       if (
         statusFilter !== "all" &&
-        analysis.tracking.resultStatus !== statusFilter
+        !trackedEntries.some((entry) => entry.tracking.resultStatus === statusFilter)
       ) {
         return false;
       }
 
-      if (betPlacedFilter === "placed" && !analysis.tracking.betPlaced) {
+      if (betPlacedFilter === "placed" && !trackedEntries.some((entry) => entry.tracking.betPlaced)) {
         return false;
       }
 
-      if (betPlacedFilter === "not-placed" && analysis.tracking.betPlaced) {
+      if (
+        betPlacedFilter === "not-placed" &&
+        trackedEntries.some((entry) => entry.tracking.betPlaced)
+      ) {
         return false;
       }
 
       if (
         marketFilter !== "all" &&
-        analysis.tracking.selectedMarket !== marketFilter
+        !trackedEntries.some((entry) => entry.tracking.selectedMarket === marketFilter)
       ) {
         return false;
       }
@@ -526,7 +536,15 @@ export default function History() {
       }
 
       if (sortBy === "profitLoss") {
-        return (b.tracking.profitLoss || 0) - (a.tracking.profitLoss || 0);
+        const aProfit = getAnalysisTrackingEntries(a).reduce(
+          (sum, entry) => sum + (entry.tracking.profitLoss || 0),
+          0
+        );
+        const bProfit = getAnalysisTrackingEntries(b).reduce(
+          (sum, entry) => sum + (entry.tracking.profitLoss || 0),
+          0
+        );
+        return bProfit - aProfit;
       }
 
       if (sortBy === "edge") {
@@ -619,21 +637,29 @@ export default function History() {
 
   const handleTrackingChange = (
     analysisId: string,
+    betId: string,
     updates: Partial<SavedAnalysis["tracking"]>
   ) => {
-    const updatedAnalyses = updateAnalysisTracking(analysisId, updates);
+    const updatedAnalyses =
+      betId === "primary"
+        ? updateAnalysisTracking(analysisId, updates)
+        : updateTrackedBet(analysisId, betId, updates);
     setAnalyses(updatedAnalyses);
   };
 
-  const handleBetPlacedToggle = (analysis: SavedAnalysis, betPlaced: boolean) => {
+  const handleBetPlacedToggle = (
+    analysis: SavedAnalysis,
+    betId: string,
+    betPlaced: boolean
+  ) => {
     if (!betPlaced) {
-      handleTrackingChange(analysis.id, { betPlaced: false });
+      handleTrackingChange(analysis.id, betId, { betPlaced: false });
       return;
     }
 
     const bestBet = getBestBet(analysis.results);
 
-    handleTrackingChange(analysis.id, {
+    handleTrackingChange(analysis.id, betId, {
       betPlaced: true,
       selectedMarket: bestBet?.market ?? null,
       stakeUsed: bestBet ? Number(bestBet.stake.toFixed(2)) : null,
@@ -643,28 +669,46 @@ export default function History() {
 
   const handleSelectedMarketChange = (
     analysis: SavedAnalysis,
+    betId: string,
     selectedMarket: string
   ) => {
     const selectedResult =
       analysis.results.find((result) => result.market === selectedMarket) || null;
 
-    handleTrackingChange(analysis.id, {
+    handleTrackingChange(analysis.id, betId, {
       selectedMarket: selectedMarket || null,
       oddUsed: selectedResult ? Number(selectedResult.odds.toFixed(2)) : null,
       stakeUsed: selectedResult ? Number(selectedResult.stake.toFixed(2)) : null,
     });
   };
 
-  const autofillTrackingFromBestBet = (analysis: SavedAnalysis) => {
+  const autofillTrackingFromBestBet = (analysis: SavedAnalysis, betId = "primary") => {
     const bestBet = getBestBet(analysis.results);
     if (!bestBet) return;
 
-    handleTrackingChange(analysis.id, {
+    handleTrackingChange(analysis.id, betId, {
       betPlaced: true,
       selectedMarket: bestBet.market,
       oddUsed: Number(bestBet.odds.toFixed(2)),
       stakeUsed: Number(bestBet.stake.toFixed(2)),
     });
+  };
+
+  const handleAddSecondBet = (analysis: SavedAnalysis) => {
+    const bestBet = getBestBet(analysis.results);
+    const updatedAnalyses = addExtraTrackedBet(analysis.id, {
+      betPlaced: true,
+      selectedMarket: bestBet?.market ?? null,
+      stakeUsed: bestBet ? Number(bestBet.stake.toFixed(2)) : null,
+      oddUsed: bestBet ? Number(bestBet.odds.toFixed(2)) : null,
+    });
+    setAnalyses(updatedAnalyses);
+    setExpandedIds((prev) => (prev.includes(analysis.id) ? prev : [...prev, analysis.id]));
+  };
+
+  const handleDeleteTrackedBet = (analysis: SavedAnalysis, betId: string) => {
+    const updatedAnalyses = deleteExtraTrackedBet(analysis.id, betId);
+    setAnalyses(updatedAnalyses);
   };
 
   const handleDeleteAnalysis = (analysisId: string, matchLabel: string) => {
@@ -696,49 +740,52 @@ export default function History() {
   };
 
   const summary = useMemo(() => {
+    const trackedEntries = filteredAnalyses.flatMap((analysis) =>
+      getAnalysisTrackingEntries(analysis)
+    );
     const total = filteredAnalyses.length;
-    const placed = filteredAnalyses.filter((a) => a.tracking.betPlaced).length;
-    const settled = filteredAnalyses.filter((a) =>
-      ["green", "red", "void"].includes(a.tracking.resultStatus)
+    const placed = trackedEntries.filter((entry) => entry.tracking.betPlaced).length;
+    const settled = trackedEntries.filter((entry) =>
+      ["green", "red", "void"].includes(entry.tracking.resultStatus)
     ).length;
-    const greens = filteredAnalyses.filter(
-      (a) => a.tracking.resultStatus === "green"
+    const greens = trackedEntries.filter(
+      (entry) => entry.tracking.resultStatus === "green"
     ).length;
-    const reds = filteredAnalyses.filter(
-      (a) => a.tracking.resultStatus === "red"
+    const reds = trackedEntries.filter(
+      (entry) => entry.tracking.resultStatus === "red"
     ).length;
-    const needsUpdate = filteredAnalyses.filter(needsTrackingAttention).length;
+    const needsUpdate = trackedEntries.filter((entry) =>
+      needsTrackedBetAttention(entry.tracking)
+    ).length;
 
     return { total, placed, settled, greens, reds, needsUpdate };
   }, [filteredAnalyses]);
 
   const historyAiPayload = useMemo<HistoryAISummaryPayload>(() => {
-    const viewBets = filteredAnalyses.filter((analysis) => analysis.tracking.betPlaced);
-    const settledBets = viewBets.filter((analysis) =>
-      ["green", "red", "void"].includes(analysis.tracking.resultStatus)
+    const trackedEntries = filteredAnalyses.flatMap((analysis) =>
+      getAnalysisTrackingEntries(analysis)
+    );
+    const viewBets = trackedEntries.filter((entry) => entry.tracking.betPlaced);
+    const settledBets = viewBets.filter((entry) =>
+      ["green", "red", "void"].includes(entry.tracking.resultStatus)
     );
     const pendingBets = viewBets.filter(
-      (analysis) => analysis.tracking.resultStatus === "pending"
+      (entry) => entry.tracking.resultStatus === "pending"
     );
 
-    const displayResults = filteredAnalyses
-      .map((analysis) => {
-        const result = analysis.tracking.selectedMarket
-          ? analysis.results.find((entry) => entry.market === analysis.tracking.selectedMarket)
-          : getBestBet(analysis.results);
+    const displayResults = viewBets
+      .map((entry) => {
+        const result = entry.tracking.selectedMarket
+          ? entry.analysis.results.find((item) => item.market === entry.tracking.selectedMarket)
+          : getBestBet(entry.analysis.results);
 
-        return result
-          ? {
-              analysis,
-              result,
-            }
-          : null;
+        return result ? { entry, result } : null;
       })
       .filter(
         (
           item
         ): item is {
-          analysis: SavedAnalysis;
+          entry: ReturnType<typeof getAnalysisTrackingEntries>[number];
           result: NonNullable<ReturnType<typeof getBestBet>>;
         } => item !== null
       );
@@ -768,8 +815,8 @@ export default function History() {
       }
     >();
 
-    settledBets.forEach((analysis) => {
-      const market = analysis.tracking.selectedMarket;
+    settledBets.forEach((entry) => {
+      const market = entry.tracking.selectedMarket;
       if (!market) return;
 
       const current = marketMap.get(market) || {
@@ -784,10 +831,10 @@ export default function History() {
       };
 
       current.bets += 1;
-      current.profit_loss += analysis.tracking.profitLoss || 0;
-      current.totalStake += analysis.tracking.stakeUsed || 0;
-      if (analysis.tracking.resultStatus === "green") current.greens += 1;
-      if (analysis.tracking.resultStatus === "red") current.reds += 1;
+      current.profit_loss += entry.tracking.profitLoss || 0;
+      current.totalStake += entry.tracking.stakeUsed || 0;
+      if (entry.tracking.resultStatus === "green") current.greens += 1;
+      if (entry.tracking.resultStatus === "red") current.reds += 1;
 
       const settled = current.greens + current.reds;
       current.hit_rate = settled > 0 ? (current.greens / settled) * 100 : 0;
@@ -827,7 +874,11 @@ export default function History() {
       pending_bets: pendingBets.length,
       greens: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "green").length,
       reds: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "red").length,
-      needs_update: filteredAnalyses.filter(needsTrackingAttention).length,
+      needs_update: filteredAnalyses.filter((analysis) =>
+        getAnalysisTrackingEntries(analysis).some((entry) =>
+          needsTrackedBetAttention(entry.tracking)
+        )
+      ).length,
       avg_confidence: Number(avgConfidence.toFixed(1)),
       avg_edge: Number(avgEdge.toFixed(2)),
       filter_summary: filterSummary,
@@ -1237,18 +1288,35 @@ export default function History() {
             </PremiumCard>
           ) : (
             filteredAnalyses.map((analysis) => {
-              const selectedMarketData = analysis.tracking.selectedMarket
+              const trackedEntries = getAnalysisTrackingEntries(analysis);
+              const primaryEntry = trackedEntries[0];
+              const displayBet = primaryEntry?.tracking.selectedMarket
                 ? analysis.results.find(
-                    (r) => r.market === analysis.tracking.selectedMarket
-                  )
-                : null;
-
-              const displayBet = selectedMarketData || getBestBet(analysis.results);
-              const tracking = analysis.tracking;
+                    (r) => r.market === primaryEntry.tracking.selectedMarket
+                  ) || getBestBet(analysis.results)
+                : getBestBet(analysis.results);
               const matchLabel = `${analysis.homeTeam} vs ${analysis.awayTeam}`;
               const isExpanded = expandedIds.includes(analysis.id);
-              const needsAttention = needsTrackingAttention(analysis);
-              const missingFields = getTrackingMissingFields(analysis);
+              const trackedBetCount = trackedEntries.filter((entry) => entry.tracking.betPlaced).length;
+              const totalProfitLoss = trackedEntries.reduce(
+                (sum, entry) => sum + (entry.tracking.profitLoss || 0),
+                0
+              );
+              const openBets = trackedEntries.filter(
+                (entry) =>
+                  entry.tracking.betPlaced && entry.tracking.resultStatus === "pending"
+              ).length;
+              const needsAttention = trackedEntries.some((entry) =>
+                needsTrackedBetAttention(entry.tracking)
+              );
+              const totalMissingFields = trackedEntries.reduce(
+                (sum, entry) =>
+                  sum +
+                  (entry.tracking.betPlaced
+                    ? getTrackedBetMissingFields(entry.tracking).length
+                    : 0),
+                0
+              );
 
               return (
                 <motion.div
@@ -1257,7 +1325,7 @@ export default function History() {
                   ref={(el) => {
                     analysisRefs.current[analysis.id] = el;
                   }}
-                  className={`relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
+                  className={`scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
                     highlightedAnalysisId === analysis.id
                       ? "ring-2 ring-emerald-500/30"
                       : ""
@@ -1282,9 +1350,9 @@ export default function History() {
                                 Needs Update
                               </span>
                             ) : null}
-                            {tracking.betPlaced ? (
+                            {trackedBetCount > 0 ? (
                               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-300">
-                                Bet Tracked
+                                {trackedBetCount} Bet{trackedBetCount > 1 ? "s" : ""} Tracked
                               </span>
                             ) : (
                               <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55">
@@ -1314,7 +1382,7 @@ export default function History() {
                           </div>
                           <div className="flex flex-wrap gap-2 xl:justify-end">
                             <InlineStat
-                              label={tracking.selectedMarket ? "Selected" : "Best"}
+                              label={primaryEntry?.tracking.selectedMarket ? "Primary" : "Best"}
                               value={displayBet ? displayBet.market : "-"}
                             />
                             <InlineStat
@@ -1333,11 +1401,11 @@ export default function History() {
                             />
                             <InlineStat
                               label="P/L"
-                              value={`EUR ${tracking.profitLoss.toFixed(2)}`}
+                              value={`EUR ${totalProfitLoss.toFixed(2)}`}
                             />
                             <InlineStat
-                              label="Status"
-                              value={<span className="capitalize">{tracking.resultStatus}</span>}
+                              label="Open"
+                              value={`${openBets}`}
                             />
                           </div>
                         </div>
@@ -1346,9 +1414,9 @@ export default function History() {
 
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        {tracking.betPlaced && missingFields.length > 0 ? (
+                        {totalMissingFields > 0 ? (
                           <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
-                            Missing: {missingFields.join(", ")}
+                            {totalMissingFields} missing field{totalMissingFields > 1 ? "s" : ""}
                           </span>
                         ) : null}
                         {displayBet ? (
@@ -1363,7 +1431,7 @@ export default function History() {
                             </span>
                           </button>
                         ) : null}
-                        {tracking.betPlaced ? (
+                        {trackedBetCount > 0 ? (
                           <button
                             type="button"
                             onClick={() => autofillTrackingFromBestBet(analysis)}
@@ -1372,6 +1440,13 @@ export default function History() {
                             Quick Fill From Best Bet
                           </button>
                         ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleAddSecondBet(analysis)}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08]"
+                        >
+                          Add Another Bet
+                        </button>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-[13px] text-white/48">
@@ -1401,7 +1476,11 @@ export default function History() {
                         {displayBet && (
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
                             <MetricBlock
-                              label={tracking.selectedMarket ? "Selected Market" : "Best Market"}
+                              label={
+                                primaryEntry?.tracking.selectedMarket
+                                  ? "Primary Market"
+                                  : "Best Market"
+                              }
                               value={displayBet.market}
                             />
                             <MetricBlock
@@ -1427,158 +1506,190 @@ export default function History() {
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                          <DetailSection
-                            title="Tracking Inputs"
-                            description="Update the actual bet details that should feed bankroll and performance."
-                          >
-                            <div className="space-y-3.5">
-                              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                                <label className="flex items-center gap-3 text-sm text-white">
-                                  <input
-                                    type="checkbox"
-                                    checked={tracking.betPlaced}
-                                    onChange={(e) =>
-                                      handleBetPlacedToggle(analysis, e.target.checked)
-                                    }
-                                    className="h-4 w-4 rounded border-white/20 bg-transparent"
-                                  />
-                                  I placed this bet
-                                </label>
-                              </div>
-
-                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <InputField label="Selected Market">
-                                  <select
-                                    value={tracking.selectedMarket ?? ""}
-                                    onChange={(e) =>
-                                      handleSelectedMarketChange(analysis, e.target.value)
-                                    }
-                                    className={`${darkSelectClass} w-full`}
-                                    style={darkSelectStyle}
-                                    disabled={!tracking.betPlaced}
-                                  >
-                                    <option value="" className="bg-slate-900 text-white">
-                                      Select market
-                                    </option>
-                                    {analysis.results.map((result) => (
-                                      <option
-                                        key={result.market}
-                                        value={result.market}
-                                        className="bg-slate-900 text-white"
+                        <div className="space-y-4">
+                          {trackedEntries.map((entry) => {
+                            const tracking = entry.tracking;
+                            const missingFields = getTrackedBetMissingFields(tracking);
+                            return (
+                              <div
+                                key={entry.betId}
+                                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+                              >
+                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                                      {entry.label}
+                                    </p>
+                                    <p className="mt-1 text-sm text-white/55">
+                                      {tracking.selectedMarket || "Select the market you actually placed."}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {missingFields.length > 0 && tracking.betPlaced ? (
+                                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-300">
+                                        Needs update
+                                      </span>
+                                    ) : null}
+                                    {!entry.isPrimary ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteTrackedBet(analysis, entry.betId)}
+                                        className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-red-300 transition hover:bg-red-500/15"
                                       >
-                                        {result.market}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </InputField>
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
 
-                                <InputField label="Result Status">
-                                  <select
-                                    value={tracking.resultStatus}
-                                    onChange={(e) =>
-                                      handleTrackingChange(analysis.id, {
-                                        resultStatus: e.target.value as BetStatus,
-                                      })
-                                    }
-                                    className={`${darkSelectClass} w-full`}
-                                    style={darkSelectStyle}
-                                    disabled={!tracking.betPlaced}
+                                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                                  <DetailSection
+                                    title="Tracking Inputs"
+                                    description="Update the actual details for this specific bet."
                                   >
-                                    <option value="pending" className="bg-slate-900 text-white">
-                                      Pending
-                                    </option>
-                                    <option value="green" className="bg-slate-900 text-white">
-                                      Green
-                                    </option>
-                                    <option value="red" className="bg-slate-900 text-white">
-                                      Red
-                                    </option>
-                                    <option value="void" className="bg-slate-900 text-white">
-                                      Void
-                                    </option>
-                                  </select>
-                                </InputField>
+                                    <div className="space-y-3.5">
+                                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                                        <label className="flex items-center gap-3 text-sm text-white">
+                                          <input
+                                            type="checkbox"
+                                            checked={tracking.betPlaced}
+                                            onChange={(e) =>
+                                              handleBetPlacedToggle(analysis, entry.betId, e.target.checked)
+                                            }
+                                            className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                          />
+                                          I placed this bet
+                                        </label>
+                                      </div>
 
-                                <InputField label="Stake Used">
-                                  <input
-                                    type="number"
-                                    value={tracking.stakeUsed ?? ""}
-                                    onChange={(e) =>
-                                      handleTrackingChange(analysis.id, {
-                                        stakeUsed:
-                                          e.target.value === "" ? null : Number(e.target.value),
-                                      })
-                                    }
-                                    className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                                    disabled={!tracking.betPlaced}
-                                  />
-                                </InputField>
+                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <InputField label="Selected Market">
+                                          <select
+                                            value={tracking.selectedMarket ?? ""}
+                                            onChange={(e) =>
+                                              handleSelectedMarketChange(analysis, entry.betId, e.target.value)
+                                            }
+                                            className={`${darkSelectClass} w-full`}
+                                            style={darkSelectStyle}
+                                            disabled={!tracking.betPlaced}
+                                          >
+                                            <option value="" className="bg-slate-900 text-white">
+                                              Select market
+                                            </option>
+                                            {analysis.results.map((result) => (
+                                              <option
+                                                key={`${entry.betId}-${result.market}`}
+                                                value={result.market}
+                                                className="bg-slate-900 text-white"
+                                              >
+                                                {result.market}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </InputField>
 
-                                <InputField label="Odd Used">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={tracking.oddUsed ?? ""}
-                                    onChange={(e) =>
-                                      handleTrackingChange(analysis.id, {
-                                        oddUsed:
-                                          e.target.value === "" ? null : Number(e.target.value),
-                                      })
-                                    }
-                                    className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                                    disabled={!tracking.betPlaced}
-                                  />
-                                </InputField>
+                                        <InputField label="Result Status">
+                                          <select
+                                            value={tracking.resultStatus}
+                                            onChange={(e) =>
+                                              handleTrackingChange(analysis.id, entry.betId, {
+                                                resultStatus: e.target.value as BetStatus,
+                                              })
+                                            }
+                                            className={`${darkSelectClass} w-full`}
+                                            style={darkSelectStyle}
+                                            disabled={!tracking.betPlaced}
+                                          >
+                                            <option value="pending" className="bg-slate-900 text-white">Pending</option>
+                                            <option value="green" className="bg-slate-900 text-white">Green</option>
+                                            <option value="red" className="bg-slate-900 text-white">Red</option>
+                                            <option value="void" className="bg-slate-900 text-white">Void</option>
+                                          </select>
+                                        </InputField>
+
+                                        <InputField label="Stake Used">
+                                          <input
+                                            type="number"
+                                            value={tracking.stakeUsed ?? ""}
+                                            onChange={(e) =>
+                                              handleTrackingChange(analysis.id, entry.betId, {
+                                                stakeUsed:
+                                                  e.target.value === "" ? null : Number(e.target.value),
+                                              })
+                                            }
+                                            className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                            disabled={!tracking.betPlaced}
+                                          />
+                                        </InputField>
+
+                                        <InputField label="Odd Used">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={tracking.oddUsed ?? ""}
+                                            onChange={(e) =>
+                                              handleTrackingChange(analysis.id, entry.betId, {
+                                                oddUsed:
+                                                  e.target.value === "" ? null : Number(e.target.value),
+                                              })
+                                            }
+                                            className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                            disabled={!tracking.betPlaced}
+                                          />
+                                        </InputField>
+                                      </div>
+
+                                      <InputField label="Notes">
+                                        <input
+                                          type="text"
+                                          value={tracking.notes}
+                                          onChange={(e) =>
+                                            handleTrackingChange(analysis.id, entry.betId, {
+                                              notes: e.target.value,
+                                            })
+                                          }
+                                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                          disabled={!tracking.betPlaced}
+                                        />
+                                      </InputField>
+                                    </div>
+                                  </DetailSection>
+
+                                  <DetailSection
+                                    title="Bankroll Impact"
+                                    description="A compact read of how this tracked bet is affecting the bankroll flow."
+                                  >
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <MetricBlock
+                                        label="Bankroll Before"
+                                        value={
+                                          tracking.bankrollBefore !== null
+                                            ? `EUR ${tracking.bankrollBefore.toFixed(2)}`
+                                            : "-"
+                                        }
+                                      />
+                                      <MetricBlock
+                                        label="Profit / Loss"
+                                        value={`EUR ${tracking.profitLoss.toFixed(2)}`}
+                                      />
+                                      <MetricBlock
+                                        label="Bankroll After"
+                                        value={
+                                          tracking.bankrollAfter !== null
+                                            ? `EUR ${tracking.bankrollAfter.toFixed(2)}`
+                                            : "-"
+                                        }
+                                      />
+                                      <MetricBlock
+                                        label="Tracked Status"
+                                        value={<span className="capitalize">{tracking.resultStatus}</span>}
+                                      />
+                                    </div>
+                                  </DetailSection>
+                                </div>
                               </div>
-
-                              <InputField label="Notes">
-                                <input
-                                  type="text"
-                                  value={tracking.notes}
-                                  onChange={(e) =>
-                                    handleTrackingChange(analysis.id, {
-                                      notes: e.target.value,
-                                    })
-                                  }
-                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                                  disabled={!tracking.betPlaced}
-                                />
-                              </InputField>
-                            </div>
-                          </DetailSection>
-
-                          <DetailSection
-                            title="Bankroll Impact"
-                            description="A compact read of how this tracked bet is affecting the bankroll flow."
-                          >
-                            <div className="grid grid-cols-2 gap-3">
-                              <MetricBlock
-                                label="Bankroll Before"
-                                value={
-                                  tracking.bankrollBefore !== null
-                                    ? `EUR ${tracking.bankrollBefore.toFixed(2)}`
-                                    : "-"
-                                }
-                              />
-                              <MetricBlock
-                                label="Profit / Loss"
-                                value={`EUR ${tracking.profitLoss.toFixed(2)}`}
-                              />
-                              <MetricBlock
-                                label="Bankroll After"
-                                value={
-                                  tracking.bankrollAfter !== null
-                                    ? `EUR ${tracking.bankrollAfter.toFixed(2)}`
-                                    : "-"
-                                }
-                              />
-                              <MetricBlock
-                                label="Tracked Status"
-                                value={<span className="capitalize">{tracking.resultStatus}</span>}
-                              />
-                            </div>
-                          </DetailSection>
+                            );
+                          })}
                         </div>
                       </div>
                     </motion.div>

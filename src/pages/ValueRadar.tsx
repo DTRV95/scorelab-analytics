@@ -52,8 +52,9 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
     >
+      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-5 flex items-start justify-between gap-4">
         <div>
@@ -88,7 +89,7 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-xl border border-white/8 bg-white/[0.03] p-3">
       <p className="text-xs uppercase tracking-wider text-white/45">{label}</p>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
     </div>

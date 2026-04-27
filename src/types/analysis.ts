@@ -35,6 +35,7 @@ export interface AnalysisSummary {
 }
 
 export interface TrackedBet {
+  id?: string;
   betPlaced: boolean;
   selectedMarket: string | null;
   stakeUsed: number | null;
@@ -47,6 +48,10 @@ export interface TrackedBet {
   notes: string;
 }
 
+export interface TrackedAnalysisBet extends TrackedBet {
+  id: string;
+}
+
 export interface SavedAnalysis {
   id: string;
   createdAt: string;
@@ -56,6 +61,7 @@ export interface SavedAnalysis {
   summary: AnalysisSummary;
   results: AnalysisResult[];
   tracking: TrackedBet;
+  extraBets?: TrackedAnalysisBet[];
 }
 
 export interface MultipleLeg {

@@ -1,4 +1,4 @@
-import { getAnalyses } from "@/lib/analysisStorage";
+import { getAllAnalysisTrackingEntries, getAnalyses } from "@/lib/analysisStorage";
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 
 export interface EdgeMarketInsight {
@@ -69,32 +69,30 @@ interface SettledBetContext {
 }
 
 function getSettledTrackedBets(): SettledBetContext[] {
-  const analyses = getAnalyses();
-
-  return analyses
+  return getAllAnalysisTrackingEntries(getAnalyses())
     .filter(
-      (analysis) =>
-        analysis?.tracking?.betPlaced &&
-        analysis?.tracking?.selectedMarket &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void")
+      (entry) =>
+        entry?.tracking?.betPlaced &&
+        entry?.tracking?.selectedMarket &&
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red" ||
+          entry.tracking.resultStatus === "void")
     )
-    .map((analysis) => {
-      const selectedMarket = analysis.tracking.selectedMarket!;
-      const selectedResult = analysis.results.find(
+    .map((entry) => {
+      const selectedMarket = entry.tracking.selectedMarket!;
+      const selectedResult = entry.analysis.results.find(
         (r) => r.market === selectedMarket
       );
 
       if (!selectedResult) return null;
 
       return {
-        analysis,
+        analysis: entry.analysis,
         selectedMarket,
         selectedResult,
-        stake: analysis.tracking.stakeUsed || 0,
-        profitLoss: analysis.tracking.profitLoss || 0,
-        status: analysis.tracking.resultStatus as "green" | "red" | "void",
+        stake: entry.tracking.stakeUsed || 0,
+        profitLoss: entry.tracking.profitLoss || 0,
+        status: entry.tracking.resultStatus as "green" | "red" | "void",
       };
     })
     .filter(Boolean) as SettledBetContext[];

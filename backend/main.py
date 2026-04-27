@@ -22,6 +22,7 @@ from schemas import (
     MultipleRecord,
     MultipleRecordListResponse,
     MultipleRecordResponse,
+    StorageResetResponse,
     StorageSnapshot,
     StorageSnapshotResponse,
 )
@@ -42,6 +43,7 @@ from storage_service import (
     load_all_entity_states,
     load_entity_state,
     load_storage_snapshot,
+    reset_all_storage,
     save_analysis_record,
     save_multiple_record,
     save_entity_state,
@@ -184,3 +186,9 @@ def put_storage_multiple(multiple_id: str, data: MultipleRecord):
 @app.delete("/storage/multiples/{multiple_id}", response_model=MultipleDeleteResponse)
 def delete_storage_multiple(multiple_id: str):
     return {"deleted": delete_multiple_record(multiple_id)}
+
+
+@app.delete("/storage/reset", response_model=StorageResetResponse)
+def delete_storage_reset():
+    reset_all_storage()
+    return {"reset": True}

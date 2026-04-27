@@ -1,5 +1,6 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { motion } from "framer-motion";
+import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,11 +8,13 @@ import {
   Flag,
   Goal,
   Route,
+  Trash2,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 import {
   ANALYSES_UPDATED_EVENT,
+  getAllAnalysisTrackingEntries,
   getAnalyses,
   getBestPerformingZone,
   getBankrollStats,
@@ -24,6 +27,7 @@ import {
 import {
   DEFAULT_ROADMAP_SETTINGS,
   createRoadmapMissionId,
+  deleteRoadmapMission,
   getRoadmapDayMemories,
   getRoadmapMissions,
   getRoadmapSettings,
@@ -57,9 +61,9 @@ const MAX_STRETCH_RETURN_ON_STAKE_PCT = 30;
 const ROADMAP_RADAR_MIN_MODEL_PROB = 75;
 const ROADMAP_TIMEZONE = "Europe/Lisbon";
 const surfaceCardClass =
-  "rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 shadow-[0_12px_28px_rgba(0,0,0,0.16)] backdrop-blur-sm";
+  "scorelab-board-3d scorelab-tilt-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 backdrop-blur-sm";
 const compactSurfaceCardClass =
-  "rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm";
+  "scorelab-board-3d scorelab-tilt-3d rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 backdrop-blur-sm";
 
 function formatCurrency(value: number) {
   return `EUR ${value.toFixed(2)}`;
@@ -486,15 +490,45 @@ function getRadarExecutionPlan({
     const profitPerEuro = opportunity.odds - 1;
     const requiredStake = profitPerEuro > 0 ? cleanProfitTarget / profitPerEuro : 0;
     const projectedProfit = requiredStake * profitPerEuro;
+    const normalizedModelProb = normalizeProbabilityPct(opportunity.modelProb);
+    const fitsCapacity = requiredStake <= cleanStakeBudget;
+    const isClean =
+      fitsCapacity &&
+      opportunity.decision === "Bet" &&
+      opportunity.edge > 0 &&
+      opportunity.confidence >= 7.5 &&
+      normalizedModelProb >= 78;
+    const guardrail =
+      isClean
+        ? ({
+            label: "Clean",
+            tone: "positive" as const,
+            reason: "Probability, edge, confidence and stake fit are aligned.",
+          })
+        : fitsCapacity && normalizedModelProb >= ROADMAP_RADAR_MIN_MODEL_PROB
+        ? ({
+            label: "Watch",
+            tone: "neutral" as const,
+            reason: "Probability is strong, but at least one quality signal is not fully aligned.",
+          })
+        : ({
+            label: "Avoid",
+            tone: "negative" as const,
+            reason: "The stake required does not fit the remaining mission capacity.",
+          });
 
     return {
       ...opportunity,
       suggestedStake: Number(requiredStake.toFixed(2)),
       projectedProfit: Number(projectedProfit.toFixed(2)),
-      fitsCapacity: requiredStake <= cleanStakeBudget,
+      fitsCapacity,
+      guardrail,
     };
   });
-  const bestCapacityFit = picks.find((pick) => pick.fitsCapacity) ?? null;
+  const bestCapacityFit =
+    picks.find((pick) => pick.guardrail.label === "Clean") ??
+    picks.find((pick) => pick.fitsCapacity) ??
+    null;
 
   if (cleanProfitTarget <= 0 || candidates.length === 0) {
     return {
@@ -504,6 +538,11 @@ function getRadarExecutionPlan({
           suggestedStake: number;
           projectedProfit: number;
           fitsCapacity: boolean;
+          guardrail: {
+            label: "Clean" | "Watch" | "Avoid";
+            tone: "positive" | "neutral" | "negative";
+            reason: string;
+          };
         }
       >,
       totalStake: 0,
@@ -515,6 +554,11 @@ function getRadarExecutionPlan({
             suggestedStake: number;
             projectedProfit: number;
             fitsCapacity: boolean;
+            guardrail: {
+              label: "Clean" | "Watch" | "Avoid";
+              tone: "positive" | "neutral" | "negative";
+              reason: string;
+            };
           })
         | null,
     };
@@ -545,9 +589,10 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
+      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/45">
@@ -585,7 +630,7 @@ function MetricCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+      className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
       <div className="relative">
@@ -706,8 +751,12 @@ export default function RoadmapPlanner() {
     const existingMemoryByDate = new Map(dayMemories.map((memory) => [memory.date, memory]));
     const targetAmount = parsedInputs.targetAmount;
     const targetDays = parsedInputs.targetDays;
+    const trackedAnalysisEntries = getAllAnalysisTrackingEntries(analyses);
     const financialSnapshot = buildFinancialSnapshot({
-      analyses,
+      analyses: trackedAnalysisEntries.map((entry) => ({
+        createdAt: entry.createdAt,
+        tracking: entry.tracking,
+      })),
       multiples,
       initialBankroll: startingBankroll,
     });
@@ -733,10 +782,10 @@ export default function RoadmapPlanner() {
     const dailyLog = Array.from({ length: targetDays }, (_, index) => {
       const date = getDayOffset(startedAt, index);
       const existingMemory = existingMemoryByDate.get(date);
-      const dayCreatedAnalyses = analyses.filter(
-        (analysis) =>
-          analysis.tracking.betPlaced &&
-          getDateKeyInTimezone(analysis.createdAt) === date
+      const dayCreatedAnalyses = trackedAnalysisEntries.filter(
+        (entry) =>
+          entry.tracking.betPlaced &&
+          getDateKeyInTimezone(entry.createdAt) === date
       );
       const dayCreatedMultiples = multiples.filter(
         (multiple) =>
@@ -746,7 +795,7 @@ export default function RoadmapPlanner() {
       const dayPerformance = dailyPerformanceMap.get(date) || null;
 
       const actualStake =
-        dayCreatedAnalyses.reduce((acc, analysis) => acc + (analysis.tracking.stakeUsed || 0), 0) +
+        dayCreatedAnalyses.reduce((acc, entry) => acc + (entry.tracking.stakeUsed || 0), 0) +
         dayCreatedMultiples.reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
 
       const actualProfit =
@@ -763,7 +812,7 @@ export default function RoadmapPlanner() {
         actualProfit,
         tickets: dayCreatedAnalyses.length + dayCreatedMultiples.length,
         activeTickets:
-          dayCreatedAnalyses.filter((analysis) => analysis.tracking.resultStatus === "pending").length +
+          dayCreatedAnalyses.filter((entry) => entry.tracking.resultStatus === "pending").length +
           dayCreatedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending").length,
         settledBets: dayPerformance?.settledBets || 0,
       };
@@ -1154,10 +1203,15 @@ export default function RoadmapPlanner() {
     setDayMemories(getRoadmapDayMemories());
   }, [roadmap.dailyLog]);
 
-  const visibleLog = useMemo(
-    () => roadmap.dailyLog.slice(0, Math.min(10, roadmap.dailyLog.length)),
-    [roadmap.dailyLog]
-  );
+  const visibleLog = useMemo(() => roadmap.dailyLog, [roadmap.dailyLog]);
+  const roadmapPulseTone =
+    roadmap.systemCommand.tone === "negative"
+      ? "red"
+      : roadmap.systemCommand.tone === "positive"
+      ? "emerald"
+      : roadmap.targetRealism === "Demanding"
+      ? "amber"
+      : "cyan";
 
   const missionTracker = useMemo(() => {
     const missionState =
@@ -1239,6 +1293,13 @@ export default function RoadmapPlanner() {
     window.setTimeout(() => setSavedMessage(""), 2500);
   };
 
+  const handleDeleteMission = (missionId: string) => {
+    deleteRoadmapMission(missionId);
+    setMissionHistory(getRoadmapMissions());
+    setSavedMessage("Mission deleted.");
+    window.setTimeout(() => setSavedMessage(""), 2500);
+  };
+
   const handleOpenRadarPick = (pick: {
     id: string;
     market: string;
@@ -1261,22 +1322,42 @@ export default function RoadmapPlanner() {
       <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8 p-6">
         <motion.div
           variants={fadeUp}
-          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+          className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(8,18,40,0.96)_0%,rgba(5,16,28,0.98)_48%,rgba(13,22,34,0.98)_100%)] p-5"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
-          <div className="relative max-w-3xl">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100/80">
-              Mission Control
+          <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
+          <div className="relative grid gap-5 xl:grid-cols-[1fr_360px] xl:items-stretch">
+            <div className="flex min-h-[190px] flex-col justify-center">
+              <div className="inline-flex w-fit items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase text-cyan-100/80">
+                Mission Control
+              </div>
+              <h1 className="mt-4 text-[2rem] font-semibold text-white md:text-[2.6rem]">
+                <span className="text-white">Intelligent </span>
+                <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
+                  Roadmap
+                </span>
+              </h1>
+              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/58">
+                Know the target, the stake, and the next move.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  {roadmap.systemCommand.label}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  {roadmap.targetRealism}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
+                  Day {roadmap.currentPlanDay}
+                </span>
+              </div>
             </div>
-            <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.04em] text-white md:text-[2.6rem]">
-              <span className="text-white">Intelligent </span>
-              <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
-                Roadmap
-              </span>
-            </h1>
-            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/58">
-              Know the target, the stake, and the next move.
-            </p>
+            <SystemPulse3D
+              label="Mission Pulse"
+              value={`${roadmap.bankrollProgressToTargetPct.toFixed(0)}%`}
+              detail={`${formatCurrency(roadmap.availableTargetGap)} left from free bankroll to target.`}
+              tone={roadmapPulseTone}
+            />
           </div>
         </motion.div>
 
@@ -1444,14 +1525,25 @@ export default function RoadmapPlanner() {
                           {getIsoDateOnly(mission.startedAt)} to {getIsoDateOnly(mission.endedAt)} · {formatPct(mission.progressPct)} complete
                         </p>
                       </div>
-                      <div
-                        className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                          mission.status === "success"
-                            ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
-                            : "border-red-300/25 bg-red-300/10 text-red-200"
-                        }`}
-                      >
-                        {mission.status}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            mission.status === "success"
+                              ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
+                              : "border-red-300/25 bg-red-300/10 text-red-200"
+                          }`}
+                        >
+                          {mission.status}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMission(mission.id)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/54 transition hover:border-red-300/20 hover:bg-red-400/10 hover:text-red-200"
+                          aria-label="Delete mission"
+                          title="Delete mission"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1497,18 +1589,6 @@ export default function RoadmapPlanner() {
               </div>
             </div>
 
-            <div className="mt-3 rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
-                Odds Zone
-              </p>
-              <p className="mt-3 text-[1rem] font-semibold tracking-[-0.02em] text-white">
-                {roadmap.oddsRange}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-white/56">
-                Suggested structure: {roadmap.oddsExecutionOptions[0]}
-              </p>
-            </div>
-
             <div className="mt-3 rounded-[22px] border border-emerald-300/12 bg-emerald-300/[0.055] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -1550,11 +1630,27 @@ export default function RoadmapPlanner() {
                       className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-white/8 bg-white/[0.035] p-3 text-left transition hover:border-emerald-300/25 hover:bg-emerald-300/[0.06] md:grid-cols-[1fr_auto]"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-white">
-                          {index + 1}. {pick.match}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-white">
+                            {index + 1}. {pick.match}
+                          </p>
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] ${
+                              pick.guardrail.tone === "positive"
+                                ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
+                                : pick.guardrail.tone === "negative"
+                                ? "border-red-300/25 bg-red-300/10 text-red-200"
+                                : "border-amber-300/25 bg-amber-300/10 text-amber-200"
+                            }`}
+                          >
+                            {pick.guardrail.label}
+                          </span>
+                        </div>
                         <p className="mt-1 text-xs leading-5 text-white/52">
                           {pick.market} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-white/38">
+                          {pick.guardrail.reason}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 md:justify-end">
@@ -1589,6 +1685,13 @@ export default function RoadmapPlanner() {
                   {!roadmap.radarExecutionPlan.fullyCovered ? (
                     <p className="text-xs leading-5 text-amber-200/72">
                       None of the highest-probability radar events can hit today's profit target inside the remaining stake capacity.
+                    </p>
+                  ) : null}
+                  {roadmap.radarExecutionPlan.picks.every(
+                    (pick) => pick.guardrail.label !== "Clean"
+                  ) ? (
+                    <p className="text-xs leading-5 text-red-200/72">
+                      No clean execution is available. The roadmap is showing the board, but not giving a strong entry signal.
                     </p>
                   ) : null}
                 </div>

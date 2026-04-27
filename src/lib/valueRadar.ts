@@ -1,4 +1,5 @@
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
+import { getAnalysisTrackingEntries } from "@/lib/analysisStorage";
 
 export type RadarOpportunity = {
   id: string;
@@ -39,6 +40,7 @@ export function getTrackedOrBestResult(analysis: SavedAnalysis): AnalysisResult 
 export function buildRadarOpportunities(analyses: SavedAnalysis[]): RadarOpportunity[] {
   return analyses
     .map((analysis) => {
+      const trackedEntries = getAnalysisTrackingEntries(analysis);
       const result = getTrackedOrBestResult(analysis);
       if (!result) return null;
 
@@ -59,8 +61,11 @@ export function buildRadarOpportunities(analyses: SavedAnalysis[]): RadarOpportu
         risk: result.risk,
         createdAt: analysis.createdAt,
         xg: analysis.summary.totalXg,
-        profitLoss: analysis.tracking?.profitLoss ?? 0,
-        betPlaced: Boolean(analysis.tracking?.betPlaced),
+        profitLoss: trackedEntries.reduce(
+          (sum, entry) => sum + (entry.tracking.profitLoss || 0),
+          0
+        ),
+        betPlaced: trackedEntries.some((entry) => entry.tracking.betPlaced),
       };
     })
     .filter(Boolean) as RadarOpportunity[];

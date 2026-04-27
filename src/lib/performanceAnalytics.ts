@@ -1,5 +1,6 @@
 import type { SavedAnalysis } from "@/types/analysis";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { getAllAnalysisTrackingEntries } from "@/lib/analysisStorage";
 import {
   getTierPerformance,
   getOddsBucketPerformance,
@@ -54,8 +55,16 @@ function isValidTrackedBet(analysis: SavedAnalysis): boolean {
 export function getPerformanceSummary(
   analyses: SavedAnalysis[]
 ): PerformanceSummary {
+  const trackedEntries = getAllAnalysisTrackingEntries(analyses).filter(
+    (entry) =>
+      entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
+  );
+
   const snapshot = buildFinancialSnapshot({
-    analyses: analyses.filter(isValidTrackedBet),
+    analyses: trackedEntries.map((entry) => ({
+      createdAt: entry.createdAt,
+      tracking: entry.tracking,
+    })),
     multiples: [],
     initialBankroll: 0,
   });
@@ -75,14 +84,16 @@ export function getPerformanceSummary(
 export function getDailyProfitTrend(
   analyses: SavedAnalysis[]
 ): DailyProfitPoint[] {
-  const settled = analyses.filter(isValidTrackedBet);
+  const settled = getAllAnalysisTrackingEntries(analyses).filter(
+    (entry) => entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
+  );
   const grouped = new Map<
     string,
     { profitLoss: number; stake: number; bets: number; ts: number }
   >();
 
-  settled.forEach((analysis) => {
-    const occurredAt = analysis.tracking.settledAt || analysis.createdAt;
+  settled.forEach((entry) => {
+    const occurredAt = entry.tracking.settledAt || entry.createdAt;
     const dateObj = new Date(occurredAt);
     const safeTime = Number.isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
     const dateKey = dateObj.toLocaleDateString();
@@ -97,8 +108,8 @@ export function getDailyProfitTrend(
     }
 
     const row = grouped.get(dateKey)!;
-    row.profitLoss += analysis.tracking.profitLoss || 0;
-    row.stake += analysis.tracking.stakeUsed || 0;
+    row.profitLoss += entry.tracking.profitLoss || 0;
+    row.stake += entry.tracking.stakeUsed || 0;
     row.bets += 1;
     row.ts = Math.min(row.ts, safeTime);
   });

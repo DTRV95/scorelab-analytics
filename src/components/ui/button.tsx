@@ -9,14 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]",
+        default: "gradient-primary text-primary-foreground shadow-[0_12px_30px_-18px_rgba(52,211,153,0.78),inset_0_1px_0_rgba(255,255,255,0.24)] hover:shadow-[0_16px_38px_-18px_rgba(34,211,238,0.72)] active:scale-[0.98]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "ring-1 ring-white/10 bg-transparent hover:bg-white/5 text-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-white/5 text-muted-foreground hover:text-foreground",
+        outline: "ring-1 ring-cyan-100/14 bg-cyan-100/[0.035] hover:bg-cyan-100/[0.07] hover:ring-cyan-100/24 text-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
+        ghost: "hover:bg-cyan-100/[0.055] text-muted-foreground hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        hero: "gradient-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]",
-        "hero-outline": "ring-1 ring-white/20 bg-white/5 text-foreground hover:bg-white/10 backdrop-blur-sm",
+        hero: "gradient-primary text-primary-foreground font-semibold shadow-[0_18px_46px_-24px_rgba(52,211,153,0.82),0_0_36px_-22px_rgba(34,211,238,0.85)] hover:shadow-[0_22px_56px_-24px_rgba(34,211,238,0.88)] active:scale-[0.98]",
+        "hero-outline": "ring-1 ring-cyan-100/22 bg-cyan-100/[0.055] text-foreground hover:bg-cyan-100/[0.10] backdrop-blur-sm",
       },
       size: {
         default: "h-10 px-4 py-2",

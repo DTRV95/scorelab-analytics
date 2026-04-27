@@ -14,6 +14,7 @@ ENTITY_DEFAULTS: Dict[str, Any] = {
     "bankroll_settings": {},
     "roadmap_settings": {},
     "roadmap_day_memories": [],
+    "roadmap_missions": [],
 }
 
 
@@ -70,7 +71,7 @@ def get_empty_snapshot() -> Dict[str, Any]:
     return {
         "metadata": {
             "schema_version": 1,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.fromtimestamp(0, tz=timezone.utc).isoformat(),
             "client_id": None,
         },
         "analyses": [],
@@ -79,6 +80,7 @@ def get_empty_snapshot() -> Dict[str, Any]:
         "bankroll_settings": {},
         "roadmap_settings": {},
         "roadmap_day_memories": [],
+        "roadmap_missions": [],
     }
 
 
@@ -86,7 +88,7 @@ def get_empty_entity_state(entity_key: str) -> Dict[str, Any]:
     return {
         "metadata": {
             "schema_version": 1,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.fromtimestamp(0, tz=timezone.utc).isoformat(),
             "client_id": None,
             "entity_key": entity_key,
         },
@@ -530,3 +532,14 @@ def delete_multiple_record(multiple_id: str) -> bool:
         connection.commit()
 
     return cursor.rowcount > 0
+
+
+def reset_all_storage() -> None:
+    init_storage_db()
+
+    with _get_connection() as connection:
+        connection.execute("DELETE FROM app_state")
+        connection.execute("DELETE FROM entity_state")
+        connection.execute("DELETE FROM analyses")
+        connection.execute("DELETE FROM multiples")
+        connection.commit()

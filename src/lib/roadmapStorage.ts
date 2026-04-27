@@ -119,6 +119,13 @@ export function saveRoadmapMission(mission: RoadmapMissionRecord) {
   queueEntitySync("roadmap_missions");
 }
 
+export function deleteRoadmapMission(missionId: string) {
+  const existing = getRoadmapMissions();
+  const next = existing.filter((mission) => mission.id !== missionId);
+  localStorage.setItem(ROADMAP_MISSIONS_KEY, JSON.stringify(next));
+  queueEntitySync("roadmap_missions");
+}
+
 export function createRoadmapMissionId() {
   return `mission-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }

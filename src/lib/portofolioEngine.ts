@@ -5,6 +5,7 @@ import type {
   AnalysisResult,
   RiskLevel,
 } from "@/types/analysis";
+import { getAllAnalysisTrackingEntries, type AnalysisTrackingEntry } from "@/lib/analysisStorage";
 
 export interface BankrollPolicy {
   premiumStakePct: number;
@@ -185,38 +186,44 @@ function isSettled(status: BetStatus): boolean {
   return status === "green" || status === "red" || status === "void";
 }
 
-function getTrackedResult(analysis: SavedAnalysis): AnalysisResult | null {
-  if (!analysis?.tracking?.selectedMarket) return null;
+function getTrackedResult(entry: AnalysisTrackingEntry): AnalysisResult | null {
+  if (!entry?.tracking?.selectedMarket) return null;
 
-  const selected = analysis.results.find(
-    (result) => result.market === analysis.tracking.selectedMarket
+  const selected = entry.analysis.results.find(
+    (result) => result.market === entry.tracking.selectedMarket
   );
 
   return selected || null;
 }
 
-function getTrackedTier(analysis: SavedAnalysis): BetTier {
-  const selected = getTrackedResult(analysis);
+function getTrackedTier(entry: AnalysisTrackingEntry): BetTier {
+  const selected = getTrackedResult(entry);
   return selected?.tier || "discard";
 }
 
 function updateAggregate(
   row: AggregateRow,
-  analysis: SavedAnalysis,
+  entry: AnalysisTrackingEntry,
   result: AnalysisResult
 ) {
   row.bets += 1;
-  row.totalStake += analysis.tracking.stakeUsed || 0;
-  row.profitLoss += analysis.tracking.profitLoss || 0;
-  row.oddsSum += analysis.tracking.oddUsed || result.odds || 0;
+  row.totalStake += entry.tracking.stakeUsed || 0;
+  row.profitLoss += entry.tracking.profitLoss || 0;
+  row.oddsSum += entry.tracking.oddUsed || result.odds || 0;
   row.confidenceSum += result.confidence || 0;
   row.edgeSum += result.valueBet || 0;
   row.edgeLowerBoundSum += result.edgeLowerBound || 0;
   row.robustnessSum += result.robustness || 0;
 
-  if (analysis.tracking.resultStatus === "green") row.wins += 1;
-  if (analysis.tracking.resultStatus === "red") row.losses += 1;
-  if (analysis.tracking.resultStatus === "void") row.voids += 1;
+  if (entry.tracking.resultStatus === "green") row.wins += 1;
+  if (entry.tracking.resultStatus === "red") row.losses += 1;
+  if (entry.tracking.resultStatus === "void") row.voids += 1;
+}
+
+function getSettledEntries(analyses: SavedAnalysis[]) {
+  return getAllAnalysisTrackingEntries(analyses).filter(
+    (entry) => entry.tracking.betPlaced && isSettled(entry.tracking.resultStatus)
+  );
 }
 
 function finalizeBaseRow(row: AggregateRow) {
@@ -301,14 +308,14 @@ export function getOpenExposureSummary(
   currentBankroll: number,
   policy: BankrollPolicy = DEFAULT_BANKROLL_POLICY
 ): ExposureSummary {
-  const pending = analyses.filter(
-    (analysis) =>
-      analysis.tracking?.betPlaced &&
-      analysis.tracking?.resultStatus === "pending"
+  const pending = getAllAnalysisTrackingEntries(analyses).filter(
+    (entry) =>
+      entry.tracking?.betPlaced &&
+      entry.tracking?.resultStatus === "pending"
   );
 
   const openExposureAmount = pending.reduce(
-    (sum, analysis) => sum + (analysis.tracking.stakeUsed || 0),
+    (sum, entry) => sum + (entry.tracking.stakeUsed || 0),
     0
   );
 
@@ -350,15 +357,12 @@ export function getTierPerformance(
     discard: createAggregateRow(),
   };
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
-    const tier = getTrackedTier(analysis);
-    updateAggregate(base[tier], analysis, selected);
+    const tier = getTrackedTier(entry);
+    updateAggregate(base[tier], entry, selected);
   });
 
   return (Object.entries(base) as [BetTier, AggregateRow][])
@@ -431,18 +435,15 @@ export function getOddsBucketPerformance(
 ): OddsBucketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
-    const odd = analysis.tracking.oddUsed || selected.odds || 0;
+    const odd = entry.tracking.oddUsed || selected.odds || 0;
     const bucket = getOddsBucket(odd);
 
     if (!map.has(bucket)) map.set(bucket, createAggregateRow());
-    updateAggregate(map.get(bucket)!, analysis, selected);
+    updateAggregate(map.get(bucket)!, entry, selected);
   });
 
   return Array.from(map.entries()).map(([bucket, row]) => ({
@@ -456,17 +457,14 @@ export function getEdgeBucketPerformance(
 ): EdgeBucketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
     const bucket = getEdgeBucket(selected.valueBet || 0);
 
     if (!map.has(bucket)) map.set(bucket, createAggregateRow());
-    updateAggregate(map.get(bucket)!, analysis, selected);
+    updateAggregate(map.get(bucket)!, entry, selected);
   });
 
   return Array.from(map.entries()).map(([bucket, row]) => ({
@@ -480,17 +478,14 @@ export function getMarketPerformance(
 ): MarketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
     const key = selected.market;
 
     if (!map.has(key)) map.set(key, createAggregateRow());
-    updateAggregate(map.get(key)!, analysis, selected);
+    updateAggregate(map.get(key)!, entry, selected);
   });
 
   return Array.from(map.entries())
@@ -507,17 +502,14 @@ export function getConfidenceBucketPerformance(
 ): ConfidenceBucketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
     const bucket = getConfidenceBucket(selected.confidence);
 
     if (!map.has(bucket)) map.set(bucket, createAggregateRow());
-    updateAggregate(map.get(bucket)!, analysis, selected);
+    updateAggregate(map.get(bucket)!, entry, selected);
   });
 
   return Array.from(map.entries()).map(([bucket, row]) => ({
@@ -535,14 +527,11 @@ export function getRiskPerformance(
     High: createAggregateRow(),
   };
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
-    updateAggregate(base[selected.risk], analysis, selected);
+    updateAggregate(base[selected.risk], entry, selected);
   });
 
   return (Object.entries(base) as [RiskLevel, AggregateRow][])
@@ -558,17 +547,14 @@ export function getRobustnessBucketPerformance(
 ): RobustnessBucketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
     const bucket = getRobustnessBucket(selected.robustness);
 
     if (!map.has(bucket)) map.set(bucket, createAggregateRow());
-    updateAggregate(map.get(bucket)!, analysis, selected);
+    updateAggregate(map.get(bucket)!, entry, selected);
   });
 
   return Array.from(map.entries()).map(([bucket, row]) => ({
@@ -582,17 +568,14 @@ export function getEdgeLowerBoundBucketPerformance(
 ): EdgeLowerBoundBucketPerformance[] {
   const map = new Map<string, AggregateRow>();
 
-  analyses.forEach((analysis) => {
-    if (!analysis.tracking?.betPlaced) return;
-    if (!isSettled(analysis.tracking.resultStatus)) return;
-
-    const selected = getTrackedResult(analysis);
+  getSettledEntries(analyses).forEach((entry) => {
+    const selected = getTrackedResult(entry);
     if (!selected) return;
 
     const bucket = getEdgeLowerBoundBucket(selected.edgeLowerBound);
 
     if (!map.has(bucket)) map.set(bucket, createAggregateRow());
-    updateAggregate(map.get(bucket)!, analysis, selected);
+    updateAggregate(map.get(bucket)!, entry, selected);
   });
 
   return Array.from(map.entries()).map(([bucket, row]) => ({

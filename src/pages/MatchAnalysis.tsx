@@ -169,7 +169,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+    <div className="scorelab-stage-3d scorelab-board-3d overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
       <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
         {title}
       </h3>
@@ -264,7 +264,7 @@ function InsightTile({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-white/[0.04] p-4">
       <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
         {label}
       </p>
@@ -650,7 +650,7 @@ export default function MatchAnalysis() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-2xl bg-card ring-surface px-4 py-3 card-shadow md:block">
+              <div className="scorelab-board-3d scorelab-tilt-3d hidden rounded-2xl bg-card ring-surface px-4 py-3 card-shadow md:block">
               <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 Setup Progress
               </p>
@@ -665,7 +665,8 @@ export default function MatchAnalysis() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+          <div className="scorelab-stage-3d scorelab-board-3d rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+            <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
             <div className="space-y-6">
               <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
                 <div className="flex items-start justify-between gap-4">

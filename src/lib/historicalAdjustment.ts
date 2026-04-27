@@ -1,4 +1,4 @@
-import { getAnalyses } from "@/lib/analysisStorage";
+import { getAllAnalysisTrackingEntries, getAnalyses } from "@/lib/analysisStorage";
 import type { AnalysisResult } from "@/types/analysis";
 
 interface SettledTrackedBet {
@@ -76,20 +76,18 @@ function isSettledTrackedBet(
 }
 
 function getSettledTrackedBets(): SettledTrackedBet[] {
-  const analyses = getAnalyses();
-
-  return analyses
+  return getAllAnalysisTrackingEntries(getAnalyses())
     .filter(
-      (analysis) =>
-        analysis?.tracking?.betPlaced &&
-        analysis?.tracking?.selectedMarket &&
-        (analysis.tracking.resultStatus === "green" ||
-          analysis.tracking.resultStatus === "red" ||
-          analysis.tracking.resultStatus === "void")
+      (entry) =>
+        entry?.tracking?.betPlaced &&
+        entry?.tracking?.selectedMarket &&
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red" ||
+          entry.tracking.resultStatus === "void")
     )
-    .map((analysis) => {
-      const selectedMarket = analysis.tracking.selectedMarket!;
-      const selectedResult = analysis.results.find(
+    .map((entry) => {
+      const selectedMarket = entry.tracking.selectedMarket!;
+      const selectedResult = entry.analysis.results.find(
         (result) => result.market === selectedMarket
       );
 
@@ -101,9 +99,9 @@ function getSettledTrackedBets(): SettledTrackedBet[] {
         oddsBand: selectedResult.oddsBand || getOddsBand(selectedResult.odds),
         confidenceBucket: getConfidenceBucket(getResultConfidence(selectedResult)),
         impliedProb: selectedResult.impliedProb,
-        stake: analysis.tracking.stakeUsed || 0,
-        profitLoss: analysis.tracking.profitLoss || 0,
-        status: analysis.tracking.resultStatus,
+        stake: entry.tracking.stakeUsed || 0,
+        profitLoss: entry.tracking.profitLoss || 0,
+        status: entry.tracking.resultStatus,
       };
     })
     .filter(isSettledTrackedBet);
