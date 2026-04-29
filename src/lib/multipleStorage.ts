@@ -1,4 +1,8 @@
-import { getAnalyses, getBankrollStats } from "@/lib/analysisStorage";
+import {
+  getAllAnalysisTrackingEntries,
+  getAnalyses,
+  getBankrollStats,
+} from "@/lib/analysisStorage";
 import {
   deleteMultipleRecord,
   persistMultipleRecord,
@@ -667,19 +671,19 @@ export function getBetTypePerformance(): Array<{
   roi: number;
   hitRate: number;
 }> {
-  const analyses = getAnalyses().filter(
-    (analysis) =>
-      analysis.tracking.betPlaced &&
-      (analysis.tracking.resultStatus === "green" ||
-        analysis.tracking.resultStatus === "red" ||
-        analysis.tracking.resultStatus === "void")
+  const singles = getAllAnalysisTrackingEntries().filter(
+    (entry) =>
+      entry.tracking.betPlaced &&
+      (entry.tracking.resultStatus === "green" ||
+        entry.tracking.resultStatus === "red" ||
+        entry.tracking.resultStatus === "void")
   );
 
-  const singleGreens = analyses.filter((item) => item.tracking.resultStatus === "green").length;
-  const singleReds = analyses.filter((item) => item.tracking.resultStatus === "red").length;
-  const singleVoids = analyses.filter((item) => item.tracking.resultStatus === "void").length;
-  const singleStake = analyses.reduce((sum, item) => sum + (item.tracking.stakeUsed || 0), 0);
-  const singleProfitLoss = analyses.reduce((sum, item) => sum + item.tracking.profitLoss, 0);
+  const singleGreens = singles.filter((item) => item.tracking.resultStatus === "green").length;
+  const singleReds = singles.filter((item) => item.tracking.resultStatus === "red").length;
+  const singleVoids = singles.filter((item) => item.tracking.resultStatus === "void").length;
+  const singleStake = singles.reduce((sum, item) => sum + (item.tracking.stakeUsed || 0), 0);
+  const singleProfitLoss = singles.reduce((sum, item) => sum + item.tracking.profitLoss, 0);
   const singleSettled = singleGreens + singleReds;
 
   const multipleSummary = getMultiplePerformanceSummary();
@@ -687,7 +691,7 @@ export function getBetTypePerformance(): Array<{
   return [
     {
       type: "Singles",
-      bets: analyses.length,
+      bets: singles.length,
       greens: singleGreens,
       reds: singleReds,
       voids: singleVoids,
@@ -753,15 +757,15 @@ export function getMultipleMarketPerformance(
 ): MultipleMarketPerformanceItem[] {
   const duplicateSingleKeys = options.excludeDuplicateSingles
     ? new Set(
-        getAnalyses()
+        getAllAnalysisTrackingEntries()
           .filter(
-            (analysis) =>
-              analysis.tracking.betPlaced && analysis.tracking.selectedMarket
+            (entry) =>
+              entry.tracking.betPlaced && entry.tracking.selectedMarket
           )
           .map(
-            (analysis) =>
-              `${analysis.id}::${normalizeMarketName(
-                analysis.tracking.selectedMarket || ""
+            (entry) =>
+              `${entry.analysisId}::${normalizeMarketName(
+                entry.tracking.selectedMarket || ""
               )}`
           )
       )

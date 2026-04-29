@@ -6,6 +6,7 @@ export type RadarOpportunity = {
   match: string;
   homeTeam: string;
   awayTeam: string;
+  league: string;
   market: string;
   edge: number;
   modelProb: number;
@@ -49,6 +50,7 @@ export function buildRadarOpportunities(analyses: SavedAnalysis[]): RadarOpportu
         match: `${analysis.homeTeam} vs ${analysis.awayTeam}`,
         homeTeam: analysis.homeTeam,
         awayTeam: analysis.awayTeam,
+        league: analysis.league || "Unspecified",
         market: result.market,
         edge: result.valueBet,
         modelProb: result.modelProb,

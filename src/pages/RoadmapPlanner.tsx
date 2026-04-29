@@ -13,6 +13,7 @@ import {
   Flag,
   Goal,
   Route,
+  ShieldCheck,
   Trash2,
   TrendingUp,
   Wallet,
@@ -47,6 +48,11 @@ import {
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
 import { PERSISTENCE_HYDRATED_EVENT } from "@/lib/persistenceSync";
 import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
+import {
+  getLeagueIntelligenceSummary,
+  getLeagueIntelligenceTone,
+  type LeagueIntelligenceRow,
+} from "@/lib/leagueIntelligence";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -461,14 +467,113 @@ function getSystemCommand({
   };
 }
 
+function buildMissionGuardrails({
+  remainingMissionCapacity,
+  missionStake,
+  requiredReturnOnStakePct,
+  bestLeague,
+  radarCleanPicks,
+  targetGap,
+}: {
+  remainingMissionCapacity: number;
+  missionStake: number;
+  requiredReturnOnStakePct: number;
+  bestLeague: LeagueIntelligenceRow | null;
+  radarCleanPicks: number;
+  targetGap: number;
+}) {
+  return [
+    targetGap <= 0
+      ? {
+          label: "Mission Target",
+          state: "Protect",
+          tone: "positive" as const,
+          detail: "Target reached. New risk should be defensive only.",
+        }
+      : {
+          label: "Mission Target",
+          state: "Active",
+          tone: "neutral" as const,
+          detail: "Still working toward the mission target.",
+        },
+    missionStake > 0 && remainingMissionCapacity <= 0
+      ? {
+          label: "Risk Budget",
+          state: "Stop",
+          tone: "negative" as const,
+          detail: "Daily planned stake is already consumed.",
+        }
+      : {
+          label: "Risk Budget",
+          state: "Open",
+          tone: "positive" as const,
+          detail: `${formatCurrency(remainingMissionCapacity)} of clean capacity remains.`,
+        },
+    requiredReturnOnStakePct > 24
+      ? {
+          label: "Profit Realism",
+          state: "Stretch",
+          tone: "negative" as const,
+          detail: "Required return is too aggressive for low-variance execution.",
+        }
+      : requiredReturnOnStakePct > 16
+      ? {
+          label: "Profit Realism",
+          state: "Demanding",
+          tone: "neutral" as const,
+          detail: "The target is reachable only with very selective picks.",
+        }
+      : {
+          label: "Profit Realism",
+          state: "Healthy",
+          tone: "positive" as const,
+          detail: "Daily return target is inside an operational range.",
+        },
+    bestLeague
+      ? {
+          label: "League Trust",
+          state: bestLeague.intelligenceStatus,
+          tone:
+            bestLeague.intelligenceStatus === "Reliable" ||
+            bestLeague.intelligenceStatus === "Stable"
+              ? ("positive" as const)
+              : bestLeague.intelligenceStatus === "Avoid"
+              ? ("negative" as const)
+              : ("neutral" as const),
+          detail: `${bestLeague.league}: ${bestLeague.trustScore}/100 trust score.`,
+        }
+      : {
+          label: "League Trust",
+          state: "Needs Data",
+          tone: "neutral" as const,
+          detail: "No league has enough settled validation yet.",
+        },
+    radarCleanPicks > 0
+      ? {
+          label: "Board Quality",
+          state: "Executable",
+          tone: "positive" as const,
+          detail: `${radarCleanPicks} clean radar pick${radarCleanPicks === 1 ? "" : "s"} available.`,
+        }
+      : {
+          label: "Board Quality",
+          state: "Wait",
+          tone: "neutral" as const,
+          detail: "No fully clean radar execution signal right now.",
+        },
+  ];
+}
+
 function getRadarExecutionPlan({
   opportunities,
   stakeBudget,
   profitTarget,
+  leagueIntelligence,
 }: {
   opportunities: RadarOpportunity[];
   stakeBudget: number;
   profitTarget: number;
+  leagueIntelligence?: Map<string, LeagueIntelligenceRow>;
 }) {
   const cleanStakeBudget = Math.max(0, stakeBudget);
   const cleanProfitTarget = Math.max(0, profitTarget);
@@ -492,6 +597,7 @@ function getRadarExecutionPlan({
     .slice(0, 4);
 
   const picks = candidates.slice(0, 4).map((opportunity) => {
+    const leagueRead = leagueIntelligence?.get(opportunity.league);
     const profitPerEuro = opportunity.odds - 1;
     const requiredStake = profitPerEuro > 0 ? cleanProfitTarget / profitPerEuro : 0;
     const projectedProfit = requiredStake * profitPerEuro;
@@ -504,17 +610,30 @@ function getRadarExecutionPlan({
       opportunity.confidence >= 7.5 &&
       normalizedModelProb >= 78;
     const guardrail =
-      isClean
+      leagueRead?.intelligenceStatus === "Avoid"
+        ? ({
+            label: "Avoid",
+            tone: "negative" as const,
+            reason: `${opportunity.league} is currently flagged Avoid by League Intelligence.`,
+          })
+        : isClean && leagueRead?.intelligenceStatus !== "Volatile"
         ? ({
             label: "Clean",
             tone: "positive" as const,
-            reason: "Probability, edge, confidence and stake fit are aligned.",
+            reason: leagueRead
+              ? `Probability, edge, stake fit and ${opportunity.league} trust are aligned.`
+              : "Probability, edge, confidence and stake fit are aligned.",
           })
         : fitsCapacity && normalizedModelProb >= ROADMAP_RADAR_MIN_MODEL_PROB
         ? ({
             label: "Watch",
             tone: "neutral" as const,
-            reason: "Probability is strong, but at least one quality signal is not fully aligned.",
+            reason:
+              leagueRead?.intelligenceStatus === "Volatile"
+                ? `${opportunity.league} is volatile, so only use this with premium discipline.`
+                : leagueRead?.intelligenceStatus === "Needs Data"
+                ? `${opportunity.league} still needs more tracked data before full trust.`
+                : "Probability is strong, but at least one quality signal is not fully aligned.",
           })
         : ({
             label: "Avoid",
@@ -851,6 +970,10 @@ export default function RoadmapPlanner() {
     const missionTone = getMissionTone(requiredReturnOnStakePct);
     const exposurePctOfMission = missionStake > 0 ? (openExposure / missionStake) * 100 : 0;
     const remainingMissionCapacity = Math.max(0, missionStake - openExposure);
+    const leagueIntelligence = getLeagueIntelligenceSummary(analyses);
+    const leagueIntelligenceMap = new Map(
+      leagueIntelligence.rows.map((row) => [row.league, row])
+    );
     const allRadarOpportunities = buildRadarOpportunities(analyses);
     const todayRadarOpportunities = allRadarOpportunities.filter(
       (opportunity) => getDateKeyInTimezone(opportunity.createdAt) === today
@@ -875,6 +998,7 @@ export default function RoadmapPlanner() {
         todayHighProbabilityCount > 0 ? todayRadarOpportunities : latestRadarOpportunities,
       stakeBudget: remainingMissionCapacity,
       profitTarget: requiredProfitToday,
+      leagueIntelligence: leagueIntelligenceMap,
     });
     const missionProgressPct = missionStake > 0 ? (todayActualEntry.actualStake / missionStake) * 100 : 0;
     const profitProgressPct = requiredProfitToday > 0 ? (todayActualEntry.actualProfit / requiredProfitToday) * 100 : 0;
@@ -1134,6 +1258,16 @@ export default function RoadmapPlanner() {
       targetRealism,
       remainingMissionCapacity,
     });
+    const missionGuardrails = buildMissionGuardrails({
+      remainingMissionCapacity,
+      missionStake,
+      requiredReturnOnStakePct,
+      bestLeague: leagueIntelligence.bestLeague,
+      radarCleanPicks: radarExecutionPlan.picks.filter(
+        (pick) => pick.guardrail.label === "Clean"
+      ).length,
+      targetGap,
+    });
 
     const tomorrowStakePct =
       missionStatus === "Overexposed" || missionStatus === "Stretch"
@@ -1194,6 +1328,8 @@ export default function RoadmapPlanner() {
       todayMissionVisual,
       disciplineProfile,
       systemCommand,
+      missionGuardrails,
+      leagueIntelligence,
       alert,
       todayLog,
       missionProgressPct,
@@ -1611,6 +1747,56 @@ export default function RoadmapPlanner() {
               </div>
             </div>
 
+            <div className="mt-3 rounded-[22px] border border-cyan-300/12 bg-cyan-300/[0.045] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-cyan-100">
+                    <ShieldCheck className="h-4 w-4" strokeWidth={1.6} />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                      Mission Guardrails
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-white/58">
+                    Operational checks before adding risk to the mission.
+                  </p>
+                </div>
+                {roadmap.leagueIntelligence.bestLeague ? (
+                  <span
+                    className={`w-fit rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getLeagueIntelligenceTone(
+                      roadmap.leagueIntelligence.bestLeague.intelligenceStatus
+                    )}`}
+                  >
+                    Best league: {roadmap.leagueIntelligence.bestLeague.league}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-5">
+                {roadmap.missionGuardrails.map((guardrail) => (
+                  <div
+                    key={guardrail.label}
+                    className={`rounded-2xl border p-3 ${
+                      guardrail.tone === "positive"
+                        ? "border-emerald-300/18 bg-emerald-300/[0.07]"
+                        : guardrail.tone === "negative"
+                        ? "border-red-300/18 bg-red-300/[0.07]"
+                        : "border-white/10 bg-white/[0.04]"
+                    }`}
+                  >
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                      {guardrail.label}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {guardrail.state}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-white/48">
+                      {guardrail.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-3 rounded-[22px] border border-emerald-300/12 bg-emerald-300/[0.055] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -1669,7 +1855,7 @@ export default function RoadmapPlanner() {
                           </span>
                         </div>
                         <p className="mt-1 text-xs leading-5 text-white/52">
-                          {pick.market} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
+                          {pick.market} · {pick.league} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-white/38">
                           {pick.guardrail.reason}

@@ -70,6 +70,8 @@ const darkSelectStyle = {
   colorScheme: "dark" as const,
 };
 
+const SHOW_AI_READS = false;
+
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
@@ -922,6 +924,11 @@ export default function History() {
   );
 
   useEffect(() => {
+    if (!SHOW_AI_READS) {
+      setAiLoading(false);
+      return;
+    }
+
     let isCancelled = false;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
@@ -1033,6 +1040,7 @@ export default function History() {
           />
         </motion.div>
 
+        {SHOW_AI_READS ? (
         <PremiumCard
           title="AI History Review"
           description="A quick reading of what the current history view is validating, where the tracking still needs work and what deserves more care next."
@@ -1097,6 +1105,7 @@ export default function History() {
             </div>
           ) : null}
         </PremiumCard>
+        ) : null}
 
         <PremiumCard
           title="Filters & Search"

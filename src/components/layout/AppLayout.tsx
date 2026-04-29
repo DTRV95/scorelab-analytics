@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./TopBar";
 import { LiveIntelligenceDock } from "@/components/LiveIntelligenceDock";
+import { PremiumAtmosphere } from "@/components/PremiumAtmosphere";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="pointer-events-none fixed inset-0 -z-20 bg-[radial-gradient(circle_at_12%_10%,rgba(34,211,238,0.09),transparent_22%),radial-gradient(circle_at_86%_12%,rgba(52,211,153,0.08),transparent_22%),linear-gradient(180deg,rgba(3,9,18,1)_0%,rgba(5,17,31,1)_42%,rgba(2,10,22,1)_100%)]" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(135deg,rgba(125,245,238,0.012),transparent_48%,rgba(52,211,153,0.010))] opacity-70" />
       <div className="scorelab-arena-pitch-glow pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[36vh]" />
+      <PremiumAtmosphere />
       <AppSidebar />
       <div className="flex min-h-screen flex-1 flex-col min-w-0">
         <div className="sticky top-0 z-30">
@@ -30,7 +32,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
         <main className="flex-1 px-5 pb-8 pt-6 md:px-6 md:pb-10">
           <div className="mx-auto max-w-7xl">
-            {children}
+            <div className="animate-[page-rise_420ms_ease-out_both]">
+              {children}
+            </div>
           </div>
         </main>
       </div>

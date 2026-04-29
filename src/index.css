@@ -6,6 +6,8 @@
 
 @layer base {
   :root {
+    --scorelab-pointer-x: 50%;
+    --scorelab-pointer-y: 18%;
     --background: 222 54% 4%;
     --foreground: 210 40% 98%;
 
@@ -214,11 +216,15 @@
   .scorelab-board-3d {
     position: relative;
     transform-style: preserve-3d;
+    isolation: isolate;
+    backdrop-filter: blur(18px) saturate(1.12);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.11) inset,
+      0 -1px 0 rgba(34, 211, 238, 0.035) inset,
       0 0 0 1px rgba(125, 245, 238, 0.065),
       0 18px 34px rgba(0, 0, 0, 0.38),
-      0 42px 86px rgba(0, 0, 0, 0.24);
+      0 42px 86px rgba(0, 0, 0, 0.24),
+      0 0 42px -34px rgba(34, 211, 238, 0.34);
   }
 
   .scorelab-board-3d::before {
@@ -238,8 +244,17 @@
     inset: 0;
     pointer-events: none;
     border-radius: inherit;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 52%);
-    opacity: 0.58;
+    background:
+      radial-gradient(circle at var(--scorelab-pointer-x) var(--scorelab-pointer-y), rgba(255, 255, 255, 0.075), transparent 24%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 52%);
+    opacity: 0.62;
+    mix-blend-mode: screen;
+    transition: opacity 260ms ease;
+  }
+
+  .scorelab-board-3d:hover::after {
+    opacity: 0.88;
   }
 
   .scorelab-tilt-3d {
@@ -272,6 +287,69 @@
   .scorelab-hud-scan {
     animation: hud-scan 2.9s ease-in-out infinite;
   }
+
+  .scorelab-cursor-glow {
+    background:
+      radial-gradient(circle at var(--scorelab-pointer-x) var(--scorelab-pointer-y), rgba(125, 245, 238, 0.12), transparent 18%),
+      radial-gradient(circle at calc(var(--scorelab-pointer-x) + 12%) calc(var(--scorelab-pointer-y) + 12%), rgba(52, 211, 153, 0.07), transparent 20%);
+    opacity: 0.72;
+    transition: background 180ms ease-out;
+  }
+
+  .scorelab-holo-noise {
+    opacity: 0.16;
+    background-image:
+      linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.045) 18%, transparent 34%),
+      radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.08), transparent 22%),
+      radial-gradient(circle at 78% 72%, rgba(52, 211, 153, 0.06), transparent 24%);
+    background-size: 180% 180%, 100% 100%, 100% 100%;
+    animation: holo-sheen 16s ease-in-out infinite alternate;
+  }
+
+  .scorelab-premium-vignette {
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.26)),
+      radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.30) 100%);
+  }
+
+  .scorelab-data-particle {
+    width: 3px;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(125, 245, 238, 0.74);
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.58);
+    opacity: 0;
+    animation: data-particle-float 12s ease-in-out infinite;
+  }
+
+  .scorelab-data-particle:nth-child(3n) {
+    background: rgba(74, 222, 128, 0.72);
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.48);
+  }
+
+  .scorelab-data-particle:nth-child(4n) {
+    width: 2px;
+    height: 2px;
+    opacity: 0.4;
+  }
+
+  .scorelab-premium-edge {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scorelab-premium-edge::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(125, 245, 238, 0.18), transparent 28%, rgba(52, 211, 153, 0.12) 68%, transparent);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    padding: 1px;
+    opacity: 0.72;
+  }
 }
 
 @keyframes hud-scan {
@@ -296,6 +374,23 @@
 @keyframes aurora-drift {
   0% { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1); opacity: 0.68; }
   100% { transform: translate3d(4%, 3%, 0) rotate(18deg) scale(1.08); opacity: 0.95; }
+}
+
+@keyframes holo-sheen {
+  0% { background-position: 0% 50%, center, center; transform: translate3d(0, 0, 0); }
+  100% { background-position: 100% 50%, center, center; transform: translate3d(0, -1.5%, 0); }
+}
+
+@keyframes data-particle-float {
+  0% { transform: translate3d(0, 18px, 0) scale(0.72); opacity: 0; }
+  18% { opacity: 0.26; }
+  48% { opacity: 0.58; }
+  100% { transform: translate3d(18px, -42px, 0) scale(1.08); opacity: 0; }
+}
+
+@keyframes page-rise {
+  0% { opacity: 0; transform: translateY(10px) scale(0.996); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
 @keyframes gradient-shift {

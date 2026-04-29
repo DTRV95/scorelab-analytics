@@ -40,11 +40,18 @@ import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import type { MarketPerformance } from "@/lib/portofolioEngine";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import {
+  buildLeagueIntelligenceRows,
+  getLeagueIntelligenceTone,
+  type LeagueIntelligenceRow,
+} from "@/lib/leagueIntelligence";
 
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
 };
+
+const SHOW_AI_READS = false;
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -97,21 +104,7 @@ interface DashboardAISummaryPayload {
   } | null;
 }
 
-interface LeaguePerformanceRow {
-  league: string;
-  bets: number;
-  wins: number;
-  losses: number;
-  voids: number;
-  hitRate: number;
-  avgConfidence: number;
-  avgEdge: number;
-  totalStake: number;
-  profitLoss: number;
-  roi: number;
-  bestMarket: string;
-  status: "Strong" | "Stable" | "Weak" | "Too Early";
-}
+type LeaguePerformanceRow = LeagueIntelligenceRow;
 
 function buildLocalAiSummary(
   payload: DashboardAISummaryPayload
@@ -261,31 +254,8 @@ function getBestBet(results: AnalysisResult[]) {
   return positiveBets.reduce((a, b) => (a.valueBet > b.valueBet ? a : b));
 }
 
-function getLeagueStatus(
-  bets: number,
-  roi: number,
-  hitRate: number
-): LeaguePerformanceRow["status"] {
-  if (bets < 3) return "Too Early";
-  if (roi >= 12 && hitRate >= 55) return "Strong";
-  if (roi >= 0 && hitRate >= 50) return "Stable";
-  return "Weak";
-}
-
-function getLeagueStatusTone(status: LeaguePerformanceRow["status"]) {
-  if (status === "Strong") {
-    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
-  }
-
-  if (status === "Stable") {
-    return "border-cyan-400/20 bg-cyan-400/10 text-cyan-200";
-  }
-
-  if (status === "Weak") {
-    return "border-red-400/20 bg-red-400/10 text-red-200";
-  }
-
-  return "border-white/10 bg-white/[0.05] text-white/55";
+function getLeagueStatusTone(status: LeaguePerformanceRow["intelligenceStatus"]) {
+  return getLeagueIntelligenceTone(status);
 }
 
 function mergeMarketPerformanceRows(
@@ -767,191 +737,15 @@ export default function Dashboard() {
 
   const leadingMarket = marketPerformanceRows[0] ?? null;
 
-  const leaguePerformanceRows = useMemo<LeaguePerformanceRow[]>(() => {
-    const savedMultiples = getSavedMultiples();
-    const analysisMap = new Map(analyses.map((analysis) => [analysis.id, analysis]));
-    const settledAnalyses = getAllAnalysisTrackingEntries(analyses).filter(
-      (entry) =>
-        entry.tracking.betPlaced &&
-        (entry.tracking.resultStatus === "green" ||
-          entry.tracking.resultStatus === "red" ||
-          entry.tracking.resultStatus === "void") &&
-        entry.tracking.selectedMarket
-    );
+  const leaguePerformanceRows = useMemo<LeaguePerformanceRow[]>(
+    () => buildLeagueIntelligenceRows(analyses),
+    [analyses]
+  );
 
-    const leagueMap = new Map<
-      string,
-      {
-        bets: number;
-        wins: number;
-        losses: number;
-        voids: number;
-        totalStake: number;
-        profitLoss: number;
-        confidenceSum: number;
-        edgeSum: number;
-        marketMap: Map<string, { bets: number; totalStake: number; profitLoss: number }>;
-      }
-    >();
-
-    settledAnalyses.forEach((entry) => {
-      const league = entry.league?.trim() || "Unspecified";
-      const selectedResult = entry.analysis.results.find(
-        (result) => result.market === entry.tracking.selectedMarket
-      );
-
-      if (!selectedResult) return;
-
-      if (!leagueMap.has(league)) {
-        leagueMap.set(league, {
-          bets: 0,
-          wins: 0,
-          losses: 0,
-          voids: 0,
-          totalStake: 0,
-          profitLoss: 0,
-          confidenceSum: 0,
-          edgeSum: 0,
-          marketMap: new Map(),
-        });
-      }
-
-      const current = leagueMap.get(league)!;
-      const stake = entry.tracking.stakeUsed || 0;
-      const profitLoss = entry.tracking.profitLoss || 0;
-      const market = selectedResult.market;
-
-      current.bets += 1;
-      current.totalStake += stake;
-      current.profitLoss += profitLoss;
-      current.confidenceSum += selectedResult.confidence || 0;
-      current.edgeSum += selectedResult.valueBet || 0;
-
-      if (entry.tracking.resultStatus === "green") current.wins += 1;
-      if (entry.tracking.resultStatus === "red") current.losses += 1;
-      if (entry.tracking.resultStatus === "void") current.voids += 1;
-
-      const existingMarket = current.marketMap.get(market) || {
-        bets: 0,
-        totalStake: 0,
-        profitLoss: 0,
-      };
-
-      existingMarket.bets += 1;
-      existingMarket.totalStake += stake;
-      existingMarket.profitLoss += profitLoss;
-      current.marketMap.set(market, existingMarket);
-    });
-
-    const settledMultiples = savedMultiples.filter(
-      (multiple) =>
-        multiple.tracking.betPlaced &&
-        (multiple.tracking.resultStatus === "green" ||
-          multiple.tracking.resultStatus === "red" ||
-          multiple.tracking.resultStatus === "void")
-    );
-
-    settledMultiples.forEach((multiple) => {
-      const resolvedLegs = multiple.legs.filter(
-        (leg) =>
-          leg.resultStatus === "green" ||
-          leg.resultStatus === "red" ||
-          leg.resultStatus === "void"
-      );
-
-      if (!resolvedLegs.length) return;
-
-      const allocatedStake =
-        (multiple.tracking.stakeUsed || 0) / resolvedLegs.length;
-      const allocatedProfitLoss =
-        (multiple.tracking.profitLoss || 0) / resolvedLegs.length;
-
-      resolvedLegs.forEach((leg) => {
-        const sourceAnalysis = analysisMap.get(leg.analysisId);
-        const league = sourceAnalysis?.league?.trim() || "Unspecified";
-
-        if (!leagueMap.has(league)) {
-          leagueMap.set(league, {
-            bets: 0,
-            wins: 0,
-            losses: 0,
-            voids: 0,
-            totalStake: 0,
-            profitLoss: 0,
-            confidenceSum: 0,
-            edgeSum: 0,
-            marketMap: new Map(),
-          });
-        }
-
-        const current = leagueMap.get(league)!;
-        const market = leg.market;
-
-        current.bets += 1;
-        current.totalStake += allocatedStake;
-        current.profitLoss += allocatedProfitLoss;
-        current.confidenceSum += leg.confidence || 0;
-        current.edgeSum += leg.valueBet || 0;
-
-        if (leg.resultStatus === "green") current.wins += 1;
-        if (leg.resultStatus === "red") current.losses += 1;
-        if (leg.resultStatus === "void") current.voids += 1;
-
-        const existingMarket = current.marketMap.get(market) || {
-          bets: 0,
-          totalStake: 0,
-          profitLoss: 0,
-        };
-
-        existingMarket.bets += 1;
-        existingMarket.totalStake += allocatedStake;
-        existingMarket.profitLoss += allocatedProfitLoss;
-        current.marketMap.set(market, existingMarket);
-      });
-    });
-
-    return Array.from(leagueMap.entries())
-      .map(([league, row]) => {
-        const hitRate = row.bets > 0 ? (row.wins / row.bets) * 100 : 0;
-        const roi = row.totalStake > 0 ? (row.profitLoss / row.totalStake) * 100 : 0;
-        const avgConfidence = row.bets > 0 ? row.confidenceSum / row.bets : 0;
-        const avgEdge = row.bets > 0 ? row.edgeSum / row.bets : 0;
-
-        const bestMarketEntry =
-          Array.from(row.marketMap.entries()).sort((a, b) => {
-            const aRoi =
-              a[1].totalStake > 0 ? (a[1].profitLoss / a[1].totalStake) * 100 : 0;
-            const bRoi =
-              b[1].totalStake > 0 ? (b[1].profitLoss / b[1].totalStake) * 100 : 0;
-
-            if (bRoi !== aRoi) return bRoi - aRoi;
-            return b[1].bets - a[1].bets;
-          })[0];
-
-        return {
-          league,
-          bets: row.bets,
-          wins: row.wins,
-          losses: row.losses,
-          voids: row.voids,
-          hitRate: Number(hitRate.toFixed(1)),
-          avgConfidence: Number(avgConfidence.toFixed(2)),
-          avgEdge: Number(avgEdge.toFixed(2)),
-          totalStake: Number(row.totalStake.toFixed(2)),
-          profitLoss: Number(row.profitLoss.toFixed(2)),
-          roi: Number(roi.toFixed(1)),
-          bestMarket: bestMarketEntry?.[0] ?? "No clear read yet",
-          status: getLeagueStatus(row.bets, roi, hitRate),
-        };
-      })
-      .sort((a, b) => {
-        if (a.status === "Too Early" && b.status !== "Too Early") return 1;
-        if (b.status === "Too Early" && a.status !== "Too Early") return -1;
-        return b.roi - a.roi;
-      });
-  }, [analyses]);
-
-  const leadingLeague = leaguePerformanceRows.find((row) => row.status !== "Too Early") ?? leaguePerformanceRows[0] ?? null;
+  const leadingLeague =
+    leaguePerformanceRows.find((row) => row.intelligenceStatus !== "Needs Data") ??
+    leaguePerformanceRows[0] ??
+    null;
 
   const riskChartData: ChartRow[] =
     dashboardData.performance?.riskPerformance?.map((item) => ({
@@ -1024,6 +818,11 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
+    if (!SHOW_AI_READS) {
+      setAiLoading(false);
+      return;
+    }
+
     let isCancelled = false;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
@@ -1190,6 +989,7 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {SHOW_AI_READS ? (
         <SectionCard
           title="AI Dashboard Read"
           description="A quick reading of what is validating, what looks fragile and where to stay disciplined."
@@ -1262,6 +1062,7 @@ export default function Dashboard() {
             )}
           </div>
         </SectionCard>
+        ) : null}
 
           {topValueToday ? (
             <motion.div
@@ -1630,7 +1431,8 @@ export default function Dashboard() {
                         <th className="py-3 pr-4">Stake</th>
                         <th className="py-3 pr-4">P/L</th>
                         <th className="py-3 pr-4">ROI</th>
-                        <th className="py-3 pr-4">Status</th>
+                      <th className="py-3 pr-4">Status</th>
+                      <th className="py-3 pr-4">Intelligence</th>
                       </tr>
                     </thead>
 
@@ -1668,18 +1470,21 @@ export default function Dashboard() {
                             <td className="py-3 pr-4">
                               <span
                                 className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getLeagueStatusTone(
-                                  row.status
+                                  row.intelligenceStatus
                                 )}`}
                               >
-                                {row.status}
+                                {row.intelligenceStatus}
                               </span>
+                            </td>
+                            <td className="py-3 pr-4 text-xs leading-5 text-muted-foreground">
+                              {row.trustScore}/100 · {row.recommendation}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
                           <td
-                            colSpan={10}
+                            colSpan={11}
                             className="py-8 text-center text-sm text-muted-foreground"
                           >
                             No settled league data yet. Start tracking results so ScoreLab can validate competitions properly.

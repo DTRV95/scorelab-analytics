@@ -51,7 +51,7 @@ export function SystemPulse3D({
   const palette = toneMap[tone];
 
   return (
-    <div className="scorelab-stage-3d scorelab-board-3d relative h-full min-h-[220px] overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(160deg,rgba(13,28,44,0.82)_0%,rgba(4,11,24,0.96)_100%)] p-4">
+    <div className="scorelab-stage-3d scorelab-board-3d scorelab-premium-edge relative h-full min-h-[220px] overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(160deg,rgba(13,28,44,0.82)_0%,rgba(4,11,24,0.96)_100%)] p-4">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[length:32px_32px] opacity-30" />
       <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-28 opacity-45" />
       <div className="pointer-events-none absolute inset-x-6 bottom-5 h-14 rounded-[50%] bg-black/35 blur-xl" />

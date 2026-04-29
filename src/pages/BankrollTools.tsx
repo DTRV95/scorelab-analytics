@@ -51,6 +51,8 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.06 } },
 };
 
+const SHOW_AI_READS = false;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
@@ -751,6 +753,11 @@ export default function BankrollTools() {
     openExposurePct > 8 ? "risk" : openExposure > 0 ? "scanning" : "online";
 
   useEffect(() => {
+    if (!SHOW_AI_READS) {
+      setAiLoading(false);
+      return;
+    }
+
     let isCancelled = false;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
@@ -937,6 +944,7 @@ export default function BankrollTools() {
           />
         </motion.div>
 
+        {SHOW_AI_READS ? (
         <SectionCard
           title="AI Bankroll Review"
           description="A quick read on bankroll health, pressure on capital and where discipline matters most."
@@ -1003,6 +1011,7 @@ export default function BankrollTools() {
             </div>
           )}
         </SectionCard>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
           <SectionCard
