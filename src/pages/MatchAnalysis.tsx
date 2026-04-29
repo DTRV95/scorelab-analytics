@@ -169,11 +169,11 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-stage-3d scorelab-board-3d overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
+    <div className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+      <h3 className="relative z-10 mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
         {title}
       </h3>
-      {children}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }

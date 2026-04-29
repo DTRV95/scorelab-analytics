@@ -1,6 +1,11 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { motion } from "framer-motion";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
+import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
+import { PulseOnChange } from "@/components/MotionIntelligence";
+import { AnalyticOrb, RiskBar } from "@/components/DataObjects";
+import { MatchdayHero } from "@/components/MatchdayHero";
+import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -628,34 +633,38 @@ function MetricCard({
   tone?: "positive" | "negative" | "neutral";
 }) {
   return (
-    <motion.div
-      variants={fadeUp}
-      className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
-      <div className="relative">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-100/38">
-          {label}
-        </p>
-        <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-        <div className="mt-3 text-[1rem] font-semibold tracking-[-0.03em] text-white md:text-[1.14rem]">
-          {value}
-        </div>
-        {change ? (
-          <p
-            className={`mt-2.5 text-[9px] font-semibold uppercase tracking-[0.15em] leading-4 ${
-              tone === "positive"
-                ? "text-emerald-300"
-                : tone === "negative"
-                ? "text-red-300"
-                : "text-white/42"
-            }`}
-          >
-            {change}
+    <PulseOnChange value={`${label}-${String(value)}-${change ?? ""}`}>
+      <StadiumLightSweep trigger={`${label}-${String(value)}-${change ?? ""}`}>
+      <motion.div
+        variants={fadeUp}
+        className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
+        <div className="relative">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-100/38">
+            {label}
           </p>
-        ) : null}
-      </div>
-    </motion.div>
+          <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
+          <div className="mt-3 text-[1rem] font-semibold tracking-[-0.03em] text-white md:text-[1.14rem]">
+            {value}
+          </div>
+          {change ? (
+            <p
+              className={`mt-2.5 text-[9px] font-semibold uppercase tracking-[0.15em] leading-4 ${
+                tone === "positive"
+                  ? "text-emerald-300"
+                  : tone === "negative"
+                  ? "text-red-300"
+                  : "text-white/42"
+              }`}
+            >
+              {change}
+            </p>
+          ) : null}
+        </div>
+      </motion.div>
+      </StadiumLightSweep>
+    </PulseOnChange>
   );
 }
 
@@ -707,6 +716,7 @@ export default function RoadmapPlanner() {
     targetDays: String(getRoadmapSettings().targetDays),
   });
   const [savedMessage, setSavedMessage] = useState("");
+  const [showFullDailyLog, setShowFullDailyLog] = useState(false);
 
   const effectiveStartedAt = useMemo(() => {
     const candidates = [getIsoDateOnly(settings.startedAt)];
@@ -1203,7 +1213,21 @@ export default function RoadmapPlanner() {
     setDayMemories(getRoadmapDayMemories());
   }, [roadmap.dailyLog]);
 
-  const visibleLog = useMemo(() => roadmap.dailyLog, [roadmap.dailyLog]);
+  const visibleLog = useMemo(() => {
+    if (showFullDailyLog || roadmap.dailyLog.length <= 5) return roadmap.dailyLog;
+
+    const currentIndex = Math.max(
+      0,
+      roadmap.dailyLog.findIndex((entry) => entry.day === roadmap.currentPlanDay)
+    );
+    const startIndex = Math.min(
+      Math.max(0, currentIndex - 2),
+      Math.max(0, roadmap.dailyLog.length - 5)
+    );
+
+    return roadmap.dailyLog.slice(startIndex, startIndex + 5);
+  }, [roadmap.currentPlanDay, roadmap.dailyLog, showFullDailyLog]);
+  const hiddenDailyLogRows = Math.max(0, roadmap.dailyLog.length - visibleLog.length);
   const roadmapPulseTone =
     roadmap.systemCommand.tone === "negative"
       ? "red"
@@ -1320,46 +1344,44 @@ export default function RoadmapPlanner() {
   return (
     <AppLayout>
       <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8 p-6">
-        <motion.div
-          variants={fadeUp}
-          className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(8,18,40,0.96)_0%,rgba(5,16,28,0.98)_48%,rgba(13,22,34,0.98)_100%)] p-5"
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
-          <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
-          <div className="relative grid gap-5 xl:grid-cols-[1fr_360px] xl:items-stretch">
-            <div className="flex min-h-[190px] flex-col justify-center">
-              <div className="inline-flex w-fit items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase text-cyan-100/80">
-                Mission Control
-              </div>
-              <h1 className="mt-4 text-[2rem] font-semibold text-white md:text-[2.6rem]">
-                <span className="text-white">Intelligent </span>
-                <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
-                  Roadmap
-                </span>
-              </h1>
-              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/58">
-                Know the target, the stake, and the next move.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  {roadmap.systemCommand.label}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  {roadmap.targetRealism}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  Day {roadmap.currentPlanDay}
-                </span>
-              </div>
-            </div>
+        <MatchdayHero
+          eyebrow="Mission Control"
+          tone={roadmap.systemCommand.tone === "negative" ? "red" : roadmap.systemCommand.tone === "positive" ? "emerald" : "cyan"}
+          statusIcon={<HudStateIcon state={roadmap.systemCommand.tone === "negative" ? "risk" : roadmap.systemCommand.tone === "positive" ? "execution" : "scanning"} />}
+          title={
+            <>
+              <span className="text-white">Intelligent </span>
+              <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
+                Roadmap
+              </span>
+            </>
+          }
+          description="Know the target, the stake, and the next move."
+          statusItems={
+            <>
+              <HudStatusPill
+                label={roadmap.systemCommand.label}
+                tone={roadmap.systemCommand.tone === "negative" ? "red" : roadmap.systemCommand.tone === "positive" ? "emerald" : "cyan"}
+                icon={<HudStateIcon state={roadmap.systemCommand.tone === "negative" ? "risk" : "execution"} />}
+              />
+              <HudStatusPill
+                label={roadmap.targetRealism}
+                tone={roadmap.targetRealism === "Demanding" ? "amber" : roadmap.targetRealism === "Unrealistic" ? "red" : "cyan"}
+                icon={<HudStateIcon state="scanning" />}
+                pulse={roadmap.targetRealism !== "Realistic"}
+              />
+              <HudStatusPill label={`Day ${roadmap.currentPlanDay}`} tone="cyan" pulse={false} />
+            </>
+          }
+          visual={
             <SystemPulse3D
               label="Mission Pulse"
               value={`${roadmap.bankrollProgressToTargetPct.toFixed(0)}%`}
               detail={`${formatCurrency(roadmap.availableTargetGap)} left from free bankroll to target.`}
               tone={roadmapPulseTone}
             />
-          </div>
-        </motion.div>
+          }
+        />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
@@ -1744,19 +1766,19 @@ export default function RoadmapPlanner() {
                 </div>
               </div>
 
-              <div className="min-w-[180px] rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
-                  Mission Completion
-                </p>
-                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
-                  {formatPct(missionTracker.completionRate)}
-                </p>
-                <div className="mt-3 h-2 rounded-full bg-white/10">
-                  <div
-                    className="h-2 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9),rgba(34,197,94,0.9))]"
-                    style={{ width: `${Math.max(0, Math.min(100, missionTracker.completionRate))}%` }}
-                  />
-                </div>
+              <div className="min-w-[180px]">
+                <AnalyticOrb
+                  label="Mission"
+                  value={missionTracker.completionRate}
+                  tone={
+                    missionTracker.state.tone === "positive"
+                      ? "emerald"
+                      : missionTracker.state.tone === "negative"
+                      ? "red"
+                      : "cyan"
+                  }
+                  detail="completion"
+                />
               </div>
             </div>
           </div>
@@ -1825,6 +1847,13 @@ export default function RoadmapPlanner() {
               value={formatCurrency(roadmap.openExposure)}
               change={`${formatPct(Math.min(999, roadmap.exposurePctOfMission))} of today's cap`}
               tone={roadmap.missionStatus === "Overexposed" ? "negative" : "neutral"}
+            />
+          </div>
+          <div className="mt-4">
+            <RiskBar
+              label="Daily Risk Load"
+              value={roadmap.exposurePctOfMission}
+              maxLabel="Daily Cap"
             />
           </div>
         </PremiumCard>
@@ -1932,7 +1961,26 @@ export default function RoadmapPlanner() {
             </div>
           </PremiumCard>
 
-          <PremiumCard title="Daily Log" description="See what was placed each day and what actually settled that day." badge="Log">
+          <PremiumCard title="Daily Log" description="Compact mission log. Showing the current mission window by default." badge="Log">
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/42">
+                  Mission Window
+                </p>
+                <p className="mt-1 text-sm text-white/62">
+                  Showing {visibleLog.length} of {roadmap.dailyLog.length} days around plan day {roadmap.currentPlanDay}.
+                </p>
+              </div>
+              {roadmap.dailyLog.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowFullDailyLog((current) => !current)}
+                  className="rounded-full border border-cyan-100/12 bg-cyan-100/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-50/68 transition hover:border-cyan-100/22 hover:bg-cyan-100/[0.07]"
+                >
+                  {showFullDailyLog ? "Show 5 Lines" : `Show ${hiddenDailyLogRows} More`}
+                </button>
+              ) : null}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b border-white/5">

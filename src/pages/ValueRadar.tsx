@@ -56,7 +56,7 @@ function PremiumCard({
     >
       <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
-      <div className="relative mb-5 flex items-start justify-between gap-4">
+      <div className="relative z-10 mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
             Value Radar
@@ -76,7 +76,7 @@ function PremiumCard({
         )}
       </div>
 
-      <div className="relative">{children}</div>
+      <div className="relative z-10">{children}</div>
     </motion.div>
   );
 }

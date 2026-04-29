@@ -12,6 +12,15 @@ import {
   getSavedMultiples,
 } from "@/lib/multipleStorage";
 import { buildRadarOpportunities } from "@/lib/valueRadar";
+import {
+  HudCornerFrame,
+  HudMetricOrb,
+  HudSignalLine,
+  HudStateIcon,
+  HudStatusPill,
+  type HudTone,
+} from "@/components/HudLayer";
+import { MotionNumber, PulseOnChange } from "@/components/MotionIntelligence";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -19,6 +28,8 @@ const formatCurrency = (value: number) =>
     currency: "EUR",
     maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
+
+const formatPercent = (value: number) => `${(Number.isFinite(value) ? value : 0).toFixed(2)}%`;
 
 function isToday(dateString: string) {
   const date = new Date(dateString);
@@ -86,6 +97,10 @@ export function LiveIntelligenceDock() {
         : exposureRatio >= 35
         ? "Risk guard active"
         : "Scanning for clean value";
+    const systemTone: HudTone =
+      exposureRatio >= 35 ? "red" : qualifiedRadar.length > 0 ? "emerald" : "cyan";
+    const systemState =
+      exposureRatio >= 35 ? "risk" : qualifiedRadar.length > 0 ? "execution" : "scanning";
 
     return {
       freeBankroll: stats.currentBankroll,
@@ -95,6 +110,8 @@ export function LiveIntelligenceDock() {
       qualifiedRadar,
       bestPoint,
       systemMode,
+      systemTone,
+      systemState,
     };
   }, [refreshKey]);
 
@@ -116,13 +133,15 @@ export function LiveIntelligenceDock() {
   };
 
   return (
-    <div className="border-b border-cyan-100/10 bg-[linear-gradient(180deg,rgba(4,18,33,0.82)_0%,rgba(3,14,27,0.72)_100%)] px-5 py-3 backdrop-blur-2xl shadow-[0_18px_44px_-34px_rgba(34,211,238,0.42)] md:px-6">
+    <div className="relative border-b border-cyan-100/10 bg-[linear-gradient(180deg,rgba(4,18,33,0.82)_0%,rgba(3,14,27,0.72)_100%)] px-5 py-3 backdrop-blur-2xl shadow-[0_18px_44px_-34px_rgba(34,211,238,0.42)] md:px-6">
+      <HudSignalLine tone={dock.systemTone} className="absolute inset-x-0 top-0" />
       <div className="mx-auto flex max-w-7xl flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <button
           type="button"
           onClick={() => navigate("/roadmap")}
-          className="group flex min-w-0 items-center gap-3 rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] px-3.5 py-3 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+          className="group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] px-3.5 py-3 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
         >
+          <HudCornerFrame />
           <span className="relative flex h-9 w-9 flex-none items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(52,211,153,0.12))] ring-1 ring-cyan-100/12">
             <Activity className="h-4 w-4 text-cyan-100/78" strokeWidth={1.7} />
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.75)]" />
@@ -134,6 +153,14 @@ export function LiveIntelligenceDock() {
             <p className="truncate text-sm font-medium text-white/82">
               {dock.systemMode}
             </p>
+            <div className="mt-2">
+              <HudStatusPill
+                label={dock.systemState === "risk" ? "Risk Lock" : dock.systemState === "execution" ? "Execution" : "Scanning"}
+                tone={dock.systemTone}
+                icon={<HudStateIcon state={dock.systemState} />}
+                className="px-2.5 py-1"
+              />
+            </div>
           </div>
         </button>
 
@@ -141,59 +168,68 @@ export function LiveIntelligenceDock() {
           <button
             type="button"
             onClick={() => navigate("/bankroll")}
-            className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.03] px-3 py-2.5 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+            className="text-left transition hover:scale-[1.01]"
           >
-            <div className="flex items-center gap-2 text-cyan-50/40">
-              <Wallet className="h-3.5 w-3.5" strokeWidth={1.7} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">Free</span>
-            </div>
-            <p className="mt-1 font-mono-data text-sm font-semibold text-white">
-              {formatCurrency(dock.freeBankroll)}
-            </p>
+            <PulseOnChange value={dock.freeBankroll}>
+              <HudMetricOrb
+                label="Free"
+                value={<MotionNumber value={dock.freeBankroll} formatter={formatCurrency} />}
+                icon={<Wallet className="h-3.5 w-3.5" strokeWidth={1.7} />}
+              />
+            </PulseOnChange>
           </button>
 
           <button
             type="button"
             onClick={() => navigate("/bankroll")}
-            className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.03] px-3 py-2.5 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+            className="text-left transition hover:scale-[1.01]"
           >
-            <div className="flex items-center gap-2 text-cyan-50/40">
-              <Zap className="h-3.5 w-3.5" strokeWidth={1.7} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">Exposure</span>
-            </div>
-            <p className="mt-1 font-mono-data text-sm font-semibold text-white">
-              {formatCurrency(dock.openExposure)}
-            </p>
+            <PulseOnChange value={dock.openExposure}>
+              <HudMetricOrb
+                label="Exposure"
+                value={<MotionNumber value={dock.openExposure} formatter={formatCurrency} />}
+                tone={dock.openExposure > 0 ? "amber" : "cyan"}
+                icon={<Zap className="h-3.5 w-3.5" strokeWidth={1.7} />}
+              />
+            </PulseOnChange>
           </button>
 
           <button
             type="button"
             onClick={openBestPoint}
-            className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.03] px-3 py-2.5 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+            className="text-left transition hover:scale-[1.01]"
           >
-            <div className="flex items-center gap-2 text-cyan-50/40">
-              <Radar className="h-3.5 w-3.5" strokeWidth={1.7} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">Radar</span>
-            </div>
-            <p className="mt-1 truncate font-mono-data text-sm font-semibold text-white">
-              {dock.qualifiedRadar.length > 0
-                ? `${dock.qualifiedRadar.length} above 75%`
-                : "No clean pick"}
-            </p>
+            <PulseOnChange value={dock.qualifiedRadar.length}>
+              <HudMetricOrb
+                label="Radar"
+                value={
+                  dock.qualifiedRadar.length > 0 ? (
+                    <>
+                      <MotionNumber value={dock.qualifiedRadar.length} /> above 75%
+                    </>
+                  ) : (
+                    "No clean pick"
+                  )
+                }
+                tone={dock.qualifiedRadar.length > 0 ? "emerald" : "cyan"}
+                icon={<Radar className="h-3.5 w-3.5" strokeWidth={1.7} />}
+              />
+            </PulseOnChange>
           </button>
 
           <button
             type="button"
             onClick={() => navigate("/history")}
-            className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.03] px-3 py-2.5 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+            className="text-left transition hover:scale-[1.01]"
           >
-            <div className="flex items-center gap-2 text-cyan-50/40">
-              <Flag className="h-3.5 w-3.5" strokeWidth={1.7} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">Pending</span>
-            </div>
-            <p className="mt-1 font-mono-data text-sm font-semibold text-white">
-              {dock.pending}
-            </p>
+            <PulseOnChange value={dock.pending}>
+              <HudMetricOrb
+                label="Pending"
+                value={<MotionNumber value={dock.pending} />}
+                tone={dock.pending > 0 ? "amber" : "cyan"}
+                icon={<Flag className="h-3.5 w-3.5" strokeWidth={1.7} />}
+              />
+            </PulseOnChange>
           </button>
         </div>
 
@@ -203,7 +239,7 @@ export function LiveIntelligenceDock() {
           className="hidden items-center gap-2 rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] px-3 py-2 text-xs font-medium text-emerald-50/70 transition hover:border-emerald-300/22 hover:bg-emerald-300/[0.065] xl:flex"
         >
           <TrendingUp className="h-3.5 w-3.5" strokeWidth={1.7} />
-          ROI {dock.roi.toFixed(2)}%
+          ROI <MotionNumber value={dock.roi} formatter={formatPercent} />
         </button>
       </div>
     </div>

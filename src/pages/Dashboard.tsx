@@ -2,6 +2,11 @@
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
+import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
+import { PulseOnChange } from "@/components/MotionIntelligence";
+import { MiniHeatmap } from "@/components/DataObjects";
+import { MatchdayHero } from "@/components/MatchdayHero";
+import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -175,35 +180,39 @@ function CompactStatCard({
   changeType?: "positive" | "negative" | "neutral";
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -3 }}
-      transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
-      <div className="relative">
-        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
-          {label}
-        </p>
-        <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-        <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
-          {value}
-        </p>
-        {change ? (
-          <p
-            className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
-              changeType === "positive"
-                ? "text-emerald-300"
-                : changeType === "negative"
-                ? "text-red-300"
-                : "text-white/42"
-            }`}
-          >
-            {change}
+    <PulseOnChange value={`${value}-${change ?? ""}`}>
+      <StadiumLightSweep trigger={`${value}-${change ?? ""}`}>
+      <motion.div
+        whileHover={{ y: -3 }}
+        transition={{ type: "spring", stiffness: 360, damping: 26 }}
+        className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
+        <div className="relative">
+          <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+            {label}
           </p>
-        ) : null}
-      </div>
-    </motion.div>
+          <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
+          <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
+            {value}
+          </p>
+          {change ? (
+            <p
+              className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+                changeType === "positive"
+                  ? "text-emerald-300"
+                  : changeType === "negative"
+                  ? "text-red-300"
+                  : "text-white/42"
+              }`}
+            >
+              {change}
+            </p>
+          ) : null}
+        </div>
+      </motion.div>
+      </StadiumLightSweep>
+    </PulseOnChange>
   );
 }
 
@@ -1082,43 +1091,41 @@ export default function Dashboard() {
         variants={stagger}
         className="space-y-8 p-6"
       >
-        <motion.div
-          variants={fadeUp}
-          className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(8,18,40,0.96)_0%,rgba(5,16,28,0.98)_48%,rgba(13,22,34,0.98)_100%)] p-5"
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
-          <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
-          <div className="relative grid gap-5 xl:grid-cols-[1fr_360px] xl:items-stretch">
-            <div className="flex min-h-[180px] flex-col justify-center">
-              <div className="inline-flex w-fit items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase text-cyan-100/80">
-                Dashboard Workspace
-              </div>
-              <h1 className="mt-4 text-2xl font-semibold text-white md:text-3xl">
-                Performance Intelligence
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
-                Use historical betting performance to find where ScoreLab is really validating and where discipline matters most.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  {dashboardData.riskLevel} exposure
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  {bankrollStats.totalPending} pending positions
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/58">
-                  {marketPerformanceRows.length} markets tracked
-                </span>
-              </div>
-            </div>
+        <MatchdayHero
+          eyebrow="Dashboard Workspace"
+          tone={dashboardData.riskLevel === "High" ? "amber" : "cyan"}
+          statusIcon={<HudStateIcon state="online" />}
+          title="Performance Intelligence"
+          description="Use historical betting performance to find where ScoreLab is really validating and where discipline matters most."
+          statusItems={
+            <>
+              <HudStatusPill
+                label={`${dashboardData.riskLevel} Exposure`}
+                tone={dashboardData.riskLevel === "High" ? "red" : "cyan"}
+                icon={<HudStateIcon state={dashboardData.riskLevel === "High" ? "risk" : "online"} />}
+              />
+              <HudStatusPill
+                label={`${bankrollStats.totalPending} Pending`}
+                tone={bankrollStats.totalPending > 0 ? "amber" : "emerald"}
+                icon={<HudStateIcon state={bankrollStats.totalPending > 0 ? "scanning" : "online"} />}
+              />
+              <HudStatusPill
+                label={`${marketPerformanceRows.length} Markets`}
+                tone="cyan"
+                pulse={false}
+                icon={<HudStateIcon state="scanning" />}
+              />
+            </>
+          }
+          visual={
             <SystemPulse3D
               label="System Pulse"
               value={`${bankrollStats.roi.toFixed(1)}% ROI`}
               detail={`Live risk is ${dashboardData.riskLevel.toLowerCase()} with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
               tone={dashboardPulseTone}
             />
-          </div>
-        </motion.div>
+          }
+        />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <CompactStatCard
@@ -1455,10 +1462,10 @@ export default function Dashboard() {
           badge="Core"
           className="relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.06),transparent_24%)]" />
-          <div className="relative space-y-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.045),transparent_30%)]" />
+          <div className="relative z-10 space-y-6">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
                   Market Lead
                 </p>
@@ -1471,7 +1478,7 @@ export default function Dashboard() {
                     : "Need more settled market data"}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
                   League Lead
                 </p>
@@ -1484,7 +1491,7 @@ export default function Dashboard() {
                     : "Need more settled league data"}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
                   Validation Focus
                 </p>
@@ -1497,8 +1504,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="space-y-5">
-              <div className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-4">
+            <div className="space-y-6">
+              <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-white md:text-[15px]">
@@ -1512,7 +1519,17 @@ export default function Dashboard() {
                     Markets
                   </span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="mb-5">
+                  <MiniHeatmap
+                    title="Market Heatmap"
+                    items={marketPerformanceRows.map((row) => ({
+                      label: row.market,
+                      value: row.roi,
+                      detail: `${row.bets} bets · ${row.hitRate}% hit`,
+                    }))}
+                  />
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.025]">
                   <table className="w-full min-w-[1100px] text-sm">
                     <thead className="border-b border-white/5">
                       <tr className="text-left text-xs uppercase tracking-wider text-white/45">
@@ -1576,7 +1593,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-4">
+              <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-white md:text-[15px]">
@@ -1590,7 +1607,17 @@ export default function Dashboard() {
                     Leagues
                   </span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="mb-5">
+                  <MiniHeatmap
+                    title="League Heatmap"
+                    items={leaguePerformanceRows.map((row) => ({
+                      label: row.league,
+                      value: row.roi,
+                      detail: `${row.bets} bets · ${row.bestMarket}`,
+                    }))}
+                  />
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.025]">
                   <table className="w-full min-w-[980px] text-sm">
                     <thead className="border-b border-white/5">
                       <tr className="text-left text-xs uppercase tracking-wider text-white/45">

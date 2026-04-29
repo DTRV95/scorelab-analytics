@@ -40,6 +40,11 @@ import {
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { MatchdayHero } from "@/components/MatchdayHero";
+import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
+import { PulseOnChange } from "@/components/MotionIntelligence";
+import { StadiumLightSweep } from "@/components/ArenaEffects";
+import { SystemPulse3D } from "@/components/SystemPulse3D";
 
 const stagger = {
   hidden: {},
@@ -309,9 +314,9 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`scorelab-stage-3d scorelab-board-3d overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+      className={`scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
+      <div className="relative z-10 flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
           <h2 className="text-sm font-semibold text-white md:text-[15px]">{title}</h2>
           {description ? (
@@ -324,7 +329,7 @@ function SectionCard({
           </span>
         ) : null}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="relative z-10 p-4">{children}</div>
     </motion.section>
   );
 }
@@ -363,35 +368,39 @@ function CompactStatCard({
   changeType?: "positive" | "negative" | "neutral";
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -1 }}
-      transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
-      <div className="relative">
-        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
-          {label}
-        </p>
-        <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-        <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
-          {value}
-        </p>
-        {change ? (
-          <p
-            className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
-              changeType === "positive"
-                ? "text-emerald-400"
-                : changeType === "negative"
-                ? "text-red-400"
-                : "text-white/42"
-            }`}
-          >
-            {change}
-          </p>
-        ) : null}
-      </div>
-    </motion.div>
+    <PulseOnChange value={`${value}-${change ?? ""}`}>
+      <StadiumLightSweep trigger={`${value}-${change ?? ""}`}>
+        <motion.div
+          whileHover={{ y: -1 }}
+          transition={{ type: "spring", stiffness: 360, damping: 26 }}
+          className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
+          <div className="relative">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+              {label}
+            </p>
+            <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
+            <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
+              {value}
+            </p>
+            {change ? (
+              <p
+                className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+                  changeType === "positive"
+                    ? "text-emerald-400"
+                    : changeType === "negative"
+                    ? "text-red-400"
+                    : "text-white/42"
+                }`}
+              >
+                {change}
+              </p>
+            ) : null}
+          </div>
+        </motion.div>
+      </StadiumLightSweep>
+    </PulseOnChange>
   );
 }
 
@@ -732,6 +741,14 @@ export default function BankrollTools() {
     () => JSON.stringify(bankrollAiPayload),
     [bankrollAiPayload]
   );
+  const bankrollHeroTone =
+    openExposurePct > 8
+      ? "red"
+      : stats.totalProfitLoss >= 0
+      ? "emerald"
+      : "cyan";
+  const bankrollHeroState =
+    openExposurePct > 8 ? "risk" : openExposure > 0 ? "scanning" : "online";
 
   useEffect(() => {
     let isCancelled = false;
@@ -792,24 +809,40 @@ export default function BankrollTools() {
         variants={stagger}
         className="space-y-8 p-6"
       >
-        <motion.div
-          variants={fadeUp}
-          className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
-        >
-          <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
-          <div className="relative max-w-3xl">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
-              Bankroll Workspace
-            </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
-              Bankroll Tools
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
-              Treat the bankroll as an operating system: set the baseline, track pressure on capital and understand where performance is really coming from.
-            </p>
-          </div>
-        </motion.div>
+        <MatchdayHero
+          eyebrow="Bankroll Workspace"
+          tone={bankrollHeroTone}
+          statusIcon={<HudStateIcon state={bankrollHeroState} />}
+          title="Bankroll Tools"
+          description="Treat the bankroll as an operating system: set the baseline, track pressure on capital and understand where performance is really coming from."
+          statusItems={
+            <>
+              <HudStatusPill
+                label={`${openExposurePct.toFixed(1)}% Exposure`}
+                tone={openExposurePct > 8 ? "red" : openExposure > 0 ? "amber" : "cyan"}
+                icon={<HudStateIcon state={openExposurePct > 8 ? "risk" : "scanning"} />}
+              />
+              <HudStatusPill
+                label={`${stats.totalPending} Pending`}
+                tone={stats.totalPending > 0 ? "amber" : "emerald"}
+                icon={<HudStateIcon state={stats.totalPending > 0 ? "scanning" : "online"} />}
+              />
+              <HudStatusPill
+                label={`${stats.roi.toFixed(2)}% ROI`}
+                tone={stats.roi >= 0 ? "emerald" : "red"}
+                icon={<HudStateIcon state={stats.roi >= 0 ? "online" : "risk"} />}
+              />
+            </>
+          }
+          visual={
+            <SystemPulse3D
+              label="Capital Pulse"
+              value={formatCurrency(stats.currentBankroll)}
+              detail={`Net P/L ${formatCurrency(stats.totalProfitLoss)} with ${formatCurrency(openExposure)} open.`}
+              tone={bankrollHeroTone}
+            />
+          }
+        />
 
         <SectionCard
           title="Bankroll Baseline"

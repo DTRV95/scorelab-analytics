@@ -163,6 +163,44 @@
     animation: aurora-drift 22s ease-in-out infinite alternate;
   }
 
+  .scorelab-arena-atmosphere {
+    overflow: hidden;
+  }
+
+  .scorelab-arena-atmosphere::before,
+  .scorelab-arena-atmosphere::after {
+    content: "";
+    position: fixed;
+    top: -18vh;
+    z-index: -15;
+    width: 46vw;
+    height: 118vh;
+    pointer-events: none;
+    opacity: 0.26;
+    filter: blur(22px);
+    transform-origin: top center;
+    mix-blend-mode: screen;
+  }
+
+  .scorelab-arena-atmosphere::before {
+    left: 4vw;
+    background: linear-gradient(104deg, transparent 0%, rgba(34, 211, 238, 0.13) 34%, rgba(125, 245, 238, 0.045) 48%, transparent 68%);
+    animation: stadium-light-left 18s ease-in-out infinite alternate;
+  }
+
+  .scorelab-arena-atmosphere::after {
+    right: 0;
+    background: linear-gradient(76deg, transparent 0%, rgba(52, 211, 153, 0.10) 34%, rgba(34, 211, 238, 0.04) 50%, transparent 70%);
+    animation: stadium-light-right 21s ease-in-out infinite alternate;
+  }
+
+  .scorelab-arena-pitch-glow {
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(52, 211, 153, 0.075), transparent 46%),
+      linear-gradient(90deg, transparent, rgba(125, 245, 238, 0.035), transparent);
+    mask-image: linear-gradient(to top, black, transparent 78%);
+  }
+
   .animate-gradient {
     background-size: 200% 200%;
     animation: gradient-shift 8s ease infinite;
@@ -230,6 +268,29 @@
     transform: rotateX(62deg) translateY(36px) translateZ(-32px);
     transform-origin: center bottom;
   }
+
+  .scorelab-hud-scan {
+    animation: hud-scan 2.9s ease-in-out infinite;
+  }
+}
+
+@keyframes hud-scan {
+  0% { transform: translateX(-120%); opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { transform: translateX(240%); opacity: 0; }
+}
+
+@keyframes stadium-light-left {
+  0% { transform: rotate(12deg) translate3d(-8%, 0, 0); opacity: 0.16; }
+  42% { opacity: 0.28; }
+  100% { transform: rotate(24deg) translate3d(10%, 0, 0); opacity: 0.22; }
+}
+
+@keyframes stadium-light-right {
+  0% { transform: rotate(-16deg) translate3d(8%, 0, 0); opacity: 0.14; }
+  46% { opacity: 0.24; }
+  100% { transform: rotate(-28deg) translate3d(-10%, 0, 0); opacity: 0.20; }
 }
 
 @keyframes aurora-drift {
