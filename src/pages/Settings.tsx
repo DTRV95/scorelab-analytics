@@ -24,6 +24,12 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { resetAllScorelabData } from "@/lib/persistenceSync";
+import {
+  appearancePresets,
+  getScoreLabAppearance,
+  saveScoreLabAppearance,
+  type ScoreLabAppearance,
+} from "@/lib/appearanceSettings";
 
 function SettingsSection({
   title,
@@ -90,6 +96,9 @@ function SettingsField({
 
 export default function Settings() {
   const [isResetting, setIsResetting] = useState(false);
+  const [appearance, setAppearance] = useState<ScoreLabAppearance>(() =>
+    getScoreLabAppearance()
+  );
 
   const handleStartFresh = async () => {
     setIsResetting(true);
@@ -112,6 +121,15 @@ export default function Settings() {
       });
       setIsResetting(false);
     }
+  };
+
+  const handleAppearanceChange = (nextAppearance: ScoreLabAppearance) => {
+    setAppearance(nextAppearance);
+    saveScoreLabAppearance(nextAppearance);
+    toast({
+      title: "Appearance updated",
+      description: "Your ScoreLab visual identity has been changed.",
+    });
   };
 
   return (
@@ -211,9 +229,65 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection title="Appearance" icon={Palette}>
-            <p className="text-sm text-muted-foreground">
-              Dark mode is the default and recommended theme for optimal data readability.
-            </p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Visual identity
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Choose the atmosphere of the workspace, from neutral premium modes
+                  to football-club-inspired color systems.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {appearancePresets.map((preset) => {
+                  const isActive = appearance === preset.id;
+
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleAppearanceChange(preset.id)}
+                      className={`group relative overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200 ${
+                        isActive
+                          ? "border-primary/45 bg-primary/[0.075] shadow-[0_0_30px_-18px_hsl(var(--primary))]"
+                          : "border-white/8 bg-white/[0.035] hover:border-cyan-100/18 hover:bg-white/[0.055]"
+                      }`}
+                    >
+                      <div
+                        className={`relative mb-3 h-20 overflow-hidden rounded-xl ${preset.previewClassName}`}
+                      >
+                        <div className="absolute inset-x-4 bottom-3 h-1 rounded-full bg-white/18" />
+                        <div className="absolute left-4 top-4 h-7 w-16 rounded-lg border border-white/12 bg-black/18 backdrop-blur-md" />
+                        <div className="absolute right-4 top-4 h-7 w-7 rounded-full border border-white/12 bg-white/12 backdrop-blur-md" />
+                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_42%)] opacity-70" />
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {preset.name}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {preset.description}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] ${
+                            isActive
+                              ? "border-primary/30 bg-primary/10 text-primary"
+                              : "border-white/10 bg-white/[0.04] text-white/42"
+                          }`}
+                        >
+                          {isActive ? "Active" : preset.accent}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </SettingsSection>
         </div>
 

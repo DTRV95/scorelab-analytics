@@ -4,6 +4,11 @@ import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./TopBar";
 import { LiveIntelligenceDock } from "@/components/LiveIntelligenceDock";
 import { PremiumAtmosphere } from "@/components/PremiumAtmosphere";
+import {
+  APPEARANCE_UPDATED_EVENT,
+  applyScoreLabAppearance,
+  getScoreLabAppearance,
+} from "@/lib/appearanceSettings";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -15,6 +20,22 @@ export function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [location.pathname]);
+
+  useEffect(() => {
+    applyScoreLabAppearance(getScoreLabAppearance());
+
+    const syncAppearance = () => {
+      applyScoreLabAppearance(getScoreLabAppearance());
+    };
+
+    window.addEventListener(APPEARANCE_UPDATED_EVENT, syncAppearance);
+    window.addEventListener("storage", syncAppearance);
+
+    return () => {
+      window.removeEventListener(APPEARANCE_UPDATED_EVENT, syncAppearance);
+      window.removeEventListener("storage", syncAppearance);
+    };
+  }, []);
 
   return (
     <div className="scorelab-premium-shell scorelab-arena-atmosphere relative flex min-h-screen w-full overflow-x-hidden bg-background">
@@ -30,8 +51,8 @@ export function AppLayout({ children }: AppLayoutProps) {
           <TopBar />
           <LiveIntelligenceDock />
         </div>
-        <main className="flex-1 px-5 pb-8 pt-6 md:px-6 md:pb-10">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 px-4 pb-8 pt-5 sm:px-5 md:px-6 md:pb-10 md:pt-6">
+          <div className="mx-auto max-w-[1440px]">
             <div className="animate-[page-rise_420ms_ease-out_both]">
               {children}
             </div>

@@ -6,8 +6,6 @@
 
 @layer base {
   :root {
-    --scorelab-pointer-x: 50%;
-    --scorelab-pointer-y: 18%;
     --background: 222 54% 4%;
     --foreground: 210 40% 98%;
 
@@ -56,6 +54,366 @@
     --shadow-card-hover: 0 0 0 1px rgba(143, 240, 194, 0.11), 0 22px 46px -20px rgba(0,0,0,0.64), 0 0 48px -34px rgba(34,211,238,0.20);
     --shadow-glow-primary: 0 0 30px -12px hsla(154, 78%, 48%, 0.15), 0 0 54px -24px hsla(190, 92%, 56%, 0.12);
     --shadow-soft-panel: 0 22px 64px -34px rgba(0, 0, 0, 0.60), 0 0 0 1px rgba(148, 226, 255, 0.06);
+    --scorelab-surface-bg:
+      radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.07), transparent 30%),
+      radial-gradient(circle at 86% 12%, rgba(52, 211, 153, 0.055), transparent 28%),
+      linear-gradient(180deg, rgba(8, 18, 40, 0.955) 0%, rgba(4, 11, 28, 0.985) 100%);
+    --scorelab-surface-border: rgba(212, 255, 247, 0.078);
+    --scorelab-surface-border-strong: rgba(150, 244, 238, 0.16);
+    --scorelab-field-bg: rgba(255, 255, 255, 0.042);
+    --scorelab-field-bg-hover: rgba(255, 255, 255, 0.062);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.10), transparent 24%),
+      radial-gradient(circle at 86% 10%, rgba(52, 211, 153, 0.085), transparent 22%),
+      linear-gradient(180deg, rgba(2, 9, 20, 1) 0%, rgba(4, 18, 34, 1) 44%, rgba(2, 10, 22, 1) 100%);
+    --scorelab-body-bg:
+      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.09), transparent 22%),
+      radial-gradient(circle at 86% 8%, rgba(52, 211, 153, 0.08), transparent 20%),
+      linear-gradient(180deg, rgba(3, 9, 18, 1) 0%, rgba(5, 17, 31, 1) 38%, rgba(2, 11, 22, 1) 100%);
+    --scorelab-aurora-primary: rgba(34, 211, 238, 0.11);
+    --scorelab-aurora-secondary: rgba(52, 211, 153, 0.075);
+    --scorelab-accent-a: rgba(34, 211, 238, 0.34);
+    --scorelab-accent-b: rgba(52, 211, 153, 0.26);
+    --scorelab-accent-a-soft: rgba(34, 211, 238, 0.16);
+    --scorelab-accent-b-soft: rgba(52, 211, 153, 0.12);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 31, 50, 0.96) 0%, rgba(5, 23, 42, 0.985) 42%, rgba(2, 13, 27, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(10, 34, 54, 0.76) 0%, rgba(5, 20, 38, 0.88) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(4, 18, 33, 0.82) 0%, rgba(3, 14, 27, 0.72) 100%);
+    --scorelab-chrome-border: rgba(125, 245, 238, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(125,245,238,0.08), 0 28px 90px -26px rgba(34,211,238,0.34), 0 0 80px -44px rgba(52,211,153,0.42);
+    --scorelab-control-bg: rgba(125, 245, 238, 0.045);
+    --scorelab-control-bg-hover: rgba(125, 245, 238, 0.07);
+    --scorelab-control-border: rgba(125, 245, 238, 0.12);
+    --scorelab-control-border-hover: rgba(125, 245, 238, 0.24);
+  }
+
+  :root[data-scorelab-appearance="ocean"] {
+    --primary: 190 92% 56%;
+    --primary-glow: 217 91% 60%;
+    --ring: 190 92% 56%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(59, 130, 246, 0.09), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.06), transparent 30%),
+      linear-gradient(180deg, rgba(6, 18, 44, 0.965) 0%, rgba(2, 8, 23, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(59, 130, 246, 0.13), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(45, 212, 191, 0.09), transparent 22%),
+      linear-gradient(180deg, rgba(2, 8, 23, 1) 0%, rgba(5, 18, 42, 1) 46%, rgba(1, 6, 18, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(59, 130, 246, 0.13);
+    --scorelab-aurora-secondary: rgba(45, 212, 191, 0.08);
+    --scorelab-accent-a: rgba(59, 130, 246, 0.36);
+    --scorelab-accent-b: rgba(45, 212, 191, 0.24);
+    --scorelab-accent-a-soft: rgba(59, 130, 246, 0.16);
+    --scorelab-accent-b-soft: rgba(45, 212, 191, 0.10);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 24, 56, 0.96) 0%, rgba(4, 17, 42, 0.985) 48%, rgba(1, 8, 23, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(12, 34, 70, 0.76) 0%, rgba(4, 18, 44, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 17, 42, 0.84) 0%, rgba(2, 10, 28, 0.74) 100%);
+    --scorelab-chrome-border: rgba(96, 165, 250, 0.16);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(96,165,250,0.08), 0 28px 90px -26px rgba(59,130,246,0.34), 0 0 80px -44px rgba(45,212,191,0.34);
+    --scorelab-control-bg: rgba(96, 165, 250, 0.05);
+    --scorelab-control-bg-hover: rgba(96, 165, 250, 0.08);
+    --scorelab-control-border: rgba(96, 165, 250, 0.14);
+    --scorelab-control-border-hover: rgba(45, 212, 191, 0.26);
+  }
+
+  :root[data-scorelab-appearance="emerald"] {
+    --primary: 142 71% 45%;
+    --primary-glow: 84 81% 55%;
+    --ring: 142 71% 45%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(34, 197, 94, 0.09), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(132, 204, 22, 0.06), transparent 30%),
+      linear-gradient(180deg, rgba(5, 28, 22, 0.965) 0%, rgba(2, 13, 10, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(34, 197, 94, 0.13), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(132, 204, 22, 0.085), transparent 22%),
+      linear-gradient(180deg, rgba(3, 14, 11, 1) 0%, rgba(6, 28, 22, 1) 46%, rgba(2, 9, 8, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(34, 197, 94, 0.12);
+    --scorelab-aurora-secondary: rgba(132, 204, 22, 0.075);
+    --scorelab-accent-a: rgba(34, 197, 94, 0.34);
+    --scorelab-accent-b: rgba(132, 204, 22, 0.22);
+    --scorelab-accent-a-soft: rgba(34, 197, 94, 0.15);
+    --scorelab-accent-b-soft: rgba(132, 204, 22, 0.10);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 42, 30, 0.96) 0%, rgba(5, 28, 22, 0.985) 48%, rgba(2, 13, 10, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(10, 48, 35, 0.76) 0%, rgba(4, 25, 18, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 28, 22, 0.84) 0%, rgba(2, 14, 11, 0.74) 100%);
+    --scorelab-chrome-border: rgba(74, 222, 128, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(74,222,128,0.08), 0 28px 90px -26px rgba(34,197,94,0.32), 0 0 80px -44px rgba(132,204,22,0.34);
+    --scorelab-control-bg: rgba(74, 222, 128, 0.045);
+    --scorelab-control-bg-hover: rgba(74, 222, 128, 0.075);
+    --scorelab-control-border: rgba(74, 222, 128, 0.13);
+    --scorelab-control-border-hover: rgba(132, 204, 22, 0.24);
+  }
+
+  :root[data-scorelab-appearance="neon"] {
+    --primary: 186 92% 56%;
+    --primary-glow: 271 91% 65%;
+    --ring: 271 91% 65%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(168, 85, 247, 0.10), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(34, 211, 238, 0.07), transparent 30%),
+      linear-gradient(180deg, rgba(15, 10, 42, 0.965) 0%, rgba(3, 8, 23, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(168, 85, 247, 0.15), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(34, 211, 238, 0.10), transparent 22%),
+      linear-gradient(180deg, rgba(8, 5, 26, 1) 0%, rgba(13, 9, 42, 1) 46%, rgba(2, 6, 18, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(168, 85, 247, 0.14);
+    --scorelab-aurora-secondary: rgba(34, 211, 238, 0.08);
+    --scorelab-accent-a: rgba(168, 85, 247, 0.36);
+    --scorelab-accent-b: rgba(34, 211, 238, 0.24);
+    --scorelab-accent-a-soft: rgba(168, 85, 247, 0.15);
+    --scorelab-accent-b-soft: rgba(34, 211, 238, 0.11);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(24, 13, 58, 0.96) 0%, rgba(13, 9, 42, 0.985) 48%, rgba(2, 6, 18, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(34, 18, 70, 0.78) 0%, rgba(9, 12, 40, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(18, 10, 48, 0.84) 0%, rgba(4, 9, 28, 0.74) 100%);
+    --scorelab-chrome-border: rgba(168, 85, 247, 0.16);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(168,85,247,0.08), 0 28px 90px -26px rgba(168,85,247,0.34), 0 0 80px -44px rgba(34,211,238,0.36);
+    --scorelab-control-bg: rgba(168, 85, 247, 0.05);
+    --scorelab-control-bg-hover: rgba(168, 85, 247, 0.08);
+    --scorelab-control-border: rgba(168, 85, 247, 0.14);
+    --scorelab-control-border-hover: rgba(34, 211, 238, 0.25);
+  }
+
+  :root[data-scorelab-appearance="sunset"] {
+    --primary: 38 92% 58%;
+    --primary-glow: 347 77% 58%;
+    --ring: 38 92% 58%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(251, 191, 36, 0.09), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(244, 63, 94, 0.06), transparent 30%),
+      linear-gradient(180deg, rgba(38, 20, 9, 0.965) 0%, rgba(18, 8, 13, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(251, 191, 36, 0.13), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(244, 63, 94, 0.085), transparent 22%),
+      linear-gradient(180deg, rgba(22, 10, 5, 1) 0%, rgba(38, 18, 12, 1) 46%, rgba(12, 5, 9, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(251, 191, 36, 0.12);
+    --scorelab-aurora-secondary: rgba(244, 63, 94, 0.075);
+    --scorelab-accent-a: rgba(251, 191, 36, 0.34);
+    --scorelab-accent-b: rgba(244, 63, 94, 0.22);
+    --scorelab-accent-a-soft: rgba(251, 191, 36, 0.15);
+    --scorelab-accent-b-soft: rgba(244, 63, 94, 0.10);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(52, 27, 10, 0.96) 0%, rgba(36, 16, 12, 0.985) 48%, rgba(16, 6, 10, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(64, 34, 12, 0.78) 0%, rgba(34, 14, 14, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(38, 18, 10, 0.84) 0%, rgba(18, 7, 12, 0.74) 100%);
+    --scorelab-chrome-border: rgba(251, 191, 36, 0.16);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(251,191,36,0.08), 0 28px 90px -26px rgba(251,191,36,0.30), 0 0 80px -44px rgba(244,63,94,0.34);
+    --scorelab-control-bg: rgba(251, 191, 36, 0.05);
+    --scorelab-control-bg-hover: rgba(251, 191, 36, 0.08);
+    --scorelab-control-border: rgba(251, 191, 36, 0.14);
+    --scorelab-control-border-hover: rgba(244, 63, 94, 0.24);
+  }
+
+  :root[data-scorelab-appearance="minimal"] {
+    --primary: 186 70% 62%;
+    --primary-glow: 210 40% 72%;
+    --ring: 186 70% 62%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(148, 163, 184, 0.045), transparent 32%),
+      linear-gradient(180deg, rgba(9, 13, 20, 0.965) 0%, rgba(2, 4, 10, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(148, 163, 184, 0.06), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(34, 211, 238, 0.035), transparent 22%),
+      linear-gradient(180deg, rgba(5, 8, 13, 1) 0%, rgba(8, 12, 18, 1) 46%, rgba(2, 3, 7, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(148, 163, 184, 0.055);
+    --scorelab-aurora-secondary: rgba(34, 211, 238, 0.035);
+    --scorelab-accent-a: rgba(148, 163, 184, 0.20);
+    --scorelab-accent-b: rgba(34, 211, 238, 0.12);
+    --scorelab-accent-a-soft: rgba(148, 163, 184, 0.08);
+    --scorelab-accent-b-soft: rgba(34, 211, 238, 0.055);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(13, 18, 26, 0.96) 0%, rgba(8, 12, 18, 0.985) 48%, rgba(2, 3, 7, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(16, 22, 31, 0.78) 0%, rgba(7, 10, 15, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(10, 14, 20, 0.84) 0%, rgba(3, 5, 10, 0.74) 100%);
+    --scorelab-chrome-border: rgba(148, 163, 184, 0.12);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(148,163,184,0.06), 0 28px 90px -26px rgba(0,0,0,0.58), 0 0 80px -48px rgba(34,211,238,0.16);
+    --scorelab-control-bg: rgba(148, 163, 184, 0.04);
+    --scorelab-control-bg-hover: rgba(148, 163, 184, 0.065);
+    --scorelab-control-border: rgba(148, 163, 184, 0.12);
+    --scorelab-control-border-hover: rgba(226, 232, 240, 0.18);
+  }
+
+  :root[data-scorelab-appearance="sporting"] {
+    --primary: 145 72% 42%;
+    --primary-glow: 150 100% 88%;
+    --ring: 145 72% 42%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(22, 163, 74, 0.105), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(240, 253, 244, 0.055), transparent 30%),
+      linear-gradient(180deg, rgba(3, 30, 20, 0.965) 0%, rgba(2, 12, 9, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(22, 163, 74, 0.15), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(240, 253, 244, 0.07), transparent 22%),
+      linear-gradient(180deg, rgba(2, 18, 12, 1) 0%, rgba(4, 35, 24, 1) 46%, rgba(1, 8, 6, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(22, 163, 74, 0.14);
+    --scorelab-aurora-secondary: rgba(240, 253, 244, 0.055);
+    --scorelab-accent-a: rgba(22, 163, 74, 0.38);
+    --scorelab-accent-b: rgba(240, 253, 244, 0.18);
+    --scorelab-accent-a-soft: rgba(22, 163, 74, 0.17);
+    --scorelab-accent-b-soft: rgba(240, 253, 244, 0.075);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(3, 38, 24, 0.96) 0%, rgba(2, 26, 18, 0.985) 48%, rgba(1, 10, 7, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(6, 48, 31, 0.78) 0%, rgba(2, 24, 16, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(4, 30, 20, 0.84) 0%, rgba(1, 12, 9, 0.74) 100%);
+    --scorelab-chrome-border: rgba(187, 247, 208, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(187,247,208,0.07), 0 28px 90px -26px rgba(22,163,74,0.34), 0 0 80px -44px rgba(240,253,244,0.20);
+    --scorelab-control-bg: rgba(187, 247, 208, 0.045);
+    --scorelab-control-bg-hover: rgba(187, 247, 208, 0.075);
+    --scorelab-control-border: rgba(187, 247, 208, 0.13);
+    --scorelab-control-border-hover: rgba(240, 253, 244, 0.26);
+  }
+
+  :root[data-scorelab-appearance="porto"] {
+    --primary: 217 91% 60%;
+    --primary-glow: 210 100% 90%;
+    --ring: 217 91% 60%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.11), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(241, 245, 249, 0.055), transparent 30%),
+      linear-gradient(180deg, rgba(3, 18, 48, 0.965) 0%, rgba(1, 7, 22, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(37, 99, 235, 0.16), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(241, 245, 249, 0.065), transparent 22%),
+      linear-gradient(180deg, rgba(1, 8, 24, 1) 0%, rgba(4, 22, 56, 1) 46%, rgba(1, 5, 15, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(37, 99, 235, 0.15);
+    --scorelab-aurora-secondary: rgba(241, 245, 249, 0.05);
+    --scorelab-accent-a: rgba(37, 99, 235, 0.40);
+    --scorelab-accent-b: rgba(241, 245, 249, 0.16);
+    --scorelab-accent-a-soft: rgba(37, 99, 235, 0.18);
+    --scorelab-accent-b-soft: rgba(241, 245, 249, 0.065);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(3, 24, 62, 0.96) 0%, rgba(2, 16, 42, 0.985) 48%, rgba(1, 7, 20, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(5, 32, 76, 0.78) 0%, rgba(2, 16, 42, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(3, 20, 54, 0.84) 0%, rgba(1, 9, 28, 0.74) 100%);
+    --scorelab-chrome-border: rgba(191, 219, 254, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(191,219,254,0.07), 0 28px 90px -26px rgba(37,99,235,0.36), 0 0 80px -44px rgba(241,245,249,0.18);
+    --scorelab-control-bg: rgba(191, 219, 254, 0.045);
+    --scorelab-control-bg-hover: rgba(191, 219, 254, 0.075);
+    --scorelab-control-border: rgba(191, 219, 254, 0.13);
+    --scorelab-control-border-hover: rgba(241, 245, 249, 0.25);
+  }
+
+  :root[data-scorelab-appearance="benfica"] {
+    --primary: 0 72% 51%;
+    --primary-glow: 43 96% 56%;
+    --ring: 0 72% 51%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(220, 38, 38, 0.105), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(245, 158, 11, 0.065), transparent 30%),
+      linear-gradient(180deg, rgba(42, 5, 8, 0.965) 0%, rgba(18, 5, 8, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(220, 38, 38, 0.15), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(245, 158, 11, 0.085), transparent 22%),
+      linear-gradient(180deg, rgba(24, 4, 7, 1) 0%, rgba(50, 8, 12, 1) 46%, rgba(10, 3, 5, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(220, 38, 38, 0.14);
+    --scorelab-aurora-secondary: rgba(245, 158, 11, 0.075);
+    --scorelab-accent-a: rgba(220, 38, 38, 0.38);
+    --scorelab-accent-b: rgba(245, 158, 11, 0.24);
+    --scorelab-accent-a-soft: rgba(220, 38, 38, 0.17);
+    --scorelab-accent-b-soft: rgba(245, 158, 11, 0.10);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(58, 6, 10, 0.96) 0%, rgba(36, 5, 8, 0.985) 48%, rgba(14, 3, 5, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(70, 8, 12, 0.78) 0%, rgba(34, 5, 8, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(42, 5, 8, 0.84) 0%, rgba(16, 3, 6, 0.74) 100%);
+    --scorelab-chrome-border: rgba(248, 113, 113, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(248,113,113,0.07), 0 28px 90px -26px rgba(220,38,38,0.34), 0 0 80px -44px rgba(245,158,11,0.28);
+    --scorelab-control-bg: rgba(248, 113, 113, 0.045);
+    --scorelab-control-bg-hover: rgba(248, 113, 113, 0.075);
+    --scorelab-control-border: rgba(248, 113, 113, 0.13);
+    --scorelab-control-border-hover: rgba(245, 158, 11, 0.25);
+  }
+
+  :root[data-scorelab-appearance="real-madrid"] {
+    --primary: 45 93% 58%;
+    --primary-glow: 210 100% 92%;
+    --ring: 45 93% 58%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(250, 204, 21, 0.075), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(147, 197, 253, 0.06), transparent 30%),
+      linear-gradient(180deg, rgba(10, 15, 24, 0.955) 0%, rgba(3, 6, 12, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(250, 204, 21, 0.11), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(241, 245, 249, 0.06), transparent 22%),
+      linear-gradient(180deg, rgba(8, 11, 17, 1) 0%, rgba(16, 20, 31, 1) 46%, rgba(2, 3, 7, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(250, 204, 21, 0.10);
+    --scorelab-aurora-secondary: rgba(147, 197, 253, 0.055);
+    --scorelab-accent-a: rgba(250, 204, 21, 0.30);
+    --scorelab-accent-b: rgba(241, 245, 249, 0.16);
+    --scorelab-accent-a-soft: rgba(250, 204, 21, 0.13);
+    --scorelab-accent-b-soft: rgba(241, 245, 249, 0.065);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(16, 20, 31, 0.96) 0%, rgba(10, 14, 22, 0.985) 48%, rgba(2, 3, 7, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(20, 25, 36, 0.78) 0%, rgba(8, 11, 18, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(13, 17, 26, 0.84) 0%, rgba(4, 6, 11, 0.74) 100%);
+    --scorelab-chrome-border: rgba(250, 204, 21, 0.14);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(250,204,21,0.06), 0 28px 90px -26px rgba(250,204,21,0.26), 0 0 80px -44px rgba(241,245,249,0.18);
+    --scorelab-control-bg: rgba(250, 204, 21, 0.04);
+    --scorelab-control-bg-hover: rgba(250, 204, 21, 0.065);
+    --scorelab-control-border: rgba(250, 204, 21, 0.12);
+    --scorelab-control-border-hover: rgba(241, 245, 249, 0.23);
+  }
+
+  :root[data-scorelab-appearance="borussia-dortmund"] {
+    --primary: 48 96% 53%;
+    --primary-glow: 48 100% 72%;
+    --ring: 48 96% 53%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(250, 204, 21, 0.105), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(24, 24, 27, 0.16), transparent 30%),
+      linear-gradient(180deg, rgba(18, 15, 2, 0.965) 0%, rgba(5, 5, 4, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(250, 204, 21, 0.16), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(250, 204, 21, 0.055), transparent 22%),
+      linear-gradient(180deg, rgba(8, 8, 4, 1) 0%, rgba(28, 24, 4, 1) 46%, rgba(2, 2, 2, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(250, 204, 21, 0.15);
+    --scorelab-aurora-secondary: rgba(250, 204, 21, 0.05);
+    --scorelab-accent-a: rgba(250, 204, 21, 0.40);
+    --scorelab-accent-b: rgba(15, 23, 42, 0.26);
+    --scorelab-accent-a-soft: rgba(250, 204, 21, 0.18);
+    --scorelab-accent-b-soft: rgba(15, 23, 42, 0.14);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(24, 20, 4, 0.96) 0%, rgba(12, 11, 5, 0.985) 48%, rgba(2, 2, 2, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(30, 26, 5, 0.78) 0%, rgba(8, 8, 4, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(20, 17, 4, 0.84) 0%, rgba(4, 4, 3, 0.74) 100%);
+    --scorelab-chrome-border: rgba(250, 204, 21, 0.16);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(250,204,21,0.08), 0 28px 90px -26px rgba(250,204,21,0.34), 0 0 80px -44px rgba(0,0,0,0.55);
+    --scorelab-control-bg: rgba(250, 204, 21, 0.05);
+    --scorelab-control-bg-hover: rgba(250, 204, 21, 0.085);
+    --scorelab-control-border: rgba(250, 204, 21, 0.14);
+    --scorelab-control-border-hover: rgba(250, 204, 21, 0.30);
+  }
+
+  :root[data-scorelab-appearance="barcelona"] {
+    --primary: 217 91% 60%;
+    --primary-glow: 347 77% 58%;
+    --ring: 217 91% 60%;
+    --scorelab-surface-bg:
+      radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.105), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(190, 18, 60, 0.075), transparent 30%),
+      linear-gradient(180deg, rgba(5, 16, 48, 0.965) 0%, rgba(18, 4, 14, 0.99) 100%);
+    --scorelab-shell-bg:
+      radial-gradient(circle at 12% 9%, rgba(37, 99, 235, 0.15), transparent 25%),
+      radial-gradient(circle at 84% 12%, rgba(190, 18, 60, 0.10), transparent 22%),
+      linear-gradient(180deg, rgba(4, 10, 30, 1) 0%, rgba(20, 8, 36, 1) 46%, rgba(8, 2, 10, 1) 100%);
+    --scorelab-body-bg: var(--scorelab-shell-bg);
+    --scorelab-aurora-primary: rgba(37, 99, 235, 0.14);
+    --scorelab-aurora-secondary: rgba(190, 18, 60, 0.085);
+    --scorelab-accent-a: rgba(37, 99, 235, 0.38);
+    --scorelab-accent-b: rgba(190, 18, 60, 0.28);
+    --scorelab-accent-a-soft: rgba(37, 99, 235, 0.17);
+    --scorelab-accent-b-soft: rgba(190, 18, 60, 0.12);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(5, 18, 56, 0.96) 0%, rgba(16, 8, 42, 0.985) 48%, rgba(8, 2, 14, 0.99) 100%);
+    --scorelab-topbar-bg: linear-gradient(180deg, rgba(7, 26, 70, 0.78) 0%, rgba(16, 7, 38, 0.9) 100%);
+    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 18, 52, 0.84) 0%, rgba(10, 3, 24, 0.74) 100%);
+    --scorelab-chrome-border: rgba(96, 165, 250, 0.15);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(96,165,250,0.07), 0 28px 90px -26px rgba(37,99,235,0.34), 0 0 80px -44px rgba(190,18,60,0.34);
+    --scorelab-control-bg: rgba(96, 165, 250, 0.045);
+    --scorelab-control-bg-hover: rgba(96, 165, 250, 0.075);
+    --scorelab-control-border: rgba(96, 165, 250, 0.13);
+    --scorelab-control-border-hover: rgba(244, 63, 94, 0.25);
   }
 }
 
@@ -68,11 +426,18 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     letter-spacing: -0.01em;
-    background-image:
-      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.09), transparent 22%),
-      radial-gradient(circle at 86% 8%, rgba(52, 211, 153, 0.08), transparent 20%),
-      linear-gradient(180deg, rgba(3, 9, 18, 1) 0%, rgba(5, 17, 31, 1) 38%, rgba(2, 11, 22, 1) 100%);
+    background-image: var(--scorelab-body-bg);
     background-attachment: fixed;
+  }
+
+  ::selection {
+    color: hsl(var(--primary-foreground));
+    background: rgba(52, 211, 153, 0.78);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(125, 245, 238, 0.72);
+    outline-offset: 3px;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -151,16 +516,75 @@
     box-shadow: var(--shadow-soft-panel);
   }
 
-  .scorelab-premium-shell {
+  .scorelab-chrome-sidebar {
+    border-color: var(--scorelab-chrome-border);
+    background: var(--scorelab-chrome-bg);
+    box-shadow: var(--scorelab-chrome-shadow);
+  }
+
+  .scorelab-chrome-topbar {
+    border-color: var(--scorelab-chrome-border);
+    background: var(--scorelab-topbar-bg);
+    box-shadow:
+      0 18px 56px -30px var(--scorelab-accent-a),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .scorelab-chrome-dock {
+    border-color: var(--scorelab-chrome-border);
+    background: var(--scorelab-dock-bg);
+    box-shadow:
+      0 18px 44px -34px var(--scorelab-accent-a),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+
+  .scorelab-chrome-overlay {
     background:
-      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.10), transparent 24%),
-      radial-gradient(circle at 86% 10%, rgba(52, 211, 153, 0.085), transparent 22%),
-      linear-gradient(180deg, rgba(2, 9, 20, 1) 0%, rgba(4, 18, 34, 1) 44%, rgba(2, 10, 22, 1) 100%);
+      radial-gradient(circle at top left, var(--scorelab-accent-a-soft), transparent 26%),
+      radial-gradient(circle at bottom left, var(--scorelab-accent-b-soft), transparent 20%),
+      linear-gradient(90deg, rgba(255,255,255,0.035), transparent 34%);
+  }
+
+  .scorelab-chrome-control {
+    border-color: var(--scorelab-control-border);
+    background: var(--scorelab-control-bg);
+  }
+
+  .scorelab-chrome-control:hover {
+    border-color: var(--scorelab-control-border-hover);
+    background: var(--scorelab-control-bg-hover);
+  }
+
+  .scorelab-brand-mark {
+    background: linear-gradient(135deg, var(--scorelab-accent-a), var(--scorelab-accent-b));
+    box-shadow:
+      0 12px 34px var(--scorelab-accent-a-soft),
+      0 0 28px -12px var(--scorelab-accent-b);
+  }
+
+  .scorelab-brand-text {
+    background: linear-gradient(90deg, #ffffff 0%, hsl(var(--primary-glow)) 42%, hsl(var(--primary)) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .scorelab-active-nav {
+    border-color: var(--scorelab-control-border-hover);
+    background: linear-gradient(90deg, var(--scorelab-accent-a-soft), var(--scorelab-accent-b-soft));
+    box-shadow:
+      0 16px 42px -22px var(--scorelab-accent-a),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .scorelab-premium-shell {
+    background: var(--scorelab-shell-bg);
   }
 
   .scorelab-aurora {
     background:
-      radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.11), rgba(52, 211, 153, 0.075) 36%, transparent 68%);
+      radial-gradient(circle at 50% 50%, var(--scorelab-aurora-primary), var(--scorelab-aurora-secondary) 36%, transparent 68%);
     filter: blur(58px);
     animation: aurora-drift 22s ease-in-out infinite alternate;
   }
@@ -218,6 +642,8 @@
     transform-style: preserve-3d;
     isolation: isolate;
     backdrop-filter: blur(18px) saturate(1.12);
+    border-color: var(--scorelab-surface-border);
+    background: var(--scorelab-surface-bg);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.11) inset,
       0 -1px 0 rgba(34, 211, 238, 0.035) inset,
@@ -225,6 +651,151 @@
       0 18px 34px rgba(0, 0, 0, 0.38),
       0 42px 86px rgba(0, 0, 0, 0.24),
       0 0 42px -34px rgba(34, 211, 238, 0.34);
+  }
+
+  .scorelab-board-3d :where(input, select, textarea) {
+    border-color: rgba(216, 255, 250, 0.10);
+    background-color: var(--scorelab-field-bg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    transition:
+      border-color 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .scorelab-board-3d :where(input, select, textarea):hover {
+    border-color: rgba(125, 245, 238, 0.18);
+    background-color: var(--scorelab-field-bg-hover);
+  }
+
+  .scorelab-board-3d :where(input, select, textarea):focus {
+    border-color: rgba(125, 245, 238, 0.34);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 0 0 3px rgba(34, 211, 238, 0.10);
+  }
+
+  .scorelab-board-3d :where(table) {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .scorelab-board-3d :where(.recharts-wrapper) {
+    filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.16));
+  }
+
+  .scorelab-board-3d :where(.recharts-cartesian-grid line) {
+    stroke: rgba(125, 245, 238, 0.065);
+  }
+
+  .scorelab-board-3d :where(.recharts-cartesian-axis-line),
+  .scorelab-board-3d :where(.recharts-cartesian-axis-tick-line) {
+    stroke: rgba(125, 245, 238, 0.10);
+  }
+
+  .scorelab-board-3d :where(.recharts-cartesian-axis-tick text) {
+    fill: rgba(226, 255, 251, 0.54);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .scorelab-board-3d :where(.recharts-tooltip-cursor) {
+    fill: rgba(125, 245, 238, 0.045);
+    stroke: rgba(125, 245, 238, 0.18);
+  }
+
+  .scorelab-board-3d :where(.recharts-curve) {
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.18));
+  }
+
+  .scorelab-board-3d :where(.recharts-bar-rectangle path),
+  .scorelab-board-3d :where(.recharts-rectangle) {
+    transition:
+      opacity 180ms ease,
+      filter 180ms ease,
+      transform 180ms ease;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .scorelab-board-3d :where(.recharts-bar-rectangle:hover path),
+  .scorelab-board-3d :where(.recharts-rectangle:hover) {
+    filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.28));
+    opacity: 0.92;
+    transform: translateY(-1px);
+  }
+
+  .scorelab-board-3d :where(.recharts-sector) {
+    transition:
+      opacity 180ms ease,
+      filter 180ms ease,
+      transform 180ms ease;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .scorelab-board-3d :where(.recharts-sector:hover) {
+    filter: drop-shadow(0 0 16px rgba(34, 211, 238, 0.24));
+    transform: scale(1.018);
+  }
+
+  .scorelab-board-3d :where(.recharts-scatter-symbol) {
+    transition:
+      filter 180ms ease,
+      opacity 180ms ease,
+      transform 180ms ease;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .scorelab-board-3d :where(.recharts-scatter-symbol:hover) {
+    filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.45));
+    opacity: 1;
+    transform: scale(1.12);
+  }
+
+  .scorelab-chart-cinematic {
+    border-radius: 22px;
+  }
+
+  .scorelab-chart-cinematic::before {
+    content: "";
+    position: absolute;
+    inset: 4px 0 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(circle at 50% 20%, rgba(34, 211, 238, 0.055), transparent 38%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 58%);
+    opacity: 0.8;
+  }
+
+  .scorelab-chart-cinematic::after {
+    content: "";
+    position: absolute;
+    inset: auto 8% 8px;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(125, 245, 238, 0.28), transparent);
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.22);
+  }
+
+  .scorelab-board-3d :where(thead) {
+    background: linear-gradient(90deg, rgba(125, 245, 238, 0.035), rgba(52, 211, 153, 0.025), transparent);
+  }
+
+  .scorelab-board-3d :where(tbody tr) {
+    transition:
+      background-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .scorelab-board-3d :where(tbody tr:hover) {
+    background-color: rgba(125, 245, 238, 0.035);
+  }
+
+  .scorelab-board-3d :where(button, a) {
+    -webkit-tap-highlight-color: transparent;
   }
 
   .scorelab-board-3d::before {
@@ -245,7 +816,8 @@
     pointer-events: none;
     border-radius: inherit;
     background:
-      radial-gradient(circle at var(--scorelab-pointer-x) var(--scorelab-pointer-y), rgba(255, 255, 255, 0.075), transparent 24%),
+      radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.06), transparent 24%),
+      radial-gradient(circle at 86% 12%, var(--scorelab-accent-a-soft), transparent 28%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 34%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 52%);
     opacity: 0.62;
@@ -255,6 +827,10 @@
 
   .scorelab-board-3d:hover::after {
     opacity: 0.88;
+  }
+
+  .scorelab-board-3d:hover {
+    border-color: var(--scorelab-surface-border-strong);
   }
 
   .scorelab-tilt-3d {
@@ -286,14 +862,6 @@
 
   .scorelab-hud-scan {
     animation: hud-scan 2.9s ease-in-out infinite;
-  }
-
-  .scorelab-cursor-glow {
-    background:
-      radial-gradient(circle at var(--scorelab-pointer-x) var(--scorelab-pointer-y), rgba(125, 245, 238, 0.12), transparent 18%),
-      radial-gradient(circle at calc(var(--scorelab-pointer-x) + 12%) calc(var(--scorelab-pointer-y) + 12%), rgba(52, 211, 153, 0.07), transparent 20%);
-    opacity: 0.72;
-    transition: background 180ms ease-out;
   }
 
   .scorelab-holo-noise {
@@ -434,7 +1002,6 @@
     transition-duration: 0.001ms !important;
   }
 
-  .scorelab-cursor-glow,
   .scorelab-holo-noise,
   .scorelab-data-particle {
     display: none !important;

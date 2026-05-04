@@ -70,18 +70,18 @@ export function AppSidebar() {
     <div className={cn("relative shrink-0 transition-all duration-300", collapsed ? "w-16" : "w-60")}>
       <aside className={cn(
         "fixed left-0 top-0 z-40 flex h-screen flex-col border-r transition-all duration-300 backdrop-blur-2xl",
-        "bg-[linear-gradient(180deg,rgba(8,31,50,0.96)_0%,rgba(5,23,42,0.985)_42%,rgba(2,13,27,0.99)_100%)] border-cyan-100/15 shadow-[0_0_0_1px_rgba(125,245,238,0.08),0_28px_90px_-26px_rgba(34,211,238,0.34),0_0_80px_-44px_rgba(52,211,153,0.42)]",
+        "scorelab-chrome-sidebar",
         collapsed ? "w-16" : "w-60"
       )}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.12),transparent_20%),linear-gradient(90deg,rgba(255,255,255,0.035),transparent_34%)]" />
-        <div className="flex items-center h-16 px-4 border-b border-cyan-100/15">
+        <div className="scorelab-chrome-overlay pointer-events-none absolute inset-0" />
+        <div className="flex items-center h-16 px-4 border-b border-[var(--scorelab-chrome-border)]">
           <Link to="/" className="flex items-center gap-2 overflow-hidden">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 ring-cyan-200/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.34),rgba(52,211,153,0.26))] shadow-[0_12px_34px_rgba(34,211,238,0.28),0_0_28px_-12px_rgba(52,211,153,0.55)] flex-shrink-0">
+            <div className="scorelab-brand-mark relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 ring-white/20 flex-shrink-0">
               <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,24,40,0.94),rgba(7,35,43,0.84))]" />
               <BarChart3 className="relative w-4 h-4 text-cyan-100 drop-shadow-[0_0_8px_rgba(125,245,238,0.55)]" strokeWidth={1.7} />
             </div>
             {!collapsed && (
-              <span className="bg-[linear-gradient(90deg,#ffffff_0%,#9eeeff_38%,#80f7c5_100%)] bg-clip-text text-lg font-bold tracking-tight text-transparent drop-shadow-[0_0_18px_rgba(34,211,238,0.18)]">ScoreLab</span>
+              <span className="scorelab-brand-text text-lg font-bold tracking-tight drop-shadow-[0_0_18px_var(--scorelab-accent-a-soft)]">ScoreLab</span>
             )}
           </Link>
         </div>
@@ -94,7 +94,7 @@ export function AppSidebar() {
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.title)}
-                    className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition-colors hover:bg-cyan-200/[0.045]"
+                    className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition-colors hover:bg-[var(--scorelab-control-bg)]"
                   >
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-50/34">
                       {group.title}
@@ -119,13 +119,13 @@ export function AppSidebar() {
                         "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
                         isActive
                           ? "text-foreground"
-                          : "text-sidebar-foreground hover:bg-cyan-200/[0.055] hover:text-foreground"
+                          : "text-sidebar-foreground hover:bg-[var(--scorelab-control-bg)] hover:text-foreground"
                       )}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="sidebar-active"
-                          className="absolute inset-0 rounded-2xl border border-cyan-100/18 bg-[linear-gradient(90deg,rgba(34,211,238,0.20),rgba(52,211,153,0.16))] shadow-[0_16px_42px_-22px_rgba(34,211,238,0.62),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                          className="scorelab-active-nav absolute inset-0 rounded-2xl border"
                           transition={{ type: "spring", stiffness: 350, damping: 30 }}
                         />
                       )}
@@ -148,10 +148,10 @@ export function AppSidebar() {
           </div>
         </nav>
 
-        <div className="relative border-t border-cyan-100/12 p-3">
+        <div className="relative border-t border-[var(--scorelab-chrome-border)] p-3">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex h-11 w-full items-center justify-center rounded-2xl border border-cyan-100/12 bg-cyan-100/[0.04] text-muted-foreground transition-colors hover:border-cyan-100/20 hover:bg-cyan-100/[0.07] hover:text-foreground"
+            className="scorelab-chrome-control flex h-11 w-full items-center justify-center rounded-2xl border text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className={cn("w-4 h-4 transition-transform duration-300", collapsed && "rotate-180")} strokeWidth={1.5} />
           </button>

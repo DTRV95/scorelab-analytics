@@ -680,9 +680,11 @@ function getRadarExecutionPlan({
       candidates,
       picks: [] as Array<
         RadarOpportunity & {
+          requiredStake: number;
           suggestedStake: number;
           projectedProfit: number;
           fitsCapacity: boolean;
+          reachesTarget: boolean;
           guardrail: {
             label: "Clean" | "Watch" | "Avoid";
             tone: "positive" | "neutral" | "negative";
@@ -696,9 +698,11 @@ function getRadarExecutionPlan({
       fullyCovered: false,
       bestCapacityFit: null as
         | (RadarOpportunity & {
+            requiredStake: number;
             suggestedStake: number;
             projectedProfit: number;
             fitsCapacity: boolean;
+            reachesTarget: boolean;
             guardrail: {
               label: "Clean" | "Watch" | "Avoid";
               tone: "positive" | "neutral" | "negative";
@@ -1878,6 +1882,11 @@ export default function RoadmapPlanner() {
                         <p className="mt-1 text-xs leading-5 text-white/52">
                           {pick.market} · {pick.league} · learned {formatPct(normalizeProbabilityPct(pick.calibratedProb))} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
                         </p>
+                        {pick.stakeMultiplier < 1 ? (
+                          <p className="mt-1 text-xs leading-5 text-cyan-100/42">
+                            Stake reduced by learning engine from {formatCurrency(pick.requiredStake)} to {formatCurrency(pick.suggestedStake)}.
+                          </p>
+                        ) : null}
                         <p className="mt-1 text-xs leading-5 text-white/38">
                           {pick.guardrail.reason}
                         </p>
@@ -1891,7 +1900,7 @@ export default function RoadmapPlanner() {
                           }`}
                         >
                           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
-                            Required Stake
+                            Learned Stake
                           </p>
                           <p className="mt-1 text-sm font-semibold text-white">
                             {formatCurrency(pick.suggestedStake)}

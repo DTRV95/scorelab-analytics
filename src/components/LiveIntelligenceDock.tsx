@@ -108,18 +108,18 @@ export function LiveIntelligenceDock() {
   };
 
   return (
-    <div className="relative border-b border-cyan-100/10 bg-[linear-gradient(180deg,rgba(4,18,33,0.82)_0%,rgba(3,14,27,0.72)_100%)] px-5 py-3 backdrop-blur-2xl shadow-[0_18px_44px_-34px_rgba(34,211,238,0.42)] md:px-6">
+    <div className="scorelab-chrome-dock relative border-b px-5 py-3 backdrop-blur-2xl md:px-6">
       <HudSignalLine tone={dock.systemTone} className="absolute inset-x-0 top-0" />
       <div className="mx-auto flex max-w-7xl flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <button
           type="button"
           onClick={() => navigate("/roadmap")}
-          className="group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] px-3.5 py-3 text-left transition hover:border-cyan-100/18 hover:bg-cyan-100/[0.055]"
+          className="scorelab-chrome-control group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition"
         >
           <HudCornerFrame />
-          <span className="relative flex h-9 w-9 flex-none items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(52,211,153,0.12))] ring-1 ring-cyan-100/12">
+          <span className="relative flex h-9 w-9 flex-none items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--scorelab-accent-a-soft),var(--scorelab-accent-b-soft))] ring-1 ring-[var(--scorelab-control-border)]">
             <Activity className="h-4 w-4 text-cyan-100/78" strokeWidth={1.7} />
-            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.75)]" />
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_var(--scorelab-accent-b-soft)]" />
           </span>
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-50/36">
@@ -211,7 +211,7 @@ export function LiveIntelligenceDock() {
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
-          className="hidden items-center gap-2 rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] px-3 py-2 text-xs font-medium text-emerald-50/70 transition hover:border-emerald-300/22 hover:bg-emerald-300/[0.065] xl:flex"
+          className="scorelab-chrome-control hidden items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-medium text-emerald-50/70 transition xl:flex"
         >
           <TrendingUp className="h-3.5 w-3.5" strokeWidth={1.7} />
           ROI <MotionNumber value={dock.roi} formatter={formatPercent} />

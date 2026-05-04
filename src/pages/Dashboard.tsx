@@ -31,6 +31,7 @@ import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import type { MarketPerformance } from "@/lib/portofolioEngine";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
+import { buildCalibrationModel, calibrateOpportunity } from "@/lib/calibrationEngine";
 import {
   buildLeagueIntelligenceRows,
   getLeagueIntelligenceTone,
@@ -198,6 +199,58 @@ function CompactStatCard({
       </motion.div>
       </StadiumLightSweep>
     </PulseOnChange>
+  );
+}
+
+function AutoInsightCard({
+  title,
+  detail,
+  tone,
+}: {
+  title: string;
+  detail: string;
+  tone: "positive" | "negative" | "neutral";
+}) {
+  const toneClass =
+    tone === "positive"
+      ? {
+          glow: "from-emerald-300/20 via-emerald-300/6 to-transparent",
+          dot: "bg-emerald-300 shadow-[0_0_18px_rgba(52,211,153,0.75)]",
+          text: "text-emerald-200",
+        }
+      : tone === "negative"
+      ? {
+          glow: "from-red-300/18 via-red-300/6 to-transparent",
+          dot: "bg-red-300 shadow-[0_0_18px_rgba(248,113,113,0.7)]",
+          text: "text-red-200",
+        }
+      : {
+          glow: "from-cyan-300/18 via-cyan-300/6 to-transparent",
+          dot: "bg-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.7)]",
+          text: "text-white/72",
+        };
+
+  return (
+    <StadiumLightSweep trigger={`${title}-${detail}`}>
+      <motion.div
+        whileHover={{ y: -3, scale: 1.005 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+        className="scorelab-board-3d relative min-h-[108px] overflow-hidden rounded-[24px] border border-white/8 p-4"
+      >
+        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,var(--tw-gradient-stops))] ${toneClass.glow}`} />
+        <div className="relative flex h-full gap-3">
+          <span className={`mt-1 h-2.5 w-2.5 flex-none rounded-full ${toneClass.dot}`} />
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
+              {title}
+            </p>
+            <p className={`mt-3 text-sm leading-7 ${toneClass.text}`}>
+              {detail}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </StadiumLightSweep>
   );
 }
 
@@ -450,7 +503,7 @@ function ChartCard({
 
   return (
     <SectionCard title={title} description={description} badge="ROI" className={cardClassName}>
-      <div className={chartHeightClassName}>
+      <div className={`scorelab-chart-cinematic relative ${chartHeightClassName}`}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={safeData}
@@ -487,10 +540,18 @@ function ChartCard({
               type="monotone"
               dataKey={barKey}
               stroke="none"
-              fill="rgba(255,255,255,0.03)"
+              fill="rgba(125,245,238,0.045)"
+              isAnimationActive
+              animationDuration={850}
             />
 
-            <Bar dataKey={barKey} radius={[12, 12, 12, 12]} maxBarSize={72}>
+            <Bar
+              dataKey={barKey}
+              radius={[12, 12, 12, 12]}
+              maxBarSize={72}
+              isAnimationActive
+              animationDuration={780}
+            >
               {safeData.map((entry, index) => {
                 const value = Number(entry[barKey] ?? 0);
                 return (
@@ -647,13 +708,24 @@ export default function Dashboard() {
   }, [analyses, bankrollStats.currentBankroll, financialSnapshot]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
+  const calibrationModel = useMemo(() => buildCalibrationModel(analyses), [analyses]);
 
   const openAnalysisInSimpleBet = (analysis: SavedAnalysis, result: AnalysisResult) => {
+    const calibration = calibrateOpportunity(
+      {
+        league: analysis.league || "Unspecified",
+        market: result.market,
+        odds: result.odds,
+        confidence: result.confidence,
+        modelProb: result.modelProb,
+      },
+      calibrationModel
+    );
     const params = new URLSearchParams({
       analysisId: analysis.id,
       prepareBet: "1",
       market: result.market,
-      stake: String(Number(result.stake.toFixed(2))),
+      stake: String(Number((result.stake * calibration.stakeMultiplier).toFixed(2))),
       odd: String(Number(result.odds.toFixed(2))),
     });
 
@@ -933,25 +1005,12 @@ export default function Dashboard() {
             className="grid grid-cols-1 gap-4 xl:grid-cols-2"
           >
             {dashboardData.autoInsights.map((insight) => (
-              <div
+              <AutoInsightCard
                 key={insight.title}
-                className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
-                  {insight.title}
-                </p>
-                <p
-                  className={`mt-2.5 text-sm leading-7 ${
-                    insight.tone === "positive"
-                      ? "text-emerald-300"
-                      : insight.tone === "negative"
-                      ? "text-red-300"
-                      : "text-white/70"
-                  }`}
-                >
-                  {insight.detail}
-                </p>
-              </div>
+                title={insight.title}
+                detail={insight.detail}
+                tone={insight.tone}
+              />
             ))}
           </motion.div>
         )}
@@ -1034,23 +1093,27 @@ export default function Dashboard() {
           {topValueToday ? (
             <motion.div
               variants={fadeUp}
-              className="relative overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+              className="scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 p-4"
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.08),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_24%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,var(--scorelab-accent-a-soft),transparent_32%),radial-gradient(circle_at_12%_100%,var(--scorelab-accent-b-soft),transparent_28%)]" />
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--scorelab-control-border-hover),transparent)]" />
               <div className="relative space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
-                      Top Value Today
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-white md:text-[1.5rem]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--scorelab-control-border)] bg-[var(--scorelab-control-bg)] px-3 py-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_var(--scorelab-accent-b-soft)]" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/58">
+                        Top Value Today
+                      </p>
+                    </div>
+                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white md:text-[1.55rem]">
                       {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-white/58">
-                      Best live angle on today's board.
+                      Strongest calibrated live angle on today's board.
                     </p>
                   </div>
-                  <span className="rounded-full border border-emerald-400/18 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-200">
+                  <span className="scorelab-chrome-control rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
                     {topValueToday.bestBet.market}
                   </span>
                 </div>
@@ -1063,12 +1126,12 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                <div className="scorelab-chrome-control rounded-2xl border p-3.5">
                   <ConfidenceMeter score={topValueToday.bestBet.confidence} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                  <div className="scorelab-chrome-control rounded-2xl border p-3.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
                       Odds
                     </p>
@@ -1076,7 +1139,7 @@ export default function Dashboard() {
                       {topValueToday.bestBet.odds}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
+                  <div className="scorelab-chrome-control rounded-2xl border p-3.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
                       Kelly
                     </p>
@@ -1091,7 +1154,7 @@ export default function Dashboard() {
                   onClick={() =>
                     openAnalysisInSimpleBet(topValueToday.analysis, topValueToday.bestBet)
                   }
-                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-400/15"
+                  className="scorelab-brand-mark inline-flex h-11 w-full items-center justify-center rounded-xl border border-[var(--scorelab-control-border-hover)] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition hover:brightness-110"
                 >
                   Open In Simple Bet
                 </button>
