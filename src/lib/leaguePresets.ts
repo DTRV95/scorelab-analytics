@@ -472,8 +472,8 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
   },
   {
     key: "Denmark Superliga",
-    label: "Denmark Superliga",
-    country: "Denmark",
+    label: "Superliga",
+    country: "Dinamarca",
     tier: "1st division",
     league_home_goals_avg: "1.74",
     league_away_goals_avg: "1.48",

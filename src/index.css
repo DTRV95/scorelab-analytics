@@ -423,3 +423,24 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(222 20% 30%);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .scorelab-cursor-glow,
+  .scorelab-holo-noise,
+  .scorelab-data-particle {
+    display: none !important;
+  }
+
+  .scorelab-tilt-3d:hover {
+    transform: none;
+  }
+}

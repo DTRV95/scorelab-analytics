@@ -13,6 +13,11 @@ const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
 const MULTIPLES_KEY = "scorelab_multiples";
 export const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
 
+let analysesCacheRaw: string | null = null;
+let analysesCacheValue: SavedAnalysis[] | null = null;
+let bankrollSettingsCacheRaw: string | null = null;
+let bankrollSettingsCacheValue: BankrollSettings | null = null;
+
 interface StoredMultipleForBankroll {
   tracking: {
     betPlaced: boolean;
@@ -163,6 +168,8 @@ function normalizeTrackingBet(
         : fallbackId,
     settledAt:
       typeof tracking.settledAt === "string" ? tracking.settledAt : null,
+    placedAt:
+      typeof tracking.placedAt === "string" ? tracking.placedAt : null,
     selectedMarket: normalizeMarketName(tracking.selectedMarket),
   };
 }
@@ -214,7 +221,14 @@ export function getAnalyses(): SavedAnalysis[] {
   try {
     const raw = localStorage.getItem(ANALYSES_KEY);
     if (!raw) return [];
-    return (JSON.parse(raw) as SavedAnalysis[]).map(normalizeSavedAnalysis);
+    if (raw === analysesCacheRaw && analysesCacheValue) {
+      return analysesCacheValue;
+    }
+
+    const normalized = (JSON.parse(raw) as SavedAnalysis[]).map(normalizeSavedAnalysis);
+    analysesCacheRaw = raw;
+    analysesCacheValue = normalized;
+    return normalized;
   } catch {
     return [];
   }
@@ -251,7 +265,10 @@ export function saveAnalysis(analysis: SavedAnalysis): void {
   const normalizedAnalysis = normalizeSavedAnalysis(analysis);
   const existing = getAnalyses();
   const updated = [normalizedAnalysis, ...existing];
-  localStorage.setItem(ANALYSES_KEY, JSON.stringify(updated));
+  const nextRaw = JSON.stringify(updated);
+  localStorage.setItem(ANALYSES_KEY, nextRaw);
+  analysesCacheRaw = nextRaw;
+  analysesCacheValue = updated;
   persistAnalysisRecord(normalizedAnalysis as unknown as Record<string, unknown> & { id: string });
   queueEntitySync("analyses");
   window.dispatchEvent(new CustomEvent(ANALYSES_UPDATED_EVENT));
@@ -259,10 +276,10 @@ export function saveAnalysis(analysis: SavedAnalysis): void {
 
 export function overwriteAnalyses(analyses: SavedAnalysis[]): void {
   const normalized = analyses.map(normalizeSavedAnalysis);
-  localStorage.setItem(
-    ANALYSES_KEY,
-    JSON.stringify(normalized)
-  );
+  const nextRaw = JSON.stringify(normalized);
+  localStorage.setItem(ANALYSES_KEY, nextRaw);
+  analysesCacheRaw = nextRaw;
+  analysesCacheValue = normalized;
   normalized.forEach((analysis) => {
     persistAnalysisRecord(analysis as unknown as Record<string, unknown> & { id: string });
   });
@@ -292,7 +309,14 @@ export function updateAnalysisTracking(
       ...updates,
     };
 
-    const recalculatedTracking = recalculateTracking(mergedTracking);
+    const fallbackPlacedAt =
+      analysis.tracking.betPlaced && !analysis.tracking.placedAt
+        ? analysis.createdAt
+        : undefined;
+    const recalculatedTracking = recalculateTracking(
+      mergedTracking,
+      fallbackPlacedAt
+    );
 
     return {
       ...analysis,
@@ -322,16 +346,24 @@ export function updateTrackedBet(
 
       return {
         ...analysis,
-        tracking: recalculateTracking(mergedTracking),
+        tracking: recalculateTracking(
+          mergedTracking,
+          analysis.tracking.betPlaced && !analysis.tracking.placedAt
+            ? analysis.createdAt
+            : undefined
+        ),
       };
     }
 
     const extraBets = (analysis.extraBets || []).map((bet) =>
       bet.id === betId
-        ? recalculateTracking({
-            ...bet,
-            ...updates,
-          })
+        ? recalculateTracking(
+            {
+              ...bet,
+              ...updates,
+            },
+            bet.betPlaced && !bet.placedAt ? analysis.createdAt : undefined
+          )
         : bet
     );
 
@@ -390,7 +422,8 @@ export function deleteExtraTrackedBet(
 }
 
 function recalculateTracking(
-  tracking: SavedAnalysis["tracking"]
+  tracking: SavedAnalysis["tracking"],
+  fallbackPlacedAt?: string
 ): SavedAnalysis["tracking"] {
   let profitLoss = 0;
 
@@ -402,6 +435,7 @@ function recalculateTracking(
       oddUsed: null,
       resultStatus: "pending",
       settledAt: null,
+      placedAt: null,
       profitLoss: 0,
       bankrollAfter: tracking.bankrollBefore,
     };
@@ -410,6 +444,12 @@ function recalculateTracking(
   const stake = tracking.stakeUsed ?? 0;
   const odd = tracking.oddUsed ?? 0;
   const bankrollBefore = tracking.bankrollBefore ?? null;
+  const placedAt =
+    tracking.placedAt && typeof tracking.placedAt === "string"
+      ? tracking.placedAt
+      : fallbackPlacedAt
+      ? fallbackPlacedAt
+      : new Date().toISOString();
 
   if (tracking.resultStatus === "green") {
     profitLoss = stake * (odd - 1);
@@ -432,6 +472,7 @@ function recalculateTracking(
 
   return {
     ...tracking,
+    placedAt,
     settledAt,
     profitLoss,
     bankrollAfter,
@@ -444,14 +485,24 @@ export function getBankrollSettings(): BankrollSettings {
     if (!raw) {
       return { initialBankroll: 0 };
     }
-    return JSON.parse(raw) as BankrollSettings;
+    if (raw === bankrollSettingsCacheRaw && bankrollSettingsCacheValue) {
+      return bankrollSettingsCacheValue;
+    }
+
+    const settings = JSON.parse(raw) as BankrollSettings;
+    bankrollSettingsCacheRaw = raw;
+    bankrollSettingsCacheValue = settings;
+    return settings;
   } catch {
     return { initialBankroll: 0 };
   }
 }
 
 export function saveBankrollSettings(settings: BankrollSettings): void {
-  localStorage.setItem(BANKROLL_SETTINGS_KEY, JSON.stringify(settings));
+  const nextRaw = JSON.stringify(settings);
+  localStorage.setItem(BANKROLL_SETTINGS_KEY, nextRaw);
+  bankrollSettingsCacheRaw = nextRaw;
+  bankrollSettingsCacheValue = settings;
   queueEntitySync("bankroll_settings");
 }
 
@@ -477,6 +528,7 @@ export function createEmptyTracking(): SavedAnalysis["tracking"] {
     stakeUsed: null,
     oddUsed: null,
     resultStatus: "pending",
+    placedAt: null,
     settledAt: null,
     profitLoss: 0,
     bankrollBefore: null,
@@ -504,8 +556,10 @@ function getSelectedResultForEntry(entry: AnalysisTrackingEntry) {
   );
 }
 
-export function getMarketPerformance(): MarketPerformanceItem[] {
-  const placedBets = getAllAnalysisTrackingEntries().filter(
+export function getMarketPerformance(
+  analyses: SavedAnalysis[] = getAnalyses()
+): MarketPerformanceItem[] {
+  const placedBets = getAllAnalysisTrackingEntries(analyses).filter(
     (entry) => entry.tracking.betPlaced && entry.tracking.selectedMarket
   );
 
@@ -564,8 +618,8 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
     )
     .sort(
       (a, b) =>
-        new Date(a.tracking.settledAt || a.createdAt).getTime() -
-        new Date(b.tracking.settledAt || b.createdAt).getTime()
+        new Date(a.tracking.placedAt || a.createdAt).getTime() -
+        new Date(b.tracking.placedAt || b.createdAt).getTime()
     );
 
   const grouped = new Map<string, DailyPerformanceItem>();
@@ -573,7 +627,7 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
 
   settledAnalyses.forEach((analysis) => {
     const date =
-      getLocalDateKey(analysis.tracking.settledAt) ||
+      getLocalDateKey(analysis.tracking.placedAt) ||
       getLocalDateKey(analysis.createdAt);
 
     if (!date) return;
@@ -613,8 +667,8 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function getSettledBetsWithContext() {
-  return getAllAnalysisTrackingEntries()
+function getSettledBetsWithContext(analyses: SavedAnalysis[] = getAnalyses()) {
+  return getAllAnalysisTrackingEntries(analyses)
     .filter(
       (entry) =>
         entry.tracking.betPlaced &&
@@ -658,8 +712,10 @@ function getConfidenceBucket(confidence: number): string {
   return "9-10";
 }
 
-export function getEdgeBucketPerformance(): EdgeBucketPerformanceItem[] {
-  const bets = getSettledBetsWithContext();
+export function getEdgeBucketPerformance(
+  analyses: SavedAnalysis[] = getAnalyses()
+): EdgeBucketPerformanceItem[] {
+  const bets = getSettledBetsWithContext(analyses);
   const bucketMap = new Map<string, EdgeBucketPerformanceItem>();
 
   bets.forEach((bet) => {
@@ -697,8 +753,10 @@ export function getEdgeBucketPerformance(): EdgeBucketPerformanceItem[] {
   );
 }
 
-export function getConfidenceBucketPerformance(): ConfidenceBucketPerformanceItem[] {
-  const bets = getSettledBetsWithContext();
+export function getConfidenceBucketPerformance(
+  analyses: SavedAnalysis[] = getAnalyses()
+): ConfidenceBucketPerformanceItem[] {
+  const bets = getSettledBetsWithContext(analyses);
   const bucketMap = new Map<string, ConfidenceBucketPerformanceItem>();
 
   bets.forEach((bet) => {

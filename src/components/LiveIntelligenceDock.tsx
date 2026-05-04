@@ -1,17 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, Flag, Radar, TrendingUp, Wallet, Zap } from "lucide-react";
-import {
-  ANALYSES_UPDATED_EVENT,
-  getAnalyses,
-  getAllAnalysisTrackingEntries,
-  getBankrollStats,
-} from "@/lib/analysisStorage";
-import {
-  MULTIPLES_UPDATED_EVENT,
-  getSavedMultiples,
-} from "@/lib/multipleStorage";
-import { buildRadarOpportunities } from "@/lib/valueRadar";
 import {
   HudCornerFrame,
   HudMetricOrb,
@@ -21,13 +10,16 @@ import {
   type HudTone,
 } from "@/components/HudLayer";
 import { MotionNumber, PulseOnChange } from "@/components/MotionIntelligence";
+import { useScoreLabData } from "@/hooks/useScoreLabData";
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(Number.isFinite(value) ? value : 0);
+  currencyFormatter.format(Number.isFinite(value) ? value : 0);
 
 const formatPercent = (value: number) => `${(Number.isFinite(value) ? value : 0).toFixed(2)}%`;
 
@@ -44,36 +36,19 @@ function isToday(dateString: string) {
 
 export function LiveIntelligenceDock() {
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const refresh = () => setRefreshKey((value) => value + 1);
-
-    window.addEventListener(ANALYSES_UPDATED_EVENT, refresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    window.addEventListener("focus", refresh);
-
-    return () => {
-      window.removeEventListener(ANALYSES_UPDATED_EVENT, refresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
+  const {
+    multiples,
+    trackingEntries,
+    financialSnapshot,
+    radarOpportunities,
+  } = useScoreLabData();
 
   const dock = useMemo(() => {
-    void refreshKey;
-
-    const analyses = getAnalyses();
-    const multiples = getSavedMultiples();
-    const stats = getBankrollStats();
-    const trackingEntries = getAllAnalysisTrackingEntries(analyses);
-    const todayAnalyses = analyses.filter((analysis) => isToday(analysis.createdAt));
-    const radar = buildRadarOpportunities(todayAnalyses).sort(
-      (a, b) => b.modelProb - a.modelProb || b.edge - a.edge
-    );
-    const qualifiedRadar = radar.filter((point) => point.modelProb >= 75);
+    const stats = financialSnapshot.stats;
+    const radar = radarOpportunities
+      .filter((opportunity) => isToday(opportunity.createdAt))
+      .sort((a, b) => b.calibratedProb - a.calibratedProb || b.edge - a.edge);
+    const qualifiedRadar = radar.filter((point) => point.calibratedProb >= 75);
     const pendingSingles = trackingEntries.filter(
       (entry) => entry.tracking.betPlaced && entry.tracking.resultStatus === "pending"
     ).length;
@@ -113,7 +88,7 @@ export function LiveIntelligenceDock() {
       systemTone,
       systemState,
     };
-  }, [refreshKey]);
+  }, [financialSnapshot, multiples, radarOpportunities, trackingEntries]);
 
   const openBestPoint = () => {
     if (!dock.bestPoint) {
@@ -205,7 +180,7 @@ export function LiveIntelligenceDock() {
                 value={
                   dock.qualifiedRadar.length > 0 ? (
                     <>
-                      <MotionNumber value={dock.qualifiedRadar.length} /> above 75%
+                      <MotionNumber value={dock.qualifiedRadar.length} /> learned 75%+
                     </>
                   ) : (
                     "No clean pick"

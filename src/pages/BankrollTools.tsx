@@ -1,22 +1,15 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
-  MULTIPLES_UPDATED_EVENT,
   getBetTypePerformance,
   getMultipleMarketPerformance,
   getMultipleCorrelationPerformance,
   getMultipleLegCountPerformance,
   getMultiplePerformanceSummary,
-  getSavedMultiples,
 } from "@/lib/multipleStorage";
 import {
-  ANALYSES_UPDATED_EVENT,
   type DailyPerformanceItem,
-  getAnalyses,
-  getAllAnalysisTrackingEntries,
-  getBankrollSettings,
   saveBankrollSettings,
-  getBankrollStats,
   getMarketPerformance,
   getEdgeBucketPerformance,
   getConfidenceBucketPerformance,
@@ -39,12 +32,12 @@ import {
 } from "recharts";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
-import { buildFinancialSnapshot } from "@/lib/financialEngine";
 import { MatchdayHero } from "@/components/MatchdayHero";
 import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
+import { useScoreLabData } from "@/hooks/useScoreLabData";
 
 const stagger = {
   hidden: {},
@@ -516,65 +509,48 @@ function AIReviewColumn({
 }
 
 export default function BankrollTools() {
+  const { analyses, financialSnapshot, dataVersion, refresh } = useScoreLabData();
+  const stats = financialSnapshot.stats;
   const [initialBankrollInput, setInitialBankrollInput] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [showAllDailyPerformance, setShowAllDailyPerformance] = useState(false);
   const [aiSummary, setAiSummary] = useState<BankrollAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [stats, setStats] = useState({
-    initialBankroll: 0,
-    currentBankroll: 0,
-    totalProfitLoss: 0,
-    totalStaked: 0,
-    totalBetsPlaced: 0,
-    totalGreens: 0,
-    totalReds: 0,
-    totalVoids: 0,
-    totalPending: 0,
-    hitRate: 0,
-    roi: 0,
-    bankrollGrowthPct: 0,
-  });
-  const [analyses, setAnalyses] = useState<ReturnType<typeof getAnalyses>>([]);
-  const [savedMultiples, setSavedMultiples] = useState<ReturnType<typeof getSavedMultiples>>([]);
 
-  const marketPerformance = mergeSimpleAndMultipleMarketPerformance(
-    getMarketPerformance(),
-    getMultipleMarketPerformance({ excludeDuplicateSingles: true })
-  );
-  const edgeBucketPerformance = getEdgeBucketPerformance();
-  const confidenceBucketPerformance = getConfidenceBucketPerformance();
-  const edgeZoneSummary = getEdgeZoneSummary();
-
-  const loadData = () => {
-    const settings = getBankrollSettings();
-    const bankrollStats = getBankrollStats();
-    const savedAnalyses = getAnalyses();
-    const multiples = getSavedMultiples();
-
+  useEffect(() => {
     setInitialBankrollInput(
-      settings.initialBankroll ? String(settings.initialBankroll) : ""
+      stats.initialBankroll ? String(stats.initialBankroll) : ""
     );
-    setStats(bankrollStats);
-    setAnalyses(savedAnalyses);
-    setSavedMultiples(multiples);
-  };
+  }, [stats.initialBankroll]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    const handleRefresh = () => loadData();
-
-    window.addEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
-
-    return () => {
-      window.removeEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
-    };
-  }, []);
+  const marketPerformance = useMemo(
+    () => {
+      void dataVersion;
+      return mergeSimpleAndMultipleMarketPerformance(
+        getMarketPerformance(analyses),
+        getMultipleMarketPerformance({ excludeDuplicateSingles: true })
+      );
+    },
+    [analyses, dataVersion]
+  );
+  const edgeBucketPerformance = useMemo(
+    () => {
+      void dataVersion;
+      return getEdgeBucketPerformance(analyses);
+    },
+    [analyses, dataVersion]
+  );
+  const confidenceBucketPerformance = useMemo(
+    () => {
+      void dataVersion;
+      return getConfidenceBucketPerformance(analyses);
+    },
+    [analyses, dataVersion]
+  );
+  const edgeZoneSummary = useMemo(() => {
+    void dataVersion;
+    return getEdgeZoneSummary();
+  }, [dataVersion]);
 
   const handleSaveBankroll = () => {
     const parsedValue = Number(initialBankrollInput);
@@ -585,26 +561,13 @@ export default function BankrollTools() {
     }
 
     saveBankrollSettings({ initialBankroll: parsedValue });
-    loadData();
+    refresh();
     setSavedMessage("Bankroll baseline saved successfully.");
 
     setTimeout(() => {
       setSavedMessage("");
     }, 2500);
   };
-
-  const financialSnapshot = useMemo(
-    () =>
-      buildFinancialSnapshot({
-        analyses: getAllAnalysisTrackingEntries(analyses).map((entry) => ({
-          createdAt: entry.createdAt,
-          tracking: entry.tracking,
-        })),
-        multiples: savedMultiples,
-        initialBankroll: stats.initialBankroll,
-      }),
-    [analyses, savedMultiples, stats.initialBankroll]
-  );
 
   const bankrollEvolutionData = financialSnapshot.bankrollEvolution;
 

@@ -93,7 +93,7 @@ export function getDailyProfitTrend(
   >();
 
   settled.forEach((entry) => {
-    const occurredAt = entry.tracking.settledAt || entry.createdAt;
+    const occurredAt = entry.tracking.placedAt || entry.createdAt;
     const dateObj = new Date(occurredAt);
     const safeTime = Number.isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
     const dateKey = dateObj.toLocaleDateString();

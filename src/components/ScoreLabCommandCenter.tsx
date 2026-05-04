@@ -30,17 +30,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  ANALYSES_UPDATED_EVENT,
-  getAnalyses,
-  getBankrollStats,
-  getMarketPerformance,
-} from "@/lib/analysisStorage";
-import {
-  MULTIPLES_UPDATED_EVENT,
-  getSavedMultiples,
-} from "@/lib/multipleStorage";
-import { buildRadarOpportunities } from "@/lib/valueRadar";
+import { getMarketPerformance } from "@/lib/analysisStorage";
+import { useScoreLabData } from "@/hooks/useScoreLabData";
 
 export const OPEN_COMMAND_CENTER_EVENT = "scorelab:open-command-center";
 
@@ -65,24 +56,20 @@ const pages = [
 export function ScoreLabCommandCenter() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const {
+    analyses,
+    multiples,
+    financialSnapshot,
+    radarOpportunities,
+  } = useScoreLabData();
 
   useEffect(() => {
     const openCommandCenter = () => setOpen(true);
-    const refresh = () => setRefreshKey((value) => value + 1);
 
     window.addEventListener(OPEN_COMMAND_CENTER_EVENT, openCommandCenter);
-    window.addEventListener(ANALYSES_UPDATED_EVENT, refresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    window.addEventListener("focus", refresh);
 
     return () => {
       window.removeEventListener(OPEN_COMMAND_CENTER_EVENT, openCommandCenter);
-      window.removeEventListener(ANALYSES_UPDATED_EVENT, refresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("focus", refresh);
     };
   }, []);
 
@@ -99,15 +86,11 @@ export function ScoreLabCommandCenter() {
   }, []);
 
   const intelligence = useMemo(() => {
-    void refreshKey;
-
-    const analyses = getAnalyses();
-    const stats = getBankrollStats();
-    const multiples = getSavedMultiples();
-    const markets = getMarketPerformance();
-    const radar = buildRadarOpportunities(analyses)
-      .filter((point) => point.modelProb >= 75)
-      .sort((a, b) => b.modelProb - a.modelProb || b.edge - a.edge);
+    const markets = getMarketPerformance(analyses);
+    const radar = radarOpportunities
+      .filter((point) => point.calibratedProb >= 75)
+      .sort((a, b) => b.calibratedProb - a.calibratedProb || b.edge - a.edge);
+    const stats = financialSnapshot.stats;
 
     const pendingSingles = analyses.filter(
       (analysis) => analysis.tracking.betPlaced && analysis.tracking.resultStatus === "pending"
@@ -123,12 +106,12 @@ export function ScoreLabCommandCenter() {
       freeBankroll: stats.currentBankroll,
       roi: stats.roi,
       hitRate: stats.hitRate,
-      openExposure: stats.openExposure,
+      openExposure: financialSnapshot.openExposure,
       pending: pendingSingles + pendingMultiples,
       bestMarket,
       radar,
     };
-  }, [refreshKey]);
+  }, [analyses, financialSnapshot, multiples, radarOpportunities]);
 
   const runCommand = (url: string) => {
     setOpen(false);
@@ -266,7 +249,7 @@ export function ScoreLabCommandCenter() {
                   {intelligence.radar.slice(0, 5).map((point) => (
                     <CommandItem
                       key={`${point.id}-${point.market}`}
-                      value={`${point.match} ${point.market} ${point.modelProb}`}
+                      value={`${point.match} ${point.market} ${point.calibratedProb}`}
                       onSelect={() => openRadarPoint(point)}
                       className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
                     >
@@ -274,7 +257,7 @@ export function ScoreLabCommandCenter() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{point.match}</p>
                         <p className="text-xs text-white/42">
-                          {point.market} · model {point.modelProb.toFixed(1)}% · odds{" "}
+                          {point.market} · learned {point.calibratedProb.toFixed(1)}% · odds{" "}
                           {point.odds.toFixed(2)}
                         </p>
                       </div>

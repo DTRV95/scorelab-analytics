@@ -2,14 +2,10 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ANALYSES_UPDATED_EVENT,
-  getAnalyses,
-} from "@/lib/analysisStorage";
 import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
-import type { SavedAnalysis } from "@/types/analysis";
+import { useScoreLabData } from "@/hooks/useScoreLabData";
 import {
   ResponsiveContainer,
   XAxis,
@@ -123,6 +119,10 @@ function CustomTooltip({
           <p className="font-mono-data text-white">{point.modelProb.toFixed(1)}%</p>
         </div>
         <div className="rounded-lg bg-white/[0.03] p-2">
+          <p className="text-white/45">Learned</p>
+          <p className="font-mono-data text-white">{point.calibratedProb.toFixed(1)}%</p>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-2">
           <p className="text-white/45">Confidence</p>
           <p className="font-mono-data text-white">{point.confidence.toFixed(1)}</p>
         </div>
@@ -140,6 +140,8 @@ function CustomTooltip({
 }
 
 function getResultColor(point: RadarPoint) {
+  if (point.calibrationLabel === "Boosted") return "rgba(52,211,153,0.98)";
+  if (point.calibrationLabel === "Avoid") return "rgba(248,113,113,0.95)";
   if (point.tier === "premium") return "rgba(168,85,247,0.95)";
   if (point.tier === "elite") return "rgba(56,189,248,0.95)";
   if (point.decision === "Bet") return "rgba(34,197,94,0.95)";
@@ -160,6 +162,8 @@ function isToday(dateString: string) {
 
 function RadarLegend() {
   const items = [
+    { label: "Learned Boost", color: "rgba(52,211,153,0.98)" },
+    { label: "Learned Avoid", color: "rgba(248,113,113,0.95)" },
     { label: "Premium", color: "rgba(168,85,247,0.95)" },
     { label: "Elite", color: "rgba(56,189,248,0.95)" },
     { label: "Bet", color: "rgba(34,197,94,0.95)" },
@@ -187,7 +191,7 @@ function RadarLegend() {
 
 export default function ValueRadar() {
   const navigate = useNavigate();
-  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+  const { analyses, calibrationModel } = useScoreLabData();
   const [tierFilter, setTierFilter] = useState<
     "all" | "premium" | "elite" | "bet" | "watchlist" | "discard"
   >("all");
@@ -197,26 +201,14 @@ export default function ValueRadar() {
   const [marketSearch, setMarketSearch] = useState("");
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const refreshAnalyses = () => {
-      setAnalyses(getAnalyses().filter((analysis) => isToday(analysis.createdAt)));
-    };
-
-    refreshAnalyses();
-    window.addEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
-    window.addEventListener("storage", refreshAnalyses);
-    window.addEventListener("focus", refreshAnalyses);
-
-    return () => {
-      window.removeEventListener(ANALYSES_UPDATED_EVENT, refreshAnalyses);
-      window.removeEventListener("storage", refreshAnalyses);
-      window.removeEventListener("focus", refreshAnalyses);
-    };
-  }, []);
+  const todayAnalyses = useMemo(
+    () => analyses.filter((analysis) => isToday(analysis.createdAt)),
+    [analyses]
+  );
 
   const radarPoints = useMemo<RadarPoint[]>(() => {
-    return buildRadarOpportunities(analyses);
-  }, [analyses]);
+    return buildRadarOpportunities(todayAnalyses, calibrationModel);
+  }, [calibrationModel, todayAnalyses]);
 
   const filteredPoints = useMemo(() => {
     return radarPoints
@@ -233,7 +225,7 @@ export default function ValueRadar() {
 
         return true;
       })
-      .sort((a, b) => b.modelProb - a.modelProb);
+      .sort((a, b) => b.calibratedProb - a.calibratedProb || b.modelProb - a.modelProb);
   }, [radarPoints, tierFilter, decisionFilter, marketSearch]);
 
   const selectedPoint =
@@ -263,6 +255,10 @@ export default function ValueRadar() {
       total > 0
         ? filteredPoints.reduce((sum, p) => sum + p.confidence, 0) / total
         : 0;
+    const avgLearnedProb =
+      total > 0
+        ? filteredPoints.reduce((sum, p) => sum + p.calibratedProb, 0) / total
+        : 0;
 
     return {
       total,
@@ -270,6 +266,7 @@ export default function ValueRadar() {
       cautions,
       avgEdge,
       avgConfidence,
+      avgLearnedProb,
     };
   }, [filteredPoints]);
 
@@ -317,12 +314,13 @@ export default function ValueRadar() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6"
         >
           <MetricBlock label="Visible Points" value={summary.total} />
           <MetricBlock label="Bets" value={summary.bets} />
           <MetricBlock label="Cautions" value={summary.cautions} />
           <MetricBlock label="Avg Edge" value={`${summary.avgEdge.toFixed(2)}%`} />
+          <MetricBlock label="Avg Learned %" value={`${summary.avgLearnedProb.toFixed(1)}%`} />
           <MetricBlock label="Avg Confidence" value={summary.avgConfidence.toFixed(2)} />
         </motion.div>
 
@@ -406,6 +404,8 @@ export default function ValueRadar() {
                     <th className="py-3 pr-4">Match</th>
                     <th className="py-3 pr-4">Market</th>
                     <th className="py-3 pr-4">Model %</th>
+                    <th className="py-3 pr-4">Learned %</th>
+                    <th className="py-3 pr-4">Learning</th>
                     <th className="py-3 pr-4">Edge</th>
                     <th className="py-3 pr-4">Confidence</th>
                     <th className="py-3 pr-4">Odds</th>
@@ -428,6 +428,14 @@ export default function ValueRadar() {
                       <td className="py-3 pr-4 text-white/65">{point.market}</td>
                       <td className="py-3 pr-4 font-mono-data text-white">
                         {point.modelProb.toFixed(1)}%
+                      </td>
+                      <td className="py-3 pr-4 font-mono-data text-emerald-100">
+                        {point.calibratedProb.toFixed(1)}%
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/58">
+                          {point.calibrationLabel}
+                        </span>
                       </td>
                       <td className="py-3 pr-4">
                         <ValueBadge value={point.edge} />
@@ -691,6 +699,10 @@ export default function ValueRadar() {
                   value={`${selectedPoint.modelProb.toFixed(1)}%`}
                 />
                 <MetricBlock
+                  label="Learned Probability"
+                  value={`${selectedPoint.calibratedProb.toFixed(1)}% · ${selectedPoint.calibrationLabel}`}
+                />
+                <MetricBlock
                   label="Confidence"
                   value={<ConfidenceMeter score={selectedPoint.confidence} className="w-24" />}
                 />
@@ -698,6 +710,14 @@ export default function ValueRadar() {
                 <MetricBlock label="Kelly" value={`${selectedPoint.kelly.toFixed(2)}%`} />
                 <MetricBlock label="Total xG" value={selectedPoint.xg.toFixed(2)} />
                 <MetricBlock label="Risk" value={selectedPoint.risk} />
+              </div>
+              <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/42">
+                  Learning Read
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/68">
+                  {selectedPoint.calibrationReasons[0]}
+                </p>
               </div>
             </div>
           )}

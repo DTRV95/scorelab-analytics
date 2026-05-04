@@ -5,6 +5,7 @@ export interface FinancialTrackingLike {
   stakeUsed: number | null;
   oddUsed?: number | null;
   resultStatus: BetStatus;
+  placedAt?: string | null;
   settledAt?: string | null;
   profitLoss: number;
 }
@@ -159,7 +160,7 @@ export function buildFinancialSnapshot({
   const settledEntries = placedItems
     .filter((item) => isSettledStatus(item.tracking.resultStatus))
     .map((item) => {
-      const occurredAt = item.tracking.settledAt || item.createdAt;
+      const occurredAt = item.tracking.placedAt || item.createdAt;
       return {
         occurredAt,
         profitLoss: item.tracking.profitLoss || 0,

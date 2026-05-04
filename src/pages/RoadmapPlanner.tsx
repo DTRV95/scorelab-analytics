@@ -581,13 +581,13 @@ function getRadarExecutionPlan({
   const candidates = opportunities
     .filter((opportunity) => {
       if (!Number.isFinite(opportunity.odds) || opportunity.odds <= 1) return false;
-      if (normalizeProbabilityPct(opportunity.modelProb) <= ROADMAP_RADAR_MIN_MODEL_PROB) return false;
+      if (normalizeProbabilityPct(opportunity.calibratedProb) <= ROADMAP_RADAR_MIN_MODEL_PROB) return false;
       return true;
     })
     .sort((a, b) => {
       const tierWeight = { premium: 4, elite: 3, bet: 2, watchlist: 1, discard: 0 };
-      const bModelProb = normalizeProbabilityPct(b.modelProb);
-      const aModelProb = normalizeProbabilityPct(a.modelProb);
+      const bModelProb = normalizeProbabilityPct(b.calibratedProb);
+      const aModelProb = normalizeProbabilityPct(a.calibratedProb);
       if (bModelProb !== aModelProb) return bModelProb - aModelProb;
       if (b.confidence !== a.confidence) return b.confidence - a.confidence;
       const tierDiff = (tierWeight[b.tier ?? "discard"] || 0) - (tierWeight[a.tier ?? "discard"] || 0);
@@ -600,12 +600,23 @@ function getRadarExecutionPlan({
     const leagueRead = leagueIntelligence?.get(opportunity.league);
     const profitPerEuro = opportunity.odds - 1;
     const requiredStake = profitPerEuro > 0 ? cleanProfitTarget / profitPerEuro : 0;
-    const projectedProfit = requiredStake * profitPerEuro;
-    const normalizedModelProb = normalizeProbabilityPct(opportunity.modelProb);
-    const fitsCapacity = requiredStake <= cleanStakeBudget;
+    const calibratedStakeLimit = Math.max(0, opportunity.stake || 0);
+    const suggestedStake =
+      opportunity.calibrationLabel === "Avoid"
+        ? 0
+        : calibratedStakeLimit > 0
+        ? Math.min(requiredStake, calibratedStakeLimit)
+        : requiredStake;
+    const projectedProfit = suggestedStake * profitPerEuro;
+    const normalizedModelProb = normalizeProbabilityPct(opportunity.calibratedProb);
+    const fitsCapacity = suggestedStake > 0 && suggestedStake <= cleanStakeBudget;
+    const reachesTarget = projectedProfit >= cleanProfitTarget;
     const isClean =
       fitsCapacity &&
+      reachesTarget &&
       opportunity.decision === "Bet" &&
+      opportunity.calibrationLabel !== "Avoid" &&
+      opportunity.calibrationLabel !== "Caution" &&
       opportunity.edge > 0 &&
       opportunity.confidence >= 7.5 &&
       normalizedModelProb >= 78;
@@ -629,7 +640,15 @@ function getRadarExecutionPlan({
             label: "Watch",
             tone: "neutral" as const,
             reason:
-              leagueRead?.intelligenceStatus === "Volatile"
+              !reachesTarget
+                ? "The learned stake cap is below the stake required to complete today's profit target."
+                : opportunity.calibrationLabel === "Caution"
+                ? "Learning engine reduced this pick because similar historical setups are underperforming."
+                : opportunity.calibrationLabel === "Learning"
+                ? "The model likes this pick, but the system still needs more settled history here."
+                : opportunity.calibrationLabel === "Boosted"
+                ? "Learning engine supports this pick, but one execution guardrail still needs alignment."
+                : leagueRead?.intelligenceStatus === "Volatile"
                 ? `${opportunity.league} is volatile, so only use this with premium discipline.`
                 : leagueRead?.intelligenceStatus === "Needs Data"
                 ? `${opportunity.league} still needs more tracked data before full trust.`
@@ -643,9 +662,11 @@ function getRadarExecutionPlan({
 
     return {
       ...opportunity,
-      suggestedStake: Number(requiredStake.toFixed(2)),
+      requiredStake: Number(requiredStake.toFixed(2)),
+      suggestedStake: Number(suggestedStake.toFixed(2)),
       projectedProfit: Number(projectedProfit.toFixed(2)),
       fitsCapacity,
+      reachesTarget,
       guardrail,
     };
   });
@@ -989,7 +1010,7 @@ export default function RoadmapPlanner() {
       (opportunity) =>
         Number.isFinite(opportunity.odds) &&
         opportunity.odds > 1 &&
-        normalizeProbabilityPct(opportunity.modelProb) > ROADMAP_RADAR_MIN_MODEL_PROB
+        normalizeProbabilityPct(opportunity.calibratedProb) > ROADMAP_RADAR_MIN_MODEL_PROB
     ).length;
     const radarExecutionSourceDate =
       todayHighProbabilityCount > 0 ? today : latestRadarDate;
@@ -1855,7 +1876,7 @@ export default function RoadmapPlanner() {
                           </span>
                         </div>
                         <p className="mt-1 text-xs leading-5 text-white/52">
-                          {pick.market} · {pick.league} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
+                          {pick.market} · {pick.league} · learned {formatPct(normalizeProbabilityPct(pick.calibratedProb))} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-white/38">
                           {pick.guardrail.reason}

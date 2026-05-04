@@ -68,7 +68,51 @@ describe("financialEngine", () => {
     expect(snapshot.stats.currentBankroll).toBe(85);
   });
 
-  it("groups daily performance by settled date, not created date", () => {
+  it("groups daily performance by placed date, not settled date", () => {
+    const snapshot = buildFinancialSnapshot({
+      initialBankroll: 50,
+      analyses: [
+        {
+          createdAt: "2026-04-19T10:00:00.000Z",
+          tracking: {
+            betPlaced: true,
+            placedAt: "2026-04-20T10:00:00.000Z",
+            stakeUsed: 10,
+            oddUsed: 2,
+            resultStatus: "green",
+            settledAt: "2026-04-21T11:00:00.000Z",
+            profitLoss: 10,
+          },
+        },
+      ],
+      multiples: [
+        {
+          createdAt: "2026-04-19T12:00:00.000Z",
+          combinedOdds: 2.5,
+          tracking: {
+            betPlaced: true,
+            placedAt: "2026-04-20T12:00:00.000Z",
+            stakeUsed: 6,
+            oddUsed: 2.5,
+            resultStatus: "red",
+            settledAt: "2026-04-21T20:00:00.000Z",
+            profitLoss: -6,
+          },
+        },
+      ],
+    });
+
+    expect(snapshot.dailyPerformance).toHaveLength(1);
+    expect(snapshot.dailyPerformance[0]).toMatchObject({
+      date: "2026-04-20",
+      startBankroll: 50,
+      endBankroll: 54,
+      profitLoss: 4,
+      settledBets: 2,
+    });
+  });
+
+  it("falls back to created date for legacy placed bets without placedAt", () => {
     const snapshot = buildFinancialSnapshot({
       initialBankroll: 50,
       analyses: [
@@ -84,29 +128,14 @@ describe("financialEngine", () => {
           },
         },
       ],
-      multiples: [
-        {
-          createdAt: "2026-04-19T12:00:00.000Z",
-          combinedOdds: 2.5,
-          tracking: {
-            betPlaced: true,
-            stakeUsed: 6,
-            oddUsed: 2.5,
-            resultStatus: "red",
-            settledAt: "2026-04-21T20:00:00.000Z",
-            profitLoss: -6,
-          },
-        },
-      ],
+      multiples: [],
     });
 
     expect(snapshot.dailyPerformance).toHaveLength(1);
     expect(snapshot.dailyPerformance[0]).toMatchObject({
-      date: "2026-04-21",
-      startBankroll: 50,
-      endBankroll: 54,
-      profitLoss: 4,
-      settledBets: 2,
+      date: "2026-04-19",
+      profitLoss: 10,
+      settledBets: 1,
     });
   });
 

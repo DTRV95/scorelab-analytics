@@ -36,6 +36,7 @@ interface MultipleTracking {
   stakeUsed: number | null;
   oddUsed: number | null;
   resultStatus: BetStatus;
+  placedAt?: string | null;
   settledAt?: string | null;
   profitLoss: number;
   bankrollBefore: number | null;
@@ -63,6 +64,9 @@ interface MultipleBet {
 const MULTIPLE_DRAFT_KEY = "scorelab_multiple_draft";
 const MULTIPLES_KEY = "scorelab_multiples";
 export const MULTIPLES_UPDATED_EVENT = "scorelab:multiples-updated";
+
+let savedMultiplesCacheRaw: string | null = null;
+let savedMultiplesCacheValue: MultipleBet[] | null = null;
 
 export interface MultipleMetrics {
   combinedOdds: number;
@@ -370,6 +374,10 @@ export function getSavedMultiples(): MultipleBet[] {
   try {
     const raw = localStorage.getItem(MULTIPLES_KEY);
     if (!raw) return [];
+    if (raw === savedMultiplesCacheRaw && savedMultiplesCacheValue) {
+      return savedMultiplesCacheValue;
+    }
+
     const normalized = (JSON.parse(raw) as MultipleBet[]).map(normalizeMultipleBet);
     const derived = normalized.map((bet) => ({
       ...bet,
@@ -377,13 +385,19 @@ export function getSavedMultiples(): MultipleBet[] {
     }));
 
     if (JSON.stringify(normalized) !== JSON.stringify(derived)) {
-      localStorage.setItem(MULTIPLES_KEY, JSON.stringify(derived.map(normalizeMultipleBet)));
+      const nextRaw = JSON.stringify(derived.map(normalizeMultipleBet));
+      localStorage.setItem(MULTIPLES_KEY, nextRaw);
+      savedMultiplesCacheRaw = nextRaw;
+      savedMultiplesCacheValue = derived;
       derived.forEach((bet) => {
         persistMultipleRecord(bet as unknown as Record<string, unknown> & { id: string });
       });
       queueEntitySync("multiples");
+      return derived;
     }
 
+    savedMultiplesCacheRaw = raw;
+    savedMultiplesCacheValue = derived;
     return derived;
   } catch {
     return [];
@@ -393,10 +407,11 @@ export function getSavedMultiples(): MultipleBet[] {
 function saveMultiples(bets: MultipleBet[]) {
   const previousIds = new Set(getSavedMultiples().map((bet) => bet.id));
   const nextIds = new Set(bets.map((bet) => bet.id));
-  localStorage.setItem(
-    MULTIPLES_KEY,
-    JSON.stringify(bets.map(normalizeMultipleBet))
-  );
+  const normalized = bets.map(normalizeMultipleBet);
+  const nextRaw = JSON.stringify(normalized);
+  localStorage.setItem(MULTIPLES_KEY, nextRaw);
+  savedMultiplesCacheRaw = nextRaw;
+  savedMultiplesCacheValue = normalized;
   bets.forEach((bet) => {
     persistMultipleRecord(bet as unknown as Record<string, unknown> & { id: string });
   });
@@ -415,6 +430,7 @@ export function createEmptyMultipleTracking(): MultipleBet["tracking"] {
     stakeUsed: null,
     oddUsed: null,
     resultStatus: "pending",
+    placedAt: null,
     settledAt: null,
     profitLoss: 0,
     bankrollBefore: null,
@@ -424,7 +440,8 @@ export function createEmptyMultipleTracking(): MultipleBet["tracking"] {
 }
 
 function recalculateMultipleTracking(
-  tracking: MultipleBet["tracking"]
+  tracking: MultipleBet["tracking"],
+  fallbackPlacedAt?: string
 ): MultipleBet["tracking"] {
   if (!tracking.betPlaced) {
     return {
@@ -432,6 +449,7 @@ function recalculateMultipleTracking(
       stakeUsed: null,
       oddUsed: null,
       resultStatus: "pending",
+      placedAt: null,
       settledAt: null,
       profitLoss: 0,
       bankrollAfter: tracking.bankrollBefore,
@@ -441,6 +459,12 @@ function recalculateMultipleTracking(
   const stake = tracking.stakeUsed ?? 0;
   const odd = tracking.oddUsed ?? 0;
   const bankrollBefore = tracking.bankrollBefore ?? null;
+  const placedAt =
+    tracking.placedAt && typeof tracking.placedAt === "string"
+      ? tracking.placedAt
+      : fallbackPlacedAt
+      ? fallbackPlacedAt
+      : new Date().toISOString();
 
   let profitLoss = 0;
   if (tracking.resultStatus === "green") profitLoss = stake * (odd - 1);
@@ -455,6 +479,7 @@ function recalculateMultipleTracking(
 
   return {
     ...tracking,
+    placedAt,
     settledAt,
     profitLoss,
     bankrollAfter:
@@ -500,11 +525,14 @@ function deriveMultipleTrackingFromLegs(
     );
   }
 
-  return recalculateMultipleTracking({
-    ...tracking,
-    resultStatus,
-    oddUsed,
-  });
+  return recalculateMultipleTracking(
+    {
+      ...tracking,
+      resultStatus,
+      oddUsed,
+    },
+    tracking.betPlaced && !tracking.placedAt ? bet.createdAt : undefined
+  );
 }
 
 export function saveMultipleFromDraft(

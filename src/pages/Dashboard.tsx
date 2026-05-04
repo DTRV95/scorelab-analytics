@@ -25,26 +25,18 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ANALYSES_UPDATED_EVENT,
-  getAnalyses,
-  getAllAnalysisTrackingEntries,
-  getBankrollStats,
-} from "@/lib/analysisStorage";
-import {
   getMultipleMarketPerformance,
-  getSavedMultiples,
-  MULTIPLES_UPDATED_EVENT,
 } from "@/lib/multipleStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import type { MarketPerformance } from "@/lib/portofolioEngine";
 import { getDashboardAutoInsights } from "@/lib/edgeInteligence";
-import { buildFinancialSnapshot } from "@/lib/financialEngine";
 import {
   buildLeagueIntelligenceRows,
   getLeagueIntelligenceTone,
   type LeagueIntelligenceRow,
 } from "@/lib/leagueIntelligence";
+import { useScoreLabData } from "@/hooks/useScoreLabData";
 
 const stagger = {
   hidden: {},
@@ -561,34 +553,13 @@ function AIReviewColumn({
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [analyses, setAnalyses] = useState(() => getAnalyses());
-  const [bankrollStats, setBankrollStats] = useState(() => getBankrollStats());
+  const { analyses, financialSnapshot, dataVersion } = useScoreLabData();
+  const bankrollStats = financialSnapshot.stats;
   const [aiSummary, setAiSummary] = useState<DashboardAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  useEffect(() => {
-    setAnalyses(getAnalyses());
-    setBankrollStats(getBankrollStats());
-  }, [refreshTick]);
-
-  useEffect(() => {
-    const handleRefresh = () => {
-      setRefreshTick((value) => value + 1);
-    };
-
-    window.addEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
-
-    return () => {
-      window.removeEventListener(ANALYSES_UPDATED_EVENT, handleRefresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, handleRefresh);
-    };
-  }, []);
-
   const dashboardData = useMemo(() => {
     const now = new Date();
-    const savedMultiples = getSavedMultiples();
 
     const validAnalyses = analyses.filter(
       (analysis) =>
@@ -644,14 +615,6 @@ export default function Dashboard() {
           )
         : null;
 
-    const financialSnapshot = buildFinancialSnapshot({
-      analyses: getAllAnalysisTrackingEntries(analyses).map((entry) => ({
-        createdAt: entry.createdAt,
-        tracking: entry.tracking,
-      })),
-      multiples: savedMultiples,
-      initialBankroll: bankrollStats.initialBankroll,
-    });
     const openExposure = financialSnapshot.openExposure;
     const openExposurePct =
       bankrollStats.currentBankroll > 0
@@ -681,7 +644,7 @@ export default function Dashboard() {
       performance,
       autoInsights,
     };
-  }, [analyses, bankrollStats.currentBankroll, bankrollStats.initialBankroll]);
+  }, [analyses, bankrollStats.currentBankroll, financialSnapshot]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
 
@@ -722,9 +685,13 @@ export default function Dashboard() {
       ...item,
     })) ?? [];
 
-  const multipleMarketPerformance = getMultipleMarketPerformance({
-    excludeDuplicateSingles: true,
-  });
+  const multipleMarketPerformance = useMemo(
+    () => {
+      void dataVersion;
+      return getMultipleMarketPerformance({ excludeDuplicateSingles: true });
+    },
+    [dataVersion]
+  );
 
   const marketPerformanceRows = useMemo(
     () =>

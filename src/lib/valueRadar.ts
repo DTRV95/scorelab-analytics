@@ -1,5 +1,10 @@
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 import { getAnalysisTrackingEntries } from "@/lib/analysisStorage";
+import {
+  buildCalibrationModel,
+  calibrateOpportunity,
+  type CalibrationModel,
+} from "@/lib/calibrationEngine";
 
 export type RadarOpportunity = {
   id: string;
@@ -10,10 +15,17 @@ export type RadarOpportunity = {
   market: string;
   edge: number;
   modelProb: number;
+  calibratedProb: number;
+  calibrationLabel: "Boosted" | "Calibrated" | "Caution" | "Avoid" | "Learning";
+  calibrationMultiplier: number;
+  stakeMultiplier: number;
+  calibrationConfidence: number;
+  calibrationReasons: string[];
   confidence: number;
   odds: number;
   kelly: number;
   stake: number;
+  rawStake: number;
   decision: "Bet" | "Caution" | "No Bet";
   tier?: "premium" | "elite" | "bet" | "watchlist" | "discard";
   risk: "Low" | "Medium" | "High";
@@ -38,26 +50,47 @@ export function getTrackedOrBestResult(analysis: SavedAnalysis): AnalysisResult 
   );
 }
 
-export function buildRadarOpportunities(analyses: SavedAnalysis[]): RadarOpportunity[] {
+export function buildRadarOpportunities(
+  analyses: SavedAnalysis[],
+  calibrationModel: CalibrationModel = buildCalibrationModel(analyses)
+): RadarOpportunity[] {
   return analyses
     .map((analysis) => {
       const trackedEntries = getAnalysisTrackingEntries(analysis);
       const result = getTrackedOrBestResult(analysis);
       if (!result) return null;
+      const league = analysis.league || "Unspecified";
+      const calibration = calibrateOpportunity(
+        {
+          league,
+          market: result.market,
+          odds: result.odds,
+          confidence: result.confidence,
+          modelProb: result.modelProb,
+        },
+        calibrationModel
+      );
 
       return {
         id: analysis.id,
         match: `${analysis.homeTeam} vs ${analysis.awayTeam}`,
         homeTeam: analysis.homeTeam,
         awayTeam: analysis.awayTeam,
-        league: analysis.league || "Unspecified",
+        league,
         market: result.market,
         edge: result.valueBet,
         modelProb: result.modelProb,
+        calibratedProb: calibration.calibratedProb,
+        calibrationLabel: calibration.label,
+        calibrationMultiplier: calibration.multiplier,
+        stakeMultiplier: calibration.stakeMultiplier,
+        calibrationConfidence: calibration.confidence,
+        calibrationReasons: calibration.reasons,
         confidence: result.confidence,
         odds: result.odds,
         kelly: result.kelly,
-        stake: result.stake,
+        stake: Number((result.stake * calibration.stakeMultiplier).toFixed(2)),
+        rawStake: result.stake,
         decision: result.decision,
         tier: result.tier,
         risk: result.risk,

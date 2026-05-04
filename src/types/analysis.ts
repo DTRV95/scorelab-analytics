@@ -41,6 +41,7 @@ export interface TrackedBet {
   stakeUsed: number | null;
   oddUsed: number | null;
   resultStatus: BetStatus;
+  placedAt?: string | null;
   settledAt?: string | null;
   profitLoss: number;
   bankrollBefore: number | null;
@@ -84,6 +85,7 @@ export interface MultipleTracking {
   stakeUsed: number | null;
   oddUsed: number | null;
   resultStatus: BetStatus;
+  placedAt?: string | null;
   settledAt?: string | null;
   profitLoss: number;
   bankrollBefore: number | null;
