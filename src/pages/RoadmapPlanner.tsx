@@ -46,6 +46,7 @@ import {
   type RoadmapSettings,
 } from "@/lib/roadmapStorage";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { simulateBankrollMission } from "@/lib/bankrollSimulator";
 import { PERSISTENCE_HYDRATED_EVENT } from "@/lib/persistenceSync";
 import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
 import {
@@ -69,7 +70,7 @@ const MIN_DAILY_STAKE_PCT = 8;
 const MAX_DAILY_STAKE_PCT = 65;
 const MAX_REALISTIC_RETURN_ON_STAKE_PCT = 20;
 const MAX_STRETCH_RETURN_ON_STAKE_PCT = 30;
-const ROADMAP_RADAR_MIN_MODEL_PROB = 75;
+const ROADMAP_RADAR_MIN_MODEL_PROB = 80;
 const ROADMAP_TIMEZONE = "Europe/Lisbon";
 const surfaceCardClass =
   "scorelab-board-3d scorelab-tilt-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 backdrop-blur-sm";
@@ -91,6 +92,11 @@ function normalizeProbabilityPct(value: number) {
 
 function clampPositive(value: number, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function ceilCurrency(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.ceil(value * 100) / 100;
 }
 
 function getIsoDateOnly(value: string | Date) {
@@ -259,6 +265,37 @@ function getTargetRealism(requiredReturnOnStakePct: number) {
   if (requiredReturnOnStakePct <= 18) return "Demanding";
   if (requiredReturnOnStakePct <= MAX_STRETCH_RETURN_ON_STAKE_PCT) return "Stretched";
   return "Unrealistic";
+}
+
+function blendConservativeHitRate(hitRatePct: number, settledBets: number) {
+  const priorHitRate = 58;
+  const sampleWeight = Math.min(1, settledBets / 18);
+  return priorHitRate * (1 - sampleWeight) + hitRatePct * sampleWeight;
+}
+
+function getAverageSettledOdds(
+  entries: Array<{ tracking: { resultStatus: string; oddUsed?: number | null; stakeUsed: number | null } }>
+) {
+  const weighted = entries
+    .filter(
+      (entry) =>
+        (entry.tracking.resultStatus === "green" ||
+          entry.tracking.resultStatus === "red") &&
+        typeof entry.tracking.oddUsed === "number" &&
+        Number.isFinite(entry.tracking.oddUsed) &&
+        entry.tracking.oddUsed > 1
+    )
+    .reduce(
+      (acc, entry) => {
+        const stake = Math.max(1, entry.tracking.stakeUsed || 0);
+        acc.oddsSum += (entry.tracking.oddUsed || 0) * stake;
+        acc.stakeSum += stake;
+        return acc;
+      },
+      { oddsSum: 0, stakeSum: 0 }
+    );
+
+  return weighted.stakeSum > 0 ? weighted.oddsSum / weighted.stakeSum : 0;
 }
 
 function getAdaptiveMission(bankroll: number, targetAmount: number, remainingDays: number) {
@@ -501,7 +538,7 @@ function buildMissionGuardrails({
           label: "Risk Budget",
           state: "Stop",
           tone: "negative" as const,
-          detail: "Daily planned stake is already consumed.",
+          detail: "Daily stake cap is already consumed.",
         }
       : {
           label: "Risk Budget",
@@ -599,14 +636,8 @@ function getRadarExecutionPlan({
   const picks = candidates.slice(0, 4).map((opportunity) => {
     const leagueRead = leagueIntelligence?.get(opportunity.league);
     const profitPerEuro = opportunity.odds - 1;
-    const requiredStake = profitPerEuro > 0 ? cleanProfitTarget / profitPerEuro : 0;
-    const calibratedStakeLimit = Math.max(0, opportunity.stake || 0);
-    const suggestedStake =
-      opportunity.calibrationLabel === "Avoid"
-        ? 0
-        : calibratedStakeLimit > 0
-        ? Math.min(requiredStake, calibratedStakeLimit)
-        : requiredStake;
+    const requiredStake = profitPerEuro > 0 ? ceilCurrency(cleanProfitTarget / profitPerEuro) : 0;
+    const suggestedStake = requiredStake;
     const projectedProfit = suggestedStake * profitPerEuro;
     const normalizedModelProb = normalizeProbabilityPct(opportunity.calibratedProb);
     const fitsCapacity = suggestedStake > 0 && suggestedStake <= cleanStakeBudget;
@@ -619,7 +650,7 @@ function getRadarExecutionPlan({
       opportunity.calibrationLabel !== "Caution" &&
       opportunity.edge > 0 &&
       opportunity.confidence >= 7.5 &&
-      normalizedModelProb >= 78;
+      normalizedModelProb > ROADMAP_RADAR_MIN_MODEL_PROB;
     const guardrail =
       leagueRead?.intelligenceStatus === "Avoid"
         ? ({
@@ -635,13 +666,13 @@ function getRadarExecutionPlan({
               ? `Probability, edge, stake fit and ${opportunity.league} trust are aligned.`
               : "Probability, edge, confidence and stake fit are aligned.",
           })
-        : fitsCapacity && normalizedModelProb >= ROADMAP_RADAR_MIN_MODEL_PROB
+        : fitsCapacity && normalizedModelProb > ROADMAP_RADAR_MIN_MODEL_PROB
         ? ({
             label: "Watch",
             tone: "neutral" as const,
             reason:
               !reachesTarget
-                ? "The learned stake cap is below the stake required to complete today's profit target."
+                ? "The required stake does not fully reach today's profit target."
                 : opportunity.calibrationLabel === "Caution"
                 ? "Learning engine reduced this pick because similar historical setups are underperforming."
                 : opportunity.calibrationLabel === "Learning"
@@ -657,7 +688,7 @@ function getRadarExecutionPlan({
         : ({
             label: "Avoid",
             tone: "negative" as const,
-            reason: "The stake required does not fit the remaining mission capacity.",
+            reason: "The stake required to hit today's profit target does not fit the remaining mission capacity.",
           });
 
     return {
@@ -1309,6 +1340,33 @@ export default function RoadmapPlanner() {
     const tomorrowTargetProfit = tomorrowMission.plannedProfit;
     const suggestedExtraDays =
       targetRealism === "Unrealistic" ? Math.ceil(requiredReturnOnStakePct / 6) : 0;
+    const settledForSimulation = [
+      ...trackedAnalysisEntries.map((entry) => ({ tracking: entry.tracking })),
+      ...multiples.map((multiple) => ({ tracking: multiple.tracking })),
+    ].filter(
+      (entry) =>
+        entry.tracking.resultStatus === "green" ||
+        entry.tracking.resultStatus === "red"
+    );
+    const simulationHitRate = blendConservativeHitRate(
+      financialSnapshot.stats.hitRate,
+      financialSnapshot.stats.totalGreens + financialSnapshot.stats.totalReds
+    );
+    const historicalAverageOdds = getAverageSettledOdds(settledForSimulation);
+    const simulationAverageOdds =
+      historicalAverageOdds > 1
+        ? historicalAverageOdds
+        : Math.max(1.35, 1 + practicalReturnOnStakePct / 100);
+    const bankrollSimulation = simulateBankrollMission({
+      currentBankroll: availableBankroll,
+      targetBankroll: targetAmount,
+      daysRemaining: remainingDays,
+      dailyStakeCap: missionStake,
+      dailyProfitTarget: requiredProfitToday,
+      hitRatePct: simulationHitRate,
+      averageOdds: simulationAverageOdds,
+      simulations: 1000,
+    });
 
     return {
       currentBankroll: availableBankroll,
@@ -1364,6 +1422,9 @@ export default function RoadmapPlanner() {
       tomorrowStakeAmount,
       tomorrowTargetProfit,
       suggestedExtraDays,
+      simulationHitRate,
+      simulationAverageOdds,
+      bankrollSimulation,
       dailyLog: logWithTargets,
       path,
     };
@@ -1564,7 +1625,7 @@ export default function RoadmapPlanner() {
           <MetricCard
             label="Profit Target"
             value={formatCurrency(roadmap.requiredProfitToday)}
-            change={`${formatCurrency(roadmap.missionStake)} planned stake · ${roadmap.oddsRange}`}
+            change={`${formatCurrency(roadmap.missionStake)} daily cap · ${roadmap.oddsRange}`}
             tone={roadmap.targetRealism === "Realistic" ? "positive" : roadmap.targetRealism === "Demanding" ? "neutral" : "negative"}
           />
         </div>
@@ -1745,14 +1806,14 @@ export default function RoadmapPlanner() {
                 <div className="flex items-center gap-2 text-emerald-200">
                   <Wallet className="h-4 w-4" strokeWidth={1.6} />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    Planned Stake
+                    Daily Stake Cap
                   </p>
                 </div>
                 <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-white md:text-[1.28rem]">
                   {formatCurrency(roadmap.missionStake)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
-                  Up to {formatPct(roadmap.recommendedDailyStakePct)} of free bankroll.
+                  Maximum daily exposure before the mission should stop adding risk.
                 </p>
               </div>
 
@@ -1767,7 +1828,7 @@ export default function RoadmapPlanner() {
                   {formatCurrency(roadmap.requiredProfitToday)}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/56">
-                  Needs about {formatPct(roadmap.practicalReturnOnStakePct)} return on planned stake.
+                  The radar below calculates the exact stake per qualifying event.
                 </p>
               </div>
             </div>
@@ -1829,7 +1890,7 @@ export default function RoadmapPlanner() {
                     Radar Execution
                   </p>
                   <p className="mt-2 text-sm leading-6 text-white/62">
-                    Highest-probability radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% and the stake each one needs to hit the daily profit target.
+                    Highest-probability radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% and the exact stake needed to reach today's profit target.
                   </p>
                   <p className="mt-1 text-xs leading-5 text-white/40">
                     {roadmap.isRadarExecutionFromToday
@@ -1882,11 +1943,6 @@ export default function RoadmapPlanner() {
                         <p className="mt-1 text-xs leading-5 text-white/52">
                           {pick.market} · {pick.league} · learned {formatPct(normalizeProbabilityPct(pick.calibratedProb))} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
                         </p>
-                        {pick.stakeMultiplier < 1 ? (
-                          <p className="mt-1 text-xs leading-5 text-cyan-100/42">
-                            Stake reduced by learning engine from {formatCurrency(pick.requiredStake)} to {formatCurrency(pick.suggestedStake)}.
-                          </p>
-                        ) : null}
                         <p className="mt-1 text-xs leading-5 text-white/38">
                           {pick.guardrail.reason}
                         </p>
@@ -1900,7 +1956,7 @@ export default function RoadmapPlanner() {
                           }`}
                         >
                           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
-                            Learned Stake
+                            Stake Needed
                           </p>
                           <p className="mt-1 text-sm font-semibold text-white">
                             {formatCurrency(pick.suggestedStake)}
@@ -1918,7 +1974,7 @@ export default function RoadmapPlanner() {
                     </button>
                   ))}
                   <p className="text-xs leading-5 text-white/42">
-                    Green highlight means the required stake fits inside today's remaining planned stake.
+                    Green highlight means the exact stake needed for today's profit target fits inside today's remaining daily cap.
                   </p>
                   {!roadmap.radarExecutionPlan.fullyCovered ? (
                     <p className="text-xs leading-5 text-amber-200/72">
@@ -1941,6 +1997,98 @@ export default function RoadmapPlanner() {
             </div>
           </PremiumCard>
         </div>
+
+          <PremiumCard
+            title="Bankroll Simulator"
+            description="1,000 mission paths using current bankroll, daily cap, target profit and historical execution quality."
+            badge="Monte Carlo"
+          >
+            <div
+              className={`mb-4 rounded-[22px] border p-4 ${
+                roadmap.bankrollSimulation.recommendation.tone === "positive"
+                  ? "border-emerald-300/18 bg-emerald-300/[0.07]"
+                  : roadmap.bankrollSimulation.recommendation.tone === "negative"
+                  ? "border-red-300/18 bg-red-300/[0.07]"
+                  : "border-amber-300/18 bg-amber-300/[0.07]"
+              }`}
+            >
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                    Simulation Read
+                  </p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-white">
+                    {roadmap.bankrollSimulation.recommendation.label}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/58">
+                    {roadmap.bankrollSimulation.recommendation.detail}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                    Inputs
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/58">
+                    {formatPct(roadmap.simulationHitRate)} hit · {roadmap.simulationAverageOdds.toFixed(2)} avg odds
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="Success Chance"
+                value={formatPct(roadmap.bankrollSimulation.successRatePct)}
+                change={`${roadmap.bankrollSimulation.simulations} simulated paths`}
+                tone={
+                  roadmap.bankrollSimulation.successRatePct >= 70
+                    ? "positive"
+                    : roadmap.bankrollSimulation.successRatePct >= 45
+                    ? "neutral"
+                    : "negative"
+                }
+              />
+              <MetricCard
+                label="Expected Finish"
+                value={formatCurrency(roadmap.bankrollSimulation.expectedFinalBankroll)}
+                change={`Median ${formatCurrency(roadmap.bankrollSimulation.medianFinalBankroll)}`}
+                tone={
+                  roadmap.bankrollSimulation.expectedFinalBankroll >= roadmap.targetAmount
+                    ? "positive"
+                    : "neutral"
+                }
+              />
+              <MetricCard
+                label="Likely Drawdown"
+                value={formatPct(roadmap.bankrollSimulation.worstLikelyDrawdownPct)}
+                change={`Median ${formatPct(roadmap.bankrollSimulation.medianMaxDrawdownPct)}`}
+                tone={
+                  roadmap.bankrollSimulation.worstLikelyDrawdownPct <= 25
+                    ? "positive"
+                    : roadmap.bankrollSimulation.worstLikelyDrawdownPct <= 38
+                    ? "neutral"
+                    : "negative"
+                }
+              />
+              <MetricCard
+                label="Downside Band"
+                value={formatCurrency(roadmap.bankrollSimulation.p10FinalBankroll)}
+                change={`Upside ${formatCurrency(roadmap.bankrollSimulation.p90FinalBankroll)}`}
+                tone={
+                  roadmap.bankrollSimulation.p10FinalBankroll >= roadmap.availableBankroll
+                    ? "positive"
+                    : "neutral"
+                }
+              />
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-white/42">
+              This is not a guarantee. It is a pressure test that asks whether the mission still makes sense under variance.
+              {roadmap.bankrollSimulation.daysToTargetMedian !== null
+                ? ` Median successful path reaches the target around day ${roadmap.bankrollSimulation.daysToTargetMedian}.`
+                : " The median path does not reach the target inside the current deadline."}
+            </p>
+          </PremiumCard>
 
           <PremiumCard
             title="Mission Tracker"
