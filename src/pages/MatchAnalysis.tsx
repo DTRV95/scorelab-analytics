@@ -154,6 +154,11 @@ const initialFormData: FormData = {
   ...LEAGUE_PRESET_MAP[DEFAULT_LEAGUE_KEY],
 };
 
+function formatBankrollForInput(value: number) {
+  if (!Number.isFinite(value) || value < 0) return "0";
+  return Number(value.toFixed(2)).toString();
+}
+
 const loadingSteps = [
   "Running simulations...",
   "Calculating probabilities...",
@@ -350,7 +355,11 @@ function formatCurrency(value: number): string {
 }
 
 export default function MatchAnalysis() {
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const initialBankrollStats = getBankrollStats();
+  const [formData, setFormData] = useState<FormData>(() => ({
+    ...initialFormData,
+    banca: formatBankrollForInput(initialBankrollStats.currentBankroll),
+  }));
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

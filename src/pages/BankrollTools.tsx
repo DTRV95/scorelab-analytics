@@ -13,6 +13,7 @@ import {
   getMarketPerformance,
   getEdgeBucketPerformance,
   getConfidenceBucketPerformance,
+  getQualityScorePerformance,
 } from "@/lib/analysisStorage";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -547,6 +548,13 @@ export default function BankrollTools() {
     },
     [analyses, dataVersion]
   );
+  const qualityScorePerformance = useMemo(
+    () => {
+      void dataVersion;
+      return getQualityScorePerformance(analyses);
+    },
+    [analyses, dataVersion]
+  );
   const edgeZoneSummary = useMemo(() => {
     void dataVersion;
     return getEdgeZoneSummary();
@@ -600,6 +608,9 @@ export default function BankrollTools() {
   const confidenceBucketChartData: ChartRow[] = confidenceBucketPerformance.map(
     (item) => ({ ...item })
   );
+  const qualityScoreChartData: ChartRow[] = qualityScorePerformance.map((item) => ({
+    ...item,
+  }));
   const betTypePerformance = getBetTypePerformance();
   const multipleLegCountPerformance = getMultipleLegCountPerformance();
   const multipleCorrelationPerformance = getMultipleCorrelationPerformance();
@@ -1240,7 +1251,13 @@ export default function BankrollTools() {
           </SectionCard>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <SegmentBarCard
+            title="ROI by Quality Score"
+            description="Validates whether high-quality bets are actually producing better returns."
+            data={qualityScoreChartData}
+            yKey="bucket"
+          />
           <SegmentBarCard
             title="ROI by Edge Bucket"
             description="Use this to confirm whether the strongest model edges are really monetising."

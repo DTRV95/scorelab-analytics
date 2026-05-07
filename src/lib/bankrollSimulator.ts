@@ -11,7 +11,15 @@ export interface BankrollSimulationInput {
 
 export interface BankrollSimulationResult {
   simulations: number;
+  hitRatePct: number;
+  averageOdds: number;
+  breakEvenHitRatePct: number;
+  edgeGapPct: number;
   successRatePct: number;
+  rawSuccessRatePct: number;
+  planFeasibilityPct: number;
+  dailyProfitCoveragePct: number;
+  targetGapCoveragePct: number;
   medianFinalBankroll: number;
   p10FinalBankroll: number;
   p90FinalBankroll: number;
@@ -24,6 +32,8 @@ export interface BankrollSimulationResult {
     label: "Proceed" | "Reduce Risk" | "Extend Plan" | "No Edge";
     tone: "positive" | "neutral" | "negative";
     detail: string;
+    explanation: string;
+    actions: string[];
   };
 }
 
@@ -77,6 +87,13 @@ function getRecommendation({
       label: "No Edge",
       tone: "negative",
       detail: "The historical hit rate is not above the break-even rate for these odds.",
+      explanation:
+        "At this average odd, the system needs a higher hit rate just to avoid losing money over time.",
+      actions: [
+        "Only take picks with stronger odds or stronger calibrated probability.",
+        "Lower today's profit target or extend the mission deadline.",
+        "Do not force volume until the simulator shows a positive edge.",
+      ],
     };
   }
 
@@ -85,6 +102,13 @@ function getRecommendation({
       label: "Proceed",
       tone: "positive",
       detail: "The mission has a healthy simulated success profile at the current risk level.",
+      explanation:
+        "The current hit rate is above break-even and most simulated paths can reach the target without excessive drawdown.",
+      actions: [
+        "Execute only the best radar picks that fit today's stake needed.",
+        "Keep exposure inside the daily cap.",
+        "Stop once the daily profit target is reached.",
+      ],
     };
   }
 
@@ -93,6 +117,13 @@ function getRecommendation({
       label: "Reduce Risk",
       tone: "neutral",
       detail: "The path is possible, but the drawdown profile asks for tighter execution.",
+      explanation:
+        "The edge exists, but the mission is sensitive to variance and can become unstable after a short losing run.",
+      actions: [
+        "Use smaller stake than the daily cap unless the pick is premium.",
+        "Prefer higher-confidence singles over multiples.",
+        "Skip the day if no radar pick clears the probability filter.",
+      ],
     };
   }
 
@@ -100,6 +131,13 @@ function getRecommendation({
     label: "Extend Plan",
     tone: "negative",
     detail: "The target is too compressed for the current edge and bankroll volatility.",
+    explanation:
+      "The simulated paths need more time or less daily pressure to avoid forcing bad bets.",
+    actions: [
+      "Increase the number of mission days.",
+      "Reduce the target amount for this mission.",
+      "Wait for stronger value radar opportunities before staking.",
+    ],
   };
 }
 
@@ -114,11 +152,41 @@ export function simulateBankrollMission(
   const hitRate = clamp(input.hitRatePct / 100, 0.05, 0.95);
   const averageOdds = clamp(input.averageOdds, 1.2, 6);
   const simulations = Math.max(250, Math.round(input.simulations ?? DEFAULT_SIMULATIONS));
+  const breakEvenHitRatePct = averageOdds > 1 ? (1 / averageOdds) * 100 : 100;
+  const edgeGapPct = hitRate * 100 - breakEvenHitRatePct;
+  const targetGap = Math.max(0, targetBankroll - currentBankroll);
+  const maxDailyProfit = dailyStakeCap * Math.max(0, averageOdds - 1);
+  const dailyProfitCoveragePct =
+    dailyProfitTarget <= 0
+      ? 100
+      : clamp((maxDailyProfit / dailyProfitTarget) * 100, 0, 100);
+  const targetGapCoveragePct =
+    targetGap <= 0
+      ? 100
+      : clamp(((maxDailyProfit * daysRemaining) / targetGap) * 100, 0, 100);
+  const edgeFeasibilityPct =
+    edgeGapPct >= 0
+      ? clamp(55 + edgeGapPct * 8, 0, 100)
+      : clamp(45 + edgeGapPct * 4, 0, 100);
+  const planFeasibilityPct = Math.min(
+    dailyProfitCoveragePct,
+    targetGapCoveragePct,
+    edgeFeasibilityPct
+  );
 
   if (currentBankroll <= 0 || targetBankroll <= currentBankroll || dailyStakeCap <= 0) {
+    const baseSuccessRatePct = targetBankroll <= currentBankroll ? 100 : 0;
     return {
       simulations,
-      successRatePct: targetBankroll <= currentBankroll ? 100 : 0,
+      hitRatePct: roundTo(hitRate * 100),
+      averageOdds: roundTo(averageOdds),
+      breakEvenHitRatePct: roundTo(breakEvenHitRatePct),
+      edgeGapPct: roundTo(edgeGapPct),
+      successRatePct: baseSuccessRatePct,
+      rawSuccessRatePct: baseSuccessRatePct,
+      planFeasibilityPct: roundTo(planFeasibilityPct),
+      dailyProfitCoveragePct: roundTo(dailyProfitCoveragePct),
+      targetGapCoveragePct: roundTo(targetGapCoveragePct),
       medianFinalBankroll: roundTo(currentBankroll),
       p10FinalBankroll: roundTo(currentBankroll),
       p90FinalBankroll: roundTo(currentBankroll),
@@ -134,6 +202,14 @@ export function simulateBankrollMission(
           targetBankroll <= currentBankroll
             ? "The target is already reached."
             : "Define bankroll and mission capacity before simulating the path.",
+        explanation:
+          targetBankroll <= currentBankroll
+            ? "No extra execution is needed for this mission."
+            : "The simulator needs a valid bankroll and stake cap to produce useful guidance.",
+        actions:
+          targetBankroll <= currentBankroll
+            ? ["Protect the bankroll.", "Close or archive the mission.", "Start a new mission only if the edge is clear."]
+            : ["Set a bankroll baseline.", "Define the target and deadline.", "Run the simulator again before staking."],
       },
     };
   }
@@ -201,12 +277,21 @@ export function simulateBankrollMission(
   const successRatePct = (successes / simulations) * 100;
   const riskOfRuinPct = (ruinCount / simulations) * 100;
   const worstLikelyDrawdownPct = quantile(maxDrawdowns, 0.9);
+  const calibratedSuccessRatePct = Math.min(successRatePct, planFeasibilityPct);
   const medianTargetDay =
     targetDays.length > 0 ? Math.round(quantile(targetDays, 0.5)) : null;
 
   return {
     simulations,
-    successRatePct: roundTo(successRatePct),
+    hitRatePct: roundTo(hitRate * 100),
+    averageOdds: roundTo(averageOdds),
+    breakEvenHitRatePct: roundTo(breakEvenHitRatePct),
+    edgeGapPct: roundTo(edgeGapPct),
+    successRatePct: roundTo(calibratedSuccessRatePct),
+    rawSuccessRatePct: roundTo(successRatePct),
+    planFeasibilityPct: roundTo(planFeasibilityPct),
+    dailyProfitCoveragePct: roundTo(dailyProfitCoveragePct),
+    targetGapCoveragePct: roundTo(targetGapCoveragePct),
     medianFinalBankroll: roundTo(quantile(finals, 0.5)),
     p10FinalBankroll: roundTo(quantile(finals, 0.1)),
     p90FinalBankroll: roundTo(quantile(finals, 0.9)),
@@ -216,7 +301,7 @@ export function simulateBankrollMission(
     riskOfRuinPct: roundTo(riskOfRuinPct),
     daysToTargetMedian: medianTargetDay,
     recommendation: getRecommendation({
-      successRatePct,
+      successRatePct: calibratedSuccessRatePct,
       worstLikelyDrawdownPct,
       riskOfRuinPct,
       averageOdds,

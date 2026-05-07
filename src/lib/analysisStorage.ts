@@ -105,6 +105,17 @@ export interface ConfidenceBucketPerformanceItem {
   hitRate: number;
 }
 
+export interface QualityScorePerformanceItem {
+  bucket: string;
+  bets: number;
+  greens: number;
+  reds: number;
+  totalStake: number;
+  profitLoss: number;
+  roi: number;
+  hitRate: number;
+}
+
 export interface DrawdownPoint {
   step: string;
   bankroll: number;
@@ -438,6 +449,11 @@ function recalculateTracking(
       placedAt: null,
       profitLoss: 0,
       bankrollAfter: tracking.bankrollBefore,
+      qualityScore: null,
+      qualityLabel: null,
+      qualityTone: null,
+      qualitySummary: null,
+      qualitySnapshotAt: null,
     };
   }
 
@@ -533,6 +549,11 @@ export function createEmptyTracking(): SavedAnalysis["tracking"] {
     profitLoss: 0,
     bankrollBefore: null,
     bankrollAfter: null,
+    qualityScore: null,
+    qualityLabel: null,
+    qualityTone: null,
+    qualitySummary: null,
+    qualitySnapshotAt: null,
     notes: "",
   };
 }
@@ -683,6 +704,7 @@ function getSettledBetsWithContext(analyses: SavedAnalysis[] = getAnalyses()) {
 
       return {
         analysis: entry.analysis,
+        tracking: entry.tracking,
         selectedResult,
         market: selectedMarket,
         stake: entry.tracking.stakeUsed || 0,
@@ -710,6 +732,13 @@ function getConfidenceBucket(confidence: number): string {
   if (confidence <= 7) return "7";
   if (confidence <= 8) return "8";
   return "9-10";
+}
+
+function getQualityScoreBucket(score: number): string {
+  if (score >= 82) return "82-100 Premium";
+  if (score >= 68) return "68-81 Approved";
+  if (score >= 50) return "50-67 Caution";
+  return "0-49 Avoid";
 }
 
 export function getEdgeBucketPerformance(
@@ -788,6 +817,50 @@ export function getConfidenceBucketPerformance(
   });
 
   const order = ["0-5", "6", "7", "8", "9-10"];
+
+  return Array.from(bucketMap.values()).sort(
+    (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)
+  );
+}
+
+export function getQualityScorePerformance(
+  analyses: SavedAnalysis[] = getAnalyses()
+): QualityScorePerformanceItem[] {
+  const bets = getSettledBetsWithContext(analyses);
+  const bucketMap = new Map<string, QualityScorePerformanceItem>();
+
+  bets.forEach((bet) => {
+    const qualityScore = bet.tracking.qualityScore;
+
+    if (typeof qualityScore !== "number" || !Number.isFinite(qualityScore)) return;
+
+    const bucket = getQualityScoreBucket(qualityScore);
+    const current = bucketMap.get(bucket) || {
+      bucket,
+      bets: 0,
+      greens: 0,
+      reds: 0,
+      totalStake: 0,
+      profitLoss: 0,
+      roi: 0,
+      hitRate: 0,
+    };
+
+    current.bets += 1;
+    current.totalStake += bet.stake;
+    current.profitLoss += bet.profitLoss;
+
+    if (bet.status === "green") current.greens += 1;
+    if (bet.status === "red") current.reds += 1;
+
+    const settled = current.greens + current.reds;
+    current.hitRate = settled > 0 ? (current.greens / settled) * 100 : 0;
+    current.roi =
+      current.totalStake > 0 ? (current.profitLoss / current.totalStake) * 100 : 0;
+    bucketMap.set(bucket, current);
+  });
+
+  const order = ["82-100 Premium", "68-81 Approved", "50-67 Caution", "0-49 Avoid"];
 
   return Array.from(bucketMap.values()).sort(
     (a, b) => order.indexOf(a.bucket) - order.indexOf(b.bucket)

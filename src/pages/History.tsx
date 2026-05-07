@@ -5,10 +5,12 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { calculateBetQualityScore, type BetQualityScore } from "@/lib/betQualityScore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ANALYSES_UPDATED_EVENT,
   addExtraTrackedBet,
+  createEmptyTracking,
   deleteExtraTrackedBet,
   getAnalyses,
   getAnalysisTrackingEntries,
@@ -221,6 +223,27 @@ function ActiveFilterPill({
   );
 }
 
+function QualityScoreBadge({ quality }: { quality: BetQualityScore }) {
+  const toneClasses =
+    quality.tone === "positive"
+      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+      : quality.tone === "negative"
+      ? "border-red-400/25 bg-red-400/10 text-red-100"
+      : "border-amber-400/25 bg-amber-400/10 text-amber-100";
+
+  return (
+    <div className={`rounded-2xl border px-3 py-2 text-right ${toneClasses}`}>
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] opacity-70">
+        Quality Score
+      </p>
+      <p className="mt-1 text-lg font-semibold leading-none">{quality.score}</p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+        {quality.label}
+      </p>
+    </div>
+  );
+}
+
 function DetailSection({
   title,
   description,
@@ -280,6 +303,34 @@ function getTrackedBetMissingFields(tracking: TrackedAnalysisBet) {
   if (!tracking.notes.trim()) missing.push("notes");
 
   return missing;
+}
+
+function buildQualitySnapshot(
+  analysis: SavedAnalysis,
+  tracking: SavedAnalysis["tracking"]
+): Partial<SavedAnalysis["tracking"]> {
+  if (!tracking.betPlaced) {
+    return {
+      qualityScore: null,
+      qualityLabel: null,
+      qualityTone: null,
+      qualitySummary: null,
+      qualitySnapshotAt: null,
+    };
+  }
+
+  const selectedResult = tracking.selectedMarket
+    ? analysis.results.find((result) => result.market === tracking.selectedMarket) ?? null
+    : null;
+  const quality = calculateBetQualityScore({ result: selectedResult, tracking });
+
+  return {
+    qualityScore: quality.score,
+    qualityLabel: quality.label,
+    qualityTone: quality.tone,
+    qualitySummary: quality.summary,
+    qualitySnapshotAt: new Date().toISOString(),
+  };
 }
 
 function buildHistoryFallbackSummary(
@@ -615,7 +666,8 @@ export default function History() {
     const parsedStake = preparedStake === null ? Number.NaN : Number(preparedStake);
     const parsedOdd = preparedOdd === null ? Number.NaN : Number(preparedOdd);
 
-    const updatedAnalyses = updateAnalysisTracking(highlightedAnalysisId, {
+    const nextTracking = {
+      ...targetAnalysis.tracking,
       betPlaced: true,
       selectedMarket: selectedResult.market,
       stakeUsed: Number.isFinite(parsedStake)
@@ -624,6 +676,11 @@ export default function History() {
       oddUsed: Number.isFinite(parsedOdd)
         ? Number(parsedOdd.toFixed(2))
         : Number(selectedResult.odds.toFixed(2)),
+    };
+
+    const updatedAnalyses = updateAnalysisTracking(highlightedAnalysisId, {
+      ...nextTracking,
+      ...buildQualitySnapshot(targetAnalysis, nextTracking),
     });
 
     preparedBetAppliedRef.current = highlightedAnalysisId;
@@ -642,10 +699,26 @@ export default function History() {
     betId: string,
     updates: Partial<SavedAnalysis["tracking"]>
   ) => {
+    const targetAnalysis = analyses.find((analysis) => analysis.id === analysisId);
+    const currentTracking =
+      betId === "primary"
+        ? targetAnalysis?.tracking
+        : targetAnalysis?.extraBets?.find((bet) => bet.id === betId) ?? null;
+    const qualityUpdates =
+      targetAnalysis && currentTracking
+        ? buildQualitySnapshot(targetAnalysis, {
+            ...currentTracking,
+            ...updates,
+          })
+        : {};
+    const nextUpdates = {
+      ...updates,
+      ...qualityUpdates,
+    };
     const updatedAnalyses =
       betId === "primary"
-        ? updateAnalysisTracking(analysisId, updates)
-        : updateTrackedBet(analysisId, betId, updates);
+        ? updateAnalysisTracking(analysisId, nextUpdates)
+        : updateTrackedBet(analysisId, betId, nextUpdates);
     setAnalyses(updatedAnalyses);
   };
 
@@ -698,11 +771,16 @@ export default function History() {
 
   const handleAddSecondBet = (analysis: SavedAnalysis) => {
     const bestBet = getBestBet(analysis.results);
-    const updatedAnalyses = addExtraTrackedBet(analysis.id, {
+    const seed = {
+      ...createEmptyTracking(),
       betPlaced: true,
       selectedMarket: bestBet?.market ?? null,
       stakeUsed: bestBet ? Number(bestBet.stake.toFixed(2)) : null,
       oddUsed: bestBet ? Number(bestBet.odds.toFixed(2)) : null,
+    };
+    const updatedAnalyses = addExtraTrackedBet(analysis.id, {
+      ...seed,
+      ...buildQualitySnapshot(analysis, seed),
     });
     setAnalyses(updatedAnalyses);
     setExpandedIds((prev) => (prev.includes(analysis.id) ? prev : [...prev, analysis.id]));
@@ -1519,6 +1597,13 @@ export default function History() {
                           {trackedEntries.map((entry) => {
                             const tracking = entry.tracking;
                             const missingFields = getTrackedBetMissingFields(tracking);
+                            const selectedResult = tracking.selectedMarket
+                              ? analysis.results.find((result) => result.market === tracking.selectedMarket) ?? null
+                              : null;
+                            const quality = calculateBetQualityScore({
+                              result: selectedResult,
+                              tracking,
+                            });
                             return (
                               <div
                                 key={entry.betId}
@@ -1534,6 +1619,7 @@ export default function History() {
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-2">
+                                    <QualityScoreBadge quality={quality} />
                                     {missingFields.length > 0 && tracking.betPlaced ? (
                                       <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-300">
                                         Needs update
@@ -1548,6 +1634,41 @@ export default function History() {
                                         Remove
                                       </button>
                                     ) : null}
+                                  </div>
+                                </div>
+
+                                <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+                                  <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                                      Quality Read
+                                    </p>
+                                    <p className="mt-2 text-sm leading-6 text-white/58">
+                                      {quality.summary}
+                                    </p>
+                                    <p className="mt-2 text-xs leading-5 text-white/42">
+                                      Action: {quality.actions.join(" ")}
+                                    </p>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {(quality.strengths.length > 0
+                                      ? quality.strengths
+                                      : ["No strong positive signal yet."]
+                                    ).slice(0, 2).map((item) => (
+                                      <div
+                                        key={`strength-${entry.betId}-${item}`}
+                                        className="rounded-2xl border border-emerald-400/12 bg-emerald-400/[0.045] px-3 py-2 text-xs leading-5 text-emerald-100/72"
+                                      >
+                                        {item}
+                                      </div>
+                                    ))}
+                                    {quality.risks.slice(0, 2).map((item) => (
+                                      <div
+                                        key={`risk-${entry.betId}-${item}`}
+                                        className="rounded-2xl border border-amber-400/12 bg-amber-400/[0.045] px-3 py-2 text-xs leading-5 text-amber-100/72"
+                                      >
+                                        {item}
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
 

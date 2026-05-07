@@ -10,9 +10,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
-  Flag,
-  Goal,
-  Route,
   ShieldCheck,
   Trash2,
   TrendingUp,
@@ -1348,9 +1345,13 @@ export default function RoadmapPlanner() {
         entry.tracking.resultStatus === "green" ||
         entry.tracking.resultStatus === "red"
     );
+    const realHitRate = financialSnapshot.stats.hitRate;
+    const settledBetsForSimulation =
+      financialSnapshot.stats.totalGreens + financialSnapshot.stats.totalReds;
+    const simulationSampleConfidencePct = Math.min(100, (settledBetsForSimulation / 18) * 100);
     const simulationHitRate = blendConservativeHitRate(
-      financialSnapshot.stats.hitRate,
-      financialSnapshot.stats.totalGreens + financialSnapshot.stats.totalReds
+      realHitRate,
+      settledBetsForSimulation
     );
     const historicalAverageOdds = getAverageSettledOdds(settledForSimulation);
     const simulationAverageOdds =
@@ -1422,6 +1423,9 @@ export default function RoadmapPlanner() {
       tomorrowStakeAmount,
       tomorrowTargetProfit,
       suggestedExtraDays,
+      realHitRate,
+      settledBetsForSimulation,
+      simulationSampleConfidencePct,
       simulationHitRate,
       simulationAverageOdds,
       bankrollSimulation,
@@ -2023,13 +2027,35 @@ export default function RoadmapPlanner() {
                   <p className="mt-2 text-sm leading-6 text-white/58">
                     {roadmap.bankrollSimulation.recommendation.detail}
                   </p>
+                  <p className="mt-2 text-sm leading-6 text-white/48">
+                    {roadmap.bankrollSimulation.recommendation.explanation}
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
                     Inputs
                   </p>
                   <p className="mt-1 text-xs leading-5 text-white/58">
-                    {formatPct(roadmap.simulationHitRate)} hit · {roadmap.simulationAverageOdds.toFixed(2)} avg odds
+                    Simulation hit {formatPct(roadmap.bankrollSimulation.hitRatePct)}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/44">
+                    Real hit {formatPct(roadmap.realHitRate)} · {roadmap.settledBetsForSimulation} settled bets
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/44">
+                    Avg odds {roadmap.bankrollSimulation.averageOdds.toFixed(2)}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/44">
+                    Break-even {formatPct(roadmap.bankrollSimulation.breakEvenHitRatePct)}
+                  </p>
+                  <p
+                    className={`mt-1 text-xs font-semibold leading-5 ${
+                      roadmap.bankrollSimulation.edgeGapPct >= 0
+                        ? "text-emerald-200"
+                        : "text-red-200"
+                    }`}
+                  >
+                    Edge gap {roadmap.bankrollSimulation.edgeGapPct >= 0 ? "+" : ""}
+                    {formatPct(roadmap.bankrollSimulation.edgeGapPct)}
                   </p>
                 </div>
               </div>
@@ -2039,7 +2065,7 @@ export default function RoadmapPlanner() {
               <MetricCard
                 label="Success Chance"
                 value={formatPct(roadmap.bankrollSimulation.successRatePct)}
-                change={`${roadmap.bankrollSimulation.simulations} simulated paths`}
+                change={`${formatPct(roadmap.bankrollSimulation.planFeasibilityPct)} plan fit · ${roadmap.bankrollSimulation.simulations} paths`}
                 tone={
                   roadmap.bankrollSimulation.successRatePct >= 70
                     ? "positive"
@@ -2080,6 +2106,38 @@ export default function RoadmapPlanner() {
                     : "neutral"
                 }
               />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[0.82fr_1.18fr]">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                  What this means
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/54">
+                  Break-even is the hit rate needed to stop losing money at the current average odds.
+                  Edge gap shows whether the simulation hit rate is above or below that line.
+                  The simulator uses a conservative hit rate until the sample reaches stronger confidence.
+                  Current sample confidence is {formatPct(roadmap.simulationSampleConfidencePct)}.
+                </p>
+                <p className="mt-2 text-xs leading-5 text-white/42">
+                  Plan fit compares today's profit target and total target gap against the maximum profit possible from the current daily cap and average odds.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                  Recommended Actions
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {roadmap.bankrollSimulation.recommendation.actions.map((action) => (
+                    <div
+                      key={action}
+                      className="rounded-xl border border-white/8 bg-black/10 px-3 py-2 text-xs leading-5 text-white/58"
+                    >
+                      {action}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <p className="mt-4 text-xs leading-5 text-white/42">
@@ -2223,108 +2281,6 @@ export default function RoadmapPlanner() {
         </PremiumCard>
 
         <div className="space-y-6">
-          <PremiumCard title="Recalibrated Plan" description="Adjust the plan from today's bankroll state." badge="Adaptive">
-            <div className="space-y-4">
-              <div className={surfaceCardClass}>
-                <div className="flex items-center gap-2">
-                  <Flag className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
-                  <p className="text-sm font-medium tracking-[-0.01em] text-white">Target pressure</p>
-                </div>
-                <p className="mt-3 text-sm leading-7 text-white/60">
-                  To move from {formatCurrency(roadmap.availableBankroll)} to {formatCurrency(roadmap.targetAmount)} in {roadmap.remainingDays} days, the plan needs about {formatPct(roadmap.requiredDailyGrowthRate * 100)} growth per day.
-                </p>
-                <p className="mt-3 text-xs leading-6 text-white/44">
-                  Open exposure is separate at {formatCurrency(roadmap.openExposure)}.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <MetricCard
-                  label="Best Market"
-                  value={roadmap.favoredMarket?.market ?? "Still forming"}
-                  change={
-                    roadmap.favoredMarket
-                      ? `${formatPct(roadmap.favoredMarket.roi)} ROI · ${roadmap.favoredMarket.bets} bets`
-                      : "Need more settled market data"
-                  }
-                  tone={roadmap.favoredMarket ? "positive" : "neutral"}
-                />
-                <MetricCard
-                  label="Confidence Lead"
-                  value={roadmap.favoredConfidenceZone?.bucket ?? "Under sample"}
-                  change={
-                    roadmap.favoredConfidenceZone
-                      ? `${formatPct(roadmap.favoredConfidenceZone.roi)} ROI · ${roadmap.favoredConfidenceZone.bets} bets`
-                      : "No validated confidence lead yet"
-                  }
-                  tone={roadmap.favoredConfidenceZone ? "positive" : "neutral"}
-                />
-                <MetricCard
-                  label="Edge Lead"
-                  value={roadmap.favoredEdgeZone?.bucket ?? "Under sample"}
-                  change={
-                    roadmap.favoredEdgeZone
-                      ? `${formatPct(roadmap.favoredEdgeZone.roi)} ROI · ${roadmap.favoredEdgeZone.bets} bets`
-                      : "No validated edge lead yet"
-                  }
-                  tone={roadmap.favoredEdgeZone ? "positive" : "neutral"}
-                />
-                <MetricCard
-                  label="Multiple Stance"
-                  value={roadmap.multipleStance.label}
-                  change={roadmap.multipleStance.detail}
-                  tone={roadmap.multipleStance.tone}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_0.95fr]">
-                <div className={surfaceCardClass}>
-                  <div className="flex items-center gap-2">
-                    <Goal className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
-                    <p className="text-sm font-medium tracking-[-0.01em] text-white">Mission bias</p>
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-white/64">
-                    {roadmap.missionIntelligenceSummary}
-                  </p>
-                  <p className="mt-3 text-xs leading-6 text-white/44">
-                    {roadmap.missionIntelligenceNote}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className={surfaceCardClass}>
-                    <div className="flex items-center gap-2">
-                      <Route className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
-                      <p className="text-sm font-medium tracking-[-0.01em] text-white">Essential actions</p>
-                    </div>
-                    <div className="mt-3 space-y-2.5 text-sm leading-7 text-white/60">
-                      {roadmap.nextActions.slice(0, 3).map((action, index) => (
-                        <p key={action}>
-                          <span className="mr-2 text-white/38">{index + 1}.</span>
-                          {action}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={surfaceCardClass}>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">Tomorrow's mission</p>
-                    <p className="mt-3 text-[1.22rem] font-semibold tracking-[-0.03em] text-white">{formatCurrency(roadmap.tomorrowStakeAmount)}</p>
-                    <p className="mt-3 text-sm leading-7 text-white/60">
-                      About {formatPct(roadmap.tomorrowStakePct)} of bankroll for {formatCurrency(roadmap.tomorrowTargetProfit)} profit.
-                    </p>
-                    {roadmap.suggestedExtraDays > 0 ? (
-                      <p className="mt-3 text-[10px] uppercase tracking-[0.16em] text-red-300">
-                        Extend by about {roadmap.suggestedExtraDays} days.
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </PremiumCard>
-
           <PremiumCard title="Daily Log" description="Compact mission log. Showing the current mission window by default." badge="Log">
             <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

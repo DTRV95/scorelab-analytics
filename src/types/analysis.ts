@@ -46,6 +46,11 @@ export interface TrackedBet {
   profitLoss: number;
   bankrollBefore: number | null;
   bankrollAfter: number | null;
+  qualityScore?: number | null;
+  qualityLabel?: "Premium" | "Approved" | "Caution" | "Avoid" | "Incomplete" | null;
+  qualityTone?: "positive" | "neutral" | "negative" | null;
+  qualitySummary?: string | null;
+  qualitySnapshotAt?: string | null;
   notes: string;
 }
 
