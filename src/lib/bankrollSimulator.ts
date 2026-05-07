@@ -40,11 +40,17 @@ export interface BankrollSimulationResult {
 const DEFAULT_SIMULATIONS = 1000;
 const RISK_OF_RUIN_FLOOR_PCT = 55;
 
+function toFiniteNumber(value: number | undefined, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 function clamp(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
 }
 
 function roundTo(value: number, decimals = 2) {
+  if (!Number.isFinite(value)) return 0;
   return Number(value.toFixed(decimals));
 }
 
@@ -56,6 +62,13 @@ function quantile(sortedValues: number[], percentile: number) {
     sortedValues.length - 1
   );
   return sortedValues[index];
+}
+
+function getRequiredDailyProfit(bankroll: number, targetBankroll: number, daysRemaining: number) {
+  if (bankroll <= 0 || targetBankroll <= bankroll) return 0;
+  const safeDaysRemaining = Math.max(1, daysRemaining);
+  const requiredGrowthRate = Math.pow(targetBankroll / bankroll, 1 / safeDaysRemaining) - 1;
+  return bankroll * requiredGrowthRate;
 }
 
 function createSeededRandom(seed: number) {
@@ -144,17 +157,22 @@ function getRecommendation({
 export function simulateBankrollMission(
   input: BankrollSimulationInput
 ): BankrollSimulationResult {
-  const currentBankroll = Math.max(0, input.currentBankroll);
-  const targetBankroll = Math.max(0, input.targetBankroll);
-  const daysRemaining = Math.max(1, Math.round(input.daysRemaining));
-  const dailyStakeCap = Math.max(0, input.dailyStakeCap);
-  const dailyProfitTarget = Math.max(0, input.dailyProfitTarget);
-  const hitRate = clamp(input.hitRatePct / 100, 0.05, 0.95);
-  const averageOdds = clamp(input.averageOdds, 1.2, 6);
-  const simulations = Math.max(250, Math.round(input.simulations ?? DEFAULT_SIMULATIONS));
+  const currentBankroll = Math.max(0, toFiniteNumber(input.currentBankroll));
+  const targetBankroll = Math.max(0, toFiniteNumber(input.targetBankroll));
+  const daysRemaining = Math.max(1, Math.round(toFiniteNumber(input.daysRemaining, 1)));
+  const dailyStakeCap = Math.max(0, toFiniteNumber(input.dailyStakeCap));
+  const dailyProfitTarget = Math.max(0, toFiniteNumber(input.dailyProfitTarget));
+  const hitRate = clamp(toFiniteNumber(input.hitRatePct, 58) / 100, 0.05, 0.95);
+  const averageOdds = clamp(toFiniteNumber(input.averageOdds, 1.5), 1.2, 6);
+  const simulations = Math.max(
+    250,
+    Math.round(toFiniteNumber(input.simulations, DEFAULT_SIMULATIONS))
+  );
   const breakEvenHitRatePct = averageOdds > 1 ? (1 / averageOdds) * 100 : 100;
   const edgeGapPct = hitRate * 100 - breakEvenHitRatePct;
   const targetGap = Math.max(0, targetBankroll - currentBankroll);
+  const dailyStakeCapPct =
+    currentBankroll > 0 ? clamp(dailyStakeCap / currentBankroll, 0, 1) : 0;
   const maxDailyProfit = dailyStakeCap * Math.max(0, averageOdds - 1);
   const dailyProfitCoveragePct =
     dailyProfitTarget <= 0
@@ -234,10 +252,17 @@ export function simulateBankrollMission(
     let targetDay: number | null = null;
 
     for (let day = 1; day <= daysRemaining; day += 1) {
+      const daysLeftIncludingToday = Math.max(1, daysRemaining - day + 1);
+      const adaptiveDailyProfitTarget =
+        getRequiredDailyProfit(bankroll, targetBankroll, daysLeftIncludingToday) ||
+        dailyProfitTarget;
+      const adaptiveDailyStakeCap = Math.min(bankroll, bankroll * dailyStakeCapPct);
       const stake = Math.min(
-        dailyStakeCap,
+        adaptiveDailyStakeCap,
         bankroll,
-        dailyProfitTarget > 0 ? dailyProfitTarget / Math.max(0.01, averageOdds - 1) : dailyStakeCap
+        adaptiveDailyProfitTarget > 0
+          ? adaptiveDailyProfitTarget / Math.max(0.01, averageOdds - 1)
+          : adaptiveDailyStakeCap
       );
 
       if (stake <= 0) break;
@@ -277,7 +302,7 @@ export function simulateBankrollMission(
   const successRatePct = (successes / simulations) * 100;
   const riskOfRuinPct = (ruinCount / simulations) * 100;
   const worstLikelyDrawdownPct = quantile(maxDrawdowns, 0.9);
-  const calibratedSuccessRatePct = Math.min(successRatePct, planFeasibilityPct);
+  const planAdjustedSuccessRatePct = Math.min(successRatePct, planFeasibilityPct);
   const medianTargetDay =
     targetDays.length > 0 ? Math.round(quantile(targetDays, 0.5)) : null;
 
@@ -287,7 +312,7 @@ export function simulateBankrollMission(
     averageOdds: roundTo(averageOdds),
     breakEvenHitRatePct: roundTo(breakEvenHitRatePct),
     edgeGapPct: roundTo(edgeGapPct),
-    successRatePct: roundTo(calibratedSuccessRatePct),
+    successRatePct: roundTo(successRatePct),
     rawSuccessRatePct: roundTo(successRatePct),
     planFeasibilityPct: roundTo(planFeasibilityPct),
     dailyProfitCoveragePct: roundTo(dailyProfitCoveragePct),
@@ -301,7 +326,7 @@ export function simulateBankrollMission(
     riskOfRuinPct: roundTo(riskOfRuinPct),
     daysToTargetMedian: medianTargetDay,
     recommendation: getRecommendation({
-      successRatePct: calibratedSuccessRatePct,
+      successRatePct: planAdjustedSuccessRatePct,
       worstLikelyDrawdownPct,
       riskOfRuinPct,
       averageOdds,

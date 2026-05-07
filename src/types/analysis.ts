@@ -51,6 +51,33 @@ export interface TrackedBet {
   qualityTone?: "positive" | "neutral" | "negative" | null;
   qualitySummary?: string | null;
   qualitySnapshotAt?: string | null;
+  decisionMemory?: {
+    market: string;
+    modelProb: number;
+    impliedProb: number;
+    edge: number;
+    confidence: number;
+    odds: number;
+    risk: RiskLevel;
+    decision: DecisionType;
+    tier?: BetTier;
+    qualityScore: number;
+    qualityLabel: NonNullable<TrackedBet["qualityLabel"]>;
+    capturedAt: string;
+  } | null;
+  postBetTruth?: {
+    verdict:
+      | "Good Decision"
+      | "Bad Win"
+      | "Bad Decision"
+      | "Validated Edge"
+      | "Neutral Outcome"
+      | "Pending";
+    tone: "positive" | "neutral" | "negative";
+    summary: string;
+    lesson: string;
+    generatedAt: string;
+  } | null;
   notes: string;
 }
 

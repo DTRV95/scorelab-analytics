@@ -6,6 +6,11 @@ import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateBetQualityScore, type BetQualityScore } from "@/lib/betQualityScore";
+import {
+  buildDecisionMemorySnapshot,
+  buildPostBetTruth,
+  type PostBetTruth,
+} from "@/lib/decisionMemory";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ANALYSES_UPDATED_EVENT,
@@ -244,6 +249,30 @@ function QualityScoreBadge({ quality }: { quality: BetQualityScore }) {
   );
 }
 
+function PostBetTruthPanel({ truth }: { truth: PostBetTruth }) {
+  const toneClasses =
+    truth.tone === "positive"
+      ? "border-emerald-400/14 bg-emerald-400/[0.055] text-emerald-50"
+      : truth.tone === "negative"
+      ? "border-red-400/14 bg-red-400/[0.055] text-red-50"
+      : "border-cyan-400/14 bg-cyan-400/[0.045] text-cyan-50";
+
+  return (
+    <div className={`rounded-2xl border p-3 ${toneClasses}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-65">
+          Post-Bet Truth
+        </p>
+        <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+          {truth.verdict}
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-6 opacity-78">{truth.summary}</p>
+      <p className="mt-2 text-xs leading-5 opacity-58">{truth.lesson}</p>
+    </div>
+  );
+}
+
 function DetailSection({
   title,
   description,
@@ -316,6 +345,8 @@ function buildQualitySnapshot(
       qualityTone: null,
       qualitySummary: null,
       qualitySnapshotAt: null,
+      decisionMemory: null,
+      postBetTruth: null,
     };
   }
 
@@ -323,13 +354,34 @@ function buildQualitySnapshot(
     ? analysis.results.find((result) => result.market === tracking.selectedMarket) ?? null
     : null;
   const quality = calculateBetQualityScore({ result: selectedResult, tracking });
+  const qualitySnapshotAt = new Date().toISOString();
+  const trackingWithQuality = {
+    ...tracking,
+    qualityScore: quality.score,
+    qualityLabel: quality.label,
+    qualityTone: quality.tone,
+    qualitySummary: quality.summary,
+    qualitySnapshotAt,
+  };
+  const decisionMemory = buildDecisionMemorySnapshot({
+    result: selectedResult,
+    tracking: trackingWithQuality,
+    capturedAt: qualitySnapshotAt,
+  });
+  const postBetTruth = buildPostBetTruth({
+    status: tracking.resultStatus,
+    memory: decisionMemory,
+    profitLoss: tracking.profitLoss,
+  });
 
   return {
     qualityScore: quality.score,
     qualityLabel: quality.label,
     qualityTone: quality.tone,
     qualitySummary: quality.summary,
-    qualitySnapshotAt: new Date().toISOString(),
+    qualitySnapshotAt,
+    decisionMemory,
+    postBetTruth,
   };
 }
 
@@ -1640,7 +1692,7 @@ export default function History() {
                                 <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_1.1fr]">
                                   <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3">
                                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
-                                      Quality Read
+                                      Decision Memory
                                     </p>
                                     <p className="mt-2 text-sm leading-6 text-white/58">
                                       {quality.summary}
@@ -1648,6 +1700,11 @@ export default function History() {
                                     <p className="mt-2 text-xs leading-5 text-white/42">
                                       Action: {quality.actions.join(" ")}
                                     </p>
+                                    {tracking.decisionMemory ? (
+                                      <p className="mt-2 text-[11px] leading-5 text-white/34">
+                                        Captured {tracking.decisionMemory.market} at {tracking.decisionMemory.odds.toFixed(2)} odds, {tracking.decisionMemory.edge.toFixed(1)}% edge and {tracking.decisionMemory.confidence.toFixed(1)}/10 confidence.
+                                      </p>
+                                    ) : null}
                                   </div>
                                   <div className="grid gap-2 sm:grid-cols-2">
                                     {(quality.strengths.length > 0
@@ -1671,6 +1728,12 @@ export default function History() {
                                     ))}
                                   </div>
                                 </div>
+
+                                {tracking.postBetTruth ? (
+                                  <div className="mb-4">
+                                    <PostBetTruthPanel truth={tracking.postBetTruth} />
+                                  </div>
+                                ) : null}
 
                                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                                   <DetailSection

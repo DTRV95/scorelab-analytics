@@ -454,6 +454,8 @@ function recalculateTracking(
       qualityTone: null,
       qualitySummary: null,
       qualitySnapshotAt: null,
+      decisionMemory: null,
+      postBetTruth: null,
     };
   }
 
@@ -554,6 +556,8 @@ export function createEmptyTracking(): SavedAnalysis["tracking"] {
     qualityTone: null,
     qualitySummary: null,
     qualitySnapshotAt: null,
+    decisionMemory: null,
+    postBetTruth: null,
     notes: "",
   };
 }

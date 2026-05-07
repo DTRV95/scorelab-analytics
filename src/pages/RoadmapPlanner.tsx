@@ -75,10 +75,12 @@ const compactSurfaceCardClass =
   "scorelab-board-3d scorelab-tilt-3d rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 backdrop-blur-sm";
 
 function formatCurrency(value: number) {
+  if (!Number.isFinite(value)) return "EUR 0.00";
   return `EUR ${value.toFixed(2)}`;
 }
 
 function formatPct(value: number) {
+  if (!Number.isFinite(value)) return "0.00%";
   return `${value.toFixed(2)}%`;
 }
 
