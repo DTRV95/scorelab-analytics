@@ -51,6 +51,11 @@ import {
   getLeagueIntelligenceTone,
   type LeagueIntelligenceRow,
 } from "@/lib/leagueIntelligence";
+import {
+  buildTrueEdgeValidationModel,
+  evaluateTrueEdgeOpportunity,
+  type TrueEdgeValidationModel,
+} from "@/lib/trueEdgeValidation";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -605,11 +610,13 @@ function getRadarExecutionPlan({
   stakeBudget,
   profitTarget,
   leagueIntelligence,
+  trueEdgeValidation,
 }: {
   opportunities: RadarOpportunity[];
   stakeBudget: number;
   profitTarget: number;
   leagueIntelligence?: Map<string, LeagueIntelligenceRow>;
+  trueEdgeValidation?: TrueEdgeValidationModel;
 }) {
   const cleanStakeBudget = Math.max(0, stakeBudget);
   const cleanProfitTarget = Math.max(0, profitTarget);
@@ -634,6 +641,17 @@ function getRadarExecutionPlan({
 
   const picks = candidates.slice(0, 4).map((opportunity) => {
     const leagueRead = leagueIntelligence?.get(opportunity.league);
+    const trueEdgeRead = trueEdgeValidation
+      ? evaluateTrueEdgeOpportunity(
+          {
+            league: opportunity.league,
+            market: opportunity.market,
+            odds: opportunity.odds,
+            modelProb: opportunity.calibratedProb,
+          },
+          trueEdgeValidation
+        )
+      : null;
     const profitPerEuro = opportunity.odds - 1;
     const requiredStake = profitPerEuro > 0 ? ceilCurrency(cleanProfitTarget / profitPerEuro) : 0;
     const suggestedStake = requiredStake;
@@ -647,6 +665,7 @@ function getRadarExecutionPlan({
       opportunity.decision === "Bet" &&
       opportunity.calibrationLabel !== "Avoid" &&
       opportunity.calibrationLabel !== "Caution" &&
+      trueEdgeRead?.verdict !== "Avoid" &&
       opportunity.edge > 0 &&
       opportunity.confidence >= 7.5 &&
       normalizedModelProb > ROADMAP_RADAR_MIN_MODEL_PROB;
@@ -657,11 +676,19 @@ function getRadarExecutionPlan({
             tone: "negative" as const,
             reason: `${opportunity.league} is currently flagged Avoid by League Intelligence.`,
           })
+        : trueEdgeRead?.verdict === "Avoid"
+        ? ({
+            label: "Avoid",
+            tone: "negative" as const,
+            reason: `True Edge validation rejects this profile. ${trueEdgeRead.reason}`,
+          })
         : isClean && leagueRead?.intelligenceStatus !== "Volatile"
         ? ({
             label: "Clean",
             tone: "positive" as const,
-            reason: leagueRead
+            reason: trueEdgeRead?.verdict === "Trusted"
+              ? `True Edge validates this profile. ${trueEdgeRead.reason}`
+              : leagueRead
               ? `Probability, edge, stake fit and ${opportunity.league} trust are aligned.`
               : "Probability, edge, confidence and stake fit are aligned.",
           })
@@ -678,6 +705,10 @@ function getRadarExecutionPlan({
                 ? "The model likes this pick, but the system still needs more settled history here."
                 : opportunity.calibrationLabel === "Boosted"
                 ? "Learning engine supports this pick, but one execution guardrail still needs alignment."
+                : trueEdgeRead?.verdict === "Watch"
+                ? `True Edge says watch: ${trueEdgeRead.reason}`
+                : trueEdgeRead?.verdict === "Learning"
+                ? "True Edge still needs more settled history for this exact profile."
                 : leagueRead?.intelligenceStatus === "Volatile"
                 ? `${opportunity.league} is volatile, so only use this with premium discipline.`
                 : leagueRead?.intelligenceStatus === "Needs Data"
@@ -1029,6 +1060,7 @@ export default function RoadmapPlanner() {
     const leagueIntelligenceMap = new Map(
       leagueIntelligence.rows.map((row) => [row.league, row])
     );
+    const trueEdgeValidation = buildTrueEdgeValidationModel(analyses);
     const allRadarOpportunities = buildRadarOpportunities(analyses);
     const todayRadarOpportunities = allRadarOpportunities.filter(
       (opportunity) => getDateKeyInTimezone(opportunity.createdAt) === today
@@ -1054,6 +1086,7 @@ export default function RoadmapPlanner() {
       stakeBudget: remainingMissionCapacity,
       profitTarget: requiredProfitToday,
       leagueIntelligence: leagueIntelligenceMap,
+      trueEdgeValidation,
     });
     const missionProgressPct = missionStake > 0 ? (todayActualEntry.actualStake / missionStake) * 100 : 0;
     const profitProgressPct = requiredProfitToday > 0 ? (todayActualEntry.actualProfit / requiredProfitToday) * 100 : 0;
@@ -1416,6 +1449,7 @@ export default function RoadmapPlanner() {
       systemCommand,
       missionGuardrails,
       leagueIntelligence,
+      trueEdgeValidation,
       alert,
       todayLog,
       missionProgressPct,

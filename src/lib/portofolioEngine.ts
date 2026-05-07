@@ -232,7 +232,9 @@ function finalizeBaseRow(row: AggregateRow) {
   const avgEdge = row.bets > 0 ? row.edgeSum / row.bets : 0;
   const avgEdgeLowerBound = row.bets > 0 ? row.edgeLowerBoundSum / row.bets : 0;
   const avgRobustness = row.bets > 0 ? row.robustnessSum / row.bets : 0;
-  const hitRate = row.bets > 0 ? (row.wins / row.bets) * 100 : 0;
+  const settledWithResult = row.wins + row.losses;
+  const hitRate =
+    settledWithResult > 0 ? (row.wins / settledWithResult) * 100 : 0;
   const roi = row.totalStake > 0 ? (row.profitLoss / row.totalStake) * 100 : 0;
 
   return {

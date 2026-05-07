@@ -39,6 +39,7 @@ import { PulseOnChange } from "@/components/MotionIntelligence";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
+import { buildTrueEdgeValidationModel } from "@/lib/trueEdgeValidation";
 
 const stagger = {
   hidden: {},
@@ -559,6 +560,10 @@ export default function BankrollTools() {
     void dataVersion;
     return getEdgeZoneSummary();
   }, [dataVersion]);
+  const trueEdgeValidation = useMemo(
+    () => buildTrueEdgeValidationModel(analyses),
+    [analyses]
+  );
 
   const handleSaveBankroll = () => {
     const parsedValue = Number(initialBankrollInput);
@@ -1024,7 +1029,7 @@ export default function BankrollTools() {
               />
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Strongest Zone
@@ -1053,6 +1058,33 @@ export default function BankrollTools() {
                   {edgeZoneSummary.bestConfidenceBucket
                     ? `${edgeZoneSummary.bestConfidenceBucket.bets} bets · ${edgeZoneSummary.bestConfidenceBucket.roi.toFixed(2)}% ROI`
                     : "Keep tracking outcomes to validate whether confidence is actually predictive."}
+                </p>
+              </div>
+              <div
+                className={`rounded-xl border p-4 ${
+                  trueEdgeValidation.bestSegment
+                    ? "border-emerald-300/18 bg-emerald-300/[0.06]"
+                    : trueEdgeValidation.strongestWarning
+                    ? "border-red-300/18 bg-red-300/[0.06]"
+                    : "border-white/8 bg-white/[0.02]"
+                }`}
+              >
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  True Edge
+                </p>
+                <p className="mt-2 text-sm text-foreground">
+                  {trueEdgeValidation.bestSegment
+                    ? `${trueEdgeValidation.bestSegment.label} is validated.`
+                    : trueEdgeValidation.strongestWarning
+                    ? `${trueEdgeValidation.strongestWarning.label} is failing validation.`
+                    : "No validated edge yet."}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {trueEdgeValidation.bestSegment
+                    ? `${trueEdgeValidation.bestSegment.actualHitRate.toFixed(1)}% actual vs ${trueEdgeValidation.bestSegment.expectedHitRate.toFixed(1)}% expected · ${trueEdgeValidation.bestSegment.roi.toFixed(2)}% ROI`
+                    : trueEdgeValidation.strongestWarning
+                    ? `${trueEdgeValidation.strongestWarning.actualHitRate.toFixed(1)}% actual vs ${trueEdgeValidation.strongestWarning.expectedHitRate.toFixed(1)}% expected · avoid until it improves`
+                    : "The system requires at least 8 settled results before trusting a zone."}
                 </p>
               </div>
             </div>

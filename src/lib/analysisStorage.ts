@@ -632,64 +632,16 @@ export function getMarketPerformance(
 
 export function getDailyPerformance(): DailyPerformanceItem[] {
   const { initialBankroll } = getBankrollSettings();
+  const analyses = getAllAnalysisTrackingEntries().map((entry) => ({
+    createdAt: entry.createdAt,
+    tracking: entry.tracking,
+  }));
 
-  const settledAnalyses = getAllAnalysisTrackingEntries()
-    .filter(
-      (entry) =>
-        entry.tracking.betPlaced &&
-        (entry.tracking.resultStatus === "green" ||
-          entry.tracking.resultStatus === "red" ||
-          entry.tracking.resultStatus === "void")
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.tracking.placedAt || a.createdAt).getTime() -
-        new Date(b.tracking.placedAt || b.createdAt).getTime()
-    );
-
-  const grouped = new Map<string, DailyPerformanceItem>();
-  let runningBankroll = initialBankroll;
-
-  settledAnalyses.forEach((analysis) => {
-    const date =
-      getLocalDateKey(analysis.tracking.placedAt) ||
-      getLocalDateKey(analysis.createdAt);
-
-    if (!date) return;
-
-    const profitLoss = analysis.tracking.profitLoss || 0;
-
-    if (!grouped.has(date)) {
-      grouped.set(date, {
-        date,
-        startBankroll: runningBankroll,
-        endBankroll: runningBankroll,
-        profitLoss: 0,
-        growthPct: 0,
-        settledBets: 0,
-      });
-    }
-
-    const current = grouped.get(date)!;
-
-    current.profitLoss += profitLoss;
-    current.endBankroll += profitLoss;
-    current.settledBets += 1;
-
-    grouped.set(date, current);
-
-    runningBankroll += profitLoss;
-  });
-
-  return Array.from(grouped.values())
-    .map((item) => ({
-      ...item,
-      growthPct:
-        item.startBankroll > 0
-          ? (item.profitLoss / item.startBankroll) * 100
-          : 0,
-    }))
-    .sort((a, b) => b.date.localeCompare(a.date));
+  return buildFinancialSnapshot({
+    analyses,
+    multiples: getSavedMultiplesForBankroll(),
+    initialBankroll,
+  }).dailyPerformance;
 }
 
 function getSettledBetsWithContext(analyses: SavedAnalysis[] = getAnalyses()) {
@@ -873,35 +825,16 @@ export function getQualityScorePerformance(
 
 export function getDrawdownSeries(): DrawdownPoint[] {
   const { initialBankroll } = getBankrollSettings();
-  const bets = getSettledBetsWithContext();
+  const analyses = getAllAnalysisTrackingEntries().map((entry) => ({
+    createdAt: entry.createdAt,
+    tracking: entry.tracking,
+  }));
 
-  let bankroll = initialBankroll;
-  let peak = initialBankroll;
-
-  const series: DrawdownPoint[] = [
-    {
-      step: "Start",
-      bankroll: Number(initialBankroll.toFixed(2)),
-      peak: Number(initialBankroll.toFixed(2)),
-      drawdownPct: 0,
-    },
-  ];
-
-  bets.forEach((bet, index) => {
-    bankroll += bet.profitLoss;
-    peak = Math.max(peak, bankroll);
-
-    const drawdownPct = peak > 0 ? ((bankroll - peak) / peak) * 100 : 0;
-
-    series.push({
-      step: `${index + 1}`,
-      bankroll: Number(bankroll.toFixed(2)),
-      peak: Number(peak.toFixed(2)),
-      drawdownPct: Number(drawdownPct.toFixed(2)),
-    });
-  });
-
-  return series;
+  return buildFinancialSnapshot({
+    analyses,
+    multiples: getSavedMultiplesForBankroll(),
+    initialBankroll,
+  }).drawdownSeries;
 }
 
 export function getDailyProfitSeries() {

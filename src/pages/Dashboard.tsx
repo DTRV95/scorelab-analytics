@@ -416,7 +416,10 @@ function mergeMarketPerformanceRows(
       wins: row.wins,
       losses: row.losses,
       voids: row.voids,
-      hitRate: row.bets > 0 ? Number(((row.wins / row.bets) * 100).toFixed(1)) : 0,
+      hitRate:
+        row.wins + row.losses > 0
+          ? Number(((row.wins / (row.wins + row.losses)) * 100).toFixed(1))
+          : 0,
       avgOdds:
         row.bets > 0 ? Number((row.avgOddsWeighted / row.bets).toFixed(2)) : 0,
       avgConfidence:
