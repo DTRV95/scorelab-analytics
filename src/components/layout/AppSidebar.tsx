@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Radar,
+  BrainCircuit,
 } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -31,6 +32,7 @@ const navGroups = [
     items: [
       { title: "Match Analysis", url: "/analysis", icon: Target },
       { title: "Value Radar", url: "/radar", icon: Radar },
+      { title: "Model Lab", url: "/model-lab", icon: BrainCircuit },
     ],
   },
   {
@@ -67,21 +69,24 @@ export function AppSidebar() {
   };
 
   return (
-    <div className={cn("relative shrink-0 transition-all duration-300", collapsed ? "w-16" : "w-60")}>
+    <div className={cn("relative hidden shrink-0 transition-all duration-300 lg:block", collapsed ? "w-16" : "w-60")}>
       <aside className={cn(
         "fixed left-0 top-0 z-40 flex h-screen flex-col border-r transition-all duration-300 backdrop-blur-2xl",
         "scorelab-chrome-sidebar",
         collapsed ? "w-16" : "w-60"
       )}>
         <div className="scorelab-chrome-overlay pointer-events-none absolute inset-0" />
-        <div className="flex items-center h-16 px-4 border-b border-[var(--scorelab-chrome-border)]">
+        <div className="flex h-16 items-center border-b border-[var(--scorelab-chrome-border)] px-4">
           <Link to="/" className="flex items-center gap-2 overflow-hidden">
             <div className="scorelab-brand-mark relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 ring-white/20 flex-shrink-0">
               <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,24,40,0.94),rgba(7,35,43,0.84))]" />
               <BarChart3 className="relative w-4 h-4 text-cyan-100 drop-shadow-[0_0_8px_rgba(125,245,238,0.55)]" strokeWidth={1.7} />
             </div>
             {!collapsed && (
-              <span className="scorelab-brand-text text-lg font-bold tracking-tight drop-shadow-[0_0_18px_var(--scorelab-accent-a-soft)]">ScoreLab</span>
+              <div className="min-w-0">
+                <span className="scorelab-brand-text block text-lg font-black tracking-[-0.04em] drop-shadow-[0_0_18px_var(--scorelab-accent-a-soft)]">ScoreLab</span>
+                <span className="block -mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/32">Analytics OS</span>
+              </div>
             )}
           </Link>
         </div>
@@ -94,7 +99,7 @@ export function AppSidebar() {
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.title)}
-                    className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition-colors hover:bg-[var(--scorelab-control-bg)]"
+                  className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition-all duration-200 hover:bg-[var(--scorelab-control-bg)] hover:text-white"
                   >
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-50/34">
                       {group.title}
@@ -116,10 +121,10 @@ export function AppSidebar() {
                       key={item.url}
                       to={item.url}
                       className={cn(
-                        "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
+                        "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold tracking-[-0.01em] transition-all duration-200",
                         isActive
                           ? "text-foreground"
-                          : "text-sidebar-foreground hover:bg-[var(--scorelab-control-bg)] hover:text-foreground"
+                          : "text-sidebar-foreground hover:-translate-y-0.5 hover:bg-[var(--scorelab-control-bg)] hover:text-foreground"
                       )}
                     >
                       {isActive && (
@@ -138,7 +143,7 @@ export function AppSidebar() {
                       />
                       {!collapsed && <span className="relative z-10">{item.title}</span>}
                       {isActive && !collapsed && (
-                        <div className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                        <div className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_var(--scorelab-accent-b)]" />
                       )}
                     </Link>
                   );

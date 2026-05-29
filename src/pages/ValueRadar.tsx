@@ -34,6 +34,19 @@ type RadarPoint = RadarOpportunity;
 
 type ChartRow = Record<string, string | number | null | undefined>;
 
+const tierOrder: Record<NonNullable<RadarPoint["tier"]> | "unclassified", number> = {
+  premium: 0,
+  elite: 1,
+  bet: 2,
+  watchlist: 3,
+  discard: 4,
+  unclassified: 5,
+};
+
+function getTierRank(point: RadarPoint) {
+  return tierOrder[point.tier ?? "unclassified"];
+}
+
 function PremiumCard({
   title,
   description,
@@ -225,7 +238,13 @@ export default function ValueRadar() {
 
         return true;
       })
-      .sort((a, b) => b.calibratedProb - a.calibratedProb || b.modelProb - a.modelProb);
+      .sort(
+        (a, b) =>
+          getTierRank(a) - getTierRank(b) ||
+          b.calibratedProb - a.calibratedProb ||
+          b.edge - a.edge ||
+          b.confidence - a.confidence
+      );
   }, [radarPoints, tierFilter, decisionFilter, marketSearch]);
 
   const selectedPoint =
@@ -278,10 +297,16 @@ export default function ValueRadar() {
       map.set(key, (map.get(key) || 0) + 1);
     });
 
-    return Array.from(map.entries()).map(([tier, count]) => ({
-      tier,
-      count,
-    }));
+    return Array.from(map.entries())
+      .map(([tier, count]) => ({
+        tier,
+        count,
+      }))
+      .sort(
+        (a, b) =>
+          (tierOrder[(a.tier as keyof typeof tierOrder) ?? "unclassified"] ?? 99) -
+          (tierOrder[(b.tier as keyof typeof tierOrder) ?? "unclassified"] ?? 99)
+      );
   }, [filteredPoints]);
 
   const decisionBreakdown: ChartRow[] = useMemo(() => {

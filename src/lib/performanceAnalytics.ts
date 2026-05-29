@@ -1,5 +1,5 @@
 import type { SavedAnalysis } from "@/types/analysis";
-import { buildFinancialSnapshot } from "@/lib/financialEngine";
+import { buildFinancialSnapshot, getFinancialLocalDateKey } from "@/lib/financialEngine";
 import { getAllAnalysisTrackingEntries } from "@/lib/analysisStorage";
 import {
   getTierPerformance,
@@ -28,6 +28,17 @@ export interface DailyProfitPoint {
   bets: number;
 }
 
+interface MultiplePerformanceInput {
+  createdAt: string;
+  tracking: {
+    betPlaced: boolean;
+    stakeUsed: number | null;
+    resultStatus: string;
+    placedAt?: string | null;
+    profitLoss: number;
+  };
+}
+
 export interface AdvancedPerformanceBreakdown {
   summary: PerformanceSummary;
   dailyProfitTrend: DailyProfitPoint[];
@@ -53,11 +64,16 @@ function isValidTrackedBet(analysis: SavedAnalysis): boolean {
 }
 
 export function getPerformanceSummary(
-  analyses: SavedAnalysis[]
+  analyses: SavedAnalysis[],
+  multiples: MultiplePerformanceInput[] = []
 ): PerformanceSummary {
   const trackedEntries = getAllAnalysisTrackingEntries(analyses).filter(
     (entry) =>
       entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
+  );
+  const settledMultiples = multiples.filter(
+    (multiple) =>
+      multiple.tracking.betPlaced && isSettledResult(multiple.tracking.resultStatus)
   );
 
   const snapshot = buildFinancialSnapshot({
@@ -65,7 +81,10 @@ export function getPerformanceSummary(
       createdAt: entry.createdAt,
       tracking: entry.tracking,
     })),
-    multiples: [],
+    multiples: settledMultiples.map((multiple) => ({
+      createdAt: multiple.createdAt,
+      tracking: multiple.tracking,
+    })),
     initialBankroll: 0,
   });
 
@@ -82,21 +101,36 @@ export function getPerformanceSummary(
 }
 
 export function getDailyProfitTrend(
-  analyses: SavedAnalysis[]
+  analyses: SavedAnalysis[],
+  multiples: MultiplePerformanceInput[] = []
 ): DailyProfitPoint[] {
   const settled = getAllAnalysisTrackingEntries(analyses).filter(
     (entry) => entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
+  );
+  const settledMultiples = multiples.filter(
+    (multiple) =>
+      multiple.tracking.betPlaced && isSettledResult(multiple.tracking.resultStatus)
   );
   const grouped = new Map<
     string,
     { profitLoss: number; stake: number; bets: number; ts: number }
   >();
 
-  settled.forEach((entry) => {
-    const occurredAt = entry.tracking.placedAt || entry.createdAt;
+  const addPoint = ({
+    createdAt,
+    tracking,
+  }: {
+    createdAt: string;
+    tracking: {
+      placedAt?: string | null;
+      profitLoss: number;
+      stakeUsed: number | null;
+    };
+  }) => {
+    const occurredAt = tracking.placedAt || createdAt;
     const dateObj = new Date(occurredAt);
     const safeTime = Number.isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
-    const dateKey = dateObj.toLocaleDateString();
+    const dateKey = getFinancialLocalDateKey(occurredAt) || "Unknown";
 
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, {
@@ -108,11 +142,16 @@ export function getDailyProfitTrend(
     }
 
     const row = grouped.get(dateKey)!;
-    row.profitLoss += entry.tracking.profitLoss || 0;
-    row.stake += entry.tracking.stakeUsed || 0;
+    row.profitLoss += tracking.profitLoss || 0;
+    row.stake += tracking.stakeUsed || 0;
     row.bets += 1;
     row.ts = Math.min(row.ts, safeTime);
-  });
+  };
+
+  settled.forEach((entry) => addPoint({ createdAt: entry.createdAt, tracking: entry.tracking }));
+  settledMultiples.forEach((multiple) =>
+    addPoint({ createdAt: multiple.createdAt, tracking: multiple.tracking })
+  );
 
   return Array.from(grouped.entries())
     .map(([date, row]) => ({
@@ -131,13 +170,15 @@ export function getDailyProfitTrend(
 }
 
 export function getAdvancedPerformanceBreakdown(
-  analyses: SavedAnalysis[]
+  analyses: SavedAnalysis[],
+  multiples: MultiplePerformanceInput[] = []
 ): AdvancedPerformanceBreakdown {
   const safeAnalyses = Array.isArray(analyses) ? analyses : [];
+  const safeMultiples = Array.isArray(multiples) ? multiples : [];
 
   return {
-    summary: getPerformanceSummary(safeAnalyses),
-    dailyProfitTrend: getDailyProfitTrend(safeAnalyses),
+    summary: getPerformanceSummary(safeAnalyses, safeMultiples),
+    dailyProfitTrend: getDailyProfitTrend(safeAnalyses, safeMultiples),
     tierPerformance: getTierPerformance(safeAnalyses),
     oddsBucketPerformance: getOddsBucketPerformance(safeAnalyses),
     edgeBucketPerformance: getEdgeBucketPerformance(safeAnalyses),

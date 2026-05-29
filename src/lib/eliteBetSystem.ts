@@ -2,8 +2,12 @@ import type {
   AnalysisResult,
   SavedAnalysis,
   BetTier,
-  RiskLevel,
 } from "@/types/analysis";
+import {
+  getBetTierFromMetrics,
+  getDecisionFromMetrics,
+  getEliteScore,
+} from "@/lib/analysisDecision";
 import { getHistoricalAdjustmentMetrics } from "@/lib/historicalAdjustment";
 
 export interface EliteBetConfig {
@@ -57,16 +61,6 @@ export interface RankedOpportunity {
   result: AnalysisResult;
 }
 
-function getRiskWeight(risk: RiskLevel): number {
-  if (risk === "Low") return 1;
-  if (risk === "Medium") return 0.6;
-  return 0.2;
-}
-
-function getOddsQuality(odds: number): number {
-  return 1 - Math.min(Math.abs(odds - 2.1) / 1.2, 1);
-}
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -80,9 +74,16 @@ export function getOddsBand(odds: number): string {
 export function getMarketFamily(market: string): string {
   const lower = market.toLowerCase();
 
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("under 3.5")) {
+    return "double-chance-under";
+  }
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("over 1.5")) {
+    return "double-chance-over";
+  }
   if (lower.includes("over")) return "totals-over";
   if (lower.includes("under")) return "totals-under";
   if (lower.includes("btts")) return "btts";
+  if (lower === "1x" || lower === "2x") return "double-chance";
   if (lower === "home" || lower === "draw" || lower === "away") return "1x2";
 
   return "other";
@@ -92,85 +93,12 @@ export function getExpectedValuePercent(result: AnalysisResult): number {
   return Number((result.valueBet || 0).toFixed(1));
 }
 
-export function getEliteScore(result: AnalysisResult): number {
-  const valueComponent = Math.min(Math.max(result.valueBet, 0) / 10, 1);
-  const confidenceComponent = Math.min(Math.max(result.confidence, 0) / 10, 1);
-  const kellyComponent = Math.min(Math.max(result.kelly, 0) / 3, 1);
-  const oddsComponent = getOddsQuality(result.odds);
-  const riskComponent = getRiskWeight(result.risk);
-
-  const score =
-    valueComponent * 0.4 +
-    confidenceComponent * 0.35 +
-    kellyComponent * 0.2 +
-    oddsComponent * 0.05 +
-    riskComponent * 0.0;
-
-  return Number((score * 100).toFixed(1));
-}
-
-function getDecisionFromMetrics(result: AnalysisResult): AnalysisResult["decision"] {
-  const hasPositiveEdge = result.valueBet >= 2;
-  const hasKelly = result.kelly >= 0.8;
-  const hasConfidence = result.confidence >= 5;
-  const safeRisk = result.risk !== "High";
-
-  if (hasPositiveEdge && hasKelly && hasConfidence && safeRisk) {
-    return "Bet";
-  }
-
-  if (result.valueBet > 0 && result.confidence >= 4) {
-    return "Caution";
-  }
-
-  return "No Bet";
-}
-
 export function getBetTier(
   result: AnalysisResult,
   config: EliteBetConfig = DEFAULT_ELITE_CONFIG
 ): BetTier {
-  const safeDecision = getDecisionFromMetrics(result);
-
-  const passesEliteGate =
-    safeDecision === "Bet" &&
-    result.valueBet >= config.minEdge &&
-    result.confidence >= config.minConfidence &&
-    result.kelly >= config.minKelly &&
-    result.odds >= config.minOdds &&
-    result.odds <= config.maxOdds &&
-    (config.allowHighRisk || result.risk !== "High");
-
-  if (passesEliteGate) {
-    const isPremium =
-      result.valueBet >= config.premiumMinEdge &&
-      result.confidence >= config.premiumMinConfidence &&
-      result.kelly >= config.premiumMinKelly &&
-      result.odds >= config.premiumMinOdds &&
-      result.odds <= config.premiumMaxOdds &&
-      result.risk !== "High";
-
-    return isPremium ? "premium" : "elite";
-  }
-
-  const qualifiesAsBet =
-    safeDecision === "Bet" &&
-    result.valueBet >= 2 &&
-    result.kelly >= 0.8 &&
-    result.confidence >= 5 &&
-    result.risk !== "High";
-
-  if (qualifiesAsBet) return "bet";
-
-  const qualifiesAsWatchlist =
-    result.valueBet > 0 &&
-    result.confidence >= 4 &&
-    result.kelly >= 0 &&
-    result.risk !== "High";
-
-  if (qualifiesAsWatchlist) return "watchlist";
-
-  return "discard";
+  void config;
+  return getBetTierFromMetrics(result);
 }
 
 export function decorateResult(

@@ -8,6 +8,7 @@ export interface RoadmapSettings {
   targetAmount: number;
   targetDays: number;
   startedAt: string;
+  startingBankroll?: number;
 }
 
 export interface RoadmapDayMemory {
@@ -63,6 +64,10 @@ export function getRoadmapSettings(): RoadmapSettings {
         typeof parsed.startedAt === "string" && parsed.startedAt.trim().length > 0
           ? parsed.startedAt
           : DEFAULT_ROADMAP_SETTINGS.startedAt,
+      startingBankroll:
+        typeof parsed.startingBankroll === "number" && parsed.startingBankroll >= 0
+          ? parsed.startingBankroll
+          : undefined,
     };
   } catch {
     return DEFAULT_ROADMAP_SETTINGS;

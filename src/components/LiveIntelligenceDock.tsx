@@ -108,7 +108,7 @@ export function LiveIntelligenceDock() {
   };
 
   return (
-    <div className="scorelab-chrome-dock relative border-b px-5 py-3 backdrop-blur-2xl md:px-6">
+    <div className="scorelab-chrome-dock relative hidden border-b px-5 py-3 backdrop-blur-2xl md:block md:px-6">
       <HudSignalLine tone={dock.systemTone} className="absolute inset-x-0 top-0" />
       <div className="mx-auto flex max-w-7xl flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <button

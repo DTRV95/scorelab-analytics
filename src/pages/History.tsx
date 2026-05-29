@@ -11,7 +11,7 @@ import {
   buildPostBetTruth,
   type PostBetTruth,
 } from "@/lib/decisionMemory";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ANALYSES_UPDATED_EVENT,
   addExtraTrackedBet,
@@ -20,9 +20,12 @@ import {
   getAnalyses,
   getAnalysisTrackingEntries,
   updateAnalysisTracking,
+  updateAnalysisModelAudit,
   updateTrackedBet,
   deleteAnalysis,
+  clearAnalysisModelAudit,
 } from "@/lib/analysisStorage";
+import { getModelAuditSummary } from "@/lib/modelAudit";
 import {
   MULTIPLES_UPDATED_EVENT,
   addLegToMultipleDraft,
@@ -78,6 +81,7 @@ const darkSelectStyle = {
 };
 
 const SHOW_AI_READS = false;
+const INITIAL_VISIBLE_ANALYSES = 18;
 
 const stagger = {
   hidden: {},
@@ -519,9 +523,13 @@ export default function History() {
     "newest" | "oldest" | "edge" | "confidence" | "profitLoss"
   >("newest");
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ANALYSES);
   const [aiSummary, setAiSummary] = useState<HistoryAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [auditDrafts, setAuditDrafts] = useState<Record<string, { home: string; away: string }>>({});
   const hasLoadedAiReviewRef = useRef(false);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const expandedIdSet = useMemo(() => new Set(expandedIds), [expandedIds]);
 
   const refreshAnalyses = () => {
     setAnalyses(getAnalyses());
@@ -559,28 +567,38 @@ export default function History() {
     );
   }, [analyses]);
 
+  const trackingEntriesByAnalysisId = useMemo(() => {
+    const entries = new Map<string, ReturnType<typeof getAnalysisTrackingEntries>>();
+    safeAnalyses.forEach((analysis) => {
+      entries.set(analysis.id, getAnalysisTrackingEntries(analysis));
+    });
+    return entries;
+  }, [safeAnalyses]);
+
   const availableMarkets = useMemo(() => {
     return Array.from(
       new Set(
         safeAnalyses
           .flatMap((analysis) =>
-            getAnalysisTrackingEntries(analysis).map((entry) => entry.tracking.selectedMarket)
+            (trackingEntriesByAnalysisId.get(analysis.id) ?? []).map(
+              (entry) => entry.tracking.selectedMarket
+            )
           )
           .filter(Boolean)
       )
     ) as string[];
-  }, [safeAnalyses]);
+  }, [safeAnalyses, trackingEntriesByAnalysisId]);
 
   const filteredAnalyses = useMemo(() => {
     let items = [...safeAnalyses];
 
     items = items.filter((analysis) => {
       const match = `${analysis.homeTeam} vs ${analysis.awayTeam}`.toLowerCase();
-      const trackedEntries = getAnalysisTrackingEntries(analysis);
+      const trackedEntries = trackingEntriesByAnalysisId.get(analysis.id) ?? [];
       const trackedMarkets = trackedEntries
         .map((entry) => (entry.tracking.selectedMarket || "").toLowerCase())
         .filter(Boolean);
-      const search = searchTerm.trim().toLowerCase();
+      const search = deferredSearchTerm.trim().toLowerCase();
 
       const matchesSearch =
         search === "" ||
@@ -641,11 +659,11 @@ export default function History() {
       }
 
       if (sortBy === "profitLoss") {
-        const aProfit = getAnalysisTrackingEntries(a).reduce(
+        const aProfit = (trackingEntriesByAnalysisId.get(a.id) ?? []).reduce(
           (sum, entry) => sum + (entry.tracking.profitLoss || 0),
           0
         );
-        const bProfit = getAnalysisTrackingEntries(b).reduce(
+        const bProfit = (trackingEntriesByAnalysisId.get(b.id) ?? []).reduce(
           (sum, entry) => sum + (entry.tracking.profitLoss || 0),
           0
         );
@@ -682,13 +700,35 @@ export default function History() {
     return items;
   }, [
     safeAnalyses,
-    searchTerm,
+    trackingEntriesByAnalysisId,
+    deferredSearchTerm,
     statusFilter,
     betPlacedFilter,
     marketFilter,
     dateFilter,
     sortBy,
   ]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_ANALYSES);
+  }, [
+    deferredSearchTerm,
+    statusFilter,
+    betPlacedFilter,
+    marketFilter,
+    dateFilter,
+    sortBy,
+  ]);
+
+  const visibleAnalyses = useMemo(
+    () => filteredAnalyses.slice(0, visibleCount),
+    [filteredAnalyses, visibleCount]
+  );
+  const hasMoreAnalyses = visibleCount < filteredAnalyses.length;
+  const modelAuditSummary = useMemo(
+    () => getModelAuditSummary(safeAnalyses),
+    [safeAnalyses]
+  );
 
   useEffect(() => {
     if (!highlightedAnalysisId) return;
@@ -854,6 +894,75 @@ export default function History() {
     setAnalyses(updatedAnalyses);
   };
 
+  const updateAuditDraft = (
+    analysis: SavedAnalysis,
+    side: "home" | "away",
+    value: string
+  ) => {
+    setAuditDrafts((prev) => {
+      const current = prev[analysis.id] ?? {
+        home:
+          typeof analysis.modelAudit?.homeGoals === "number"
+            ? String(analysis.modelAudit.homeGoals)
+            : "",
+        away:
+          typeof analysis.modelAudit?.awayGoals === "number"
+            ? String(analysis.modelAudit.awayGoals)
+            : "",
+      };
+
+      return {
+        ...prev,
+        [analysis.id]: {
+          ...current,
+          [side]: value,
+        },
+      };
+    });
+  };
+
+  const saveModelAudit = (analysis: SavedAnalysis) => {
+    const draft = auditDrafts[analysis.id] ?? {
+      home:
+        typeof analysis.modelAudit?.homeGoals === "number"
+          ? String(analysis.modelAudit.homeGoals)
+          : "",
+      away:
+        typeof analysis.modelAudit?.awayGoals === "number"
+          ? String(analysis.modelAudit.awayGoals)
+          : "",
+    };
+    const homeGoals = Number(draft.home);
+    const awayGoals = Number(draft.away);
+
+    if (
+      !Number.isInteger(homeGoals) ||
+      !Number.isInteger(awayGoals) ||
+      homeGoals < 0 ||
+      awayGoals < 0
+    ) {
+      window.alert("Insert a valid final score, for example 2-1.");
+      return;
+    }
+
+    const updatedAnalyses = updateAnalysisModelAudit(
+      analysis.id,
+      homeGoals,
+      awayGoals
+    );
+    setAnalyses(updatedAnalyses);
+  };
+
+  const clearModelAudit = (analysisId: string) => {
+    const updatedAnalyses = clearAnalysisModelAudit(analysisId);
+    setAnalyses(updatedAnalyses);
+    setAuditDrafts((prev) => {
+      const next = { ...prev };
+      delete next[analysisId];
+      return next;
+    });
+  };
+
   const resetFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
@@ -873,7 +982,7 @@ export default function History() {
 
   const summary = useMemo(() => {
     const trackedEntries = filteredAnalyses.flatMap((analysis) =>
-      getAnalysisTrackingEntries(analysis)
+      trackingEntriesByAnalysisId.get(analysis.id) ?? []
     );
     const total = filteredAnalyses.length;
     const placed = trackedEntries.filter((entry) => entry.tracking.betPlaced).length;
@@ -891,11 +1000,11 @@ export default function History() {
     ).length;
 
     return { total, placed, settled, greens, reds, needsUpdate };
-  }, [filteredAnalyses]);
+  }, [filteredAnalyses, trackingEntriesByAnalysisId]);
 
   const historyAiPayload = useMemo<HistoryAISummaryPayload>(() => {
     const trackedEntries = filteredAnalyses.flatMap((analysis) =>
-      getAnalysisTrackingEntries(analysis)
+      trackingEntriesByAnalysisId.get(analysis.id) ?? []
     );
     const viewBets = trackedEntries.filter((entry) => entry.tracking.betPlaced);
     const settledBets = viewBets.filter((entry) =>
@@ -1007,7 +1116,7 @@ export default function History() {
       greens: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "green").length,
       reds: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "red").length,
       needs_update: filteredAnalyses.filter((analysis) =>
-        getAnalysisTrackingEntries(analysis).some((entry) =>
+        (trackingEntriesByAnalysisId.get(analysis.id) ?? []).some((entry) =>
           needsTrackedBetAttention(entry.tracking)
         )
       ).length,
@@ -1038,6 +1147,7 @@ export default function History() {
     };
   }, [
     filteredAnalyses,
+    trackingEntriesByAnalysisId,
     multipleDraft.length,
     savedMultiples,
     statusFilter,
@@ -1408,10 +1518,39 @@ export default function History() {
               </button>
 
               <span className="ml-auto text-sm text-white/50">
-                Showing {filteredAnalyses.length} analyses
+                Showing {visibleAnalyses.length} of {filteredAnalyses.length} analyses
               </span>
             </div>
           </div>
+        </PremiumCard>
+
+        <PremiumCard
+          title="Model Audit"
+          description="Paper-tracks analysed matches without touching bankroll, ROI or financial performance."
+          badge={`${modelAuditSummary.auditedMatches} audited`}
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <MetricBlock
+              label="Audited Markets"
+              value={modelAuditSummary.auditedMarkets}
+            />
+            <MetricBlock
+              label="Model Hit Rate"
+              value={`${modelAuditSummary.hitRate.toFixed(1)}%`}
+            />
+            <MetricBlock
+              label="Avg Model Prob."
+              value={`${modelAuditSummary.avgModelProb.toFixed(1)}%`}
+            />
+            <MetricBlock
+              label="Brier Score"
+              value={modelAuditSummary.brierScore.toFixed(3)}
+            />
+          </div>
+          <p className="mt-3 text-sm leading-6 text-white/55">
+            Add final scores inside each analysis to measure whether markets were correctly
+            priced, even when no money was placed.
+          </p>
         </PremiumCard>
 
         <div className="space-y-6">
@@ -1426,8 +1565,9 @@ export default function History() {
               </p>
             </PremiumCard>
           ) : (
-            filteredAnalyses.map((analysis) => {
-              const trackedEntries = getAnalysisTrackingEntries(analysis);
+            <>
+            {visibleAnalyses.map((analysis) => {
+              const trackedEntries = trackingEntriesByAnalysisId.get(analysis.id) ?? [];
               const primaryEntry = trackedEntries[0];
               const displayBet = primaryEntry?.tracking.selectedMarket
                 ? analysis.results.find(
@@ -1435,7 +1575,7 @@ export default function History() {
                   ) || getBestBet(analysis.results)
                 : getBestBet(analysis.results);
               const matchLabel = `${analysis.homeTeam} vs ${analysis.awayTeam}`;
-              const isExpanded = expandedIds.includes(analysis.id);
+              const isExpanded = expandedIdSet.has(analysis.id);
               const trackedBetCount = trackedEntries.filter((entry) => entry.tracking.betPlaced).length;
               const totalProfitLoss = trackedEntries.reduce(
                 (sum, entry) => sum + (entry.tracking.profitLoss || 0),
@@ -1456,6 +1596,21 @@ export default function History() {
                     : 0),
                 0
               );
+              const auditDraft = auditDrafts[analysis.id] ?? {
+                home:
+                  typeof analysis.modelAudit?.homeGoals === "number"
+                    ? String(analysis.modelAudit.homeGoals)
+                    : "",
+                away:
+                  typeof analysis.modelAudit?.awayGoals === "number"
+                    ? String(analysis.modelAudit.awayGoals)
+                    : "",
+              };
+              const auditedGreens =
+                analysis.modelAudit?.outcomes.filter((item) => item.outcome === "green").length ?? 0;
+              const auditedReds =
+                analysis.modelAudit?.outcomes.filter((item) => item.outcome === "red").length ?? 0;
+              const auditedTotal = auditedGreens + auditedReds;
 
               return (
                 <motion.div
@@ -1611,6 +1766,7 @@ export default function History() {
                       transition={{ duration: 0.25 }}
                       className="overflow-hidden"
                     >
+                      {isExpanded ? (
                       <div className="space-y-4 pt-1">
                         {displayBet && (
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -1644,6 +1800,67 @@ export default function History() {
                             />
                           </div>
                         )}
+
+                        <div className="rounded-[24px] border border-cyan-300/12 bg-cyan-300/[0.035] p-4">
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
+                                Model Audit
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-white/58">
+                                Insert the final score to audit every market in this analysis without
+                                counting it as a real-money bet.
+                              </p>
+                              {analysis.modelAudit ? (
+                                <p className="mt-2 text-xs text-cyan-100/70">
+                                  Current audit: {analysis.homeTeam} {analysis.modelAudit.homeGoals}-
+                                  {analysis.modelAudit.awayGoals} {analysis.awayTeam} · {auditedGreens}/
+                                  {auditedTotal} markets green.
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[90px_90px_auto_auto]">
+                              <InputField label={analysis.homeTeam || "Home"}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={auditDraft.home}
+                                  onChange={(event) =>
+                                    updateAuditDraft(analysis, "home", event.target.value)
+                                  }
+                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                />
+                              </InputField>
+                              <InputField label={analysis.awayTeam || "Away"}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={auditDraft.away}
+                                  onChange={(event) =>
+                                    updateAuditDraft(analysis, "away", event.target.value)
+                                  }
+                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                />
+                              </InputField>
+                              <button
+                                type="button"
+                                onClick={() => saveModelAudit(analysis)}
+                                className="h-11 self-end rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100 transition hover:bg-cyan-400/15"
+                              >
+                                Save Audit
+                              </button>
+                              {analysis.modelAudit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => clearModelAudit(analysis.id)}
+                                  className="h-11 self-end rounded-xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/58 transition hover:bg-white/[0.08]"
+                                >
+                                  Clear
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
 
                         <div className="space-y-4">
                           {trackedEntries.map((entry) => {
@@ -1885,11 +2102,26 @@ export default function History() {
                           })}
                         </div>
                       </div>
+                      ) : null}
                     </motion.div>
                   </div>
                 </motion.div>
               );
-            })
+            })}
+            {hasMoreAnalyses ? (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) => current + INITIAL_VISIBLE_ANALYSES)
+                  }
+                  className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-400/15"
+                >
+                  Load {Math.min(INITIAL_VISIBLE_ANALYSES, filteredAnalyses.length - visibleCount)} more
+                </button>
+              </div>
+            ) : null}
+            </>
           )}
         </div>
 

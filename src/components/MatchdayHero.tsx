@@ -35,7 +35,7 @@ export function MatchdayHero({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d scorelab-premium-edge relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(8,18,40,0.96)_0%,rgba(5,16,28,0.98)_48%,rgba(13,22,34,0.98)_100%)] p-5"
+      className="scorelab-stage-3d scorelab-board-3d scorelab-premium-hero scorelab-premium-edge relative overflow-hidden rounded-[32px] border border-white/8 p-5 md:p-6"
     >
       <HudCornerFrame />
       <HudSignalLine tone={tone} className="absolute inset-x-6 top-0" />
@@ -45,13 +45,13 @@ export function MatchdayHero({
       <div className="pointer-events-none absolute -left-20 top-0 h-full w-52 rotate-[15deg] bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.055),transparent)] blur-xl" />
       <div className="pointer-events-none absolute -right-20 top-0 h-full w-52 rotate-[-15deg] bg-[linear-gradient(90deg,transparent,rgba(52,211,153,0.05),transparent)] blur-xl" />
 
-      <div className="relative z-10 grid gap-5 xl:grid-cols-[1fr_360px] xl:items-stretch">
-        <div className="flex min-h-[190px] flex-col justify-center">
+      <div className="relative z-10 grid gap-5 xl:grid-cols-[1fr_380px] xl:items-stretch">
+        <div className="flex min-h-[190px] flex-col justify-center md:min-h-[220px]">
           <HudStatusPill label={eyebrow} tone={tone} icon={statusIcon} />
-          <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.04em] text-white drop-shadow-[0_0_28px_rgba(125,245,238,0.12)] md:text-[2.6rem]">
+          <h1 className="mt-4 max-w-4xl text-[2.1rem] font-black tracking-[-0.055em] text-white drop-shadow-[0_0_28px_rgba(125,245,238,0.12)] md:text-[3rem] xl:text-[3.35rem]">
             {title}
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/58">
+          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-white/64 md:text-base">
             {description}
           </p>
           {statusItems ? <div className="mt-5 flex flex-wrap gap-2">{statusItems}</div> : null}

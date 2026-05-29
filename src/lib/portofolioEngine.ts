@@ -422,9 +422,15 @@ function getEdgeLowerBoundBucket(edgeLowerBound?: number): string {
 function getMarketGroup(market: string): string {
   const lower = market.toLowerCase();
 
+  if (lower.includes("1x") && lower.includes("under 3.5")) return "1X + Under 3.5";
+  if (lower.includes("2x") && lower.includes("under 3.5")) return "2X + Under 3.5";
+  if (lower.includes("1x") && lower.includes("over 1.5")) return "1X + Over 1.5";
+  if (lower.includes("2x") && lower.includes("over 1.5")) return "2X + Over 1.5";
   if (lower.includes("over")) return "Over";
   if (lower.includes("under")) return "Under";
   if (lower.includes("btts")) return "BTTS";
+  if (lower === "1x") return "1X";
+  if (lower === "2x") return "2X";
   if (lower === "home") return "Home";
   if (lower === "draw") return "Draw";
   if (lower === "away") return "Away";

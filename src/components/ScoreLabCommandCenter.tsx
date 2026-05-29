@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  BrainCircuit,
   Clock,
   Command as CommandIcon,
   Flag,
@@ -46,6 +47,7 @@ const pages = [
   { title: "Dashboard", detail: "System overview", url: "/dashboard", icon: BarChart3 },
   { title: "Match Analysis", detail: "Analyze a new game", url: "/analysis", icon: Target },
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
+  { title: "Model Lab", detail: "Audit calibration truth", url: "/model-lab", icon: BrainCircuit },
   { title: "Simple Bet", detail: "Track single bets", url: "/history", icon: Clock },
   { title: "Multiples Bet", detail: "Build and monitor multiples", url: "/history-multiples", icon: Layers3 },
   { title: "Bankroll Tools", detail: "Financial truth center", url: "/bankroll", icon: Wallet },

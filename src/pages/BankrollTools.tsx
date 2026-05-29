@@ -39,7 +39,11 @@ import { PulseOnChange } from "@/components/MotionIntelligence";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
-import { buildTrueEdgeValidationModel } from "@/lib/trueEdgeValidation";
+import { getModelAuditSummary } from "@/lib/modelAudit";
+import {
+  buildTrueEdgeValidationModel,
+  type TrueEdgeVerdict,
+} from "@/lib/trueEdgeValidation";
 
 const stagger = {
   hidden: {},
@@ -47,6 +51,8 @@ const stagger = {
 };
 
 const SHOW_AI_READS = false;
+const TRUE_EDGE_FILTERS = ["All", "Trusted", "Promising", "Watch", "Avoid", "Learning"] as const;
+type TrueEdgeFilter = (typeof TRUE_EDGE_FILTERS)[number];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -250,6 +256,14 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function getTrueEdgeVerdictClass(verdict: TrueEdgeVerdict) {
+  if (verdict === "Trusted") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-100";
+  if (verdict === "Promising") return "border-cyan-300/25 bg-cyan-300/10 text-cyan-100";
+  if (verdict === "Avoid") return "border-red-300/25 bg-red-300/10 text-red-100";
+  if (verdict === "Watch") return "border-amber-300/25 bg-amber-300/10 text-amber-100";
+  return "border-white/10 bg-white/[0.04] text-white/58";
+}
+
 function getLocalDateKey(dateInput: string | null | undefined) {
   if (!dateInput) return null;
 
@@ -281,7 +295,7 @@ function ToolTipCard({
   const value = payload[0]?.value;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-popover px-3 py-2 text-sm shadow-xl">
+    <div className="scorelab-chart-tooltip rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
@@ -311,7 +325,7 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${className}`}
+      className={`scorelab-stage-3d scorelab-board-3d scorelab-analytics-panel relative overflow-hidden rounded-[26px] border border-white/8 ${className}`}
     >
       <div className="relative z-10 flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
@@ -321,7 +335,7 @@ function SectionCard({
           ) : null}
         </div>
         {badge ? (
-          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+          <span className="scorelab-analytics-badge rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
             {badge}
           </span>
         ) : null}
@@ -341,7 +355,7 @@ function FocusMetric({
   detail: string;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-xl border border-white/8 bg-white/[0.02] p-3.5">
+    <div className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object rounded-xl border border-white/8 p-3.5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
@@ -370,7 +384,7 @@ function CompactStatCard({
         <motion.div
           whileHover={{ y: -1 }}
           transition={{ type: "spring", stiffness: 360, damping: 26 }}
-          className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+          className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object relative overflow-hidden rounded-[20px] border border-white/8 px-4 py-3.5"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
           <div className="relative">
@@ -516,6 +530,7 @@ export default function BankrollTools() {
   const [initialBankrollInput, setInitialBankrollInput] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [showAllDailyPerformance, setShowAllDailyPerformance] = useState(false);
+  const [trueEdgeFilter, setTrueEdgeFilter] = useState<TrueEdgeFilter>("All");
   const [aiSummary, setAiSummary] = useState<BankrollAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -562,6 +577,10 @@ export default function BankrollTools() {
   }, [dataVersion]);
   const trueEdgeValidation = useMemo(
     () => buildTrueEdgeValidationModel(analyses),
+    [analyses]
+  );
+  const modelAuditSummary = useMemo(
+    () => getModelAuditSummary(analyses),
     [analyses]
   );
 
@@ -649,6 +668,27 @@ export default function BankrollTools() {
     () => [...marketPerformance].sort((a, b) => b.hitRate - a.hitRate),
     [marketPerformance]
   );
+  const trueEdgeRows = useMemo(() => {
+    const rows = trueEdgeValidation.segments.filter((segment) =>
+      trueEdgeFilter === "All" ? true : segment.verdict === trueEdgeFilter
+    );
+
+    return rows
+      .sort((a, b) => {
+        const verdictOrder: Record<TrueEdgeVerdict, number> = {
+          Trusted: 0,
+          Promising: 1,
+          Avoid: 2,
+          Watch: 3,
+          Learning: 4,
+        };
+        const verdictDiff = verdictOrder[a.verdict] - verdictOrder[b.verdict];
+        if (verdictDiff !== 0) return verdictDiff;
+        if (b.trueEdgeScore !== a.trueEdgeScore) return b.trueEdgeScore - a.trueEdgeScore;
+        return b.settled - a.settled;
+      })
+      .slice(0, 8);
+  }, [trueEdgeFilter, trueEdgeValidation.segments]);
   const bankrollAiPayload = useMemo<BankrollAISummaryPayload>(
     () => ({
       current_bankroll: stats.currentBankroll,
@@ -1325,6 +1365,144 @@ export default function BankrollTools() {
           />
         </div>
 
+        <SectionCard
+          title="Validation Lab"
+          description="Audit the zones the system trusts, watches or rejects before they influence roadmap execution."
+          badge="True Edge"
+          className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+        >
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+                  Trusted
+                </p>
+                <p className="mt-1 font-mono-data text-lg text-emerald-100">
+                  {trueEdgeValidation.summary.trustedCount}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+                  Avoid
+                </p>
+                <p className="mt-1 font-mono-data text-lg text-red-100">
+                  {trueEdgeValidation.summary.avoidCount}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+                  Learning
+                </p>
+                <p className="mt-1 font-mono-data text-lg text-white">
+                  {trueEdgeValidation.summary.learningCount}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+                  Min Sample
+                </p>
+                <p className="mt-1 font-mono-data text-lg text-cyan-100">8</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {TRUE_EDGE_FILTERS.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setTrueEdgeFilter(filter)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                    trueEdgeFilter === filter
+                      ? "border-cyan-200/30 bg-cyan-200/12 text-cyan-50"
+                      : "border-white/10 bg-white/[0.03] text-white/48 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {trueEdgeRows.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+              No validation segments match this filter yet. Keep resolving bets and the lab will become more useful.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead className="border-b border-white/5">
+                    <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                      <th className="px-4 py-3 pr-4">Segment</th>
+                      <th className="px-4 py-3 pr-4">Type</th>
+                      <th className="px-4 py-3 pr-4">Verdict</th>
+                      <th className="px-4 py-3 pr-4">Settled</th>
+                      <th className="px-4 py-3 pr-4">Actual</th>
+                      <th className="px-4 py-3 pr-4">Expected</th>
+                      <th className="px-4 py-3 pr-4">Gap</th>
+                      <th className="px-4 py-3 pr-4">ROI</th>
+                      <th className="px-4 py-3 pr-4">Score</th>
+                      <th className="px-4 py-3 pr-4">Roadmap Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trueEdgeRows.map((segment) => (
+                      <tr
+                        key={segment.key}
+                        className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"
+                      >
+                        <td className="px-4 py-3 pr-4 font-medium">{segment.label}</td>
+                        <td className="px-4 py-3 pr-4 text-white/58">{segment.type}</td>
+                        <td className="px-4 py-3 pr-4">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getTrueEdgeVerdictClass(
+                              segment.verdict
+                            )}`}
+                          >
+                            {segment.verdict}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 pr-4 font-mono-data">{segment.settled}</td>
+                        <td className="px-4 py-3 pr-4 font-mono-data">
+                          {segment.actualHitRate.toFixed(1)}%
+                        </td>
+                        <td className="px-4 py-3 pr-4 font-mono-data">
+                          {segment.expectedHitRate.toFixed(1)}%
+                        </td>
+                        <td
+                          className={`px-4 py-3 pr-4 font-mono-data ${
+                            segment.calibrationGap >= 0
+                              ? "text-emerald-200"
+                              : "text-red-200"
+                          }`}
+                        >
+                          {segment.calibrationGap >= 0 ? "+" : ""}
+                          {segment.calibrationGap.toFixed(1)}%
+                        </td>
+                        <td className="px-4 py-3 pr-4 font-mono-data">
+                          {segment.roi.toFixed(2)}%
+                        </td>
+                        <td className="px-4 py-3 pr-4 font-mono-data">
+                          {segment.trueEdgeScore}/100
+                        </td>
+                        <td className="px-4 py-3 pr-4 text-white/58">
+                          {segment.verdict === "Trusted" || segment.verdict === "Promising"
+                            ? "Can support clean picks"
+                            : segment.verdict === "Avoid"
+                            ? "Blocks clean execution"
+                            : segment.verdict === "Watch"
+                            ? "Needs stronger pick quality"
+                            : "No operational trust yet"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
         <div className="space-y-6">
           <SectionCard
             title="Daily Performance"
@@ -1390,6 +1568,84 @@ export default function BankrollTools() {
                   </tbody>
                 </table>
               </div>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="Model Audit"
+            description="Paper performance for analysed games. It validates model behaviour without touching bankroll, ROI or real-money P/L."
+            badge="Model"
+            className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+          >
+            {modelAuditSummary.auditedMatches === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+                No audited matches yet. Add final scores in Simple Bet to validate analysed markets without logging a real stake.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <FocusMetric
+                    label="Audited Matches"
+                    value={String(modelAuditSummary.auditedMatches)}
+                    detail={`${modelAuditSummary.auditedMarkets} market checks`}
+                  />
+                  <FocusMetric
+                    label="Model Hit Rate"
+                    value={`${modelAuditSummary.hitRate.toFixed(1)}%`}
+                    detail={`${modelAuditSummary.greens} green / ${modelAuditSummary.reds} red`}
+                  />
+                  <FocusMetric
+                    label="Avg Model Prob."
+                    value={`${modelAuditSummary.avgModelProb.toFixed(1)}%`}
+                    detail="Average predicted probability"
+                  />
+                  <FocusMetric
+                    label="Brier Score"
+                    value={modelAuditSummary.brierScore.toFixed(3)}
+                    detail="Lower means better calibration"
+                  />
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-sm">
+                      <thead className="border-b border-white/5">
+                        <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                          <th className="px-4 py-3 pr-4">Market</th>
+                          <th className="px-4 py-3 pr-4">Samples</th>
+                          <th className="px-4 py-3 pr-4">Greens</th>
+                          <th className="px-4 py-3 pr-4">Reds</th>
+                          <th className="px-4 py-3 pr-4">Hit Rate</th>
+                          <th className="px-4 py-3 pr-4">Avg Prob.</th>
+                          <th className="px-4 py-3 pr-4">Brier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modelAuditSummary.marketPerformance.slice(0, 8).map((item) => (
+                          <tr
+                            key={item.market}
+                            className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"
+                          >
+                            <td className="px-4 py-3 pr-4 font-medium">{item.market}</td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">{item.samples}</td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">{item.greens}</td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">{item.reds}</td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">
+                              {item.hitRate.toFixed(1)}%
+                            </td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">
+                              {item.avgModelProb.toFixed(1)}%
+                            </td>
+                            <td className="px-4 py-3 pr-4 font-mono-data">
+                              {item.brierScore.toFixed(3)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </SectionCard>

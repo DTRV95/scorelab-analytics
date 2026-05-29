@@ -960,7 +960,13 @@ export default function RoadmapPlanner() {
 
   const roadmap = useMemo(() => {
     const availableBankroll = Math.max(stats.currentBankroll, 0);
-    const startingBankroll = Math.max(stats.initialBankroll, 0);
+    const financialStartingBankroll = Math.max(stats.initialBankroll, 0);
+    const startingBankroll =
+      typeof settings.startingBankroll === "number" &&
+      Number.isFinite(settings.startingBankroll) &&
+      settings.startingBankroll >= 0
+        ? settings.startingBankroll
+        : availableBankroll;
     const startedAt = effectiveStartedAt || getDateKeyInTimezone(new Date());
     const today = getDateKeyInTimezone(new Date());
     const existingMemoryByDate = new Map(dayMemories.map((memory) => [memory.date, memory]));
@@ -973,7 +979,7 @@ export default function RoadmapPlanner() {
         tracking: entry.tracking,
       })),
       multiples,
-      initialBankroll: startingBankroll,
+      initialBankroll: financialStartingBankroll,
     });
     const dailyPerformanceMap = new Map(
       financialSnapshot.dailyPerformance.map((entry) => [entry.date, entry])
@@ -1468,7 +1474,7 @@ export default function RoadmapPlanner() {
       dailyLog: logWithTargets,
       path,
     };
-  }, [analyses, dayMemories, effectiveStartedAt, multiples, parsedInputs, stats]);
+  }, [analyses, dayMemories, effectiveStartedAt, multiples, parsedInputs, settings.startingBankroll, stats]);
 
   useEffect(() => {
     syncRoadmapDayMemories(roadmap.dailyLog);
@@ -1532,6 +1538,7 @@ export default function RoadmapPlanner() {
       targetAmount: parsedInputs.targetAmount,
       targetDays: parsedInputs.targetDays,
       startedAt: effectiveStartedAt || getDateKeyInTimezone(new Date()),
+      startingBankroll: settings.startingBankroll ?? roadmap.availableBankroll,
     };
     saveRoadmapSettings(nextSettings);
     setSettings(nextSettings);
@@ -1560,14 +1567,11 @@ export default function RoadmapPlanner() {
   };
 
   const handleStartNewMission = () => {
-    const currentStatus: RoadmapMissionRecord["status"] =
-      roadmap.missionProgressToTargetPct >= 100 ? "success" : "failed";
-    archiveCurrentMission(currentStatus);
-
     const nextSettings: RoadmapSettings = {
       targetAmount: parsedInputs.targetAmount,
       targetDays: parsedInputs.targetDays,
       startedAt: new Date().toISOString(),
+      startingBankroll: roadmap.availableBankroll,
     };
 
     saveRoadmapSettings(nextSettings);

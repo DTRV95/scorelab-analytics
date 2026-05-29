@@ -6,6 +6,7 @@ import {
   persistAnalysisRecord,
   queueEntitySync,
 } from "@/lib/persistenceSync";
+import { buildModelAuditSnapshot } from "@/lib/modelAudit";
 import type { TrackedAnalysisBet, TrackedBet } from "@/types/analysis";
 
 const ANALYSES_KEY = "scorelab_analyses";
@@ -209,6 +210,7 @@ function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
       ...result,
       market: normalizeMarketName(result.market) || result.market,
     })),
+    modelAudit: analysis.modelAudit ?? null,
     tracking: normalizeTrackingBet(analysis.tracking, PRIMARY_TRACKING_BET_ID),
     extraBets: Array.isArray(analysis.extraBets)
       ? analysis.extraBets.map((bet, index) =>
@@ -424,6 +426,44 @@ export function deleteExtraTrackedBet(
       ? {
           ...analysis,
           extraBets: (analysis.extraBets || []).filter((bet) => bet.id !== betId),
+        }
+      : analysis
+  );
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export function updateAnalysisModelAudit(
+  analysisId: string,
+  homeGoals: number,
+  awayGoals: number
+): SavedAnalysis[] {
+  const analyses = getAnalyses();
+  const updated = analyses.map((analysis) => {
+    if (analysis.id !== analysisId) return analysis;
+
+    return {
+      ...analysis,
+      modelAudit: buildModelAuditSnapshot({
+        analysis,
+        homeGoals,
+        awayGoals,
+      }),
+    };
+  });
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export function clearAnalysisModelAudit(analysisId: string): SavedAnalysis[] {
+  const analyses = getAnalyses();
+  const updated = analyses.map((analysis) =>
+    analysis.id === analysisId
+      ? {
+          ...analysis,
+          modelAudit: null,
         }
       : analysis
   );

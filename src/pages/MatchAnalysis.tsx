@@ -50,6 +50,11 @@ import { Progress } from "@/components/ui/progress";
 import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
 import { getHistoricalSignalsForResult } from "@/lib/edgeInteligence";
 import {
+  applyCalibrationToResult,
+  buildCalibrationModel,
+} from "@/lib/calibrationEngine";
+import { getSimilarMatchMemory } from "@/lib/similarMatchMemory";
+import {
   DEFAULT_LEAGUE_KEY,
   LEAGUE_PRESETS,
   LEAGUE_PRESET_MAP,
@@ -110,6 +115,12 @@ interface FormData {
   odd_casa: string;
   odd_empate: string;
   odd_fora: string;
+  odd_1x: string;
+  odd_2x: string;
+  odd_1x_menos_35: string;
+  odd_2x_menos_35: string;
+  odd_1x_mais_15: string;
+  odd_2x_mais_15: string;
 
   banca: string;
   fracao_kelly: string;
@@ -148,6 +159,12 @@ const initialFormData: FormData = {
   odd_casa: "0",
   odd_empate: "0",
   odd_fora: "0",
+  odd_1x: "0",
+  odd_2x: "0",
+  odd_1x_menos_35: "0",
+  odd_2x_menos_35: "0",
+  odd_1x_mais_15: "0",
+  odd_2x_mais_15: "0",
 
   banca: "100",
   fracao_kelly: "1",
@@ -166,6 +183,8 @@ const loadingSteps = [
   "Generating recommendations...",
 ];
 
+const SCORE_MATRIX_MAX_GOALS = 10;
+
 function SectionCard({
   title,
   children,
@@ -174,10 +193,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-      <h3 className="relative z-10 mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
-        {title}
-      </h3>
+    <div className="scorelab-stage-3d scorelab-board-3d scorelab-analytics-panel relative overflow-hidden rounded-[28px] border border-white/8 p-5">
+      <div className="relative z-10 mb-5 flex items-center justify-between gap-3 border-b border-white/6 pb-3">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/58">
+          {title}
+        </h3>
+        <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_18px_var(--scorelab-accent-b)]" />
+      </div>
       <div className="relative z-10">{children}</div>
     </div>
   );
@@ -198,7 +220,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs text-white/55">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
         {label}
       </label>
       <input
@@ -206,7 +228,7 @@ function FormField({
         step={type === "number" ? "any" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
       />
       {description ? (
         <p className="mt-1 text-[11px] leading-relaxed text-white/45">
@@ -232,13 +254,13 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs text-white/55">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white focus:outline-none"
       >
         {options.map((option) => (
           <option
@@ -269,7 +291,7 @@ function InsightTile({
   hint: string;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+    <div className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object rounded-2xl border border-white/8 p-4">
       <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
         {label}
       </p>
@@ -308,6 +330,30 @@ function mapRisk(risco: number): RiskLevel {
 function mapMarketName(name: string): string {
   const normalized = name.trim().toLowerCase();
 
+  if (
+    normalized.includes("1x") &&
+    (normalized.includes("mais de 1.5") || normalized.includes("+1,5") || normalized.includes("+1.5") || normalized.includes("over 1.5"))
+  ) {
+    return "1X + Over 1.5";
+  }
+  if (
+    normalized.includes("2x") &&
+    (normalized.includes("mais de 1.5") || normalized.includes("+ de 1,5") || normalized.includes("+1,5") || normalized.includes("+1.5") || normalized.includes("over 1.5"))
+  ) {
+    return "2X + Over 1.5";
+  }
+  if (
+    normalized.includes("1x") &&
+    (normalized.includes("menos de 3.5") || normalized.includes("under 3.5"))
+  ) {
+    return "1X + Under 3.5";
+  }
+  if (
+    normalized.includes("2x") &&
+    (normalized.includes("menos de 3.5") || normalized.includes("under 3.5"))
+  ) {
+    return "2X + Under 3.5";
+  }
   if (normalized.includes("mais de 2.5")) return "Over 2.5";
   if (normalized.includes("menos de 2.5")) return "Under 2.5";
   if (normalized.includes("mais de 3.5")) return "Over 3.5";
@@ -329,6 +375,8 @@ function mapMarketName(name: string): string {
   if (normalized === "casa") return "Home";
   if (normalized === "empate") return "Draw";
   if (normalized === "fora") return "Away";
+  if (normalized === "1x") return "1X";
+  if (normalized === "2x") return "2X";
 
   return name;
 }
@@ -343,6 +391,374 @@ function mapDecision(decisao: string): "Bet" | "No Bet" | "Caution" {
 
 function getExpectedValue(valueBet: number): number {
   return Number(valueBet.toFixed(1));
+}
+
+function toPercent(value: number): number {
+  return Number(value.toFixed(1));
+}
+
+function getImpliedProbFromOdds(odds: number): number {
+  return odds > 1 ? toPercent(100 / odds) : 0;
+}
+
+function getFallbackKellyPct(modelProb: number, odds: number): number {
+  if (odds <= 1) return 0;
+
+  const probability = modelProb / 100;
+  const kelly = (odds * probability - 1) / (odds - 1);
+
+  return Number(Math.max(0, kelly * 25).toFixed(2));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function factorial(value: number): number {
+  let result = 1;
+  for (let i = 2; i <= value; i += 1) result *= i;
+  return result;
+}
+
+function poissonProbability(lambda: number, goals: number): number {
+  return (Math.exp(-lambda) * lambda ** goals) / factorial(goals);
+}
+
+function dixonColesTau(
+  homeGoals: number,
+  awayGoals: number,
+  homeLambda: number,
+  awayLambda: number,
+  rho: number
+): number {
+  if (homeGoals === 0 && awayGoals === 0) return 1 - homeLambda * awayLambda * rho;
+  if (homeGoals === 0 && awayGoals === 1) return 1 + homeLambda * rho;
+  if (homeGoals === 1 && awayGoals === 0) return 1 + awayLambda * rho;
+  if (homeGoals === 1 && awayGoals === 1) return 1 - rho;
+  return 1;
+}
+
+function getHybridMarketProbability({
+  market,
+  homeLambda,
+  awayLambda,
+  rho,
+}: {
+  market: "1X + Under 3.5" | "2X + Under 3.5" | "1X + Over 1.5" | "2X + Over 1.5";
+  homeLambda: number;
+  awayLambda: number;
+  rho: number;
+}): number {
+  const matrix: number[][] = [];
+  let total = 0;
+
+  for (let homeGoals = 0; homeGoals <= SCORE_MATRIX_MAX_GOALS; homeGoals += 1) {
+    matrix[homeGoals] = [];
+    for (let awayGoals = 0; awayGoals <= SCORE_MATRIX_MAX_GOALS; awayGoals += 1) {
+      const base =
+        poissonProbability(homeLambda, homeGoals) *
+        poissonProbability(awayLambda, awayGoals);
+      const adjusted = Math.max(
+        base * dixonColesTau(homeGoals, awayGoals, homeLambda, awayLambda, rho),
+        0
+      );
+      matrix[homeGoals][awayGoals] = adjusted;
+      total += adjusted;
+    }
+  }
+
+  if (total <= 0) return 0;
+
+  let probability = 0;
+  for (let homeGoals = 0; homeGoals <= SCORE_MATRIX_MAX_GOALS; homeGoals += 1) {
+    for (let awayGoals = 0; awayGoals <= SCORE_MATRIX_MAX_GOALS; awayGoals += 1) {
+      const totalGoals = homeGoals + awayGoals;
+      const normalizedProbability = matrix[homeGoals][awayGoals] / total;
+      const isUnder35 = totalGoals <= 3;
+      const isOver15 = totalGoals >= 2;
+      const is1x = homeGoals >= awayGoals;
+      const is2x = awayGoals >= homeGoals;
+
+      if (market === "1X + Under 3.5" && is1x && isUnder35) {
+        probability += normalizedProbability;
+      }
+
+      if (market === "2X + Under 3.5" && is2x && isUnder35) {
+        probability += normalizedProbability;
+      }
+
+      if (market === "1X + Over 1.5" && is1x && isOver15) {
+        probability += normalizedProbability;
+      }
+
+      if (market === "2X + Over 1.5" && is2x && isOver15) {
+        probability += normalizedProbability;
+      }
+    }
+  }
+
+  return probability;
+}
+
+function buildDoubleChanceFallbackResult({
+  market,
+  odds,
+  first,
+  second,
+  bankroll,
+  kellyFraction,
+}: {
+  market: "1X" | "2X";
+  odds: number;
+  first: AnalysisResult;
+  second: AnalysisResult;
+  bankroll: number;
+  kellyFraction: number;
+}): AnalysisResult {
+  const modelProb = toPercent(Math.min(99, first.modelProb + second.modelProb));
+  const hasMarketOdds = odds > 1;
+  const impliedProb = hasMarketOdds ? getImpliedProbFromOdds(odds) : 0;
+  const valueBet = hasMarketOdds ? toPercent(modelProb - impliedProb) : 0;
+  const kelly = hasMarketOdds ? getFallbackKellyPct(modelProb, odds) : 0;
+  const confidence = toPercent((first.confidence + second.confidence) / 2);
+  const edgeLowerBound = hasMarketOdds ? valueBet : -999;
+  const robustness =
+    hasMarketOdds && valueBet > 0
+      ? Math.min(first.robustness ?? 0, second.robustness ?? 0)
+      : 0;
+
+  const baseResult: AnalysisResult = {
+    market,
+    odds: hasMarketOdds ? odds : 0,
+    modelProb,
+    impliedProb,
+    fairProb: impliedProb,
+    valueBet,
+    edgeLowerBound,
+    robustness,
+    uncertainty: Math.max(first.uncertainty ?? 0, second.uncertainty ?? 0),
+    kelly,
+    stake: hasMarketOdds
+      ? Number((bankroll * (kelly / 100) * Math.max(0, kellyFraction)).toFixed(2))
+      : 0,
+    risk: odds < 1.5 ? "Low" : "Medium",
+    confidence,
+    decision: "No Bet",
+    expectedValue: getExpectedValue(valueBet),
+    oddsBand: getOddsBand(odds),
+    marketFamily: getMarketFamily(market),
+    backendDecision: "Frontend fallback",
+    backendClassification: hasMarketOdds ? "Derived" : "Needs odds",
+  };
+
+  return decorateResult({
+    ...baseResult,
+    decision: getDecisionFromMetrics(baseResult),
+  });
+}
+
+function ensureDoubleChanceResults(
+  mappedResults: AnalysisResult[],
+  currentFormData: FormData
+): AnalysisResult[] {
+  const has1x = mappedResults.some((result) => result.market === "1X");
+  const has2x = mappedResults.some((result) => result.market === "2X");
+  const home = mappedResults.find((result) => result.market === "Home");
+  const draw = mappedResults.find((result) => result.market === "Draw");
+  const away = mappedResults.find((result) => result.market === "Away");
+
+  if ((!home || !draw || !away) || (has1x && has2x)) {
+    return mappedResults;
+  }
+
+  const nextResults = [...mappedResults];
+  const bankroll = Number(currentFormData.banca);
+  const kellyFraction = Number(currentFormData.fracao_kelly);
+
+  if (!has1x) {
+    nextResults.push(
+      buildDoubleChanceFallbackResult({
+        market: "1X",
+        odds: Number(currentFormData.odd_1x),
+        first: home,
+        second: draw,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  if (!has2x) {
+    nextResults.push(
+      buildDoubleChanceFallbackResult({
+        market: "2X",
+        odds: Number(currentFormData.odd_2x),
+        first: away,
+        second: draw,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  return nextResults;
+}
+
+function buildHybridMarketFallbackResult({
+  market,
+  odds,
+  homeLambda,
+  awayLambda,
+  rho,
+  bankroll,
+  kellyFraction,
+}: {
+  market: "1X + Under 3.5" | "2X + Under 3.5" | "1X + Over 1.5" | "2X + Over 1.5";
+  odds: number;
+  homeLambda: number;
+  awayLambda: number;
+  rho: number;
+  bankroll: number;
+  kellyFraction: number;
+}): AnalysisResult {
+  const modelProb = toPercent(
+    getHybridMarketProbability({
+      market,
+      homeLambda,
+      awayLambda,
+      rho,
+    }) * 100
+  );
+  const hasMarketOdds = odds > 1;
+  const impliedProb = hasMarketOdds ? getImpliedProbFromOdds(odds) : 0;
+  const valueBet = hasMarketOdds ? toPercent(modelProb - impliedProb) : 0;
+  const kelly = hasMarketOdds ? getFallbackKellyPct(modelProb, odds) : 0;
+  const edgeLowerBound = hasMarketOdds ? valueBet : -999;
+  const robustness = hasMarketOdds && valueBet > 0 ? 100 : 0;
+  const confidence = clampNumber(
+    4.8 + Math.max(0, valueBet) * 0.08 + (robustness / 100) * 1.4,
+    0,
+    8
+  );
+
+  const baseResult: AnalysisResult = {
+    market,
+    odds: hasMarketOdds ? odds : 0,
+    modelProb,
+    impliedProb,
+    fairProb: impliedProb,
+    valueBet,
+    edgeLowerBound,
+    robustness,
+    uncertainty: 0,
+    kelly,
+    stake: hasMarketOdds
+      ? Number((bankroll * (kelly / 100) * Math.max(0, kellyFraction)).toFixed(2))
+      : 0,
+    risk: odds < 1.7 ? "Low" : "Medium",
+    confidence: toPercent(confidence),
+    decision: "No Bet",
+    expectedValue: getExpectedValue(valueBet),
+    oddsBand: getOddsBand(odds),
+    marketFamily: getMarketFamily(market),
+    backendDecision: "Frontend exact score-matrix fallback",
+    backendClassification: hasMarketOdds ? "Matrix derived" : "Needs odds",
+  };
+
+  return decorateResult({
+    ...baseResult,
+    decision: getDecisionFromMetrics(baseResult),
+  });
+}
+
+function ensureHybridMarketResults({
+  mappedResults,
+  currentFormData,
+  homeLambda,
+  awayLambda,
+}: {
+  mappedResults: AnalysisResult[];
+  currentFormData: FormData;
+  homeLambda: number;
+  awayLambda: number;
+}): AnalysisResult[] {
+  const has1xUnder35 = mappedResults.some(
+    (result) => result.market === "1X + Under 3.5"
+  );
+  const has2xUnder35 = mappedResults.some(
+    (result) => result.market === "2X + Under 3.5"
+  );
+  const has1xOver15 = mappedResults.some(
+    (result) => result.market === "1X + Over 1.5"
+  );
+  const has2xOver15 = mappedResults.some(
+    (result) => result.market === "2X + Over 1.5"
+  );
+
+  if (has1xUnder35 && has2xUnder35 && has1xOver15 && has2xOver15) return mappedResults;
+
+  const nextResults = [...mappedResults];
+  const bankroll = Number(currentFormData.banca);
+  const kellyFraction = Number(currentFormData.fracao_kelly);
+  const rho = Number(currentFormData.dixon_coles_rho);
+
+  if (!has1xUnder35) {
+    nextResults.push(
+      buildHybridMarketFallbackResult({
+        market: "1X + Under 3.5",
+        odds: Number(currentFormData.odd_1x_menos_35),
+        homeLambda,
+        awayLambda,
+        rho: Number.isFinite(rho) ? rho : -0.08,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  if (!has2xUnder35) {
+    nextResults.push(
+      buildHybridMarketFallbackResult({
+        market: "2X + Under 3.5",
+        odds: Number(currentFormData.odd_2x_menos_35),
+        homeLambda,
+        awayLambda,
+        rho: Number.isFinite(rho) ? rho : -0.08,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  if (!has1xOver15) {
+    nextResults.push(
+      buildHybridMarketFallbackResult({
+        market: "1X + Over 1.5",
+        odds: Number(currentFormData.odd_1x_mais_15),
+        homeLambda,
+        awayLambda,
+        rho: Number.isFinite(rho) ? rho : -0.08,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  if (!has2xOver15) {
+    nextResults.push(
+      buildHybridMarketFallbackResult({
+        market: "2X + Over 1.5",
+        odds: Number(currentFormData.odd_2x_mais_15),
+        homeLambda,
+        awayLambda,
+        rho: Number.isFinite(rho) ? rho : -0.08,
+        bankroll,
+        kellyFraction,
+      })
+    );
+  }
+
+  return nextResults;
 }
 
 function formatCurrency(value: number): string {
@@ -411,6 +827,12 @@ export default function MatchAnalysis() {
       Number(formData.odd_casa) > 1 &&
       Number(formData.odd_empate) > 1 &&
       Number(formData.odd_fora) > 1 &&
+      Number(formData.odd_1x) > 1 &&
+      Number(formData.odd_2x) > 1 &&
+      Number(formData.odd_1x_menos_35) > 1 &&
+      Number(formData.odd_2x_menos_35) > 1 &&
+      Number(formData.odd_1x_mais_15) > 1 &&
+      Number(formData.odd_2x_mais_15) > 1 &&
       Number(formData.odd_mais_25) > 1 &&
       Number(formData.odd_menos_25) > 1;
     const bankrollReady =
@@ -458,6 +880,26 @@ export default function MatchAnalysis() {
     );
   }, [bestBet, bankrollStats.currentBankroll, exposureSummary.openExposurePct]);
 
+  const bettingRecommendations = useMemo(() => {
+    return results
+      .filter((result) => result.tier && result.tier !== "discard")
+      .sort((a, b) => {
+        const scoreDiff = (b.eliteScore ?? 0) - (a.eliteScore ?? 0);
+        if (scoreDiff !== 0) return scoreDiff;
+
+        return (b.edgeLowerBound ?? b.valueBet) - (a.edgeLowerBound ?? a.valueBet);
+      })
+      .slice(0, 5)
+      .map((result) => ({
+        result,
+        stakeRecommendation: getRecommendedStake(
+          bankrollStats.currentBankroll,
+          result.tier || "discard",
+          exposureSummary.openExposurePct
+        ),
+      }));
+  }, [bankrollStats.currentBankroll, exposureSummary.openExposurePct, results]);
+
   const chartData = useMemo(
     () =>
       results.map((r) => ({
@@ -467,6 +909,7 @@ export default function MatchAnalysis() {
       })),
     [results]
   );
+  const chartHeight = Math.max(280, chartData.length * 30);
 
   const whyThisBetText = useMemo(() => {
     if (!bestBet) return "";
@@ -488,6 +931,17 @@ export default function MatchAnalysis() {
     if (!bestBet) return [];
     return getHistoricalSignalsForResult(bestBet);
   }, [bestBet]);
+
+  const similarMatchMemory = useMemo(() => {
+    if (!bestBet) return null;
+
+    return getSimilarMatchMemory({
+      analyses: existingAnalyses,
+      currentResult: bestBet,
+      currentLeague: formData.liga || "Unspecified",
+      currentTotalXg: summary.totalXg,
+    });
+  }, [bestBet, existingAnalyses, formData.liga, summary.totalXg]);
 
   const runAnalysis = async () => {
     setIsLoading(true);
@@ -536,6 +990,12 @@ export default function MatchAnalysis() {
         odd_casa: Number(formData.odd_casa),
         odd_empate: Number(formData.odd_empate),
         odd_fora: Number(formData.odd_fora),
+        odd_1x: Number(formData.odd_1x),
+        odd_2x: Number(formData.odd_2x),
+        odd_1x_menos_35: Number(formData.odd_1x_menos_35),
+        odd_2x_menos_35: Number(formData.odd_2x_menos_35),
+        odd_1x_mais_15: Number(formData.odd_1x_mais_15),
+        odd_2x_mais_15: Number(formData.odd_2x_mais_15),
 
         banca: Number(formData.banca),
         fracao_kelly: Number(formData.fracao_kelly),
@@ -559,7 +1019,7 @@ export default function MatchAnalysis() {
 
       const data: BackendResponse = await response.json();
 
-      const mappedResults: AnalysisResult[] = data.mercados.map((m) => {
+      const backendResults: AnalysisResult[] = data.mercados.map((m) => {
         const mappedMarket = mapMarketName(m.mercado);
 
         const baseResult: AnalysisResult = {
@@ -591,8 +1051,28 @@ export default function MatchAnalysis() {
           decision: getDecisionFromMetrics(baseResult),
         });
       });
+      const doubleChanceResults = ensureDoubleChanceResults(backendResults, formData);
+      const mappedResults = ensureHybridMarketResults({
+        mappedResults: doubleChanceResults,
+        currentFormData: formData,
+        homeLambda: data.lambda_casa,
+        awayLambda: data.lambda_fora,
+      });
+      const calibrationModel = buildCalibrationModel(existingAnalyses);
+      const calibratedResults = mappedResults.map((result) => {
+        const calibrated = applyCalibrationToResult(
+          result,
+          formData.liga || "Unspecified",
+          calibrationModel
+        );
 
-      const bestResultForSummary = [...mappedResults].sort(
+        return decorateResult({
+          ...calibrated,
+          decision: getDecisionFromMetrics(calibrated),
+        });
+      });
+
+      const bestResultForSummary = [...calibratedResults].sort(
         (a, b) => (b.eliteScore ?? 0) - (a.eliteScore ?? 0)
       )[0];
 
@@ -603,7 +1083,7 @@ export default function MatchAnalysis() {
         confidence: Number((bestResultForSummary?.confidence ?? 0).toFixed(1)),
       };
 
-      setResults(mappedResults);
+      setResults(calibratedResults);
       setSummary(summaryData);
 
       const bankrollBefore = calculateNextBankrollBefore();
@@ -615,7 +1095,7 @@ export default function MatchAnalysis() {
         awayTeam: formData.equipa_fora,
         league: formData.liga,
         summary: summaryData,
-        results: mappedResults,
+        results: calibratedResults,
         tracking: {
           ...createEmptyTracking(),
           bankrollBefore,
@@ -1061,6 +1541,56 @@ export default function MatchAnalysis() {
                         />
                       </div>
                     </div>
+
+                    <div>
+                      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                        Double Chance
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          label="1X"
+                          value={formData.odd_1x}
+                          onChange={(v) => updateField("odd_1x", v)}
+                          type="number"
+                          description="Home or draw."
+                        />
+                        <FormField
+                          label="2X"
+                          value={formData.odd_2x}
+                          onChange={(v) => updateField("odd_2x", v)}
+                          type="number"
+                          description="Away or draw."
+                        />
+                        <FormField
+                          label="1X + Under 3.5"
+                          value={formData.odd_1x_menos_35}
+                          onChange={(v) => updateField("odd_1x_menos_35", v)}
+                          type="number"
+                          description="Home or draw, with 3 goals or fewer."
+                        />
+                        <FormField
+                          label="2X + Under 3.5"
+                          value={formData.odd_2x_menos_35}
+                          onChange={(v) => updateField("odd_2x_menos_35", v)}
+                          type="number"
+                          description="Away or draw, with 3 goals or fewer."
+                        />
+                        <FormField
+                          label="1X + Over 1.5"
+                          value={formData.odd_1x_mais_15}
+                          onChange={(v) => updateField("odd_1x_mais_15", v)}
+                          type="number"
+                          description="Home or draw, with at least 2 goals."
+                        />
+                        <FormField
+                          label="2X + Over 1.5"
+                          value={formData.odd_2x_mais_15}
+                          onChange={(v) => updateField("odd_2x_mais_15", v)}
+                          type="number"
+                          description="Away or draw, with at least 2 goals."
+                        />
+                      </div>
+                    </div>
                   </div>
                 </SectionCard>
 
@@ -1339,6 +1869,53 @@ export default function MatchAnalysis() {
                           )}
                         </div>
                       )}
+
+                      {bettingRecommendations.length > 0 && (
+                        <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="mb-3 text-xs uppercase tracking-wider text-white/45">
+                            Recommendation Queue
+                          </p>
+                          <div className="space-y-2">
+                            {bettingRecommendations.map(({ result, stakeRecommendation }) => (
+                              <div
+                                key={result.market}
+                                className="flex flex-col gap-2 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-medium text-foreground">
+                                      {result.market}
+                                    </p>
+                                    {result.tier ? <TierBadge tier={result.tier} /> : null}
+                                  </div>
+                                  <p className="mt-1 text-xs text-white/45">
+                                    Edge floor{" "}
+                                    <span className="font-mono-data text-white/70">
+                                      {(result.edgeLowerBound ?? result.valueBet).toFixed(1)}%
+                                    </span>{" "}
+                                    · Model{" "}
+                                    <span className="font-mono-data text-white/70">
+                                      {result.modelProb.toFixed(1)}%
+                                    </span>{" "}
+                                    · Odds{" "}
+                                    <span className="font-mono-data text-white/70">
+                                      {result.odds.toFixed(2)}
+                                    </span>
+                                  </p>
+                                </div>
+                                <div className="text-left sm:text-right">
+                                  <p className="font-mono-data text-sm font-semibold text-white">
+                                    {formatCurrency(stakeRecommendation.recommendedAmount)}
+                                  </p>
+                                  <p className="text-xs text-white/45">
+                                    {stakeRecommendation.recommendedPct.toFixed(2)}%
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-sm text-white/60">
@@ -1387,6 +1964,107 @@ export default function MatchAnalysis() {
                   </motion.div>
                 )}
 
+                {bestBet && similarMatchMemory && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.39 }}
+                    className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                  >
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
+                          Similar Match Memory
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold text-white">
+                          {similarMatchMemory.verdict}
+                        </h3>
+                      </div>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                          similarMatchMemory.tone === "positive"
+                            ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200"
+                            : similarMatchMemory.tone === "negative"
+                            ? "border-red-300/20 bg-red-300/[0.08] text-red-200"
+                            : "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"
+                        }`}
+                      >
+                        Real Audits Only
+                      </span>
+                    </div>
+
+                    <p className="text-sm leading-relaxed text-white/65">
+                      {similarMatchMemory.summary}
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                          Samples
+                        </p>
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                          {similarMatchMemory.samples}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                          Actual
+                        </p>
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                          {similarMatchMemory.hitRate.toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                          Expected
+                        </p>
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                          {similarMatchMemory.expectedHitRate.toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                          Avg Similarity
+                        </p>
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                          {similarMatchMemory.avgSimilarity.toFixed(0)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {similarMatchMemory.examples.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {similarMatchMemory.examples.map((example) => (
+                          <div
+                            key={`${example.match}-${example.market}-${example.similarity}`}
+                            className="rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-white">
+                                {example.match}
+                              </p>
+                              <span
+                                className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                                  example.outcome === "green"
+                                    ? "bg-emerald-300/[0.09] text-emerald-200"
+                                    : "bg-red-300/[0.09] text-red-200"
+                                }`}
+                              >
+                                {example.outcome}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-white/45">
+                              {example.league} · Odds {example.odds.toFixed(2)} · Model{" "}
+                              {example.modelProb.toFixed(1)}% · Similarity{" "}
+                              {example.similarity.toFixed(0)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1396,7 +2074,7 @@ export default function MatchAnalysis() {
                   <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
                     Model vs Market Probability
                   </h3>
-                  <ResponsiveContainer width="100%" height={240}>
+                  <ResponsiveContainer width="100%" height={chartHeight}>
                     <BarChart data={chartData} layout="vertical">
                       <XAxis
                         type="number"
@@ -1411,15 +2089,21 @@ export default function MatchAnalysis() {
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: "hsl(215, 20%, 65%)", fontSize: 11 }}
-                        width={85}
+                        width={132}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "hsl(222, 47%, 7%)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: 12,
+                          background:
+                            "linear-gradient(180deg, rgba(8,21,36,0.98), rgba(3,9,20,0.995))",
+                          border: "1px solid rgba(190,255,246,0.16)",
+                          borderRadius: 16,
+                          boxShadow:
+                            "0 22px 58px -28px rgba(0,0,0,0.78)",
+                          color: "rgba(255,255,255,0.88)",
                           fontSize: 12,
                         }}
+                        labelStyle={{ color: "rgba(226,255,251,0.62)" }}
+                        itemStyle={{ color: "rgba(255,255,255,0.86)" }}
                       />
                       <Bar
                         dataKey="model"

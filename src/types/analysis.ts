@@ -8,7 +8,11 @@ export interface AnalysisResult {
   odds: number;
   modelProb: number;
   impliedProb: number;
+  fairProb?: number;
   valueBet: number;
+  edgeLowerBound?: number;
+  robustness?: number;
+  uncertainty?: number;
   kelly: number;
   stake: number;
   risk: RiskLevel;
@@ -25,6 +29,13 @@ export interface AnalysisResult {
   historicalSample?: number;
   historicalRoi?: number;
   historicalHitRate?: number;
+  backendDecision?: string;
+  backendClassification?: string;
+  rawModelProb?: number;
+  calibrationAdjustment?: number;
+  calibrationLabel?: "Boosted" | "Calibrated" | "Caution" | "Avoid" | "Learning";
+  calibrationConfidence?: number;
+  calibrationReasons?: string[];
 }
 
 export interface AnalysisSummary {
@@ -32,6 +43,27 @@ export interface AnalysisSummary {
   awayXg: number;
   totalXg: number;
   confidence: number;
+}
+
+export type ModelAuditOutcome = "green" | "red" | "void";
+
+export interface ModelAuditMarketResult {
+  market: string;
+  outcome: ModelAuditOutcome;
+  odds?: number;
+  modelProb: number;
+  impliedProb: number;
+  valueBet: number;
+  confidence: number;
+  decision: DecisionType;
+  tier?: BetTier;
+}
+
+export interface ModelAuditSnapshot {
+  homeGoals: number;
+  awayGoals: number;
+  auditedAt: string;
+  outcomes: ModelAuditMarketResult[];
 }
 
 export interface TrackedBet {
@@ -93,6 +125,7 @@ export interface SavedAnalysis {
   league: string;
   summary: AnalysisSummary;
   results: AnalysisResult[];
+  modelAudit?: ModelAuditSnapshot | null;
   tracking: TrackedBet;
   extraBets?: TrackedAnalysisBet[];
 }

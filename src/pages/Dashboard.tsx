@@ -171,7 +171,7 @@ function CompactStatCard({
       <motion.div
         whileHover={{ y: -3 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
-        className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
+        className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object relative overflow-hidden rounded-[20px] border border-white/8 px-4 py-3.5"
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
         <div className="relative">
@@ -270,7 +270,7 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`scorelab-board-3d overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] ${className}`}
+      className={`scorelab-board-3d scorelab-analytics-panel overflow-hidden rounded-[26px] border border-white/8 ${className}`}
     >
       <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
         <div>
@@ -278,7 +278,7 @@ function SectionCard({
           <p className="mt-1 text-xs leading-6 text-white/58 md:text-[13px]">{description}</p>
         </div>
         {badge ? (
-          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+          <span className="scorelab-analytics-badge rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
             {badge}
           </span>
         ) : null}
@@ -470,7 +470,7 @@ function CustomTooltip({
   const value = payload[0]?.value;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[hsl(222,47%,7%)] px-4 py-3 shadow-2xl backdrop-blur-md">
+    <div className="scorelab-chart-tooltip rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
       <p className="mb-1 text-xs uppercase tracking-wider text-white/50">
         {label}
       </p>
@@ -617,7 +617,7 @@ function AIReviewColumn({
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { analyses, financialSnapshot, dataVersion } = useScoreLabData();
+  const { analyses, multiples, financialSnapshot, dataVersion } = useScoreLabData();
   const bankrollStats = financialSnapshot.stats;
   const [aiSummary, setAiSummary] = useState<DashboardAISummary | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -692,7 +692,7 @@ export default function Dashboard() {
         ? "Moderate"
         : "High";
 
-    const performance = getAdvancedPerformanceBreakdown(validAnalyses);
+    const performance = getAdvancedPerformanceBreakdown(validAnalyses, multiples);
     const autoInsights = getDashboardAutoInsights();
     
 
@@ -708,7 +708,7 @@ export default function Dashboard() {
       performance,
       autoInsights,
     };
-  }, [analyses, bankrollStats.currentBankroll, financialSnapshot]);
+  }, [analyses, multiples, bankrollStats.currentBankroll, financialSnapshot]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
   const calibrationModel = useMemo(() => buildCalibrationModel(analyses), [analyses]);
@@ -930,7 +930,7 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-8 p-6"
+        className="scorelab-dashboard-flow space-y-9 p-4 sm:p-5 md:p-6"
       >
         <MatchdayHero
           eyebrow="Dashboard Workspace"
@@ -968,7 +968,41 @@ export default function Dashboard() {
           }
         />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <motion.div
+          variants={fadeUp}
+          className="scorelab-command-strip grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 p-3 sm:grid-cols-3"
+        >
+          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
+              Analysis Layer
+            </p>
+            <p className="mt-2 text-sm font-semibold text-white">
+              {dashboardData.analysesToday} analyses today
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
+              Performance Layer
+            </p>
+            <p className="mt-2 text-sm font-semibold text-white">
+              {marketPerformanceRows.length} markets tracked
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
+              Bankroll Layer
+            </p>
+            <p className="mt-2 text-sm font-semibold text-white">
+              {dashboardData.riskLevel} risk · €{dashboardData.openExposure.toFixed(2)} open
+            </p>
+          </div>
+        </motion.div>
+
+        <div className="scorelab-section-kicker">
+          <span>Executive Summary</span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           <CompactStatCard
             label="Settled Bets"
             value={
@@ -983,6 +1017,12 @@ export default function Dashboard() {
             value={`${bankrollStats.roi.toFixed(2)}%`}
             change={`P/L €${bankrollStats.totalProfitLoss.toFixed(2)}`}
             changeType={bankrollStats.roi >= 0 ? "positive" : "negative"}
+          />
+          <CompactStatCard
+            label="Win Rate"
+            value={`${bankrollStats.hitRate.toFixed(2)}%`}
+            change={`${bankrollStats.totalGreens} green · ${bankrollStats.totalReds} red`}
+            changeType={bankrollStats.hitRate >= 50 ? "positive" : "negative"}
           />
           <CompactStatCard
             label="Avg Confidence"
@@ -1003,6 +1043,10 @@ export default function Dashboard() {
         </div>
 
         {(dashboardData.autoInsights ?? []).length > 0 && (
+          <>
+          <div className="scorelab-section-kicker">
+            <span>AI Signals</span>
+          </div>
           <motion.div
             variants={fadeUp}
             className="grid grid-cols-1 gap-4 xl:grid-cols-2"
@@ -1016,6 +1060,7 @@ export default function Dashboard() {
               />
             ))}
           </motion.div>
+          </>
         )}
 
         {SHOW_AI_READS ? (
@@ -1093,10 +1138,14 @@ export default function Dashboard() {
         </SectionCard>
         ) : null}
 
+        <div className="scorelab-section-kicker">
+          <span>Prediction Board</span>
+        </div>
+
           {topValueToday ? (
             <motion.div
               variants={fadeUp}
-              className="scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 p-4"
+              className="scorelab-board-3d scorelab-top-value-card relative overflow-hidden rounded-[30px] border border-white/8 p-5"
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,var(--scorelab-accent-a-soft),transparent_32%),radial-gradient(circle_at_12%_100%,var(--scorelab-accent-b-soft),transparent_28%)]" />
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--scorelab-control-border-hover),transparent)]" />
@@ -1240,6 +1289,10 @@ export default function Dashboard() {
           </div>
         </SectionCard>
 
+        <div className="scorelab-section-kicker">
+          <span>Performance Charts</span>
+        </div>
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <ChartCard
             title="ROI by Odds Bucket"
@@ -1288,6 +1341,10 @@ export default function Dashboard() {
             cardClassName="border-white/6 opacity-[0.94]"
             chartHeightClassName="h-[205px]"
           />
+        </div>
+
+        <div className="scorelab-section-kicker">
+          <span>Validation Core</span>
         </div>
 
         <SectionCard

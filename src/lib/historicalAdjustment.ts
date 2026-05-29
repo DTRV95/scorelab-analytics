@@ -39,9 +39,16 @@ function clamp(value: number, min: number, max: number) {
 function getMarketFamily(market: string): string {
   const lower = market.toLowerCase();
 
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("under 3.5")) {
+    return "double-chance-under";
+  }
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("over 1.5")) {
+    return "double-chance-over";
+  }
   if (lower.includes("over")) return "totals-over";
   if (lower.includes("under")) return "totals-under";
   if (lower.includes("btts")) return "btts";
+  if (lower === "1x" || lower === "2x") return "double-chance";
   if (["home", "draw", "away"].includes(lower)) return "1x2";
   return "other";
 }

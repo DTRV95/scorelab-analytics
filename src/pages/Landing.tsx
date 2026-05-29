@@ -1,4 +1,6 @@
 ﻿import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
@@ -145,33 +147,36 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
       <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_15%_12%,rgba(34,211,238,0.14),transparent_20%),radial-gradient(circle_at_82%_10%,rgba(34,197,94,0.12),transparent_18%),radial-gradient(circle_at_18%_42%,rgba(34,211,238,0.08),transparent_24%),radial-gradient(circle_at_76%_58%,rgba(34,197,94,0.07),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(34,211,238,0.07),transparent_24%),linear-gradient(180deg,rgba(6,11,20,1)_0%,rgba(7,17,31,1)_30%,rgba(6,13,24,1)_64%,rgba(5,12,21,1)_100%)]" />
       <div className="fixed inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:88px_88px] opacity-40" />
       {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+      <nav className="fixed top-0 z-50 w-full border-b border-white/8 bg-background/66 backdrop-blur-2xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_10px_30px_rgba(34,211,238,0.18)]">
               <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
               <BarChart3 className="relative w-4 h-4 text-cyan-100" strokeWidth={1.7} />
             </div>
-            <span className="font-bold text-foreground text-lg tracking-tight bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
+            <div>
+              <span className="block bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-lg font-black tracking-[-0.04em] text-transparent">ScoreLab</span>
+              <span className="-mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-white/34 sm:block">Betting Intelligence OS</span>
+            </div>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How it Works</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] p-1 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] md:flex">
+            <a href="#features" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Features</a>
+            <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Workflow</a>
+            <a href="#pricing" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login"><Button variant="ghost" size="sm">Log In</Button></Link>
+            <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Log In</Button></Link>
             <Link to="/signup"><Button variant="hero" size="sm">Start Free</Button></Link>
           </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden" onMouseMove={handleMouseMove}>
+      <section className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 md:pb-24 md:pt-32" onMouseMove={handleMouseMove}>
         {/* Animated gradient background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <motion.div
@@ -207,7 +212,7 @@ export default function Landing() {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto relative lg:grid lg:grid-cols-[1fr_0.84fr] lg:gap-8 lg:items-start">
+        <div className="relative mx-auto max-w-7xl lg:grid lg:grid-cols-[1fr_0.84fr] lg:items-start lg:gap-10">
           <motion.div
             className="max-w-3xl relative z-10 lg:-mt-6"
             initial="hidden"
@@ -217,11 +222,13 @@ export default function Landing() {
               visible: { transition: { staggerChildren: 0.1 } },
             }}
           >
-            <motion.div variants={fadeIn} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full ring-1 ring-primary/15 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] text-xs text-muted-foreground mb-6 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Football Betting Intelligence Platform
+            <motion.div variants={fadeIn} custom={0} className="mb-6">
+              <Badge variant="outline" className="gap-2 border-primary/18 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] py-1.5 text-muted-foreground shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                Football Betting Intelligence Platform
+              </Badge>
             </motion.div>
-            <motion.h1 variants={fadeIn} custom={1} className="text-5xl md:text-7xl font-bold text-foreground leading-[1.05]">
+            <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
               Football Betting{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Intelligence
@@ -229,25 +236,27 @@ export default function Landing() {
               ,{" "}
               <span className="text-gradient-primary">Reimagined</span>
             </motion.h1>
-            <motion.p variants={fadeIn} custom={2} className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
-              Advanced statistical models and simulations to identify real value in the market.
+            <motion.p variants={fadeIn} custom={2} className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
+              A premium football analysis workspace for probability, value detection, bankroll discipline and model calibration.
             </motion.p>
-            <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-wrap gap-4">
+            <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/analysis"><Button variant="hero" size="xl">Start Analysis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
               <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explore Value Radar</Button></Link>
             </motion.div>
 
             {/* Animated Stats */}
-            <motion.div variants={fadeIn} custom={4} className="mt-10 flex items-center gap-8 flex-wrap">
+            <motion.div variants={fadeIn} custom={4} className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { value: 15420, suffix: "", label: "Analyses Run" },
                 { value: 67.4, suffix: "%", label: "Avg. Accuracy" },
                 { value: 11.8, suffix: "%", label: "Avg. Edge" },
               ].map(s => (
-                <div key={s.label} className="rounded-2xl border border-white/5 bg-[linear-gradient(180deg,rgba(34,211,238,0.05),rgba(255,255,255,0.025))] px-5 py-4 text-center backdrop-blur-sm shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-                  <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                </div>
+                <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+                  <CardContent className="p-4">
+                    <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{s.label}</p>
+                  </CardContent>
+                </Card>
               ))}
             </motion.div>
           </motion.div>
@@ -846,13 +855,14 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_24%,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,rgba(7,17,31,0.74),rgba(5,12,21,0.94))]" />
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Testimonials</p>
+          <div className="relative text-center mb-16">
+            <Badge variant="outline" className="mb-3 border-primary/18 text-primary">Testimonials</Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Trusted by Analysts</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
             {testimonials.map((t, i) => (
               <motion.div
                 key={t.name}
@@ -861,7 +871,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -2 }}
-                className="rounded-[26px] bg-card/95 ring-surface p-6 card-shadow transition-all duration-300 hover:-translate-y-1 backdrop-blur-xl"
+                className="rounded-[28px] border border-cyan-100/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.82),rgba(8,19,33,0.94))] p-6 shadow-[0_24px_72px_-28px_rgba(34,211,238,0.18)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: t.rating }).map((_, i) => (
@@ -880,34 +890,57 @@ export default function Landing() {
       </section>
 
       {/* CTA Footer */}
-      <section className="py-24 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.04)_0%,_transparent_50%)]" />
-        <div className="max-w-3xl mx-auto text-center relative">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+      <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,var(--scorelab-accent-a-soft),transparent_28%),radial-gradient(circle_at_50%_80%,var(--scorelab-accent-b-soft),transparent_34%),linear-gradient(180deg,rgba(7,17,31,0.84),rgba(5,12,21,0.98))]" />
+        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[36px] border border-cyan-100/10 bg-[linear-gradient(135deg,rgba(13,30,47,0.92),rgba(8,19,33,0.98))] px-6 py-12 text-center shadow-[0_34px_96px_-40px_rgba(34,211,238,0.32)] backdrop-blur-xl md:px-12 md:py-16">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.055),transparent)] opacity-70" />
+          <Badge variant="outline" className="relative mb-5 border-primary/18 text-primary">Ready for kickoff</Badge>
+          <h2 className="relative text-3xl font-black tracking-[-0.045em] text-foreground md:text-5xl">
             Ready to Find Your{" "}
             <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
               Edge?
             </span>
           </h2>
-          <p className="mt-4 text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
-          <div className="mt-8 flex justify-center gap-4">
+          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
+          <div className="relative mt-8 flex justify-center gap-4">
             <Link to="/signup"><Button variant="hero" size="xl">Start Free Today <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+      <footer className="border-t border-white/8 px-4 py-10 sm:px-6">
+        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr] md:items-start">
+          <div>
+            <div className="flex items-center gap-2">
             <div className="relative flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_8px_22px_rgba(34,211,238,0.14)]">
               <div className="absolute inset-[1px] rounded-[7px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
               <BarChart3 className="relative w-3 h-3 text-cyan-100" strokeWidth={1.6} />
             </div>
             <span className="text-sm font-semibold bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
-            <span className="text-xs text-muted-foreground ml-2">Where statistics meet betting strategy.</span>
+            </div>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Where football statistics, market discipline and bankroll strategy become one operating system.</p>
           </div>
-          <p className="text-xs text-muted-foreground">© 2026 ScoreLab. All rights reserved.</p>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Product</p>
+            <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
+              <a href="#features" className="transition-colors hover:text-foreground">Features</a>
+              <a href="#how-it-works" className="transition-colors hover:text-foreground">Workflow</a>
+              <a href="#pricing" className="transition-colors hover:text-foreground">Pricing</a>
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Launch</p>
+            <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
+              <Link to="/analysis" className="transition-colors hover:text-foreground">Start Analysis</Link>
+              <Link to="/dashboard" className="transition-colors hover:text-foreground">Open Dashboard</Link>
+              <Link to="/signup" className="transition-colors hover:text-foreground">Create Account</Link>
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-white/8 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 ScoreLab. All rights reserved.</p>
+          <p>Built for disciplined analysis. Not financial advice.</p>
         </div>
       </footer>
     </div>

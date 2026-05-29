@@ -4,6 +4,23 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function getConservativeEdge(result: AnalysisResult): number {
+  return result.edgeLowerBound ?? result.valueBet ?? -999;
+}
+
+function getRobustness(result: AnalysisResult): number {
+  if (typeof result.robustness === "number") return result.robustness;
+
+  const confidence = result.confidence ?? 0;
+  const hasLegacyEdgeOnly = typeof result.edgeLowerBound !== "number";
+
+  return hasLegacyEdgeOnly ? clamp(confidence * 9, 0, 72) : 0;
+}
+
+function getUncertainty(result: AnalysisResult): number {
+  return result.uncertainty ?? 20;
+}
+
 export function getOddsBand(odds: number): string {
   if (odds < 1.9) return "low";
   if (odds < 2.4) return "mid";
@@ -13,18 +30,25 @@ export function getOddsBand(odds: number): string {
 export function getMarketFamily(market: string): string {
   const lower = market.toLowerCase();
 
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("under 3.5")) {
+    return "double-chance-under";
+  }
+  if ((lower.includes("1x") || lower.includes("2x")) && lower.includes("over 1.5")) {
+    return "double-chance-over";
+  }
   if (lower.includes("over")) return "totals-over";
   if (lower.includes("under")) return "totals-under";
   if (lower.includes("btts")) return "btts";
+  if (lower === "1x" || lower === "2x") return "double-chance";
   if (["home", "draw", "away"].includes(lower)) return "1x2";
   return "other";
 }
 
 export function getDecisionFromMetrics(result: AnalysisResult): AnalysisResult["decision"] {
   const edge = result.valueBet ?? 0;
-  const edgeLb = result.edgeLowerBound ?? -999;
+  const edgeLb = getConservativeEdge(result);
   const confidence = result.confidence ?? 0;
-  const robustness = result.robustness ?? 0;
+  const robustness = getRobustness(result);
   const kelly = result.kelly ?? 0;
   const odds = result.odds ?? 0;
 
@@ -50,9 +74,9 @@ export function getDecisionFromMetrics(result: AnalysisResult): AnalysisResult["
 
 export function getBetTierFromMetrics(result: AnalysisResult): BetTier {
   const decision = getDecisionFromMetrics(result);
-  const edgeLb = result.edgeLowerBound ?? -999;
+  const edgeLb = getConservativeEdge(result);
   const confidence = result.confidence ?? 0;
-  const robustness = result.robustness ?? 0;
+  const robustness = getRobustness(result);
   const kelly = result.kelly ?? 0;
   const odds = result.odds ?? 0;
 
@@ -85,11 +109,11 @@ export function getBetTierFromMetrics(result: AnalysisResult): BetTier {
 }
 
 export function getEliteScore(result: AnalysisResult): number {
-  const edgeLb = clamp((result.edgeLowerBound ?? 0) / 4, 0, 1);
+  const edgeLb = clamp(getConservativeEdge(result) / 4, 0, 1);
   const confidence = clamp((result.confidence ?? 0) / 10, 0, 1);
-  const robustness = clamp((result.robustness ?? 0) / 100, 0, 1);
+  const robustness = clamp(getRobustness(result) / 100, 0, 1);
   const kelly = clamp((result.kelly ?? 0) / 1.2, 0, 1);
-  const uncertaintyPenalty = clamp(1 - (result.uncertainty ?? 0) / 20, 0, 1);
+  const uncertaintyPenalty = clamp(1 - getUncertainty(result) / 20, 0, 1);
 
   const score =
     edgeLb * 0.33 +

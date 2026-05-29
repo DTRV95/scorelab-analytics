@@ -60,13 +60,16 @@ export function buildRadarOpportunities(
       const result = getTrackedOrBestResult(analysis);
       if (!result) return null;
       const league = analysis.league || "Unspecified";
+      const rawModelProb = result.rawModelProb ?? result.modelProb;
       const calibration = calibrateOpportunity(
         {
           league,
           market: result.market,
           odds: result.odds,
           confidence: result.confidence,
-          modelProb: result.modelProb,
+          modelProb: rawModelProb,
+          valueBet: result.valueBet,
+          marketFamily: result.marketFamily,
         },
         calibrationModel
       );
@@ -79,7 +82,7 @@ export function buildRadarOpportunities(
         league,
         market: result.market,
         edge: result.valueBet,
-        modelProb: result.modelProb,
+        modelProb: rawModelProb,
         calibratedProb: calibration.calibratedProb,
         calibrationLabel: calibration.label,
         calibrationMultiplier: calibration.multiplier,

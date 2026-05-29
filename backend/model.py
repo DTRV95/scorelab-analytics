@@ -199,11 +199,16 @@ def market_probabilities_from_matrix(matrix: np.ndarray) -> Dict[str, float]:
     over25 = 0.0
     over35 = 0.0
     btts_yes = 0.0
+    one_x_under35 = 0.0
+    two_x_under35 = 0.0
+    one_x_over15 = 0.0
+    two_x_over15 = 0.0
 
     size = matrix.shape[0]
     for i in range(size):
         for j in range(size):
             p = matrix[i, j]
+            total_goals = i + j
             if i > j:
                 home += p
             elif i == j:
@@ -211,12 +216,20 @@ def market_probabilities_from_matrix(matrix: np.ndarray) -> Dict[str, float]:
             else:
                 away += p
 
-            if i + j >= 3:
+            if total_goals >= 3:
                 over25 += p
-            if i + j >= 4:
+            if total_goals >= 4:
                 over35 += p
             if i >= 1 and j >= 1:
                 btts_yes += p
+            if total_goals <= 3 and i >= j:
+                one_x_under35 += p
+            if total_goals <= 3 and j >= i:
+                two_x_under35 += p
+            if total_goals >= 2 and i >= j:
+                one_x_over15 += p
+            if total_goals >= 2 and j >= i:
+                two_x_over15 += p
 
     return {
         "Mais de 2.5 Golos": over25,
@@ -228,7 +241,68 @@ def market_probabilities_from_matrix(matrix: np.ndarray) -> Dict[str, float]:
         "Casa": home,
         "Empate": draw,
         "Fora": away,
+        "1X": home + draw,
+        "2X": away + draw,
+        "1X e Menos de 3.5 Golos": one_x_under35,
+        "2X e Menos de 3.5 Golos": two_x_under35,
+        "1X e Mais de 1.5 Golos": one_x_over15,
+        "2X e Mais de 1.5 Golos": two_x_over15,
     }
+
+
+def pair_shift(probability: float, shift: float) -> float:
+    return clamp(probability + shift, 0.01, 0.99)
+
+
+def apply_goal_pressure_adjustments(
+    market_probs: Dict[str, float],
+    lambda_home: float,
+    lambda_away: float,
+    data,
+) -> Dict[str, float]:
+    adjusted = dict(market_probs)
+    strengths = get_attack_defense_strengths(data)
+    total_xg = lambda_home + lambda_away
+    lower_team_xg = min(lambda_home, lambda_away)
+    balance = lower_team_xg / max(max(lambda_home, lambda_away), 0.01)
+    mutual_scoring_pressure = clamp((lower_team_xg - 0.65) / 0.75, 0.0, 1.0)
+    open_game_pressure = clamp((total_xg - 2.35) / 1.1, 0.0, 1.0)
+    defensive_fragility = clamp(
+        (
+            strengths["home_defense_weakness"]
+            + strengths["away_defense_weakness"]
+            - 1.85
+        )
+        / 1.15,
+        0.0,
+        1.0,
+    )
+    low_goal_pressure = clamp((2.25 - total_xg) / 0.8, 0.0, 1.0)
+
+    btts_shift = (
+        0.075 * mutual_scoring_pressure * open_game_pressure * clamp(balance, 0.35, 1.0)
+        + 0.035 * defensive_fragility * mutual_scoring_pressure
+        - 0.055 * low_goal_pressure
+    )
+    over25_shift = (
+        0.065 * open_game_pressure
+        + 0.035 * defensive_fragility
+        - 0.045 * low_goal_pressure
+    )
+    over35_shift = (
+        0.035 * clamp((total_xg - 2.75) / 1.0, 0.0, 1.0)
+        + 0.018 * defensive_fragility
+        - 0.035 * low_goal_pressure
+    )
+
+    adjusted["Ambas Marcam"] = pair_shift(adjusted["Ambas Marcam"], btts_shift)
+    adjusted["BTTS No"] = 1 - adjusted["Ambas Marcam"]
+    adjusted["Mais de 2.5 Golos"] = pair_shift(adjusted["Mais de 2.5 Golos"], over25_shift)
+    adjusted["Menos de 2.5 Golos"] = 1 - adjusted["Mais de 2.5 Golos"]
+    adjusted["Mais de 3.5 Golos"] = pair_shift(adjusted["Mais de 3.5 Golos"], over35_shift)
+    adjusted["Menos de 3.5 Golos"] = 1 - adjusted["Mais de 3.5 Golos"]
+
+    return adjusted
 
 
 def fair_probs_two_way(odd_a: float, odd_b: float) -> Tuple[float, float]:
@@ -248,6 +322,10 @@ def fair_probs_three_way(home_odd: float, draw_odd: float, away_odd: float) -> T
     return tuple(inv / total for inv in invs)
 
 
+def fair_prob_single_market(odd: float) -> float:
+    return safe_div(1.0, odd, 0.0)
+
+
 def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, market_name: str, data) -> Tuple[float, float, float]:
     home_sample = effective_sample(data.jogos_casa, data.jogos_casa_rec)
     away_sample = effective_sample(data.jogos_fora, data.jogos_fora_rec)
@@ -262,7 +340,12 @@ def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, mar
         perturbed_home = clamp(np.random.normal(lambda_home, sigma_home), 0.05, 4.5)
         perturbed_away = clamp(np.random.normal(lambda_away, sigma_away), 0.05, 4.0)
         matrix = score_matrix(perturbed_home, perturbed_away, rho=context.rho)
-        market_probs = market_probabilities_from_matrix(matrix)
+        market_probs = apply_goal_pressure_adjustments(
+            market_probabilities_from_matrix(matrix),
+            perturbed_home,
+            perturbed_away,
+            data,
+        )
         draws.append(market_probs[market_name])
 
     values = np.array(draws)
@@ -282,8 +365,14 @@ def market_structure_score(market_name: str, odds: float, total_xg: float) -> fl
 
     if "empate" in market:
         score -= 0.08
-    if "menos de 3.5" in market and total_xg > 3.3:
-        score -= 0.10
+    if "menos de 3.5" in market and total_xg > 2.65:
+        score -= 0.12
+    if "ambas" in market and total_xg > 2.35:
+        score += 0.06
+    if "mais de 2.5" in market and total_xg > 2.45:
+        score += 0.05
+    if "menos de 2.5" in market and total_xg > 2.45:
+        score -= 0.07
     if "mais de 3.5" in market and total_xg < 2.4:
         score -= 0.12
     if odds < 1.55 or odds > 4.5:
@@ -439,12 +528,23 @@ def analisar_jogo(data):
     context = get_league_context(data)
 
     base_matrix = score_matrix(lambda_casa, lambda_fora, rho=context.rho)
-    model_probs = market_probabilities_from_matrix(base_matrix)
+    model_probs = apply_goal_pressure_adjustments(
+        market_probabilities_from_matrix(base_matrix),
+        lambda_casa,
+        lambda_fora,
+        data,
+    )
 
     fair_over25, fair_under25 = fair_probs_two_way(data.odd_mais_25, data.odd_menos_25)
     fair_over35, fair_under35 = fair_probs_two_way(data.odd_mais_35, data.odd_menos_35)
     fair_btts_yes, fair_btts_no = fair_probs_two_way(data.odd_ambas_marcam, data.odd_ambas_nao_marcam)
     fair_home, fair_draw, fair_away = fair_probs_three_way(data.odd_casa, data.odd_empate, data.odd_fora)
+    fair_1x = fair_prob_single_market(data.odd_1x)
+    fair_2x = fair_prob_single_market(data.odd_2x)
+    fair_1x_under35 = fair_prob_single_market(data.odd_1x_menos_35)
+    fair_2x_under35 = fair_prob_single_market(data.odd_2x_menos_35)
+    fair_1x_over15 = fair_prob_single_market(data.odd_1x_mais_15)
+    fair_2x_over15 = fair_prob_single_market(data.odd_2x_mais_15)
 
     market_definitions = [
         ("Mais de 2.5 Golos", data.odd_mais_25, fair_over25),
@@ -456,6 +556,12 @@ def analisar_jogo(data):
         ("Casa", data.odd_casa, fair_home),
         ("Empate", data.odd_empate, fair_draw),
         ("Fora", data.odd_fora, fair_away),
+        ("1X", data.odd_1x, fair_1x),
+        ("2X", data.odd_2x, fair_2x),
+        ("1X e Menos de 3.5 Golos", data.odd_1x_menos_35, fair_1x_under35),
+        ("2X e Menos de 3.5 Golos", data.odd_2x_menos_35, fair_2x_under35),
+        ("1X e Mais de 1.5 Golos", data.odd_1x_mais_15, fair_1x_over15),
+        ("2X e Mais de 1.5 Golos", data.odd_2x_mais_15, fair_2x_over15),
     ]
 
     markets = []

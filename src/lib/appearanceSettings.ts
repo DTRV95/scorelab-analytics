@@ -15,6 +15,8 @@ export interface AppearancePreset {
 }
 
 const APPEARANCE_KEY = "scorelab_appearance";
+const APPEARANCE_DEFAULT_MIGRATION_KEY = "scorelab_appearance_default_real_madrid_v1";
+const DEFAULT_APPEARANCE: ScoreLabAppearance = "real-madrid";
 export const APPEARANCE_UPDATED_EVENT = "scorelab:appearance-updated";
 
 export const appearancePresets: AppearancePreset[] = [
@@ -71,14 +73,22 @@ export const appearancePresets: AppearancePreset[] = [
 export function getScoreLabAppearance(): ScoreLabAppearance {
   try {
     const stored = localStorage.getItem(APPEARANCE_KEY) as ScoreLabAppearance | null;
+    const migrated = localStorage.getItem(APPEARANCE_DEFAULT_MIGRATION_KEY);
+
+    if ((!stored || stored === "sporting") && !migrated) {
+      localStorage.setItem(APPEARANCE_KEY, DEFAULT_APPEARANCE);
+      localStorage.setItem(APPEARANCE_DEFAULT_MIGRATION_KEY, "true");
+      return DEFAULT_APPEARANCE;
+    }
+
     if (stored && appearancePresets.some((preset) => preset.id === stored)) {
       return stored;
     }
   } catch {
-    return "sporting";
+    return DEFAULT_APPEARANCE;
   }
 
-  return "sporting";
+  return DEFAULT_APPEARANCE;
 }
 
 export function applyScoreLabAppearance(appearance: ScoreLabAppearance) {

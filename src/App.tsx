@@ -16,6 +16,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis"));
 const ValueRadar = lazy(() => import("./pages/ValueRadar"));
+const ModelLab = lazy(() => import("./pages/ModelLab"));
 const History = lazy(() => import("./pages/History"));
 const HistoryMultiples = lazy(() => import("./pages/HistoryMultiples"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
@@ -82,6 +83,7 @@ const App = () => {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/analysis" element={<MatchAnalysis />} />
                     <Route path="/radar" element={<ValueRadar />} />
+                    <Route path="/model-lab" element={<ModelLab />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/history-multiples" element={<HistoryMultiples />} />
                     <Route path="/bankroll" element={<BankrollTools />} />

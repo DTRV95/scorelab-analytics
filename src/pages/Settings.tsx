@@ -220,6 +220,10 @@ export default function Settings() {
                   <option>Under 2.5</option>
                   <option>BTTS</option>
                   <option>Over 3.5</option>
+                  <option>1X</option>
+                  <option>2X</option>
+                  <option>1X + Under 3.5</option>
+                  <option>2X + Under 3.5</option>
                 </select>
               </div>
               <Button variant="outline" size="sm">

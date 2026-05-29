@@ -154,9 +154,16 @@ function normalizeMarketName(market: string): string {
 function getMarketGroup(market: string) {
   const normalized = normalizeMarketName(market).toLowerCase();
 
+  if ((normalized.includes("1x") || normalized.includes("2x")) && normalized.includes("under 3.5")) {
+    return "double-chance-under";
+  }
+  if ((normalized.includes("1x") || normalized.includes("2x")) && normalized.includes("over 1.5")) {
+    return "double-chance-over";
+  }
   if (normalized.includes("btts")) return "btts";
   if (normalized.includes("over")) return "totals-over";
   if (normalized.includes("under")) return "totals-under";
+  if (normalized === "1x" || normalized === "2x") return "double-chance";
   if (["home", "draw", "away"].includes(normalized)) return "1x2";
   return "other";
 }
@@ -168,7 +175,14 @@ function getMarketGroupLabel(market: string) {
   if (group === "totals-over") return "Over";
   if (group === "totals-under") return "Under";
   if (group === "1x2") return "1X2";
+  if (group === "double-chance") return "Double Chance";
+  if (group === "double-chance-under") return "Double Chance + Under";
+  if (group === "double-chance-over") return "Double Chance + Over";
   return "Other";
+}
+
+function isResultMarketGroup(group: string) {
+  return group === "1x2" || group === "double-chance" || group === "double-chance-under" || group === "double-chance-over";
 }
 
 function getPairCorrelationScore(a: MultipleLeg, b: MultipleLeg) {
@@ -195,10 +209,12 @@ function getPairCorrelationScore(a: MultipleLeg, b: MultipleLeg) {
   }
 
   if (
-    (groupA === "1x2" && groupB.startsWith("totals")) ||
-    (groupB === "1x2" && groupA.startsWith("totals")) ||
-    (groupA === "1x2" && groupB === "btts") ||
-    (groupB === "1x2" && groupA === "btts")
+    (isResultMarketGroup(groupA) && groupB.startsWith("totals")) ||
+    (isResultMarketGroup(groupB) && groupA.startsWith("totals")) ||
+    (isResultMarketGroup(groupA) && groupB === "btts") ||
+    (isResultMarketGroup(groupB) && groupA === "btts") ||
+    (groupA === "1x2" && groupB === "double-chance") ||
+    (groupB === "1x2" && groupA === "double-chance")
   ) {
     return {
       score: 2,

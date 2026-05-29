@@ -30,6 +30,12 @@ class AnalyzeRequest(BaseModel):
     odd_casa: float
     odd_empate: float
     odd_fora: float
+    odd_1x: float = 0
+    odd_2x: float = 0
+    odd_1x_menos_35: float = 0
+    odd_2x_menos_35: float = 0
+    odd_1x_mais_15: float = 0
+    odd_2x_mais_15: float = 0
 
     banca: float
     fracao_kelly: float
