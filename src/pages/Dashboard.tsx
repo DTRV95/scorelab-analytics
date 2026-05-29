@@ -5,11 +5,20 @@ import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
-import { MatchdayHero } from "@/components/MatchdayHero";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
 import { buildApiUrl } from "@/lib/apiConfig";
+import {
+  Activity,
+  ArrowRight,
+  BrainCircuit,
+  Crosshair,
+  Gauge,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import {
   XAxis,
   YAxis,
@@ -287,6 +296,45 @@ function SectionCard({
       {children}
       </div>
     </motion.section>
+  );
+}
+
+function DecisionAction({
+  label,
+  detail,
+  icon: Icon,
+  onClick,
+  tone = "cyan",
+}: {
+  label: string;
+  detail: string;
+  icon: typeof Activity;
+  onClick: () => void;
+  tone?: "cyan" | "emerald" | "amber";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "from-emerald-300/16 text-emerald-100"
+      : tone === "amber"
+      ? "from-amber-300/16 text-amber-100"
+      : "from-cyan-300/16 text-cyan-100";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative min-h-[92px] overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${toneClass} via-white/[0.035] to-white/[0.015] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/16`}
+    >
+      <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-current/35 to-transparent" />
+      <div className="relative flex items-start justify-between gap-3">
+        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-2xl border border-current/15 bg-black/20">
+          <Icon className="h-4 w-4" strokeWidth={1.6} />
+        </span>
+        <ArrowRight className="mt-2 h-4 w-4 flex-none text-white/28 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
+      </div>
+      <p className="relative mt-4 text-sm font-semibold text-white">{label}</p>
+      <p className="relative mt-1 text-xs leading-5 text-white/52">{detail}</p>
+    </button>
   );
 }
 
@@ -932,70 +980,146 @@ export default function Dashboard() {
         variants={stagger}
         className="scorelab-dashboard-flow space-y-9 p-4 sm:p-5 md:p-6"
       >
-        <MatchdayHero
-          eyebrow="Dashboard Workspace"
-          tone={dashboardData.riskLevel === "High" ? "amber" : "cyan"}
-          statusIcon={<HudStateIcon state="online" />}
-          title="Performance Intelligence"
-          description="Use historical betting performance to find where ScoreLab is really validating and where discipline matters most."
-          statusItems={
-            <>
-              <HudStatusPill
-                label={`${dashboardData.riskLevel} Exposure`}
-                tone={dashboardData.riskLevel === "High" ? "red" : "cyan"}
-                icon={<HudStateIcon state={dashboardData.riskLevel === "High" ? "risk" : "online"} />}
+        <motion.section
+          variants={fadeUp}
+          className="scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,23,42,0.96)_0%,rgba(4,12,24,0.98)_48%,rgba(3,31,32,0.94)_100%)] p-4 shadow-[0_30px_120px_-50px_rgba(34,211,238,0.65)] sm:p-5 lg:p-6"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.08)_0_1px,transparent_1px_96px),linear-gradient(180deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_72px)] opacity-35" />
+          <div className="pointer-events-none absolute -right-32 -top-36 h-80 w-80 rounded-full bg-cyan-300/12 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-40 left-1/3 h-80 w-80 rounded-full bg-emerald-300/10 blur-3xl" />
+
+          <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <HudStatusPill
+                  label="Decision OS"
+                  tone="cyan"
+                  pulse={false}
+                  icon={<HudStateIcon state="online" />}
+                />
+                <HudStatusPill
+                  label={`${dashboardData.riskLevel} Exposure`}
+                  tone={dashboardData.riskLevel === "High" ? "red" : "cyan"}
+                  icon={<HudStateIcon state={dashboardData.riskLevel === "High" ? "risk" : "online"} />}
+                />
+                <HudStatusPill
+                  label={`${bankrollStats.totalPending} Pending`}
+                  tone={bankrollStats.totalPending > 0 ? "amber" : "emerald"}
+                  icon={<HudStateIcon state={bankrollStats.totalPending > 0 ? "scanning" : "online"} />}
+                />
+              </div>
+
+              <div className="mt-8 max-w-4xl">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-100/48">
+                  ScoreLab Command Center
+                </p>
+                <h1 className="mt-3 max-w-3xl text-[2.35rem] font-black leading-[0.98] tracking-normal text-white sm:text-[3.25rem] lg:text-[4.2rem]">
+                  Convert model noise into disciplined betting decisions.
+                </h1>
+                <p className="mt-5 max-w-2xl text-sm leading-7 text-white/62 sm:text-base sm:leading-8">
+                  One operational surface for bankroll pressure, model validation, live opportunity quality and the next best action.
+                </p>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <DecisionAction
+                  label="Analyze Match"
+                  detail="Run a fresh market read through the model."
+                  icon={Crosshair}
+                  onClick={() => navigate("/analysis")}
+                />
+                <DecisionAction
+                  label="Value Radar"
+                  detail="Scan saved opportunities by edge and confidence."
+                  icon={Zap}
+                  onClick={() => navigate("/radar")}
+                  tone="emerald"
+                />
+                <DecisionAction
+                  label="Model Lab"
+                  detail="Inspect trust, drift and similar-match memory."
+                  icon={BrainCircuit}
+                  onClick={() => navigate("/model-lab")}
+                  tone="amber"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <SystemPulse3D
+                label="System Pulse"
+                value={`${bankrollStats.roi.toFixed(1)}% ROI`}
+                detail={`Live risk is ${dashboardData.riskLevel.toLowerCase()} with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
+                tone={dashboardPulseTone}
               />
-              <HudStatusPill
-                label={`${bankrollStats.totalPending} Pending`}
-                tone={bankrollStats.totalPending > 0 ? "amber" : "emerald"}
-                icon={<HudStateIcon state={bankrollStats.totalPending > 0 ? "scanning" : "online"} />}
-              />
-              <HudStatusPill
-                label={`${marketPerformanceRows.length} Markets`}
-                tone="cyan"
-                pulse={false}
-                icon={<HudStateIcon state="scanning" />}
-              />
-            </>
-          }
-          visual={
-            <SystemPulse3D
-              label="System Pulse"
-              value={`${bankrollStats.roi.toFixed(1)}% ROI`}
-              detail={`Live risk is ${dashboardData.riskLevel.toLowerCase()} with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
-              tone={dashboardPulseTone}
-            />
-          }
-        />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                  <Gauge className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
+                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
+                    Markets
+                  </p>
+                  <p className="mt-1 font-mono-data text-2xl font-semibold text-white">
+                    {marketPerformanceRows.length}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                  <ShieldCheck className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
+                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
+                    Confidence
+                  </p>
+                  <p className="mt-1 font-mono-data text-2xl font-semibold text-white">
+                    {dashboardData.avgConfidence.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.section>
 
         <motion.div
           variants={fadeUp}
-          className="scorelab-command-strip grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 p-3 sm:grid-cols-3"
+          className="grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.035),rgba(125,245,238,0.045),rgba(255,255,255,0.025))] p-3 sm:grid-cols-3"
         >
-          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
-              Analysis Layer
-            </p>
-            <p className="mt-2 text-sm font-semibold text-white">
-              {dashboardData.analysesToday} analyses today
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
-              Performance Layer
-            </p>
-            <p className="mt-2 text-sm font-semibold text-white">
-              {marketPerformanceRows.length} markets tracked
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
-              Bankroll Layer
-            </p>
-            <p className="mt-2 text-sm font-semibold text-white">
-              {dashboardData.riskLevel} risk · €{dashboardData.openExposure.toFixed(2)} open
-            </p>
-          </div>
+          {[
+            {
+              label: "Market Lead",
+              value: leadingMarket?.market ?? "Needs data",
+              detail: leadingMarket
+                ? `${leadingMarket.roi}% ROI across ${leadingMarket.bets} bets`
+                : "Track more settled bets",
+              icon: Activity,
+            },
+            {
+              label: "League Lead",
+              value: leadingLeague?.league ?? "Needs data",
+              detail: leadingLeague
+                ? `${leadingLeague.roi}% ROI · ${leadingLeague.bestMarket}`
+                : "No reliable league signal yet",
+              icon: Sparkles,
+            },
+            {
+              label: "Top Value Today",
+              value: topValueToday?.analysis.match ?? "No live edge",
+              detail: topValueToday
+                ? `${topValueToday.bestBet.market} · ${topValueToday.bestBet.valueBet.toFixed(1)}% edge`
+                : `${dashboardData.analysesToday} analyses today`,
+              icon: Crosshair,
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="min-w-0 rounded-2xl border border-white/8 bg-black/15 px-4 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <item.icon className="h-3.5 w-3.5 flex-none text-cyan-100/70" strokeWidth={1.6} />
+                <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
+                  {item.label}
+                </p>
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold text-white">{item.value}</p>
+              <p className="mt-1 truncate text-xs text-white/48">{item.detail}</p>
+            </div>
+          ))}
         </motion.div>
 
         <div className="scorelab-section-kicker">
