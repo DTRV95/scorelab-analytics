@@ -1,12 +1,16 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Iterator
+from contextlib import contextmanager
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "scorelab_storage.db"
+POSTGRES_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_UNPOOLED")
+USING_POSTGRES = bool(POSTGRES_URL)
 ENTITY_DEFAULTS: Dict[str, Any] = {
     "analyses": [],
     "multiples": [],
@@ -18,49 +22,81 @@ ENTITY_DEFAULTS: Dict[str, Any] = {
 }
 
 
-def _get_connection() -> sqlite3.Connection:
+def _get_sqlite_connection() -> sqlite3.Connection:
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
     return connection
 
 
+@contextmanager
+def _get_connection() -> Iterator[Any]:
+    if USING_POSTGRES:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as exc:
+            raise RuntimeError(
+                "DATABASE_URL is set, but psycopg is not installed. "
+                "Run `pip install -r requirements.txt`."
+            ) from exc
+
+        with psycopg.connect(POSTGRES_URL, row_factory=dict_row) as connection:
+            yield connection
+        return
+
+    with _get_sqlite_connection() as connection:
+        yield connection
+
+
+def _param() -> str:
+    return "%s" if USING_POSTGRES else "?"
+
+
+def _now_sql() -> str:
+    return "CURRENT_TIMESTAMP::text" if USING_POSTGRES else "CURRENT_TIMESTAMP"
+
+
+def _created_at_order_sql() -> str:
+    return "created_at DESC, id DESC" if USING_POSTGRES else "datetime(created_at) DESC, id DESC"
+
+
 def init_storage_db() -> None:
     with _get_connection() as connection:
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS app_state (
               id INTEGER PRIMARY KEY CHECK (id = 1),
               payload TEXT NOT NULL,
-              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+              updated_at TEXT NOT NULL DEFAULT {_now_sql()}
             )
             """
         )
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS entity_state (
               entity_key TEXT PRIMARY KEY,
               payload TEXT NOT NULL,
-              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+              updated_at TEXT NOT NULL DEFAULT {_now_sql()}
             )
             """
         )
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS analyses (
               id TEXT PRIMARY KEY,
               payload TEXT NOT NULL,
-              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+              created_at TEXT NOT NULL DEFAULT {_now_sql()},
+              updated_at TEXT NOT NULL DEFAULT {_now_sql()}
             )
             """
         )
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS multiples (
               id TEXT PRIMARY KEY,
               payload TEXT NOT NULL,
-              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+              created_at TEXT NOT NULL DEFAULT {_now_sql()},
+              updated_at TEXT NOT NULL DEFAULT {_now_sql()}
             )
             """
         )
@@ -139,7 +175,7 @@ def load_entity_state(entity_key: str) -> Dict[str, Any]:
 
     with _get_connection() as connection:
         row = connection.execute(
-            "SELECT payload FROM entity_state WHERE entity_key = ?",
+            f"SELECT payload FROM entity_state WHERE entity_key = {_param()}",
             (entity_key,),
         ).fetchone()
 
@@ -213,12 +249,12 @@ def save_storage_snapshot(snapshot: Dict[str, Any]) -> tuple[Dict[str, Any], boo
 
     with _get_connection() as connection:
         connection.execute(
-            """
+            f"""
             INSERT INTO app_state (id, payload, updated_at)
-            VALUES (1, ?, CURRENT_TIMESTAMP)
+            VALUES (1, {_param()}, {_now_sql()})
             ON CONFLICT(id) DO UPDATE SET
               payload = excluded.payload,
-              updated_at = CURRENT_TIMESTAMP
+              updated_at = {_now_sql()}
             """,
             (payload,),
         )
@@ -242,12 +278,12 @@ def save_entity_state(entity_key: str, state: Dict[str, Any]) -> tuple[Dict[str,
 
     with _get_connection() as connection:
         connection.execute(
-            """
+            f"""
             INSERT INTO entity_state (entity_key, payload, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
+            VALUES ({_param()}, {_param()}, {_now_sql()})
             ON CONFLICT(entity_key) DO UPDATE SET
               payload = excluded.payload,
-              updated_at = CURRENT_TIMESTAMP
+              updated_at = {_now_sql()}
             """,
             (entity_key, payload),
         )
@@ -261,10 +297,10 @@ def list_analysis_records() -> list[Dict[str, Any]]:
 
     with _get_connection() as connection:
         rows = connection.execute(
-            """
+            f"""
             SELECT id, payload, created_at, updated_at
             FROM analyses
-            ORDER BY datetime(created_at) DESC, id DESC
+            ORDER BY {_created_at_order_sql()}
             """
         ).fetchall()
 
@@ -292,10 +328,10 @@ def get_analysis_record(analysis_id: str) -> Dict[str, Any] | None:
 
     with _get_connection() as connection:
         row = connection.execute(
-            """
+            f"""
             SELECT id, payload, created_at, updated_at
             FROM analyses
-            WHERE id = ?
+            WHERE id = {_param()}
             """,
             (analysis_id,),
         ).fetchone()
@@ -329,7 +365,7 @@ def save_analysis_record(record: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
 
     with _get_connection() as connection:
         existing = connection.execute(
-            "SELECT created_at, updated_at FROM analyses WHERE id = ?",
+            f"SELECT created_at, updated_at FROM analyses WHERE id = {_param()}",
             (analysis_id,),
         ).fetchone()
 
@@ -347,24 +383,24 @@ def save_analysis_record(record: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
                 }, True
 
             connection.execute(
-                """
+                f"""
                 UPDATE analyses
-                SET payload = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                SET payload = {_param()}, updated_at = {_now_sql()}
+                WHERE id = {_param()}
                 """,
                 (payload, analysis_id),
             )
             created_at = existing["created_at"]
         else:
             connection.execute(
-                """
+                f"""
                 INSERT INTO analyses (id, payload)
-                VALUES (?, ?)
+                VALUES ({_param()}, {_param()})
                 """,
                 (analysis_id, payload),
             )
             created_at = connection.execute(
-                "SELECT created_at FROM analyses WHERE id = ?",
+                f"SELECT created_at FROM analyses WHERE id = {_param()}",
                 (analysis_id,),
             ).fetchone()["created_at"]
 
@@ -387,7 +423,7 @@ def delete_analysis_record(analysis_id: str) -> bool:
 
     with _get_connection() as connection:
         cursor = connection.execute(
-            "DELETE FROM analyses WHERE id = ?",
+            f"DELETE FROM analyses WHERE id = {_param()}",
             (analysis_id,),
         )
         connection.commit()
@@ -400,10 +436,10 @@ def list_multiple_records() -> list[Dict[str, Any]]:
 
     with _get_connection() as connection:
         rows = connection.execute(
-            """
+            f"""
             SELECT id, payload, created_at, updated_at
             FROM multiples
-            ORDER BY datetime(created_at) DESC, id DESC
+            ORDER BY {_created_at_order_sql()}
             """
         ).fetchall()
 
@@ -431,10 +467,10 @@ def get_multiple_record(multiple_id: str) -> Dict[str, Any] | None:
 
     with _get_connection() as connection:
         row = connection.execute(
-            """
+            f"""
             SELECT id, payload, created_at, updated_at
             FROM multiples
-            WHERE id = ?
+            WHERE id = {_param()}
             """,
             (multiple_id,),
         ).fetchone()
@@ -468,7 +504,7 @@ def save_multiple_record(record: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
 
     with _get_connection() as connection:
         existing = connection.execute(
-            "SELECT created_at, updated_at FROM multiples WHERE id = ?",
+            f"SELECT created_at, updated_at FROM multiples WHERE id = {_param()}",
             (multiple_id,),
         ).fetchone()
 
@@ -486,24 +522,24 @@ def save_multiple_record(record: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
                 }, True
 
             connection.execute(
-                """
+                f"""
                 UPDATE multiples
-                SET payload = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                SET payload = {_param()}, updated_at = {_now_sql()}
+                WHERE id = {_param()}
                 """,
                 (payload, multiple_id),
             )
             created_at = existing["created_at"]
         else:
             connection.execute(
-                """
+                f"""
                 INSERT INTO multiples (id, payload)
-                VALUES (?, ?)
+                VALUES ({_param()}, {_param()})
                 """,
                 (multiple_id, payload),
             )
             created_at = connection.execute(
-                "SELECT created_at FROM multiples WHERE id = ?",
+                f"SELECT created_at FROM multiples WHERE id = {_param()}",
                 (multiple_id,),
             ).fetchone()["created_at"]
 
@@ -526,7 +562,7 @@ def delete_multiple_record(multiple_id: str) -> bool:
 
     with _get_connection() as connection:
         cursor = connection.execute(
-            "DELETE FROM multiples WHERE id = ?",
+            f"DELETE FROM multiples WHERE id = {_param()}",
             (multiple_id,),
         )
         connection.commit()

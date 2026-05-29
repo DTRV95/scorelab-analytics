@@ -163,9 +163,12 @@ For the backend production environment, set:
 
 ```env
 SCORELAB_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 OPENAI_API_KEY=your_openai_key_here
 OPENAI_MODEL=gpt-4o-mini
 ```
+
+If your Neon/Vercel integration only exposes `DATABASE_URL_UNPOOLED`, the backend can use that too. The storage layer checks `DATABASE_URL` first and falls back to `DATABASE_URL_UNPOOLED`.
 
 For production persistence, replace the local SQLite file with a managed database such as Neon Postgres, Supabase, Turso or another hosted database. The local file `backend\scorelab_storage.db` is suitable for development and computer-to-computer transfer, but not for durable serverless production storage.
 
