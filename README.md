@@ -125,6 +125,50 @@ If the backend is running correctly, it should return:
 ScoreLab API is running
 ```
 
+## Vercel frontend deployment
+
+The repository includes a `vercel.json` for deploying the React/Vite frontend to Vercel:
+
+```json
+{
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}
+```
+
+In Vercel, import this repository and use the project root as the root directory.
+
+Set this frontend environment variable in Vercel:
+
+```env
+VITE_API_URL=https://your-scorelab-api.example.com
+```
+
+Do not use `http://localhost:8000` in production. In a deployed browser, `localhost` means the user's own computer, not the ScoreLab backend.
+
+The current recommended production shape is:
+
+```text
+Vercel frontend
+  -> VITE_API_URL
+  -> FastAPI backend hosted separately
+  -> managed database
+```
+
+The FastAPI backend is intentionally excluded from the Vercel frontend deploy through `.vercelignore`. Host it separately on a Python-friendly service, or migrate it later to a Vercel-compatible API structure.
+
+For the backend production environment, set:
+
+```env
+SCORELAB_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+For production persistence, replace the local SQLite file with a managed database such as Neon Postgres, Supabase, Turso or another hosted database. The local file `backend\scorelab_storage.db` is suitable for development and computer-to-computer transfer, but not for durable serverless production storage.
+
 ## Quick checklist
 
 Use this order:

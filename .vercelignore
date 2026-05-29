@@ -1,0 +1,11 @@
+.git/
+.sfdx/
+backend/
+venv/
+node_modules/
+dist/
+recovery/
+*.log
+*.local
+*.db
+scorelab-league-params.csv
