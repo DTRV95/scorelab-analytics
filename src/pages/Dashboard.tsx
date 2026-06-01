@@ -1,7 +1,6 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
@@ -323,16 +322,16 @@ function DecisionAction({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative min-h-[92px] overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${toneClass} via-white/[0.035] to-white/[0.015] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/16`}
+      className={`group relative min-h-[64px] overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${toneClass} via-white/[0.035] to-white/[0.015] p-3 text-left transition hover:-translate-y-0.5 hover:border-white/16`}
     >
       <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-current/35 to-transparent" />
       <div className="relative flex items-start justify-between gap-3">
-        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-2xl border border-current/15 bg-black/20">
+        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-current/15 bg-black/20">
           <Icon className="h-4 w-4" strokeWidth={1.6} />
         </span>
-        <ArrowRight className="mt-2 h-4 w-4 flex-none text-white/28 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
+        <ArrowRight className="mt-1.5 h-4 w-4 flex-none text-white/28 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
       </div>
-      <p className="relative mt-4 text-sm font-semibold text-white">{label}</p>
+      <p className="relative mt-2.5 text-sm font-semibold text-white">{label}</p>
       <p className="relative mt-1 text-xs leading-5 text-white/52">{detail}</p>
     </button>
   );
@@ -978,17 +977,16 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="scorelab-dashboard-flow space-y-9 p-4 sm:p-5 md:p-6"
+        className="scorelab-dashboard-flow space-y-7 p-4 sm:p-5 md:p-6"
       >
         <motion.section
           variants={fadeUp}
-          className="scorelab-board-3d relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,23,42,0.96)_0%,rgba(4,12,24,0.98)_48%,rgba(3,31,32,0.94)_100%)] p-4 shadow-[0_30px_120px_-50px_rgba(34,211,238,0.65)] sm:p-5 lg:p-6"
+          className="scorelab-board-3d relative overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(8,23,42,0.96)_0%,rgba(4,12,24,0.98)_58%,rgba(3,25,27,0.94)_100%)] p-4 shadow-[0_18px_70px_-46px_rgba(34,211,238,0.55)]"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.08)_0_1px,transparent_1px_96px),linear-gradient(180deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_72px)] opacity-35" />
-          <div className="pointer-events-none absolute -right-32 -top-36 h-80 w-80 rounded-full bg-cyan-300/12 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-40 left-1/3 h-80 w-80 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.055)_0_1px,transparent_1px_96px),linear-gradient(180deg,rgba(255,255,255,0.025)_0_1px,transparent_1px_72px)] opacity-30" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/35 to-transparent" />
 
-          <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+          <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <HudStatusPill
@@ -1009,19 +1007,19 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="mt-8 max-w-4xl">
-                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-100/48">
-                  ScoreLab Command Center
+              <div className="mt-5 max-w-4xl">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/48">
+                  ScoreLab Dashboard
                 </p>
-                <h1 className="mt-3 max-w-3xl text-[2.35rem] font-black leading-[0.98] tracking-normal text-white sm:text-[3.25rem] lg:text-[4.2rem]">
-                  Convert model noise into disciplined betting decisions.
+                <h1 className="mt-2 max-w-3xl text-2xl font-semibold leading-tight tracking-normal text-white sm:text-[1.9rem] lg:text-[2.35rem]">
+                  Keep the model, bankroll and value signals in one place.
                 </h1>
-                <p className="mt-5 max-w-2xl text-sm leading-7 text-white/62 sm:text-base sm:leading-8">
-                  One operational surface for bankroll pressure, model validation, live opportunity quality and the next best action.
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
+                  A simple overview of performance, risk and the next analysis to check.
                 </p>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-3">
                 <DecisionAction
                   label="Analyze Match"
                   detail="Run a fresh market read through the model."
@@ -1045,29 +1043,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="grid gap-3">
-              <SystemPulse3D
-                label="System Pulse"
-                value={`${bankrollStats.roi.toFixed(1)}% ROI`}
-                detail={`Live risk is ${dashboardData.riskLevel.toLowerCase()} with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
-                tone={dashboardPulseTone}
-              />
+            <div className="grid gap-2.5">
+              <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/38">
+                    System Pulse
+                  </p>
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      dashboardPulseTone === "red"
+                        ? "bg-red-300"
+                        : dashboardPulseTone === "amber"
+                        ? "bg-amber-300"
+                        : dashboardPulseTone === "emerald"
+                        ? "bg-emerald-300"
+                        : "bg-cyan-300"
+                    }`}
+                  />
+                </div>
+                <p className="mt-2 font-mono-data text-xl font-semibold text-white">
+                  {bankrollStats.roi.toFixed(1)}% ROI
+                </p>
+                <p className="mt-1 text-xs leading-5 text-white/52">
+                  {dashboardData.riskLevel} risk with EUR {dashboardData.openExposure.toFixed(2)} open.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
                   <Gauge className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
                   <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
                     Markets
                   </p>
-                  <p className="mt-1 font-mono-data text-2xl font-semibold text-white">
+                  <p className="mt-1 font-mono-data text-xl font-semibold text-white">
                     {marketPerformanceRows.length}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+                <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
                   <ShieldCheck className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
                   <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
                     Confidence
                   </p>
-                  <p className="mt-1 font-mono-data text-2xl font-semibold text-white">
+                  <p className="mt-1 font-mono-data text-xl font-semibold text-white">
                     {dashboardData.avgConfidence.toFixed(1)}
                   </p>
                 </div>
