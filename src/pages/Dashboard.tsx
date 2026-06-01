@@ -1,6 +1,7 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { SystemPulse3D } from "@/components/SystemPulse3D";
 import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
@@ -1044,30 +1045,13 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-2.5">
-              <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/38">
-                    System Pulse
-                  </p>
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      dashboardPulseTone === "red"
-                        ? "bg-red-300"
-                        : dashboardPulseTone === "amber"
-                        ? "bg-amber-300"
-                        : dashboardPulseTone === "emerald"
-                        ? "bg-emerald-300"
-                        : "bg-cyan-300"
-                    }`}
-                  />
-                </div>
-                <p className="mt-2 font-mono-data text-xl font-semibold text-white">
-                  {bankrollStats.roi.toFixed(1)}% ROI
-                </p>
-                <p className="mt-1 text-xs leading-5 text-white/52">
-                  {dashboardData.riskLevel} risk with EUR {dashboardData.openExposure.toFixed(2)} open.
-                </p>
-              </div>
+              <SystemPulse3D
+                label="System Pulse"
+                value={`${bankrollStats.roi.toFixed(1)}% ROI`}
+                detail={`${dashboardData.riskLevel} risk with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
+                tone={dashboardPulseTone}
+                size="compact"
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
                   <Gauge className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
