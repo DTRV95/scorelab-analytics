@@ -28,13 +28,17 @@ import {
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import {
   Play,
-  Save,
   ChevronDown,
   Lightbulb,
   Target,
   Database,
   ShieldCheck,
   Sparkles,
+  Activity,
+  ArrowRight,
+  Gauge,
+  Layers3,
+  Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -318,6 +322,79 @@ function StepChip({
     >
       {label}
     </div>
+  );
+}
+
+function MissionTile({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone = "cyan",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof Target;
+  tone?: "cyan" | "emerald" | "amber" | "red";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "text-emerald-200 bg-emerald-300/[0.055]"
+      : tone === "amber"
+      ? "text-amber-200 bg-amber-300/[0.055]"
+      : tone === "red"
+      ? "text-red-200 bg-red-300/[0.055]"
+      : "text-cyan-100 bg-cyan-300/[0.055]";
+
+  return (
+    <div className={`min-w-0 rounded-2xl border border-white/8 ${toneClass} p-4`}>
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 flex-none" strokeWidth={1.6} />
+        <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-white/42">
+          {label}
+        </p>
+      </div>
+      <p className="mt-3 truncate font-mono-data text-xl font-semibold text-white">
+        {value}
+      </p>
+      <p className="mt-1 truncate text-xs text-white/48">{detail}</p>
+    </div>
+  );
+}
+
+function FlowAction({
+  label,
+  detail,
+  icon: Icon,
+  onClick,
+}: {
+  label: string;
+  detail: string;
+  icon: typeof Target;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-h-[76px] items-center justify-between gap-3 rounded-2xl border border-white/8 bg-black/15 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-200/18 hover:bg-cyan-300/[0.055]"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-cyan-100">
+          <Icon className="h-4 w-4" strokeWidth={1.6} />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold text-white">
+            {label}
+          </span>
+          <span className="mt-1 block truncate text-xs text-white/46">
+            {detail}
+          </span>
+        </span>
+      </span>
+      <ArrowRight className="h-4 w-4 flex-none text-white/24 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
+    </button>
   );
 }
 
@@ -1125,33 +1202,93 @@ export default function MatchAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.7} />
-              Guided Analysis Flow
-            </div>
-            <h1 className="mt-3 text-2xl font-bold text-foreground">
-              Match Analysis
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose the competition, add team stats, and compare your model against the market.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-              <div className="scorelab-board-3d scorelab-tilt-3d hidden rounded-2xl bg-card ring-surface px-4 py-3 card-shadow md:block">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Setup Progress
+        <section className="scorelab-board-3d relative mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,20,38,0.98)_0%,rgba(4,12,26,0.98)_48%,rgba(16,29,22,0.94)_100%)] p-4 shadow-[0_34px_130px_-56px_rgba(34,211,238,0.62)] sm:p-5 lg:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.08)_0_1px,transparent_1px_92px),linear-gradient(180deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_68px)] opacity-30" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/45 to-transparent" />
+          <div className="pointer-events-none absolute bottom-0 right-0 h-32 w-2/3 bg-[linear-gradient(135deg,transparent_0%,rgba(16,185,129,0.08)_55%,rgba(34,211,238,0.12)_100%)]" />
+
+          <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/14 bg-cyan-300/[0.055] px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/68">
+                <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.7} />
+                Match Decision Flow
+              </div>
+              <h1 className="mt-5 max-w-4xl text-[2.2rem] font-black leading-[0.98] tracking-normal text-white sm:text-[3rem] lg:text-[3.8rem]">
+                Build the case before the model gives permission.
+              </h1>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/62 sm:text-base sm:leading-8">
+                Start with league context, anchor the team sample, price the market, then let ScoreLab decide whether the edge is real enough to track.
               </p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {Math.round(setupProgress.pct)}%
-              </p>
+
+              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <FlowAction
+                  label="League Baseline"
+                  detail={selectedLeaguePreset.label}
+                  icon={Database}
+                  onClick={() => setShowLeagueAdvanced((prev) => !prev)}
+                />
+                <FlowAction
+                  label="Risk Controls"
+                  detail={`${formatCurrency(exposureSummary.openExposure)} open exposure`}
+                  icon={ShieldCheck}
+                  onClick={() => updateField("banca", formatBankrollForInput(bankrollStats.currentBankroll))}
+                />
+                <FlowAction
+                  label="Run Engine"
+                  detail={setupProgress.completed >= 4 ? "Inputs look ready" : "Finish core inputs"}
+                  icon={Zap}
+                  onClick={runAnalysis}
+                />
+              </div>
             </div>
-            <Button variant="outline" size="sm">
-              <Save className="mr-1 h-4 w-4" strokeWidth={1.5} /> Save
-            </Button>
+
+            <div className="grid gap-3">
+              <div className="rounded-[26px] border border-white/8 bg-black/18 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/38">
+                      Readiness
+                    </p>
+                    <p className="mt-1 font-mono-data text-4xl font-semibold text-white">
+                      {Math.round(setupProgress.pct)}%
+                    </p>
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-200/14 bg-cyan-300/[0.055] text-cyan-100">
+                    <Gauge className="h-6 w-6" strokeWidth={1.5} />
+                  </div>
+                </div>
+                <Progress value={setupProgress.pct} className="mt-4 h-2 bg-white/5" />
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StepChip label="League" active={setupProgress.leagueReady} />
+                  <StepChip label="Teams" active={setupProgress.teamsReady} />
+                  <StepChip label="Stats" active={setupProgress.statsReady} />
+                  <StepChip label="Odds" active={setupProgress.oddsReady} />
+                  <StepChip label="Bankroll" active={setupProgress.bankrollReady} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MissionTile
+                  label="Fixture"
+                  value={
+                    formData.equipa_casa && formData.equipa_fora
+                      ? `${formData.equipa_casa} vs ${formData.equipa_fora}`
+                      : "Teams pending"
+                  }
+                  detail={selectedLeaguePreset.country}
+                  icon={Activity}
+                />
+                <MissionTile
+                  label="Markets"
+                  value={setupProgress.oddsReady ? "Priced" : "Pending"}
+                  detail="1X2, goals, BTTS and hybrids"
+                  icon={Layers3}
+                  tone={setupProgress.oddsReady ? "emerald" : "amber"}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
         <div className="space-y-6">
           <div className="scorelab-stage-3d scorelab-board-3d rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
