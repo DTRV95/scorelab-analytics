@@ -10,6 +10,10 @@ import {
   supabase,
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from "@/lib/supabaseClient";
+import {
+  clearLocalScorelabData,
+  hydrateStorageFromServer,
+} from "@/lib/persistenceSync";
 
 interface AuthResult {
   error: string | null;
@@ -53,9 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setLoading(false);
+
+      if (nextSession?.user) {
+        // Pull this account's data from Supabase (no-op if already hydrated).
+        void hydrateStorageFromServer();
+      }
+
+      if (event === "SIGNED_OUT") {
+        // Never leave one account's data cached for the next user of this browser.
+        clearLocalScorelabData();
+      }
     });
 
     return () => subscription.unsubscribe();

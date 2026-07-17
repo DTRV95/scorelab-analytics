@@ -1,6 +1,7 @@
-import { buildApiUrl } from "@/lib/apiConfig";
+import { supabase } from "@/lib/supabaseClient";
 
 const ANALYSES_KEY = "scorelab_analyses";
+const LAST_USER_KEY = "scorelab_last_user_id";
 const MULTIPLES_KEY = "scorelab_multiples";
 const MULTIPLE_DRAFT_KEY = "scorelab_multiple_draft";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
@@ -83,6 +84,21 @@ const LOCAL_RESET_KEYS = [
   STORAGE_BACKUP_KEY,
   `${STORAGE_METADATA_KEY}_snapshot`,
 ] as const;
+
+let lastHydratedUserId: string | null = null;
+
+async function getAuthedUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+async function requireClient() {
+  if (!supabase) throw new Error("Supabase is not configured");
+  const userId = await getAuthedUserId();
+  if (!userId) throw new Error("Not signed in");
+  return supabase;
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -317,85 +333,70 @@ function patchMultipleInLocalStorage(multiple: Record<string, unknown> & { id: s
   dispatchPersistenceEvents("multiples");
 }
 
-function buildOutboundSnapshot(): StorageSnapshotPayload {
-  const current = getLocalStorageSnapshot();
-  return {
-    ...current,
-    metadata: {
-      schema_version: 1,
-      updated_at: new Date().toISOString(),
-      client_id: getClientId(),
-    },
-  };
-}
 
-async function persistSnapshotToServer(snapshot: StorageSnapshotPayload) {
-  const response = await fetch(buildApiUrl("/storage/snapshot"), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(snapshot),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to persist snapshot (${response.status})`);
-  }
-
-  return (await response.json()) as {
-    snapshot: StorageSnapshotPayload;
-    ignored_due_to_staleness: boolean;
-  };
+interface StaleGuardedSaveResult {
+  payload: unknown;
+  was_stale: boolean;
 }
 
 async function persistEntityToServer(entityKey: EntityKey, entity: EntityStatePayload) {
-  const response = await fetch(buildApiUrl(`/storage/entities/${entityKey}`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(entity),
+  const client = await requireClient();
+  const { data, error } = await client.rpc("save_entity_state", {
+    p_entity_key: entityKey,
+    p_payload: entity,
+    p_updated_at: entity.metadata.updated_at,
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to persist entity ${entityKey} (${response.status})`);
+  if (error) {
+    throw new Error(`Failed to persist entity ${entityKey} (${error.message})`);
   }
 
-  return (await response.json()) as {
-    entity: EntityStatePayload;
-    ignored_due_to_staleness: boolean;
+  const result = data as unknown as StaleGuardedSaveResult;
+  return {
+    entity: result.payload as EntityStatePayload,
+    ignored_due_to_staleness: result.was_stale,
   };
 }
 
 async function fetchAnalysisRecordsFromServer() {
-  const response = await fetch(buildApiUrl("/storage/analyses"));
-  if (!response.ok) {
-    throw new Error(`Failed to fetch analyses (${response.status})`);
+  const client = await requireClient();
+  const { data, error } = await client
+    .from("user_analyses")
+    .select("id, payload, created_at, updated_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch analyses (${error.message})`);
   }
 
-  return (await response.json()) as {
-    analyses: Array<{
+  return {
+    analyses: (data ?? []) as Array<{
       id: string;
       payload: Record<string, unknown>;
       created_at?: string | null;
       updated_at?: string | null;
-    }>;
+    }>,
   };
 }
 
 async function fetchMultipleRecordsFromServer() {
-  const response = await fetch(buildApiUrl("/storage/multiples"));
-  if (!response.ok) {
-    throw new Error(`Failed to fetch multiples (${response.status})`);
+  const client = await requireClient();
+  const { data, error } = await client
+    .from("user_multiples")
+    .select("id, payload, created_at, updated_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch multiples (${error.message})`);
   }
 
-  return (await response.json()) as {
-    multiples: Array<{
+  return {
+    multiples: (data ?? []) as Array<{
       id: string;
       payload: Record<string, unknown>;
       created_at?: string | null;
       updated_at?: string | null;
-    }>;
+    }>,
   };
 }
 
@@ -430,35 +431,23 @@ export async function hydrateAnalysesFromServer() {
 }
 
 export function persistAnalysisRecord(analysis: AnalysisRecordPayload) {
-  fetch(buildApiUrl(`/storage/analyses/${analysis.id}`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      id: analysis.id,
-      payload: analysis,
-      updated_at: new Date().toISOString(),
-    }),
-  })
-    .then(async (response) => {
-      if (!response.ok) {
+  requireClient()
+    .then((client) =>
+      client.rpc("save_user_analysis", {
+        p_id: analysis.id,
+        p_payload: analysis,
+        p_updated_at: new Date().toISOString(),
+      })
+    )
+    .then(({ data, error }) => {
+      if (error) {
         throw new Error(`Failed to persist analysis ${analysis.id}`);
       }
 
-      return (await response.json()) as {
-        analysis: {
-          id: string;
-          payload: Record<string, unknown>;
-          updated_at?: string | null;
-        };
-        ignored_due_to_staleness: boolean;
-      };
-    })
-    .then((result) => {
-      if (result.ignored_due_to_staleness && result.analysis?.payload) {
+      const result = data as unknown as StaleGuardedSaveResult;
+      if (result.was_stale && result.payload) {
         patchAnalysisInLocalStorage(
-          result.analysis.payload as Record<string, unknown> & { id: string }
+          result.payload as Record<string, unknown> & { id: string }
         );
       }
     })
@@ -468,11 +457,11 @@ export function persistAnalysisRecord(analysis: AnalysisRecordPayload) {
 }
 
 export function deleteAnalysisRecord(analysisId: string) {
-  return fetch(buildApiUrl(`/storage/analyses/${analysisId}`), {
-    method: "DELETE",
-  }).catch(() => {
-    // Keep local delete path non-blocking if backend is unavailable.
-  });
+  return requireClient()
+    .then((client) => client.from("user_analyses").delete().eq("id", analysisId))
+    .catch(() => {
+      // Keep local delete path non-blocking if backend is unavailable.
+    });
 }
 
 export async function hydrateMultiplesFromServer() {
@@ -507,35 +496,23 @@ export async function hydrateMultiplesFromServer() {
 }
 
 export function persistMultipleRecord(multiple: MultipleRecordPayload) {
-  fetch(buildApiUrl(`/storage/multiples/${multiple.id}`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      id: multiple.id,
-      payload: multiple,
-      updated_at: new Date().toISOString(),
-    }),
-  })
-    .then(async (response) => {
-      if (!response.ok) {
+  requireClient()
+    .then((client) =>
+      client.rpc("save_user_multiple", {
+        p_id: multiple.id,
+        p_payload: multiple,
+        p_updated_at: new Date().toISOString(),
+      })
+    )
+    .then(({ data, error }) => {
+      if (error) {
         throw new Error(`Failed to persist multiple ${multiple.id}`);
       }
 
-      return (await response.json()) as {
-        multiple: {
-          id: string;
-          payload: Record<string, unknown>;
-          updated_at?: string | null;
-        };
-        ignored_due_to_staleness: boolean;
-      };
-    })
-    .then((result) => {
-      if (result.ignored_due_to_staleness && result.multiple?.payload) {
+      const result = data as unknown as StaleGuardedSaveResult;
+      if (result.was_stale && result.payload) {
         patchMultipleInLocalStorage(
-          result.multiple.payload as Record<string, unknown> & { id: string }
+          result.payload as Record<string, unknown> & { id: string }
         );
       }
     })
@@ -545,40 +522,11 @@ export function persistMultipleRecord(multiple: MultipleRecordPayload) {
 }
 
 export function deleteMultipleRecord(multipleId: string) {
-  return fetch(buildApiUrl(`/storage/multiples/${multipleId}`), {
-    method: "DELETE",
-  }).catch(() => {
-    // Keep local delete path non-blocking if backend is unavailable.
-  });
-}
-
-export function queueStorageSnapshotSync() {
-  if (typeof window === "undefined") return;
-
-  if (queuedPersistTimeout !== null) {
-    window.clearTimeout(queuedPersistTimeout);
-  }
-
-  queuedPersistTimeout = window.setTimeout(async () => {
-    if (persistInFlight) return;
-
-    persistInFlight = true;
-    try {
-      const outbound = buildOutboundSnapshot();
-      const result = await persistSnapshotToServer(outbound);
-
-      if (result.ignored_due_to_staleness) {
-        applyStorageSnapshot(result.snapshot);
-      } else {
-        setSnapshotMetadata(outbound.metadata);
-      }
-    } catch {
-      // Keep local cache usable even if backend sync is unavailable.
-    } finally {
-      persistInFlight = false;
-      queuedPersistTimeout = null;
-    }
-  }, 350);
+  return requireClient()
+    .then((client) => client.from("user_multiples").delete().eq("id", multipleId))
+    .catch(() => {
+      // Keep local delete path non-blocking if backend is unavailable.
+    });
 }
 
 export function queueEntitySync(entityKey: EntityKey) {
@@ -611,21 +559,22 @@ export function queueEntitySync(entityKey: EntityKey) {
   }, 250);
 
   queuedEntityTimeouts.set(entityKey, nextTimeout);
-  queueStorageSnapshotSync();
 }
 
 async function hydrateEntitiesFromServer() {
   backupLocalSnapshotIfMeaningful();
-  const response = await fetch(buildApiUrl("/storage/entities"));
-  if (!response.ok) {
-    throw new Error(`Failed to hydrate entity storage (${response.status})`);
+  const client = await requireClient();
+  const { data, error } = await client
+    .from("user_entity_state")
+    .select("entity_key, payload");
+
+  if (error) {
+    throw new Error(`Failed to hydrate entity storage (${error.message})`);
   }
 
-  const data = (await response.json()) as {
-    entities: Record<EntityKey, EntityStatePayload>;
-  };
-
-  const remoteEntities = data.entities;
+  const remoteEntities = Object.fromEntries(
+    (data ?? []).map((row) => [row.entity_key as EntityKey, row.payload as EntityStatePayload])
+  ) as Partial<Record<EntityKey, EntityStatePayload>>;
   const entityKeys = Object.keys(ENTITY_CONFIG) as EntityKey[];
   let anyRemoteApplied = false;
   let anyLocalPushed = false;
@@ -675,7 +624,34 @@ async function hydrateEntitiesFromServer() {
   return { hydrated: true, source: "empty-entities" as const };
 }
 
+export function clearLocalScorelabData() {
+  lastHydratedUserId = null;
+  localStorage.removeItem(LAST_USER_KEY);
+  LOCAL_RESET_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+  });
+  clearEntityMetadata();
+  dispatchPersistenceEvents();
+}
+
 export async function hydrateStorageFromServer() {
+  const userId = await getAuthedUserId();
+  if (!userId) {
+    return { hydrated: false, source: "signed-out" as const };
+  }
+
+  if (lastHydratedUserId === userId) {
+    return { hydrated: true, source: "already-hydrated" as const };
+  }
+
+  // A different account was using this browser: never merge or push its
+  // local data into the new account. Start clean and pull from the server.
+  const previousUserId = readJson<string | null>(LAST_USER_KEY, null);
+  if (previousUserId && previousUserId !== userId) {
+    clearLocalScorelabData();
+  }
+  writeJson(LAST_USER_KEY, userId);
+
   try {
     const entityResult = await hydrateEntitiesFromServer();
 
@@ -690,123 +666,26 @@ export async function hydrateStorageFromServer() {
       await hydrateMultiplesFromServer();
     }
 
+    lastHydratedUserId = userId;
     return entityResult;
   } catch {
-    try {
-      const response = await fetch(buildApiUrl("/storage/snapshot"));
-      if (!response.ok) {
-        throw new Error(`Failed to hydrate storage (${response.status})`);
-      }
-
-      const data = (await response.json()) as { snapshot: StorageSnapshotPayload };
-      const remoteSnapshot = data.snapshot;
-      const localSnapshot = getLocalStorageSnapshot();
-      backupLocalSnapshotIfMeaningful();
-
-      if (
-        snapshotHasMeaningfulData(remoteSnapshot) &&
-        getSnapshotUpdatedAt(remoteSnapshot) >= getSnapshotUpdatedAt(localSnapshot)
-      ) {
-        applyStorageSnapshot(remoteSnapshot);
-        return { hydrated: true, source: "remote-snapshot" as const };
-      }
-
-      if (snapshotHasMeaningfulData(localSnapshot)) {
-        const outbound = buildOutboundSnapshot();
-        const result = await persistSnapshotToServer(outbound);
-        if (result.ignored_due_to_staleness) {
-          applyStorageSnapshot(result.snapshot);
-          return { hydrated: true, source: "remote-snapshot-won" as const };
-        }
-        setSnapshotMetadata(outbound.metadata);
-        return { hydrated: true, source: "local-snapshot-pushed" as const };
-      }
-
-      const backupSnapshot = getStoredBackupSnapshot();
-      if (backupSnapshot && snapshotHasMeaningfulData(backupSnapshot)) {
-        applyStorageSnapshot(backupSnapshot);
-        return { hydrated: true, source: "backup-restored" as const };
-      }
-
-      const currentAnalyses = readJson<unknown[]>(ANALYSES_KEY, []);
-      const currentMultiples = readJson<unknown[]>(MULTIPLES_KEY, []);
-
-      if (currentAnalyses.length === 0) {
-        await hydrateAnalysesFromServer();
-      }
-
-      if (currentMultiples.length === 0) {
-        await hydrateMultiplesFromServer();
-      }
-
-      return { hydrated: true, source: "empty" as const };
-    } catch {
-      return { hydrated: false, source: "offline" as const };
-    }
+    return { hydrated: false, source: "offline" as const };
   }
 }
 
 export { PERSISTENCE_HYDRATED_EVENT };
 
 export async function resetAllScorelabData() {
+  // Delete only the signed-in user's rows; RLS scopes every statement.
   try {
-    const response = await fetch(buildApiUrl("/storage/reset"), {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      throw new Error(`Reset endpoint unavailable (${response.status})`);
-    }
-  } catch {
-    try {
-      const analysesResponse = await fetchAnalysisRecordsFromServer();
-      await Promise.all(
-        analysesResponse.analyses.map((analysis) => deleteAnalysisRecord(analysis.id))
-      );
-    } catch {
-      // Keep going with local reset fallback.
-    }
-
-    try {
-      const multiplesResponse = await fetchMultipleRecordsFromServer();
-      await Promise.all(
-        multiplesResponse.multiples.map((multiple) => deleteMultipleRecord(multiple.id))
-      );
-    } catch {
-      // Keep going with local reset fallback.
-    }
-
-    const emptySnapshot = {
-      metadata: {
-        schema_version: 1,
-        updated_at: new Date().toISOString(),
-        client_id: getClientId(),
-      },
-      analyses: [],
-      multiples: [],
-      multiple_draft: [],
-      bankroll_settings: {},
-      roadmap_settings: {},
-      roadmap_day_memories: [],
-      roadmap_missions: [],
-    } satisfies StorageSnapshotPayload;
-
-    await Promise.allSettled(
-      (Object.keys(ENTITY_CONFIG) as EntityKey[]).map((entityKey) =>
-        persistEntityToServer(entityKey, {
-          metadata: {
-            schema_version: 1,
-            updated_at: emptySnapshot.metadata.updated_at,
-            client_id: emptySnapshot.metadata.client_id,
-            entity_key: entityKey,
-          },
-          data: emptySnapshot[entityKey],
-        })
-      )
-    );
-
+    const client = await requireClient();
     await Promise.allSettled([
-      persistSnapshotToServer(emptySnapshot),
+      client.from("user_entity_state").delete().neq("entity_key", ""),
+      client.from("user_analyses").delete().neq("id", ""),
+      client.from("user_multiples").delete().neq("id", ""),
     ]);
+  } catch {
+    // Still reset the local cache even if the server is unreachable.
   }
 
   if (typeof window !== "undefined") {
