@@ -15,7 +15,6 @@ import {
   BookmarkCheck,
   ArrowRight,
   ChevronRight,
-  Star,
   Radar,
   Brain,
   Dices,
@@ -70,12 +69,6 @@ const whyDifferent = [
   "Not guessing — data-driven decisions",
   "Real market comparison",
   "Built for long-term edge",
-];
-
-const testimonials = [
-  { name: "Marcus K.", role: "Professional Bettor", quote: "ScoreLab transformed my approach. The edge detection is incredibly precise.", rating: 5 },
-  { name: "Sarah T.", role: "Data Analyst", quote: "Finally a platform that treats betting like quantitative analysis. Clean, fast, reliable.", rating: 5 },
-  { name: "James R.", role: "Bankroll Manager", quote: "The Kelly calculator alone has improved my ROI by 12% over 6 months.", rating: 5 },
 ];
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
@@ -215,9 +208,9 @@ export default function Landing() {
             {/* Animated Stats */}
             <motion.div variants={fadeIn} custom={4} className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                { value: 15420, suffix: "", label: "Analyses Run" },
-                { value: 67.4, suffix: "%", label: "Avg. Accuracy" },
-                { value: 11.8, suffix: "%", label: "Avg. Edge" },
+                { value: 15, suffix: "", label: "Markets per Match" },
+                { value: 400, suffix: "", label: "Simulations per Analysis" },
+                { value: 30, suffix: "+", label: "Calibrated Leagues" },
               ].map(s => (
                 <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
                   <CardContent className="p-4">
@@ -739,41 +732,6 @@ export default function Landing() {
                 {i < steps.length - 1 && (
                   <ChevronRight className="hidden md:block absolute top-8 -right-3 w-5 h-5 text-white/10" />
                 )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_24%,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,rgba(7,17,31,0.74),rgba(5,12,21,0.94))]" />
-        <div className="max-w-7xl mx-auto">
-          <div className="relative text-center mb-16">
-            <Badge variant="outline" className="mb-3 border-primary/18 text-primary">Testimonials</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Trusted by Analysts</h2>
-          </div>
-          <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={t.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -2 }}
-                className="rounded-[28px] border border-cyan-100/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.82),rgba(8,19,33,0.94))] p-6 shadow-[0_24px_72px_-28px_rgba(34,211,238,0.18)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">"{t.quote}"</p>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
               </motion.div>
             ))}
           </div>

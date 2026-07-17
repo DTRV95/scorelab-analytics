@@ -1,11 +1,10 @@
 # ScoreLab Analytics
 
-ScoreLab is a local analysis and bankroll management app with:
+ScoreLab is a football analysis and bankroll management app with:
 
-- React + Vite frontend
-- FastAPI backend
-- local cache in the browser
-- backend persistence for analyses, multiples, roadmap and settings
+- React + Vite frontend (auth and per-user data on Supabase)
+- FastAPI backend serving the statistical analysis engine (/analyze)
+- local-first cache in the browser, synced to Supabase per account
 
 This guide is written for the practical use case: `run the app on another computer`.
 
@@ -86,8 +85,6 @@ Example `backend\.env`:
 
 ```env
 SCORELAB_ALLOWED_ORIGINS=http://localhost:8080
-OPENAI_API_KEY=your_openai_key_here
-OPENAI_MODEL=gpt-4o-mini
 ```
 
 Start the backend:
@@ -163,14 +160,9 @@ For the backend production environment, set:
 
 ```env
 SCORELAB_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app
-DATABASE_URL=postgresql://user:password@host/database?sslmode=require
-OPENAI_API_KEY=your_openai_key_here
-OPENAI_MODEL=gpt-4o-mini
 ```
 
-If your Neon/Vercel integration only exposes `DATABASE_URL_UNPOOLED`, the backend can use that too. The storage layer checks `DATABASE_URL` first and falls back to `DATABASE_URL_UNPOOLED`.
-
-For production persistence, replace the local SQLite file with a managed database such as Neon Postgres, Supabase, Turso or another hosted database. The local file `backend\scorelab_storage.db` is suitable for development and computer-to-computer transfer, but not for durable serverless production storage.
+User data (analyses, multiples, bankroll and roadmap settings) is stored per account in Supabase with Row Level Security. The backend no longer persists user data.
 
 ## Quick checklist
 
@@ -187,49 +179,6 @@ Use this order:
 9. start backend
 10. start frontend
 11. open `http://localhost:8080`
-
-## AI features
-
-The AI blocks in Dashboard, Bankroll Tools and History need a valid OpenAI key in:
-
-```text
-backend\.env
-```
-
-If there is no key, some parts may fall back locally, but live AI summaries need:
-
-```env
-OPENAI_API_KEY=your_openai_key_here
-```
-
-## Storage and persistence
-
-ScoreLab now stores data in 2 places:
-
-1. browser local cache
-2. backend SQLite database
-
-Backend database file:
-
-```text
-backend\scorelab_storage.db
-```
-
-This means:
-
-- the app is no longer relying only on browser localStorage
-- analyses and multiples are persisted in the backend
-- roadmap and settings also sync to the backend
-
-## Moving data to another computer
-
-If you want the other computer to keep the same backend data, copy:
-
-```text
-backend\scorelab_storage.db
-```
-
-If you do not copy it, the new computer will start with a fresh backend database.
 
 ## Common problems
 
@@ -249,13 +198,6 @@ Use:
 Set-ExecutionPolicy -Scope Process Bypass
 .\venv\Scripts\Activate.ps1
 ```
-
-### AI blocks do not work
-
-Check:
-
-- `OPENAI_API_KEY` exists in `backend\.env`
-- backend was restarted after adding the key
 
 ### Build or tests fail with `spawn EPERM`
 
