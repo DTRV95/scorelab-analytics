@@ -901,7 +901,7 @@ export default function Landing() {
               Edge?
             </span>
           </h2>
-          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Join thousands of analysts who trust ScoreLab for smarter betting decisions.</p>
+          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Probabilistic match analysis, value detection and bankroll discipline — built on data, not gut feeling.</p>
           <div className="relative mt-8 flex justify-center gap-4">
             <Link to="/signup"><Button variant="hero" size="xl">Start Free Today <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
           </div>

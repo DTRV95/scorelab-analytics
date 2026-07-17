@@ -1,12 +1,21 @@
-import { Bell, Download, Search, Sparkles, User } from "lucide-react";
+import { Bell, Download, LogOut, Search, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { downloadScoreLabExport } from "@/lib/exportData";
 import { OPEN_COMMAND_CENTER_EVENT } from "@/components/ScoreLabCommandCenter";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function TopBar() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
   const openCommandCenter = () => {
     window.dispatchEvent(new Event(OPEN_COMMAND_CENTER_EVENT));
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   return (
@@ -56,6 +65,15 @@ export function TopBar() {
               <User className="h-4 w-4" strokeWidth={1.5} />
             </Button>
           </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleSignOut}
+            title="Log out"
+            className="scorelab-chrome-control rounded-2xl border"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.5} />
+          </Button>
         </div>
       </div>
     </header>

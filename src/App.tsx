@@ -8,6 +8,8 @@ import { AnimatePresence } from "framer-motion";
 import { hydrateStorageFromServer } from "@/lib/persistenceSync";
 import { ScoreLabCommandCenter } from "@/components/ScoreLabCommandCenter";
 import { ScoreLabDataProvider } from "@/contexts/ScoreLabDataContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
@@ -22,6 +24,7 @@ const HistoryMultiples = lazy(() => import("./pages/HistoryMultiples"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
 const RoadmapPlanner = lazy(() => import("./pages/RoadmapPlanner"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -71,6 +74,7 @@ const App = () => {
           <AppLoadingState />
         ) : (
           <BrowserRouter>
+            <AuthProvider>
             <ScoreLabDataProvider>
               <ScoreLabCommandCenter />
               <Suspense fallback={<AppLoadingState />}>
@@ -80,21 +84,23 @@ const App = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/analysis" element={<MatchAnalysis />} />
-                    <Route path="/radar" element={<ValueRadar />} />
-                    <Route path="/model-lab" element={<ModelLab />} />
-                    <Route path="/history" element={<History />} />
-                    <Route path="/history-multiples" element={<HistoryMultiples />} />
-                    <Route path="/bankroll" element={<BankrollTools />} />
-                    <Route path="/roadmap" element={<RoadmapPlanner />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
+                    <Route path="/radar" element={<ProtectedRoute><ValueRadar /></ProtectedRoute>} />
+                    <Route path="/model-lab" element={<ProtectedRoute><ModelLab /></ProtectedRoute>} />
+                    <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/history-multiples" element={<ProtectedRoute><HistoryMultiples /></ProtectedRoute>} />
+                    <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
+                    <Route path="/roadmap" element={<ProtectedRoute><RoadmapPlanner /></ProtectedRoute>} />
                     <Route path="/pricing" element={<PricingPage />} />
-                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AnimatePresence>
               </Suspense>
             </ScoreLabDataProvider>
+            </AuthProvider>
           </BrowserRouter>
         )}
       </TooltipProvider>

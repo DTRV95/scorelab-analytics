@@ -1,16 +1,32 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { BarChart3, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { session, loading, signIn } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (!loading && session) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Navigate to dashboard for demo
-    window.location.href = "/dashboard";
+    setError(null);
+    setSubmitting(true);
+    const result = await signIn(email.trim(), password);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    navigate("/dashboard");
   };
 
   return (
@@ -33,10 +49,10 @@ export default function Login() {
           </p>
           <div className="mt-12 grid grid-cols-2 gap-4">
             {[
-              { label: "Active Users", value: "12,400+" },
-              { label: "Analyses Run", value: "2.1M+" },
-              { label: "Avg. Edge Found", value: "+6.8%" },
-              { label: "Markets Covered", value: "50+" },
+              { label: "Markets per Match", value: "15" },
+              { label: "Simulations per Analysis", value: "400" },
+              { label: "Calibrated Leagues", value: "30+" },
+              { label: "Model", value: "Dixon-Coles" },
             ].map((s) => (
               <div key={s.label} className="rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -84,8 +100,11 @@ export default function Login() {
                 className="w-full h-11 px-4 rounded-lg input-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </div>
-            <Button type="submit" variant="hero" className="w-full" size="lg">
-              Log In <ArrowRight className="w-4 h-4 ml-1" />
+            {error && (
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+            )}
+            <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
+              {submitting ? "Logging in..." : "Log In"} <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
 

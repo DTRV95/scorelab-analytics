@@ -2,13 +2,25 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { BarChart3, ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { resetPassword } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    const result = await resetPassword(email.trim());
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
     setSent(true);
   };
 
@@ -31,7 +43,12 @@ export default function ForgotPassword() {
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full h-11 px-4 rounded-lg input-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
               </div>
-              <Button type="submit" variant="hero" className="w-full" size="lg">Send Reset Link</Button>
+              {error && (
+                <p className="text-sm text-destructive" role="alert">{error}</p>
+              )}
+              <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
+                {submitting ? "Sending..." : "Send Reset Link"}
+              </Button>
             </form>
           </>
         ) : (

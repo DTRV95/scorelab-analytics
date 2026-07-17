@@ -1,16 +1,42 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { BarChart3, ArrowRight } from "lucide-react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { BarChart3, ArrowRight, MailCheck } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const { session, loading, signUp } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (!loading && session && !awaitingConfirmation) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    window.location.href = "/dashboard";
+    setError(null);
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setSubmitting(true);
+    const result = await signUp(name.trim(), email.trim(), password);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.needsEmailConfirmation) {
+      setAwaitingConfirmation(true);
+      return;
+    }
+    navigate("/dashboard");
   };
 
   return (
@@ -28,7 +54,7 @@ export default function Signup() {
             Start finding your <span className="text-gradient-primary">edge</span> today.
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Join thousands of analysts using data-driven methods to make smarter betting decisions.
+            A data-driven workbench for match analysis: probabilities, value detection and bankroll discipline in one place.
           </p>
         </div>
       </div>
@@ -42,8 +68,24 @@ export default function Signup() {
             <span className="font-bold text-lg text-foreground">ScoreLab</span>
           </div>
 
+          {awaitingConfirmation ? (
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <MailCheck className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
+                Confirm your address, then log in.
+              </p>
+              <Link to="/login" className="mt-6 inline-block text-sm text-primary hover:underline font-medium">
+                Back to login
+              </Link>
+            </div>
+          ) : (
+          <>
           <h1 className="text-2xl font-bold text-foreground">Create account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Get started with 5 free analyses per day.</p>
+          <p className="text-sm text-muted-foreground mt-1">Create your account to keep your analyses synced and secure.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
@@ -58,8 +100,11 @@ export default function Signup() {
               <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full h-11 px-4 rounded-lg input-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
             </div>
-            <Button type="submit" variant="hero" className="w-full" size="lg">
-              Create Account <ArrowRight className="w-4 h-4 ml-1" />
+            {error && (
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+            )}
+            <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
+              {submitting ? "Creating account..." : "Create Account"} <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
 
@@ -67,6 +112,8 @@ export default function Signup() {
             Already have an account?{" "}
             <Link to="/login" className="text-primary hover:underline font-medium">Log in</Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>
