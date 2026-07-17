@@ -13,7 +13,6 @@ import {
   Clock,
   Download,
   BookmarkCheck,
-  Check,
   ArrowRight,
   ChevronRight,
   Star,
@@ -71,36 +70,6 @@ const whyDifferent = [
   "Not guessing — data-driven decisions",
   "Real market comparison",
   "Built for long-term edge",
-];
-
-const pricingPlans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    desc: "Get started with basic analysis tools.",
-    features: ["5 analyses per day", "Basic Poisson model", "Single match analysis", "Community support"],
-    cta: "Start Free",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "$29",
-    period: "/month",
-    desc: "For serious analysts who need an edge.",
-    features: ["Unlimited analyses", "Advanced models", "Daily opportunities", "Export to Excel", "Match history", "Priority support"],
-    cta: "Start Pro Trial",
-    highlighted: true,
-  },
-  {
-    name: "Premium",
-    price: "$79",
-    period: "/month",
-    desc: "The full intelligence toolkit.",
-    features: ["Everything in Pro", "API access", "Custom models", "Bankroll tools", "Team collaboration", "Dedicated support", "Early feature access"],
-    cta: "Go Premium",
-    highlighted: false,
-  },
 ];
 
 const testimonials = [
@@ -166,7 +135,6 @@ export default function Landing() {
           <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] p-1 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] md:flex">
             <a href="#features" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Features</a>
             <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Workflow</a>
-            <a href="#pricing" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Log In</Button></Link>
@@ -777,83 +745,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="relative border-t border-white/5 px-6 py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Star className="h-3.5 w-3.5" />
-              Pricing
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Simple, Transparent Pricing</h2>
-            <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more power.</p>
-          </div>
-          <div className="mb-8 grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">
-            {[
-              { label: "Entry point", value: "Start with the board", hint: "Use the free plan to understand the workflow and interface." },
-              { label: "Growth path", value: "Unlock more depth", hint: "Move into advanced analysis and daily value scanning when needed." },
-              { label: "Power tier", value: "Operate at full scope", hint: "Get the complete toolkit for tracking, collaboration and scale." },
-            ].map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
-              >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {pricingPlans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-[28px] p-6 transition-all duration-300 backdrop-blur-xl ${
-                  plan.highlighted
-                    ? "relative border border-primary/30 bg-[linear-gradient(180deg,rgba(10,25,41,0.96)_0%,rgba(8,19,33,0.99)_100%)] card-glow hover:-translate-y-1 shadow-[0_26px_70px_rgba(34,211,238,0.10)]"
-                    : "border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] hover:-translate-y-1 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)]"
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full gradient-primary text-xs font-bold text-primary-foreground">
-                    Most Popular
-                  </div>
-                )}
-                <div className="mb-4 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-foreground font-mono-data">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground">{plan.period}</span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{plan.desc}</p>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" strokeWidth={1.5} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/signup">
-                  <Button variant={plan.highlighted ? "hero" : "outline"} className="w-full mt-6">
-                    {plan.cta}
-                  </Button>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Testimonials */}
       <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_24%,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,rgba(7,17,31,0.74),rgba(5,12,21,0.94))]" />
@@ -926,7 +817,6 @@ export default function Landing() {
             <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
               <a href="#features" className="transition-colors hover:text-foreground">Features</a>
               <a href="#how-it-works" className="transition-colors hover:text-foreground">Workflow</a>
-              <a href="#pricing" className="transition-colors hover:text-foreground">Pricing</a>
             </div>
           </div>
           <div>

@@ -23,7 +23,6 @@ const History = lazy(() => import("./pages/History"));
 const HistoryMultiples = lazy(() => import("./pages/HistoryMultiples"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
 const RoadmapPlanner = lazy(() => import("./pages/RoadmapPlanner"));
-const PricingPage = lazy(() => import("./pages/PricingPage"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -93,7 +92,6 @@ const App = () => {
                     <Route path="/history-multiples" element={<ProtectedRoute><HistoryMultiples /></ProtectedRoute>} />
                     <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
                     <Route path="/roadmap" element={<ProtectedRoute><RoadmapPlanner /></ProtectedRoute>} />
-                    <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

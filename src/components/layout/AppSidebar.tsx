@@ -7,7 +7,6 @@ import {
   Layers3,
   Wallet,
   Flag,
-  CreditCard,
   Settings,
   BarChart3,
   ChevronLeft,
@@ -45,7 +44,6 @@ const navGroups = [
   {
     title: "System",
     items: [
-      { title: "Pricing", url: "/pricing", icon: CreditCard },
       { title: "Settings", url: "/settings", icon: Settings },
     ],
   },
