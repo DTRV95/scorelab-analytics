@@ -16,11 +16,11 @@ export default function ResetPassword() {
     e.preventDefault();
     setError(null);
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("A palavra-passe deve ter pelo menos 8 caracteres.");
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError("As palavras-passe não coincidem.");
       return;
     }
     setSubmitting(true);
@@ -45,21 +45,21 @@ export default function ResetPassword() {
 
         {!loading && !session ? (
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground">Link expired</h1>
+            <h1 className="text-2xl font-bold text-foreground">Link expirado</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              This password reset link is invalid or has expired. Request a new one.
+              Este link de recuperação é inválido ou expirou. Pede um novo.
             </p>
             <Link to="/forgot-password" className="mt-6 inline-block text-sm text-primary hover:underline font-medium">
-              Request new link
+              Pedir novo link
             </Link>
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-foreground">Set new password</h1>
-            <p className="text-sm text-muted-foreground mt-1">Choose a new password for your account.</p>
+            <h1 className="text-2xl font-bold text-foreground">Definir nova palavra-passe</h1>
+            <p className="text-sm text-muted-foreground mt-1">Escolhe uma nova palavra-passe para a tua conta.</p>
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">New password</label>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Nova palavra-passe</label>
                 <input
                   type="password"
                   value={password}
@@ -69,7 +69,7 @@ export default function ResetPassword() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Confirm password</label>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Confirmar palavra-passe</label>
                 <input
                   type="password"
                   value={confirm}
@@ -82,14 +82,14 @@ export default function ResetPassword() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               )}
               <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
-                {submitting ? "Saving..." : "Save New Password"}
+                {submitting ? "A guardar..." : "Guardar Nova Palavra-passe"}
               </Button>
             </form>
           </>
         )}
 
         <Link to="/login" className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to login
+          <ArrowLeft className="w-4 h-4" /> Voltar ao login
         </Link>
       </div>
     </div>

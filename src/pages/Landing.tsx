@@ -32,43 +32,43 @@ const fadeIn = {
 };
 
 const features = [
-  { icon: BarChart3, title: "Poisson Probability Engine", desc: "Model match outcomes using advanced statistical distributions." },
-  { icon: TrendingUp, title: "Value Bet Detection", desc: "Compare model probabilities against market odds to find edges." },
-  { icon: Target, title: "Kelly Stake Calculator", desc: "Optimal position sizing based on your edge and bankroll." },
-  { icon: Shield, title: "Confidence Scoring", desc: "0–10 confidence meter backed by data quality signals." },
-  { icon: Clock, title: "Match History", desc: "Track and review every analysis you've run." },
-  { icon: Zap, title: "Daily Edge Dashboard", desc: "Pre-scanned daily opportunities ranked by value." },
-  { icon: Download, title: "Export to Excel", desc: "Download analyses and reports in structured formats." },
-  { icon: BookmarkCheck, title: "Saved Analyses", desc: "Bookmark and organize your most important predictions." },
+  { icon: BarChart3, title: "Motor Probabilístico Poisson", desc: "Modela os desfechos do jogo com distribuições estatísticas avançadas." },
+  { icon: TrendingUp, title: "Deteção de Apostas de Valor", desc: "Compara as probabilidades do modelo com as odds do mercado para encontrar edge." },
+  { icon: Target, title: "Calculadora de Stake (Kelly)", desc: "Dimensiona a entrada ideal com base no edge e na tua banca." },
+  { icon: Shield, title: "Índice de Confiança", desc: "Medidor de confiança 0–10 sustentado em sinais de qualidade dos dados." },
+  { icon: Clock, title: "Histórico de Análises", desc: "Acompanha e revê todas as análises que fizeste." },
+  { icon: Zap, title: "Painel Diário de Edge", desc: "Oportunidades do dia pré-analisadas e ordenadas por valor." },
+  { icon: Download, title: "Exportação para Excel", desc: "Descarrega análises e relatórios em formatos estruturados." },
+  { icon: BookmarkCheck, title: "Análises Guardadas", desc: "Guarda e organiza as tuas análises mais importantes." },
 ];
 
 const steps = [
-  { num: "01", title: "Input Match Data", desc: "Enter team stats, recent form, and market odds." },
-  { num: "02", title: "Run the Model", desc: "Our Poisson engine calculates true probabilities." },
-  { num: "03", title: "Detect Value", desc: "Compare model vs market to find mispriced bets." },
-  { num: "04", title: "Size Your Stake", desc: "Kelly criterion optimizes your position." },
+  { num: "01", title: "Introduz os Dados do Jogo", desc: "Estatísticas das equipas, forma recente e odds do mercado." },
+  { num: "02", title: "Corre o Modelo", desc: "O motor Poisson calcula as probabilidades reais." },
+  { num: "03", title: "Deteta o Valor", desc: "Compara modelo e mercado para encontrar odds mal avaliadas." },
+  { num: "04", title: "Dimensiona a Stake", desc: "O critério de Kelly otimiza a tua entrada." },
 ];
 
-const radarPreview: Array<{ home: string; away: string; league: string; market: string; odds: number; modelProb: number; edge: number; conf: number; decision: "Bet" | "Caution" | "No Bet"; tag?: string; best?: boolean }> = [
-  { home: "Arsenal", away: "Chelsea", league: "Premier League", market: "Over 2.5", odds: 1.80, modelProb: 67.4, edge: 11.8, conf: 9, decision: "Bet", tag: "High scoring expectation", best: true },
-  { home: "Liverpool", away: "Man City", league: "Premier League", market: "BTTS Yes", odds: 1.75, modelProb: 62.1, edge: 5.0, conf: 7, decision: "Bet", tag: "Strong model agreement" },
-  { home: "Barcelona", away: "Real Madrid", league: "La Liga", market: "Over 3.5", odds: 2.80, modelProb: 42.3, edge: 6.6, conf: 7, decision: "Bet" },
-  { home: "Bayern", away: "Dortmund", league: "Bundesliga", market: "Over 2.5", odds: 1.55, modelProb: 72.8, edge: 8.3, conf: 8, decision: "Bet", tag: "Strong model agreement" },
-  { home: "PSG", away: "Lyon", league: "Ligue 1", market: "BTTS Yes", odds: 1.90, modelProb: 58.4, edge: 5.8, conf: 6, decision: "Caution" },
-  { home: "Juventus", away: "AC Milan", league: "Serie A", market: "Under 2.5", odds: 1.95, modelProb: 54.2, edge: 2.9, conf: 5, decision: "Caution" },
+const radarPreview: Array<{ home: string; away: string; league: string; market: string; odds: number; modelProb: number; edge: number; conf: number; decision: "Apostar" | "Cautela" | "Não Apostar"; tag?: string; best?: boolean }> = [
+  { home: "Arsenal", away: "Chelsea", league: "Premier League", market: "Mais de 2.5", odds: 1.80, modelProb: 67.4, edge: 11.8, conf: 9, decision: "Apostar", tag: "Expetativa de muitos golos", best: true },
+  { home: "Liverpool", away: "Man City", league: "Premier League", market: "Ambas Marcam", odds: 1.75, modelProb: 62.1, edge: 5.0, conf: 7, decision: "Apostar", tag: "Forte concordância do modelo" },
+  { home: "Barcelona", away: "Real Madrid", league: "La Liga", market: "Mais de 3.5", odds: 2.80, modelProb: 42.3, edge: 6.6, conf: 7, decision: "Apostar" },
+  { home: "Bayern", away: "Dortmund", league: "Bundesliga", market: "Mais de 2.5", odds: 1.55, modelProb: 72.8, edge: 8.3, conf: 8, decision: "Apostar", tag: "Forte concordância do modelo" },
+  { home: "PSG", away: "Lyon", league: "Ligue 1", market: "Ambas Marcam", odds: 1.90, modelProb: 58.4, edge: 5.8, conf: 6, decision: "Cautela" },
+  { home: "Juventus", away: "AC Milan", league: "Serie A", market: "Menos de 2.5", odds: 1.95, modelProb: 54.2, edge: 2.9, conf: 5, decision: "Cautela" },
 ];
 
 const thinkingSteps = [
-  { icon: Brain, title: "Poisson Model", desc: "Calculates goal probabilities from historical scoring rates using statistical distributions." },
-  { icon: Dices, title: "Monte Carlo Simulation", desc: "Runs thousands of match simulations to generate robust probability estimates." },
-  { icon: Scale, title: "Value Betting Logic", desc: "Compares model probabilities vs market odds to identify mispriced outcomes." },
+  { icon: Brain, title: "Modelo Poisson", desc: "Calcula probabilidades de golos a partir dos ritmos históricos de marcação." },
+  { icon: Dices, title: "Simulação Monte Carlo", desc: "Corre centenas de simulações do jogo para estimativas de probabilidade robustas." },
+  { icon: Scale, title: "Lógica de Valor", desc: "Compara as probabilidades do modelo com as odds para identificar desfechos mal cotados." },
 ];
 
 const whyDifferent = [
-  "Not predictions — probabilities",
-  "Not guessing — data-driven decisions",
-  "Real market comparison",
-  "Built for long-term edge",
+  "Não são previsões — são probabilidades",
+  "Não é adivinhar — são decisões com dados",
+  "Comparação real com o mercado",
+  "Construído para edge a longo prazo",
 ];
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
@@ -126,12 +126,12 @@ export default function Landing() {
             </div>
           </Link>
           <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] p-1 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] md:flex">
-            <a href="#features" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Features</a>
-            <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Workflow</a>
+            <a href="#features" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Funcionalidades</a>
+            <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Como Funciona</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Log In</Button></Link>
-            <Link to="/signup"><Button variant="hero" size="sm">Start Free</Button></Link>
+            <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Entrar</Button></Link>
+            <Link to="/signup"><Button variant="hero" size="sm">Começar Grátis</Button></Link>
           </div>
         </div>
       </nav>
@@ -186,31 +186,31 @@ export default function Landing() {
             <motion.div variants={fadeIn} custom={0} className="mb-6">
               <Badge variant="outline" className="gap-2 border-primary/18 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] py-1.5 text-muted-foreground shadow-[0_0_24px_rgba(34,211,238,0.08)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Football Betting Intelligence Platform
+                Análise Estatística de Futebol — Grátis
               </Badge>
             </motion.div>
             <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
-              Football Betting{" "}
+              Inteligência de{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Intelligence
+                Apostas
               </span>
               ,{" "}
-              <span className="text-gradient-primary">Reimagined</span>
+              <span className="text-gradient-primary">Reinventada</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
-              A premium football analysis workspace for probability, value detection, bankroll discipline and model calibration.
+              Um espaço de análise de futebol para probabilidades, deteção de valor, disciplina de banca e calibração de modelos. Gratuito para todos.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link to="/analysis"><Button variant="hero" size="xl">Start Analysis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-              <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explore Value Radar</Button></Link>
+              <Link to="/analysis"><Button variant="hero" size="xl">Iniciar Análise <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
+              <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explorar o Value Radar</Button></Link>
             </motion.div>
 
             {/* Animated Stats */}
             <motion.div variants={fadeIn} custom={4} className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                { value: 15, suffix: "", label: "Markets per Match" },
-                { value: 400, suffix: "", label: "Simulations per Analysis" },
-                { value: 30, suffix: "+", label: "Calibrated Leagues" },
+                { value: 15, suffix: "", label: "Mercados por Jogo" },
+                { value: 400, suffix: "", label: "Simulações por Análise" },
+                { value: 30, suffix: "+", label: "Ligas Calibradas" },
               ].map(s => (
                 <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
                   <CardContent className="p-4">
@@ -238,7 +238,7 @@ export default function Landing() {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                     <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
-                  <h3 className="mt-1.5 text-lg font-semibold text-foreground">Live value overview</h3>
+                  <h3 className="mt-1.5 text-lg font-semibold text-foreground">Visão de valor ao vivo</h3>
                 </div>
                 <div className="rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary ring-1 ring-primary/20">
                   Live
@@ -247,9 +247,9 @@ export default function Landing() {
 
               <div className="grid grid-cols-4 gap-2.5">
                 {[
-                  { label: "Confidence", value: "8.6", sub: "High" },
+                  { label: "Confiança", value: "8.6", sub: "Alta" },
                   { label: "Edge", value: "+11.8%", sub: "Premium" },
-                  { label: "Risk", value: "Low", sub: "Controlled" },
+                  { label: "Risco", value: "Baixo", sub: "Controlado" },
                   { label: "Stake", value: "2.4%", sub: "Kelly" },
                 ].map((item, i) => (
                   <motion.div
@@ -269,7 +269,7 @@ export default function Landing() {
               <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">Trend</p>
+                    <p className="text-sm font-medium text-foreground">Tendência</p>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-primary">7D</p>
                   </div>
                   <div className="mt-4 flex h-16 items-end gap-1.5">
@@ -287,13 +287,13 @@ export default function Landing() {
 
                 <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">Top Signal</p>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Today</p>
+                    <p className="text-sm font-medium text-foreground">Melhor Sinal</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Hoje</p>
                   </div>
                   <div className="mt-3 space-y-2.5">
                     {[
-                      { match: "Arsenal vs Chelsea", market: "Over 2.5", tone: "bg-primary/10 text-primary" },
-                      { match: "Liverpool vs Man City", market: "BTTS Yes", tone: "bg-emerald-500/10 text-emerald-300" },
+                      { match: "Arsenal vs Chelsea", market: "Mais de 2.5", tone: "bg-primary/10 text-primary" },
+                      { match: "Liverpool vs Man City", market: "Ambas Marcam", tone: "bg-emerald-500/10 text-emerald-300" },
                     ].map((row) => (
                       <div key={row.match} className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
                         <div>
@@ -301,7 +301,7 @@ export default function Landing() {
                           <p className="text-[11px] text-muted-foreground">{row.market}</p>
                         </div>
                         <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${row.tone}`}>
-                          Signal
+                          Sinal
                         </div>
                       </div>
                     ))}
@@ -320,22 +320,23 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Radar className="w-3 h-3" /> Live Scanner
+              <Radar className="w-3 h-3" /> Scanner ao Vivo
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Today&apos;s{" "}
+              O{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Value Radar
-              </span>
+              </span>{" "}
+              de Hoje
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Real-time market scanning finds the best opportunities for you.</p>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">A leitura contínua do mercado encontra as melhores oportunidades por ti.</p>
           </div>
 
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             {[
-              { label: "Visible opportunities", value: "6 live picks", hint: "Ranked by edge and confidence" },
-              { label: "Best confidence", value: "9 / 10", hint: "Strongest card on the board" },
-              { label: "Top value gap", value: "+11.8%", hint: "Model versus market difference" },
+              { label: "Oportunidades visíveis", value: "6 picks ao vivo", hint: "Ordenadas por edge e confiança" },
+              { label: "Melhor confiança", value: "9 / 10", hint: "O cartão mais forte do quadro" },
+              { label: "Maior diferença de valor", value: "+11.8%", hint: "Diferença entre modelo e mercado" },
             ].map((item) => (
               <motion.div
                 key={item.label}
@@ -353,7 +354,7 @@ export default function Landing() {
 
           {/* Sort controls */}
           <div className="flex items-center gap-2 mb-4 justify-end">
-            <span className="text-xs text-muted-foreground mr-1">Sort:</span>
+            <span className="text-xs text-muted-foreground mr-1">Ordenar:</span>
             <button
               onClick={() => {/* static preview, no-op */}}
               className="px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary ring-1 ring-primary/20"
@@ -364,7 +365,7 @@ export default function Landing() {
               onClick={() => {/* static preview, no-op */}}
               className="px-3 py-1 rounded-lg text-xs font-medium bg-white/5 text-muted-foreground ring-1 ring-white/10 hover:bg-white/10 transition-colors"
             >
-              Confidence
+              Confiança
             </button>
           </div>
 
@@ -372,16 +373,16 @@ export default function Landing() {
           <div className="overflow-hidden rounded-[32px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] shadow-[0_28px_80px_-26px_rgba(34,211,238,0.20)] backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-white/6 px-5 py-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Opportunity board</p>
-                <p className="mt-1 text-sm font-medium text-foreground">Live-ranked market edges for today</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Quadro de oportunidades</p>
+                <p className="mt-1 text-sm font-medium text-foreground">Edges de mercado de hoje, ordenados ao vivo</p>
               </div>
               <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Updated live
+                Atualizado ao vivo
               </div>
             </div>
             {/* Header */}
             <div className="hidden md:grid grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 px-5 py-3 border-b border-white/5">
-              {["Match", "Market", "Odds", "Model %", "Edge", "Confidence", "Decision"].map(h => (
+              {["Jogo", "Mercado", "Odd", "Modelo %", "Edge", "Confiança", "Decisão"].map(h => (
                 <span key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{h}</span>
               ))}
             </div>
@@ -405,7 +406,7 @@ export default function Landing() {
                 <div>
                   {item.best && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[linear-gradient(90deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
-                      🔥 Best Value Today
+                      🔥 Melhor Valor de Hoje
                     </span>
                   )}
                   <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -449,9 +450,9 @@ export default function Landing() {
 
                 {/* Decision */}
                 <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider w-fit
-                  ${item.decision === "Bet" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
-                  ${item.decision === "Caution" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
-                  ${item.decision === "No Bet" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
+                  ${item.decision === "Apostar" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
+                  ${item.decision === "Cautela" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
+                  ${item.decision === "Não Apostar" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
                 `}>
                   {item.decision}
                 </span>
@@ -462,7 +463,7 @@ export default function Landing() {
           <div className="text-center mt-8">
             <Link to="/radar">
               <Button variant="hero-outline" size="lg">
-                View All Opportunities <ArrowRight className="w-4 h-4 ml-1" />
+                Ver Todas as Oportunidades <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
@@ -476,21 +477,21 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Target className="h-3.5 w-3.5" />
-              Features
+              Funcionalidades
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Quantify the{" "}
+              Quantifica o{" "}
               <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Pitch
+                Relvado
               </span>
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Every tool you need to make data-driven betting decisions, in one platform.</p>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Todas as ferramentas para decidir com dados, numa só plataforma — sem pagar nada.</p>
           </div>
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {[
-              { label: "Analysis stack", value: "Match + Market + Risk", hint: "One workflow from setup to decision" },
-              { label: "Decision layer", value: "Confidence-first", hint: "Signals stay structured and comparable" },
-              { label: "Tracking loop", value: "Performance-aware", hint: "Built to learn from real results" },
+              { label: "Camadas de análise", value: "Jogo + Mercado + Risco", hint: "Um fluxo único, dos dados à decisão" },
+              { label: "Camada de decisão", value: "Confiança primeiro", hint: "Sinais estruturados e comparáveis" },
+              { label: "Ciclo de registo", value: "Atento ao desempenho", hint: "Feito para aprender com resultados reais" },
             ].map((item) => (
               <motion.div
                 key={item.label}
@@ -536,22 +537,22 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Brain className="h-3.5 w-3.5" />
-              Intelligence
+              Inteligência
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              How{" "}
+              Como o{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 ScoreLab
               </span>{" "}
-              Thinks
+              Pensa
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Three layers of analysis power every recommendation.</p>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Três camadas de análise sustentam cada recomendação.</p>
           </div>
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {[
-              { label: "Probability layer", value: "Poisson foundation", hint: "Turns scoring rates into structured match probabilities." },
-              { label: "Simulation layer", value: "Scenario-tested", hint: "Adds robustness by exploring many possible match paths." },
-              { label: "Decision layer", value: "Edge-aware output", hint: "Translates model strength into a usable betting signal." },
+              { label: "Camada probabilística", value: "Base Poisson", hint: "Converte ritmos de golo em probabilidades estruturadas." },
+              { label: "Camada de simulação", value: "Testada em cenários", hint: "Ganha robustez ao explorar muitos caminhos possíveis do jogo." },
+              { label: "Camada de decisão", value: "Sensível ao edge", hint: "Traduz a força do modelo num sinal utilizável." },
             ].map((item) => (
               <motion.div
                 key={item.label}
@@ -599,18 +600,18 @@ export default function Landing() {
           <div className="mb-10 text-center">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Crosshair className="h-3.5 w-3.5" />
-              Philosophy
+              Filosofia
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Why ScoreLab is Different</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Porque é que o ScoreLab é Diferente</h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
-              Built for disciplined users who want structure, not hype, and a workflow that stays useful over time.
+              Feito para quem quer estrutura e não ruído — um método que continua útil ao longo do tempo.
             </p>
           </div>
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {[
-              { label: "Mindset", value: "Probability over noise", hint: "The product is designed to support judgment, not impulse." },
-              { label: "Method", value: "Market-aware analysis", hint: "Every recommendation lives in context against price and risk." },
-              { label: "Outcome", value: "Long-term discipline", hint: "Tracking and bankroll logic stay part of the same loop." },
+              { label: "Mentalidade", value: "Probabilidade acima do ruído", hint: "Desenhado para apoiar o julgamento, não o impulso." },
+              { label: "Método", value: "Análise atenta ao mercado", hint: "Cada recomendação vive em contexto, contra preço e risco." },
+              { label: "Resultado", value: "Disciplina a longo prazo", hint: "Registo e gestão de banca fazem parte do mesmo ciclo." },
             ].map((item) => (
               <motion.div
                 key={item.label}
@@ -653,14 +654,14 @@ export default function Landing() {
             >
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Traditional Approach</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Apostar por Intuição</p>
                   <div className="h-3 rounded-full bg-destructive/20 overflow-hidden">
                     <div className="h-full w-[35%] rounded-full bg-destructive/50" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">~35% long-term accuracy</p>
+                  <p className="text-xs text-muted-foreground mt-1">Decisões inconsistentes, impossíveis de medir</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ScoreLab Intelligence</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Método ScoreLab</p>
                   <div className="h-3 rounded-full bg-primary/20 overflow-hidden">
                     <motion.div
                       className="h-full rounded-full gradient-primary"
@@ -670,7 +671,7 @@ export default function Landing() {
                       transition={{ duration: 1, delay: 0.3 }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">~67% model accuracy</p>
+                  <p className="text-xs text-muted-foreground mt-1">Probabilidades calibradas e decisões que podes medir</p>
                 </div>
               </div>
             </motion.div>
@@ -685,18 +686,18 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <ChevronRight className="h-3.5 w-3.5" />
-              Process
+              Processo
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">How ScoreLab Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Como Funciona o ScoreLab</h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
-              A clean flow from match setup to value detection and stake discipline, designed to stay easy to trust.
+              Um fluxo limpo: dos dados do jogo à deteção de valor e à disciplina de stake, fácil de confiar.
             </p>
           </div>
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {[
-              { label: "Input", value: "Match context first", hint: "Start with team stats, odds and the right competition context." },
-              { label: "Engine", value: "Model then market", hint: "Let the system compare your probabilistic view to live prices." },
-              { label: "Outcome", value: "Decision with discipline", hint: "Finish with sizing and a trackable recommendation." },
+              { label: "Entrada", value: "Contexto do jogo primeiro", hint: "Começa com as estatísticas, odds e a competição certa." },
+              { label: "Motor", value: "Modelo e depois mercado", hint: "O sistema compara a visão probabilística com os preços reais." },
+              { label: "Saída", value: "Decisão com disciplina", hint: "Termina com stake dimensionada e recomendação rastreável." },
             ].map((item) => (
               <motion.div
                 key={item.label}
@@ -743,16 +744,16 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,var(--scorelab-accent-a-soft),transparent_28%),radial-gradient(circle_at_50%_80%,var(--scorelab-accent-b-soft),transparent_34%),linear-gradient(180deg,rgba(7,17,31,0.84),rgba(5,12,21,0.98))]" />
         <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[36px] border border-cyan-100/10 bg-[linear-gradient(135deg,rgba(13,30,47,0.92),rgba(8,19,33,0.98))] px-6 py-12 text-center shadow-[0_34px_96px_-40px_rgba(34,211,238,0.32)] backdrop-blur-xl md:px-12 md:py-16">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.055),transparent)] opacity-70" />
-          <Badge variant="outline" className="relative mb-5 border-primary/18 text-primary">Ready for kickoff</Badge>
+          <Badge variant="outline" className="relative mb-5 border-primary/18 text-primary">Pronto para o pontapé de saída</Badge>
           <h2 className="relative text-3xl font-black tracking-[-0.045em] text-foreground md:text-5xl">
-            Ready to Find Your{" "}
+            Pronto para Encontrar o teu{" "}
             <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
               Edge?
             </span>
           </h2>
-          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Probabilistic match analysis, value detection and bankroll discipline — built on data, not gut feeling.</p>
+          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Análise probabilística de jogos, deteção de valor e disciplina de banca — com dados, não com palpites. Grátis para todos.</p>
           <div className="relative mt-8 flex justify-center gap-4">
-            <Link to="/signup"><Button variant="hero" size="xl">Start Free Today <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
+            <Link to="/signup"><Button variant="hero" size="xl">Criar Conta Grátis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
           </div>
         </div>
       </section>
@@ -768,27 +769,27 @@ export default function Landing() {
             </div>
             <span className="text-sm font-semibold bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
             </div>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Where football statistics, market discipline and bankroll strategy become one operating system.</p>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Onde a estatística do futebol, a disciplina de mercado e a gestão de banca se tornam um só sistema.</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Product</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Produto</p>
             <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-              <a href="#features" className="transition-colors hover:text-foreground">Features</a>
-              <a href="#how-it-works" className="transition-colors hover:text-foreground">Workflow</a>
+              <a href="#features" className="transition-colors hover:text-foreground">Funcionalidades</a>
+              <a href="#how-it-works" className="transition-colors hover:text-foreground">Como Funciona</a>
             </div>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Launch</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Começar</p>
             <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-              <Link to="/analysis" className="transition-colors hover:text-foreground">Start Analysis</Link>
-              <Link to="/dashboard" className="transition-colors hover:text-foreground">Open Dashboard</Link>
-              <Link to="/signup" className="transition-colors hover:text-foreground">Create Account</Link>
+              <Link to="/analysis" className="transition-colors hover:text-foreground">Iniciar Análise</Link>
+              <Link to="/dashboard" className="transition-colors hover:text-foreground">Abrir Dashboard</Link>
+              <Link to="/signup" className="transition-colors hover:text-foreground">Criar Conta</Link>
             </div>
           </div>
         </div>
         <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-white/8 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 ScoreLab. All rights reserved.</p>
-          <p>Built for disciplined analysis. Not financial advice.</p>
+          <p>© 2026 ScoreLab. Todos os direitos reservados.</p>
+          <p>Análise estatística, não aconselhamento financeiro. Joga com responsabilidade. +18 · jogaresponsavelmente.pt</p>
         </div>
       </footer>
     </div>

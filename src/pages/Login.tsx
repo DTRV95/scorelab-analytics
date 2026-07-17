@@ -42,17 +42,17 @@ export default function Login() {
             <span className="font-bold text-2xl text-foreground">ScoreLab</span>
           </div>
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Welcome back to your <span className="text-gradient-primary">edge</span>.
+            Bem-vindo de volta ao teu <span className="text-gradient-primary">edge</span>.
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Access your analyses, track daily opportunities, and keep your bankroll optimized.
+            Acede às tuas análises, acompanha as oportunidades diárias e mantém a tua banca otimizada.
           </p>
           <div className="mt-12 grid grid-cols-2 gap-4">
             {[
-              { label: "Markets per Match", value: "15" },
-              { label: "Simulations per Analysis", value: "400" },
-              { label: "Calibrated Leagues", value: "30+" },
-              { label: "Model", value: "Dixon-Coles" },
+              { label: "Mercados por Jogo", value: "15" },
+              { label: "Simulações por Análise", value: "400" },
+              { label: "Ligas Calibradas", value: "30+" },
+              { label: "Modelo", value: "Dixon-Coles" },
             ].map((s) => (
               <div key={s.label} className="rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -73,8 +73,8 @@ export default function Login() {
             <span className="font-bold text-lg text-foreground">ScoreLab</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-foreground">Log in</h1>
-          <p className="text-sm text-muted-foreground mt-1">Enter your credentials to continue.</p>
+          <h1 className="text-2xl font-bold text-foreground">Entrar</h1>
+          <p className="text-sm text-muted-foreground mt-1">Introduz as tuas credenciais para continuar.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
@@ -89,8 +89,8 @@ export default function Login() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-foreground">Password</label>
-                <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                <label className="text-sm font-medium text-foreground">Palavra-passe</label>
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline">Esqueceste-te?</Link>
               </div>
               <input
                 type="password"
@@ -104,13 +104,13 @@ export default function Login() {
               <p className="text-sm text-destructive" role="alert">{error}</p>
             )}
             <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
-              {submitting ? "Logging in..." : "Log In"} <ArrowRight className="w-4 h-4 ml-1" />
+              {submitting ? "A entrar..." : "Entrar"} <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-primary hover:underline font-medium">Sign up</Link>
+            Ainda não tens conta?{" "}
+            <Link to="/signup" className="text-primary hover:underline font-medium">Criar conta</Link>
           </p>
         </div>
       </div>

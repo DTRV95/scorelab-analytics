@@ -36,8 +36,8 @@ export default function ForgotPassword() {
 
         {!sent ? (
           <>
-            <h1 className="text-2xl font-bold text-foreground">Reset password</h1>
-            <p className="text-sm text-muted-foreground mt-1">Enter your email and we'll send you a reset link.</p>
+            <h1 className="text-2xl font-bold text-foreground">Recuperar palavra-passe</h1>
+            <p className="text-sm text-muted-foreground mt-1">Introduz o teu email e enviamos-te um link de recuperação.</p>
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
@@ -47,7 +47,7 @@ export default function ForgotPassword() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               )}
               <Button type="submit" variant="hero" className="w-full" size="lg" disabled={submitting}>
-                {submitting ? "Sending..." : "Send Reset Link"}
+                {submitting ? "A enviar..." : "Enviar Link de Recuperação"}
               </Button>
             </form>
           </>
@@ -56,13 +56,13 @@ export default function ForgotPassword() {
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <BarChart3 className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
-            <p className="text-sm text-muted-foreground mt-2">We've sent a password reset link to <strong className="text-foreground">{email}</strong></p>
+            <h1 className="text-2xl font-bold text-foreground">Verifica o teu email</h1>
+            <p className="text-sm text-muted-foreground mt-2">Enviámos um link de recuperação para <strong className="text-foreground">{email}</strong></p>
           </div>
         )}
 
         <Link to="/login" className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to login
+          <ArrowLeft className="w-4 h-4" /> Voltar ao login
         </Link>
       </div>
     </div>
