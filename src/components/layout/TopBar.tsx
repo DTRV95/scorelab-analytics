@@ -14,8 +14,10 @@ export function TopBar() {
   };
 
   const handleSignOut = async () => {
+    // Leave the protected area first so ProtectedRoute never sees the
+    // signed-out state and bounces the user to /login.
+    navigate("/");
     await signOut();
-    navigate("/login");
   };
 
   return (
