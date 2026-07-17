@@ -190,12 +190,12 @@ export default function Landing() {
               </Badge>
             </motion.div>
             <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
-              Inteligência de{" "}
+              Analisa o{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Apostas
-              </span>
-              ,{" "}
-              <span className="text-gradient-primary">Reinventada</span>
+                Futebol
+              </span>{" "}
+              como um{" "}
+              <span className="text-gradient-primary">Profissional</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
               Um espaço de análise de futebol para probabilidades, deteção de valor, disciplina de banca e calibração de modelos. Gratuito para todos.
