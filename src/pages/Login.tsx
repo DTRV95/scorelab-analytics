@@ -50,7 +50,7 @@ export default function Login() {
           <div className="mt-12 grid grid-cols-2 gap-4">
             {[
               { label: "Mercados por Jogo", value: "15" },
-              { label: "Simulações por Análise", value: "400" },
+              { label: "Simulações por Análise", value: "10 000" },
               { label: "Ligas Calibradas", value: "30+" },
               { label: "Modelo", value: "Dixon-Coles" },
             ].map((s) => (

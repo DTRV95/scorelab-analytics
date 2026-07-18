@@ -60,7 +60,7 @@ const radarPreview: Array<{ home: string; away: string; league: string; market: 
 
 const thinkingSteps = [
   { icon: Brain, title: "Modelo Poisson", desc: "Calcula probabilidades de golos a partir dos ritmos históricos de marcação." },
-  { icon: Dices, title: "Simulação Monte Carlo", desc: "Corre centenas de simulações do jogo para estimativas de probabilidade robustas." },
+  { icon: Dices, title: "Simulação Monte Carlo", desc: "Corre 10 000 simulações do jogo para estimativas de probabilidade robustas." },
   { icon: Scale, title: "Lógica de Valor", desc: "Compara as probabilidades do modelo com as odds para identificar desfechos mal cotados." },
 ];
 
@@ -93,7 +93,11 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
     return () => clearInterval(timer);
   }, [isInView, target]);
 
-  return <span ref={ref} className="font-mono-data">{count.toFixed(target % 1 !== 0 ? 1 : 0)}{suffix}</span>;
+  const formatted =
+    target % 1 !== 0
+      ? count.toFixed(1)
+      : Math.round(count).toLocaleString("pt-PT");
+  return <span ref={ref} className="font-mono-data">{formatted}{suffix}</span>;
 }
 
 export default function Landing() {
@@ -198,7 +202,7 @@ export default function Landing() {
               <span className="text-gradient-primary">Campo</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-5 sm:mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-muted-foreground md:text-xl">
-              O ScoreLab simula cada jogo 400 vezes para calcular as probabilidades reais e mostrar-te onde o mercado se está a enganar — o processo dos apostadores profissionais, ao alcance de qualquer pessoa. Grátis.
+              O ScoreLab simula cada jogo 10 000 vezes para calcular as probabilidades reais e mostrar-te onde o mercado se está a enganar — o processo dos apostadores profissionais, ao alcance de qualquer pessoa. Grátis.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/analysis"><Button variant="hero" size="xl">Iniciar Análise <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
@@ -209,7 +213,7 @@ export default function Landing() {
             <motion.div variants={fadeIn} custom={4} className="mt-8 sm:mt-10 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3">
               {[
                 { value: 15, suffix: "", label: "Mercados por Jogo" },
-                { value: 400, suffix: "", label: "Simulações por Análise" },
+                { value: 10000, suffix: "", label: "Simulações por Análise" },
                 { value: 30, suffix: "+", label: "Ligas Calibradas" },
               ].map(s => (
                 <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">

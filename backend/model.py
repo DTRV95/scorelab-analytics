@@ -10,7 +10,7 @@ LEAGUE_AWAY_GOALS_AVG = 1.15
 MIN_ODDS = 1.3
 MAX_ODDS = 6.0
 MAX_GOALS = 10
-BOOTSTRAP_ITERATIONS = 400
+BOOTSTRAP_ITERATIONS = 10_000
 DEFAULT_RHO = -0.08
 DEFAULT_SHRINKAGE_MATCHES = 6.0
 
@@ -326,7 +326,107 @@ def fair_prob_single_market(odd: float) -> float:
     return safe_div(1.0, odd, 0.0)
 
 
-def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, market_name: str, data) -> Tuple[float, float, float]:
+def _base_market_masks(max_goals: int = MAX_GOALS) -> Dict[str, np.ndarray]:
+    i = np.arange(max_goals + 1)[:, None]
+    j = np.arange(max_goals + 1)[None, :]
+    total = i + j
+    return {
+        "Casa": i > j,
+        "Empate": i == j,
+        "Fora": i < j,
+        "Mais de 2.5 Golos": total >= 3,
+        "Mais de 3.5 Golos": total >= 4,
+        "Ambas Marcam": (i >= 1) & (j >= 1),
+        "1X e Menos de 3.5 Golos": (total <= 3) & (i >= j),
+        "2X e Menos de 3.5 Golos": (total <= 3) & (j >= i),
+        "1X e Mais de 1.5 Golos": (total >= 2) & (i >= j),
+        "2X e Mais de 1.5 Golos": (total >= 2) & (j >= i),
+    }
+
+
+def _score_matrices_vector(lambda_home: np.ndarray, lambda_away: np.ndarray, rho: float, max_goals: int = MAX_GOALS) -> np.ndarray:
+    goals = np.arange(max_goals + 1)
+    factorials = np.array([math.factorial(g) for g in goals], dtype=float)
+
+    ph = np.exp(-lambda_home)[:, None] * np.power(lambda_home[:, None], goals[None, :]) / factorials[None, :]
+    pa = np.exp(-lambda_away)[:, None] * np.power(lambda_away[:, None], goals[None, :]) / factorials[None, :]
+    matrices = ph[:, :, None] * pa[:, None, :]
+
+    matrices[:, 0, 0] *= 1 - (lambda_home * lambda_away * rho)
+    matrices[:, 0, 1] *= 1 + (lambda_home * rho)
+    matrices[:, 1, 0] *= 1 + (lambda_away * rho)
+    matrices[:, 1, 1] *= 1 - rho
+
+    np.maximum(matrices, 0.0, out=matrices)
+    matrices /= matrices.sum(axis=(1, 2), keepdims=True)
+    return matrices
+
+
+def _market_probs_vector(matrices: np.ndarray) -> Dict[str, np.ndarray]:
+    masks = _base_market_masks()
+    probs = {name: matrices[:, mask].sum(axis=1) for name, mask in masks.items()}
+
+    probs["Menos de 2.5 Golos"] = np.maximum(0.0, 1 - probs["Mais de 2.5 Golos"])
+    probs["Menos de 3.5 Golos"] = np.maximum(0.0, 1 - probs["Mais de 3.5 Golos"])
+    probs["BTTS No"] = np.maximum(0.0, 1 - probs["Ambas Marcam"])
+    probs["1X"] = probs["Casa"] + probs["Empate"]
+    probs["2X"] = probs["Fora"] + probs["Empate"]
+    return probs
+
+
+def _apply_goal_pressure_vector(
+    probs: Dict[str, np.ndarray],
+    lambda_home: np.ndarray,
+    lambda_away: np.ndarray,
+    data,
+) -> Dict[str, np.ndarray]:
+    strengths = get_attack_defense_strengths(data)
+    total_xg = lambda_home + lambda_away
+    lower = np.minimum(lambda_home, lambda_away)
+    upper = np.maximum(lambda_home, lambda_away)
+    balance = lower / np.maximum(upper, 0.01)
+    mutual_scoring_pressure = np.clip((lower - 0.65) / 0.75, 0.0, 1.0)
+    open_game_pressure = np.clip((total_xg - 2.35) / 1.1, 0.0, 1.0)
+    defensive_fragility = clamp(
+        (
+            strengths["home_defense_weakness"]
+            + strengths["away_defense_weakness"]
+            - 1.85
+        )
+        / 1.15,
+        0.0,
+        1.0,
+    )
+    low_goal_pressure = np.clip((2.25 - total_xg) / 0.8, 0.0, 1.0)
+
+    btts_shift = (
+        0.075 * mutual_scoring_pressure * open_game_pressure * np.clip(balance, 0.35, 1.0)
+        + 0.035 * defensive_fragility * mutual_scoring_pressure
+        - 0.055 * low_goal_pressure
+    )
+    over25_shift = (
+        0.065 * open_game_pressure
+        + 0.035 * defensive_fragility
+        - 0.045 * low_goal_pressure
+    )
+    over35_shift = (
+        0.035 * np.clip((total_xg - 2.75) / 1.0, 0.0, 1.0)
+        + 0.018 * defensive_fragility
+        - 0.035 * low_goal_pressure
+    )
+
+    probs["Ambas Marcam"] = np.clip(probs["Ambas Marcam"] + btts_shift, 0.01, 0.99)
+    probs["BTTS No"] = 1 - probs["Ambas Marcam"]
+    probs["Mais de 2.5 Golos"] = np.clip(probs["Mais de 2.5 Golos"] + over25_shift, 0.01, 0.99)
+    probs["Menos de 2.5 Golos"] = 1 - probs["Mais de 2.5 Golos"]
+    probs["Mais de 3.5 Golos"] = np.clip(probs["Mais de 3.5 Golos"] + over35_shift, 0.01, 0.99)
+    probs["Menos de 3.5 Golos"] = 1 - probs["Mais de 3.5 Golos"]
+    return probs
+
+
+def estimate_market_distributions(lambda_home: float, lambda_away: float, data) -> Dict[str, Tuple[float, float, float]]:
+    """Simulate the match BOOTSTRAP_ITERATIONS times and derive every market's
+    mean probability and 5%-95% interval from the same set of simulations."""
     home_sample = effective_sample(data.jogos_casa, data.jogos_casa_rec)
     away_sample = effective_sample(data.jogos_fora, data.jogos_fora_rec)
     joint_sample = (home_sample + away_sample) / 2
@@ -335,21 +435,26 @@ def estimate_probability_uncertainty(lambda_home: float, lambda_away: float, mar
     sigma_home = clamp(0.28 / math.sqrt(joint_sample), 0.03, 0.16)
     sigma_away = clamp(0.30 / math.sqrt(joint_sample), 0.03, 0.16)
 
-    draws: List[float] = []
-    for _ in range(BOOTSTRAP_ITERATIONS):
-        perturbed_home = clamp(np.random.normal(lambda_home, sigma_home), 0.05, 4.5)
-        perturbed_away = clamp(np.random.normal(lambda_away, sigma_away), 0.05, 4.0)
-        matrix = score_matrix(perturbed_home, perturbed_away, rho=context.rho)
-        market_probs = apply_goal_pressure_adjustments(
-            market_probabilities_from_matrix(matrix),
-            perturbed_home,
-            perturbed_away,
-            data,
-        )
-        draws.append(market_probs[market_name])
+    perturbed_home = np.clip(
+        np.random.normal(lambda_home, sigma_home, BOOTSTRAP_ITERATIONS), 0.05, 4.5
+    )
+    perturbed_away = np.clip(
+        np.random.normal(lambda_away, sigma_away, BOOTSTRAP_ITERATIONS), 0.05, 4.0
+    )
 
-    values = np.array(draws)
-    return float(np.mean(values)), float(np.quantile(values, 0.05)), float(np.quantile(values, 0.95))
+    matrices = _score_matrices_vector(perturbed_home, perturbed_away, context.rho)
+    probs = _apply_goal_pressure_vector(
+        _market_probs_vector(matrices), perturbed_home, perturbed_away, data
+    )
+
+    return {
+        name: (
+            float(np.mean(values)),
+            float(np.quantile(values, 0.05)),
+            float(np.quantile(values, 0.95)),
+        )
+        for name, values in probs.items()
+    }
 
 
 def calculate_kelly(probability: float, odd: float) -> float:
@@ -564,9 +669,11 @@ def analisar_jogo(data):
         ("2X e Mais de 1.5 Golos", data.odd_2x_mais_15, fair_2x_over15),
     ]
 
+    distributions = estimate_market_distributions(lambda_casa, lambda_fora, data)
+
     markets = []
     for market_name, odd, fair_prob in market_definitions:
-        mean_prob, p05, p95 = estimate_probability_uncertainty(lambda_casa, lambda_fora, market_name, data)
+        mean_prob, p05, p95 = distributions[market_name]
         markets.append(
             analyze_market(
                 market_name=market_name,
