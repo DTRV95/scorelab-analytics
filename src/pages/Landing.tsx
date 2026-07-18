@@ -189,7 +189,7 @@ export default function Landing() {
                 Análise Estatística de Futebol — Grátis
               </Badge>
             </motion.div>
-            <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
+            <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-4xl sm:text-5xl font-black leading-[0.98] sm:leading-[0.96] tracking-[-0.05em] sm:tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
               Analisa o{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Futebol
@@ -197,7 +197,7 @@ export default function Landing() {
               como um{" "}
               <span className="text-gradient-primary">Profissional</span>
             </motion.h1>
-            <motion.p variants={fadeIn} custom={2} className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
+            <motion.p variants={fadeIn} custom={2} className="mt-5 sm:mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-muted-foreground md:text-xl">
               Um espaço de análise de futebol para probabilidades, deteção de valor, disciplina de banca e calibração de modelos. Gratuito para todos.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -206,16 +206,16 @@ export default function Landing() {
             </motion.div>
 
             {/* Animated Stats */}
-            <motion.div variants={fadeIn} custom={4} className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <motion.div variants={fadeIn} custom={4} className="mt-8 sm:mt-10 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3">
               {[
                 { value: 15, suffix: "", label: "Mercados por Jogo" },
                 { value: 400, suffix: "", label: "Simulações por Análise" },
                 { value: 30, suffix: "+", label: "Ligas Calibradas" },
               ].map(s => (
                 <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-                  <CardContent className="p-4">
-                    <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{s.label}</p>
+                  <CardContent className="p-2.5 sm:p-4">
+                    <p className="text-lg sm:text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
+                    <p className="mt-0.5 text-[10px] leading-tight sm:text-xs text-muted-foreground">{s.label}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -227,7 +227,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="relative mt-4 lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
+            className="relative mt-4 hidden lg:block lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
           >
             <div className="relative">
               <div className="absolute -inset-[1px] rounded-[30px] bg-[linear-gradient(135deg,rgba(34,211,238,0.35),rgba(34,197,94,0.2),rgba(34,211,238,0.1))] opacity-80 blur-[2px]" />
@@ -315,14 +315,14 @@ export default function Landing() {
       </section>
 
       {/* Value Radar Preview */}
-      <section className="relative border-t border-white/5 px-6 py-24">
+      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Radar className="w-3 h-3" /> Scanner ao Vivo
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
               O{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Value Radar
@@ -332,7 +332,7 @@ export default function Landing() {
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">A leitura contínua do mercado encontra as melhores oportunidades por ti.</p>
           </div>
 
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="mb-6 hidden gap-4 md:grid md:grid-cols-3">
             {[
               { label: "Oportunidades visíveis", value: "6 picks ao vivo", hint: "Ordenadas por edge e confiança" },
               { label: "Melhor confiança", value: "9 / 10", hint: "O cartão mais forte do quadro" },
@@ -396,7 +396,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
                 className={`
-                  grid grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-5 py-4
+                  ${i > 2 ? "hidden md:grid" : "grid"} grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-4 md:px-5 py-4
                   border-b border-white/5 last:border-b-0
                   hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group
                   ${item.best ? "bg-[linear-gradient(90deg,rgba(34,211,238,0.08),rgba(34,197,94,0.06))]" : ""}
@@ -420,22 +420,38 @@ export default function Landing() {
                   </div>
                 </div>
 
+                {/* Mobile compact summary */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 md:hidden">
+                  <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground ring-1 ring-white/10">{item.market}</span>
+                  <span className="font-mono-data text-[13px] font-medium text-foreground">@{item.odds.toFixed(2)}</span>
+                  <span className={`font-mono-data text-[13px] font-bold ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
+                    {item.edge > 0 ? "+" : ""}{item.edge.toFixed(1)}%
+                  </span>
+                  <span className={`ml-auto inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider
+                    ${item.decision === "Apostar" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
+                    ${item.decision === "Cautela" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
+                    ${item.decision === "Não Apostar" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
+                  `}>
+                    {item.decision}
+                  </span>
+                </div>
+
                 {/* Market */}
-                <span className="text-xs text-muted-foreground md:text-sm">{item.market}</span>
+                <span className="hidden text-xs text-muted-foreground md:block md:text-sm">{item.market}</span>
 
                 {/* Odds */}
-                <span className="font-mono-data text-sm font-medium text-foreground">{item.odds.toFixed(2)}</span>
+                <span className="hidden font-mono-data text-sm font-medium text-foreground md:block">{item.odds.toFixed(2)}</span>
 
                 {/* Model % */}
-                <span className="font-mono-data text-sm text-foreground">{item.modelProb.toFixed(1)}%</span>
+                <span className="hidden font-mono-data text-sm text-foreground md:block">{item.modelProb.toFixed(1)}%</span>
 
                 {/* Edge */}
-                <span className={`font-mono-data text-sm font-bold ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
+                <span className={`hidden font-mono-data text-sm font-bold md:block ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
                   {item.edge > 0 ? "+" : ""}{item.edge.toFixed(1)}%
                 </span>
 
                 {/* Confidence */}
-                <div className="flex items-center gap-2">
+                <div className="hidden items-center gap-2 md:flex">
                   <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden max-w-[60px]">
                     <motion.div
                       className={`h-full rounded-full ${item.conf >= 7 ? "bg-primary" : item.conf >= 4 ? "bg-warning" : "bg-destructive"}`}
@@ -449,7 +465,7 @@ export default function Landing() {
                 </div>
 
                 {/* Decision */}
-                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider w-fit
+                <span className={`hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider w-fit
                   ${item.decision === "Apostar" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
                   ${item.decision === "Cautela" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
                   ${item.decision === "Não Apostar" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
@@ -471,15 +487,15 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="relative border-t border-white/5 px-6 py-24">
+      <section id="features" className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-8 sm:mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Target className="h-3.5 w-3.5" />
               Funcionalidades
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
               Quantifica o{" "}
               <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Relvado
@@ -487,7 +503,7 @@ export default function Landing() {
             </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Todas as ferramentas para decidir com dados, numa só plataforma — sem pagar nada.</p>
           </div>
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
             {[
               { label: "Camadas de análise", value: "Jogo + Mercado + Risco", hint: "Um fluxo único, dos dados à decisão" },
               { label: "Camada de decisão", value: "Confiança primeiro", hint: "Sinais estruturados e comparáveis" },
@@ -506,7 +522,7 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -516,14 +532,14 @@ export default function Landing() {
                 variants={fadeIn}
                 custom={i}
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="group cursor-default rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-6 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)] backdrop-blur-xl"
+                className="group cursor-default rounded-[22px] sm:rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-4 sm:p-6 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)] backdrop-blur-xl"
               >
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)] transition-colors group-hover:bg-primary/20">
                   <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
                 <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                <h3 className="font-semibold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{f.title}</h3>
+                <p className="hidden text-sm text-muted-foreground leading-relaxed sm:block">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -531,15 +547,15 @@ export default function Landing() {
       </section>
 
       {/* How ScoreLab Thinks */}
-      <section className="relative border-t border-white/5 px-6 py-24">
+      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-8 sm:mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Brain className="h-3.5 w-3.5" />
               Inteligência
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
               Como o{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 ScoreLab
@@ -548,7 +564,7 @@ export default function Landing() {
             </h2>
             <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Três camadas de análise sustentam cada recomendação.</p>
           </div>
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
             {[
               { label: "Camada probabilística", value: "Base Poisson", hint: "Converte ritmos de golo em probabilidades estruturadas." },
               { label: "Camada de simulação", value: "Testada em cenários", hint: "Ganha robustez ao explorar muitos caminhos possíveis do jogo." },
@@ -575,7 +591,7 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15 }}
-                className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-8 text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
+                className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-5 sm:p-8 text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="relative">
@@ -594,7 +610,7 @@ export default function Landing() {
       </section>
 
       {/* Why ScoreLab is Different */}
-      <section className="relative border-t border-white/5 px-6 py-24">
+      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-5xl mx-auto">
           <div className="mb-10 text-center">
@@ -602,12 +618,12 @@ export default function Landing() {
               <Crosshair className="h-3.5 w-3.5" />
               Filosofia
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Porque é que o ScoreLab é Diferente</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Porque é que o ScoreLab é Diferente</h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
               Feito para quem quer estrutura e não ruído — um método que continua útil ao longo do tempo.
             </p>
           </div>
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
             {[
               { label: "Mentalidade", value: "Probabilidade acima do ruído", hint: "Desenhado para apoiar o julgamento, não o impulso." },
               { label: "Método", value: "Análise atenta ao mercado", hint: "Cada recomendação vive em contexto, contra preço e risco." },
@@ -680,20 +696,20 @@ export default function Landing() {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="relative border-t border-white/5 px-6 py-24">
+      <section id="how-it-works" className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-8 sm:mb-16">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <ChevronRight className="h-3.5 w-3.5" />
               Processo
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Como Funciona o ScoreLab</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Como Funciona o ScoreLab</h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
               Um fluxo limpo: dos dados do jogo à deteção de valor e à disciplina de stake, fácil de confiar.
             </p>
           </div>
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
             {[
               { label: "Entrada", value: "Contexto do jogo primeiro", hint: "Começa com as estatísticas, odds e a competição certa." },
               { label: "Motor", value: "Modelo e depois mercado", hint: "O sistema compara a visão probabilística com os preços reais." },
@@ -712,7 +728,7 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
             {steps.map((step, i) => (
               <motion.div
                 key={step.num}
@@ -728,8 +744,8 @@ export default function Landing() {
                   <span className="text-sm font-bold font-mono-data text-primary">{step.num}</span>
                 </div>
                 <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">{step.desc}</p>
+                <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{step.title}</h3>
+                <p className="hidden text-sm text-muted-foreground sm:block">{step.desc}</p>
                 {i < steps.length - 1 && (
                   <ChevronRight className="hidden md:block absolute top-8 -right-3 w-5 h-5 text-white/10" />
                 )}
