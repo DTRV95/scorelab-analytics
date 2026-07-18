@@ -51,7 +51,10 @@ const App = () => {
     let isMounted = true;
 
     const run = async () => {
-      await hydrateStorageFromServer();
+      // Never hold first paint hostage to a slow connection: after 2.5s we
+      // render with the local cache and let the sync finish in background.
+      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2500));
+      await Promise.race([hydrateStorageFromServer(), timeout]);
       if (isMounted) {
         setIsHydrating(false);
       }

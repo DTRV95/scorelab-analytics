@@ -3,11 +3,11 @@ import { BarChart3, BrainCircuit, Flag, Radar, Target, Wallet } from "lucide-rea
 import { cn } from "@/lib/utils";
 
 const mobileItems = [
-  { title: "Dash", url: "/dashboard", icon: BarChart3 },
-  { title: "Analyze", url: "/analysis", icon: Target },
+  { title: "Painel", url: "/dashboard", icon: BarChart3 },
+  { title: "Analisar", url: "/analysis", icon: Target },
   { title: "Radar", url: "/radar", icon: Radar },
-  { title: "Bankroll", url: "/bankroll", icon: Wallet },
-  { title: "Roadmap", url: "/roadmap", icon: Flag },
+  { title: "Banca", url: "/bankroll", icon: Wallet },
+  { title: "Plano", url: "/roadmap", icon: Flag },
   { title: "Lab", url: "/model-lab", icon: BrainCircuit },
 ];
 

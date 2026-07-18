@@ -1229,7 +1229,7 @@ export default function MatchAnalysis() {
                 />
                 <FlowAction
                   label="Risk Controls"
-                  detail={`${formatCurrency(exposureSummary.openExposure)} open exposure`}
+                  detail={`${formatCurrency(exposureSummary.openExposureAmount)} open exposure`}
                   icon={ShieldCheck}
                   onClick={() => updateField("banca", formatBankrollForInput(bankrollStats.currentBankroll))}
                 />
