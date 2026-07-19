@@ -1082,13 +1082,18 @@ export default function MatchAnalysis() {
         shrinkage_matches: Number(formData.shrinkage_matches),
       };
 
+      // Free-tier engines sleep when idle; allow time for the wake-up.
+      const abortController = new AbortController();
+      const fetchTimeout = window.setTimeout(() => abortController.abort(), 120_000);
+
       const response = await fetch(buildApiUrl("/analyze"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      });
+        signal: abortController.signal,
+      }).finally(() => window.clearTimeout(fetchTimeout));
 
       if (!response.ok) {
         throw new Error("Failed to analyze match.");
@@ -1185,7 +1190,7 @@ export default function MatchAnalysis() {
     } catch (error) {
       console.error(error);
       setErrorMessage(
-        "Could not connect to the analysis engine. Make sure the backend API is running and updated."
+        "Não foi possível contactar o motor de análise. Se estiver parado há algum tempo, o motor pode demorar até um minuto a acordar — tenta novamente daqui a instantes."
       );
       setShowResults(false);
     } finally {
@@ -1838,7 +1843,11 @@ export default function MatchAnalysis() {
                       className="mb-2 h-1.5 bg-white/5"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {Math.round(loadingProgress)}% complete
+                      {Math.round(loadingProgress)}% completo
+                    </p>
+                    <p className="mt-3 text-[11px] text-muted-foreground/70">
+                      Primeira análise após uma pausa? O motor pode demorar até
+                      um minuto a acordar.
                     </p>
                   </div>
                 </motion.div>
