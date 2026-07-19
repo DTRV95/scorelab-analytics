@@ -35,6 +35,10 @@ const ENTITY_CONFIG = {
     storageKey: ROADMAP_MISSIONS_KEY,
     fallback: [] as unknown[],
   },
+  layout_settings: {
+    storageKey: "scorelab_layout_settings",
+    fallback: {} as Record<string, unknown>,
+  },
 } as const;
 
 type EntityKey = keyof typeof ENTITY_CONFIG;
@@ -83,6 +87,7 @@ const LOCAL_RESET_KEYS = [
   STORAGE_METADATA_KEY,
   STORAGE_BACKUP_KEY,
   `${STORAGE_METADATA_KEY}_snapshot`,
+  "scorelab_layout_settings",
 ] as const;
 
 let lastHydratedUserId: string | null = null;

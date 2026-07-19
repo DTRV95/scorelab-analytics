@@ -1,4 +1,10 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
+import {
+  LayoutCustomizeButton,
+  LayoutSection,
+  useSectionLayout,
+  type SectionDef,
+} from "@/components/LayoutCustomizer";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
@@ -663,6 +669,15 @@ function AIReviewColumn({
   );
 }
 
+const DASHBOARD_SECTIONS: SectionDef[] = [
+  { id: "quick", label: "Indicadores rápidos" },
+  { id: "summary", label: "Resumo executivo" },
+  { id: "signals", label: "Sinais automáticos" },
+  { id: "predictions", label: "Quadro de prognósticos" },
+  { id: "charts", label: "Gráficos de desempenho" },
+  { id: "validation", label: "Núcleo de validação" },
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { analyses, multiples, financialSnapshot, dataVersion } = useScoreLabData();
@@ -972,14 +987,19 @@ export default function Dashboard() {
       ? "emerald"
       : "cyan";
 
+  const layout = useSectionLayout("dashboard", DASHBOARD_SECTIONS);
+
   return (
     <AppLayout>
       <motion.div
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="scorelab-dashboard-flow space-y-7 p-4 sm:p-5 md:p-6"
+        className="scorelab-dashboard-flow flex flex-col gap-7 p-4 sm:p-5 md:p-6"
       >
+        <div className="-mb-4 flex justify-end">
+          <LayoutCustomizeButton layout={layout} />
+        </div>
         <motion.section
           variants={fadeUp}
           className="scorelab-board-3d relative overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(8,23,42,0.96)_0%,rgba(4,12,24,0.98)_58%,rgba(3,25,27,0.94)_100%)] p-4 shadow-[0_18px_70px_-46px_rgba(34,211,238,0.55)]"
@@ -1076,6 +1096,8 @@ export default function Dashboard() {
           </div>
         </motion.section>
 
+        <LayoutSection id="quick" layout={layout}>
+
         <motion.div
           variants={fadeUp}
           className="grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.035),rgba(125,245,238,0.045),rgba(255,255,255,0.025))] p-3 sm:grid-cols-3"
@@ -1122,6 +1144,9 @@ export default function Dashboard() {
           ))}
         </motion.div>
 
+        </LayoutSection>
+
+        <LayoutSection id="summary" layout={layout}>
         <div className="scorelab-section-kicker">
           <span>Executive Summary</span>
         </div>
@@ -1166,6 +1191,9 @@ export default function Dashboard() {
           />
         </div>
 
+        </LayoutSection>
+
+        <LayoutSection id="signals" layout={layout}>
         {(dashboardData.autoInsights ?? []).length > 0 && (
           <>
           <div className="scorelab-section-kicker">
@@ -1262,6 +1290,9 @@ export default function Dashboard() {
         </SectionCard>
         ) : null}
 
+        </LayoutSection>
+
+        <LayoutSection id="predictions" layout={layout}>
         <div className="scorelab-section-kicker">
           <span>Prediction Board</span>
         </div>
@@ -1413,6 +1444,9 @@ export default function Dashboard() {
           </div>
         </SectionCard>
 
+        </LayoutSection>
+
+        <LayoutSection id="charts" layout={layout}>
         <div className="scorelab-section-kicker">
           <span>Performance Charts</span>
         </div>
@@ -1467,6 +1501,9 @@ export default function Dashboard() {
           />
         </div>
 
+        </LayoutSection>
+
+        <LayoutSection id="validation" layout={layout}>
         <div className="scorelab-section-kicker">
           <span>Validation Core</span>
         </div>
@@ -1777,6 +1814,7 @@ export default function Dashboard() {
             </table>
           </div>
         </SectionCard>
+        </LayoutSection>
       </motion.div>
     </AppLayout>
   );
