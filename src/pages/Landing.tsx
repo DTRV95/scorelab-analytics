@@ -40,8 +40,8 @@ const features = [
   { icon: Target, title: "Calculadora de Stake (Kelly)", desc: "Dimensiona a entrada ideal com base no edge e na tua banca." },
   { icon: Shield, title: "Índice de Confiança", desc: "Medidor de confiança 0–10 sustentado em sinais de qualidade dos dados." },
   { icon: Clock, title: "Histórico de Análises", desc: "Acompanha e revê todas as análises que fizeste." },
-  { icon: Zap, title: "Painel Diário de Edge", desc: "Oportunidades do dia pré-analisadas e ordenadas por valor." },
-  { icon: Download, title: "Exportação para Excel", desc: "Descarrega análises e relatórios em formatos estruturados." },
+  { icon: Zap, title: "Construtor de Múltiplas", desc: "Combina seleções e acompanha as tuas apostas múltiplas." },
+  { icon: Download, title: "Exportação de Dados", desc: "Descarrega as tuas análises num ficheiro para backup ou análise externa." },
   { icon: BookmarkCheck, title: "Análises Guardadas", desc: "Guarda e organiza as tuas análises mais importantes." },
 ];
 
@@ -321,21 +321,20 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Radar className="w-3 h-3" /> Scanner ao Vivo
+              <Radar className="w-3 h-3" /> Exemplo do Radar
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-              O{" "}
+              O Teu{" "}
               <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
                 Value Radar
-              </span>{" "}
-              de Hoje
+              </span>
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">A leitura contínua do mercado encontra as melhores oportunidades por ti.</p>
+            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Analisa jogos e o radar ordena as tuas melhores oportunidades por edge e confiança. Um exemplo:</p>
           </div>
 
           <div className="mb-6 hidden gap-4 md:grid md:grid-cols-3">
             {[
-              { label: "Oportunidades visíveis", value: "6 picks ao vivo", hint: "Ordenadas por edge e confiança" },
+              { label: "Oportunidades no exemplo", value: "6 picks", hint: "Ordenadas por edge e confiança" },
               { label: "Melhor confiança", value: "9 / 10", hint: "O cartão mais forte do quadro" },
               { label: "Maior diferença de valor", value: "+11.8%", hint: "Diferença entre modelo e mercado" },
             ].map((item) => (
@@ -375,10 +374,10 @@ export default function Landing() {
             <div className="flex items-center justify-between border-b border-white/6 px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Quadro de oportunidades</p>
-                <p className="mt-1 text-sm font-medium text-foreground">Edges de mercado de hoje, ordenados ao vivo</p>
+                <p className="mt-1 text-sm font-medium text-foreground">Exemplo do quadro que vais ter depois de analisares jogos</p>
               </div>
               <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Atualizado ao vivo
+                Pré-visualização
               </div>
             </div>
             {/* Header */}
@@ -407,7 +406,7 @@ export default function Landing() {
                 <div>
                   {item.best && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[linear-gradient(90deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
-                      🔥 Melhor Valor de Hoje
+                      🔥 Melhor Valor do Quadro
                     </span>
                   )}
                   <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
