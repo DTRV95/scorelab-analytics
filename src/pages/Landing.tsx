@@ -1,6 +1,12 @@
 ﻿import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Link } from "react-router-dom";
 import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
@@ -16,9 +22,6 @@ import {
   ArrowRight,
   ChevronRight,
   Radar,
-  Brain,
-  Dices,
-  Scale,
   Crosshair,
 } from "lucide-react";
 
@@ -44,7 +47,7 @@ const features = [
 
 const steps = [
   { num: "01", title: "Introduz os Dados do Jogo", desc: "Estatísticas das equipas, forma recente e odds do mercado." },
-  { num: "02", title: "Corre o Modelo", desc: "O motor Poisson calcula as probabilidades reais." },
+  { num: "02", title: "Corre o Modelo", desc: "O motor Poisson + Monte Carlo corre 10 000 simulações do jogo." },
   { num: "03", title: "Deteta o Valor", desc: "Compara modelo e mercado para encontrar odds mal avaliadas." },
   { num: "04", title: "Dimensiona a Stake", desc: "O critério de Kelly otimiza a tua entrada." },
 ];
@@ -56,12 +59,6 @@ const radarPreview: Array<{ home: string; away: string; league: string; market: 
   { home: "Bayern", away: "Dortmund", league: "Bundesliga", market: "Mais de 2.5", odds: 1.55, modelProb: 72.8, edge: 8.3, conf: 8, decision: "Apostar", tag: "Forte concordância do modelo" },
   { home: "PSG", away: "Lyon", league: "Ligue 1", market: "Ambas Marcam", odds: 1.90, modelProb: 58.4, edge: 5.8, conf: 6, decision: "Cautela" },
   { home: "Juventus", away: "AC Milan", league: "Serie A", market: "Menos de 2.5", odds: 1.95, modelProb: 54.2, edge: 2.9, conf: 5, decision: "Cautela" },
-];
-
-const thinkingSteps = [
-  { icon: Brain, title: "Modelo Poisson", desc: "Calcula probabilidades de golos a partir dos ritmos históricos de marcação." },
-  { icon: Dices, title: "Simulação Monte Carlo", desc: "Corre 10 000 simulações do jogo para estimativas de probabilidade robustas." },
-  { icon: Scale, title: "Lógica de Valor", desc: "Compara as probabilidades do modelo com as odds para identificar desfechos mal cotados." },
 ];
 
 const whyDifferent = [
@@ -126,7 +123,7 @@ export default function Landing() {
             </div>
             <div>
               <span className="block bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-lg font-black tracking-[-0.04em] text-transparent">ScoreLab</span>
-              <span className="-mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-white/34 sm:block">Betting Intelligence OS</span>
+              <span className="-mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-white/34 sm:block">Estatística de Futebol</span>
             </div>
           </Link>
           <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] p-1 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] md:flex">
@@ -205,8 +202,8 @@ export default function Landing() {
               Simulamos cada jogo 10 000 vezes para encontrar o valor que as odds escondem. Grátis.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link to="/analysis"><Button variant="hero" size="xl">Iniciar Análise <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-              <Link to="/radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Explorar o Value Radar</Button></Link>
+              <Link to="/signup"><Button variant="hero" size="xl">Começar Grátis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
+              <a href="#radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Ver Exemplo de Análise</Button></a>
             </motion.div>
 
             {/* Animated Stats */}
@@ -319,7 +316,7 @@ export default function Landing() {
       </section>
 
       {/* Value Radar Preview */}
-      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
+      <section id="radar" className="relative scroll-mt-16 border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
@@ -481,9 +478,9 @@ export default function Landing() {
           </div>
 
           <div className="text-center mt-8">
-            <Link to="/radar">
+            <Link to="/signup">
               <Button variant="hero-outline" size="lg">
-                Ver Todas as Oportunidades <ArrowRight className="w-4 h-4 ml-1" />
+                Criar Conta e Ver Mais <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
@@ -544,69 +541,6 @@ export default function Landing() {
                 <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
                 <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{f.title}</h3>
                 <p className="hidden text-sm text-muted-foreground leading-relaxed sm:block">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How ScoreLab Thinks */}
-      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Brain className="h-3.5 w-3.5" />
-              Inteligência
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-              Como o{" "}
-              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
-                ScoreLab
-              </span>{" "}
-              Pensa
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Três camadas de análise sustentam cada recomendação.</p>
-          </div>
-          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
-            {[
-              { label: "Camada probabilística", value: "Base Poisson", hint: "Converte ritmos de golo em probabilidades estruturadas." },
-              { label: "Camada de simulação", value: "Testada em cenários", hint: "Ganha robustez ao explorar muitos caminhos possíveis do jogo." },
-              { label: "Camada de decisão", value: "Sensível ao edge", hint: "Traduz a força do modelo num sinal utilizável." },
-            ].map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
-              >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {thinkingSteps.map((step, i) => (
-              <motion.div
-                key={step.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-5 sm:p-8 text-center relative overflow-hidden group backdrop-blur-xl hover:-translate-y-1 transition-all duration-300 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.03)_0%,_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] flex items-center justify-center mx-auto mb-5 group-hover:bg-primary/15 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
-                    <step.icon className="w-7 h-7 text-primary" strokeWidth={1.5} />
-                  </div>
-                  <div className="text-4xl font-bold text-white/[0.04] mb-2">{String(i + 1).padStart(2, "0")}</div>
-                  <div className="mx-auto mb-3 h-px w-20 bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                  <h3 className="text-lg font-semibold text-foreground mb-3">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-                </div>
               </motion.div>
             ))}
           </div>
@@ -759,6 +693,53 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="relative scroll-mt-16 border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
+        <div className="relative mx-auto max-w-3xl">
+          <div className="text-center mb-8 sm:mb-12">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+              <Shield className="h-3.5 w-3.5" />
+              Perguntas Frequentes
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Antes de Começares</h2>
+          </div>
+          <Accordion type="single" collapsible className="space-y-3">
+            {[
+              {
+                q: "É mesmo grátis?",
+                a: "Sim. Todas as funcionalidades, sem cartão de crédito e sem limites escondidos. Cria a conta e usa tudo.",
+              },
+              {
+                q: "Preciso de perceber de estatística?",
+                a: "Não. Introduzes os dados do jogo e o modelo trata dos cálculos — recebes probabilidades claras e uma recomendação por mercado.",
+              },
+              {
+                q: "O que é o “edge”?",
+                a: "É a diferença entre a probabilidade calculada pelo modelo e a que está implícita na odd. Quando é positiva, a odd está a pagar acima do risco real — é aí que existe valor.",
+              },
+              {
+                q: "O ScoreLab diz-me em que apostar?",
+                a: "Mostra-te probabilidades, valor e um nível de confiança — a decisão é sempre tua. Joga com responsabilidade e apenas se tiveres mais de 18 anos.",
+              },
+            ].map((item, i) => (
+              <AccordionItem
+                key={item.q}
+                value={`faq-${i}`}
+                className="rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] px-5 backdrop-blur-xl"
+              >
+                <AccordionTrigger className="text-left text-sm sm:text-base font-semibold text-foreground hover:no-underline">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
       {/* CTA Footer */}
       <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,var(--scorelab-accent-a-soft),transparent_28%),radial-gradient(circle_at_50%_80%,var(--scorelab-accent-b-soft),transparent_34%),linear-gradient(180deg,rgba(7,17,31,0.84),rgba(5,12,21,0.98))]" />
@@ -796,13 +777,13 @@ export default function Landing() {
             <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
               <a href="#features" className="transition-colors hover:text-foreground">Funcionalidades</a>
               <a href="#how-it-works" className="transition-colors hover:text-foreground">Como Funciona</a>
+              <a href="#faq" className="transition-colors hover:text-foreground">Perguntas Frequentes</a>
             </div>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Começar</p>
             <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-              <Link to="/analysis" className="transition-colors hover:text-foreground">Iniciar Análise</Link>
-              <Link to="/dashboard" className="transition-colors hover:text-foreground">Abrir Dashboard</Link>
+              <Link to="/login" className="transition-colors hover:text-foreground">Entrar</Link>
               <Link to="/signup" className="transition-colors hover:text-foreground">Criar Conta</Link>
             </div>
           </div>
