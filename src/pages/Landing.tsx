@@ -202,7 +202,7 @@ export default function Landing() {
               <span className="text-gradient-primary">Campo</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-5 sm:mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-muted-foreground md:text-xl">
-              O ScoreLab simula cada jogo 10 000 vezes para calcular as probabilidades reais e mostrar-te onde o mercado se está a enganar — o processo dos apostadores profissionais, ao alcance de qualquer pessoa. Grátis.
+              Simulamos cada jogo 10 000 vezes e mostramos-te onde as odds se enganam. Grátis.
             </motion.p>
             <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/analysis"><Button variant="hero" size="xl">Iniciar Análise <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
