@@ -989,7 +989,7 @@ export default function Dashboard() {
 
           <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden flex-wrap items-center gap-2 sm:flex">
                 <HudStatusPill
                   label="Decision OS"
                   tone="cyan"

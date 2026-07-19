@@ -46,7 +46,7 @@ export function MatchdayHero({
       <div className="pointer-events-none absolute -right-20 top-0 h-full w-52 rotate-[-15deg] bg-[linear-gradient(90deg,transparent,rgba(52,211,153,0.05),transparent)] blur-xl" />
 
       <div className="relative z-10 grid gap-5 xl:grid-cols-[1fr_380px] xl:items-stretch">
-        <div className="flex min-h-[190px] flex-col justify-center md:min-h-[220px]">
+        <div className="flex min-h-0 flex-col justify-center md:min-h-[220px]">
           <HudStatusPill label={eyebrow} tone={tone} icon={statusIcon} />
           <h1 className="mt-4 max-w-4xl text-[2.1rem] font-black tracking-[-0.055em] text-white drop-shadow-[0_0_28px_rgba(125,245,238,0.12)] md:text-[3rem] xl:text-[3.35rem]">
             {title}
@@ -54,9 +54,11 @@ export function MatchdayHero({
           <p className="mt-4 max-w-2xl text-[15px] leading-7 text-white/64 md:text-base">
             {description}
           </p>
-          {statusItems ? <div className="mt-5 flex flex-wrap gap-2">{statusItems}</div> : null}
+          {statusItems ? (
+            <div className="mt-5 hidden flex-wrap gap-2 sm:flex">{statusItems}</div>
+          ) : null}
         </div>
-        {visual}
+        {visual ? <div className="hidden md:contents">{visual}</div> : null}
       </div>
     </motion.div>
   );

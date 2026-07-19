@@ -1114,6 +1114,12 @@
       gap: 0.75rem;
     }
 
+    /* Small screens: drop purely decorative layers to reduce visual noise. */
+    .scorelab-mobile-compact :where(.scorelab-depth-grid),
+    .scorelab-mobile-compact :where(.scorelab-premium-hero) > :where(.pointer-events-none) {
+      display: none !important;
+    }
+
     .scorelab-mobile-compact :where(.scorelab-board-3d) {
       padding: 0.875rem !important;
     }
