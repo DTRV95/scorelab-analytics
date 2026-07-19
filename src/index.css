@@ -424,6 +424,7 @@
     /* Stop mobile browsers from inflating text sizes on their own. */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {

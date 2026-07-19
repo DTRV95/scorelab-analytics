@@ -1,4 +1,5 @@
 export type ScoreLabAppearance =
+  | "scorelab"
   | "sporting"
   | "porto"
   | "benfica"
@@ -15,11 +16,19 @@ export interface AppearancePreset {
 }
 
 const APPEARANCE_KEY = "scorelab_appearance";
-const APPEARANCE_DEFAULT_MIGRATION_KEY = "scorelab_appearance_default_real_madrid_v1";
-const DEFAULT_APPEARANCE: ScoreLabAppearance = "real-madrid";
+const APPEARANCE_DEFAULT_MIGRATION_KEY = "scorelab_appearance_default_scorelab_v1";
+const DEFAULT_APPEARANCE: ScoreLabAppearance = "scorelab";
 export const APPEARANCE_UPDATED_EVENT = "scorelab:appearance-updated";
 
 export const appearancePresets: AppearancePreset[] = [
+  {
+    id: "scorelab",
+    name: "ScoreLab",
+    description: "A identidade da casa: ciano e verde radiantes sobre azul profundo.",
+    accent: "Ciano / Verde",
+    previewClassName:
+      "bg-[radial-gradient(circle_at_18%_18%,rgba(34,211,238,0.62),transparent_34%),radial-gradient(circle_at_78%_26%,rgba(52,211,153,0.5),transparent_30%),linear-gradient(135deg,#03121f,#052534)]",
+  },
   {
     id: "sporting",
     name: "Sporting CP",
@@ -75,7 +84,7 @@ export function getScoreLabAppearance(): ScoreLabAppearance {
     const stored = localStorage.getItem(APPEARANCE_KEY) as ScoreLabAppearance | null;
     const migrated = localStorage.getItem(APPEARANCE_DEFAULT_MIGRATION_KEY);
 
-    if ((!stored || stored === "sporting") && !migrated) {
+    if ((!stored || stored === "real-madrid") && !migrated) {
       localStorage.setItem(APPEARANCE_KEY, DEFAULT_APPEARANCE);
       localStorage.setItem(APPEARANCE_DEFAULT_MIGRATION_KEY, "true");
       return DEFAULT_APPEARANCE;
