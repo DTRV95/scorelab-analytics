@@ -861,6 +861,7 @@ export default function MatchAnalysis() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [whyExpanded, setWhyExpanded] = useState(false);
   const [showLeagueAdvanced, setShowLeagueAdvanced] = useState(false);
+  const [showComboOdds, setShowComboOdds] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [summary, setSummary] = useState({
     homeXg: 0,
@@ -1300,41 +1301,6 @@ export default function MatchAnalysis() {
           <div className="scorelab-stage-3d scorelab-board-3d rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
             <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
             <div className="space-y-6">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-                      Analysis Setup
-                    </p>
-                    <h2 className="mt-2 text-lg font-semibold text-white">
-                      Fill the model in the order you think
-                    </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-white/60">
-                      Competition first, then team sample, then market odds. This
-                      keeps the analysis grounded before the model makes a call.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-right">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
-                      Ready
-                    </p>
-                    <p className="mt-1 text-xl font-semibold text-white">
-                      {setupProgress.completed}/5
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <Progress value={setupProgress.pct} className="h-2 bg-white/5" />
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <StepChip label="League" active={setupProgress.leagueReady} />
-                    <StepChip label="Teams" active={setupProgress.teamsReady} />
-                    <StepChip label="Stats" active={setupProgress.statsReady} />
-                    <StepChip label="Odds" active={setupProgress.oddsReady} />
-                    <StepChip label="Bankroll" active={setupProgress.bankrollReady} />
-                  </div>
-                </div>
-              </div>
               <div className="space-y-6">
                 <SectionCard title="League Setup">
                   <div className="space-y-4">
@@ -1348,24 +1314,6 @@ export default function MatchAnalysis() {
                         }))
                       }
                     />
-
-                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Start with the competition
-                          </p>
-                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            We auto-fill real 2025/26 scoring averages for the selected league,
-                            then suggest safe model defaults for low-score adjustment and
-                            small-sample protection.
-                          </p>
-                        </div>
-                        <div className="rounded-full bg-white/[0.03] ring-1 ring-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                          Auto-fill
-                        </div>
-                      </div>
-                    </div>
 
                     <SelectField
                       label="Competition"
@@ -1615,16 +1563,9 @@ export default function MatchAnalysis() {
                 <div id="scorelab-odds" className="scroll-mt-24 grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <SectionCard title="Market Odds">
                   <div className="space-y-5">
-                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Market Snapshot
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Add the prices exactly as offered by the bookmaker. Cleaner
-                        inputs here produce cleaner implied probabilities and a more
-                        trustworthy value comparison.
-                      </p>
-                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Introduz as odds tal como a casa as oferece.
+                    </p>
                     <div>
                       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                         Goals Markets
@@ -1698,10 +1639,19 @@ export default function MatchAnalysis() {
                     </div>
 
                     <div>
-                      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                        Double Chance
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowComboOdds((open) => !open)}
+                        className="mb-3 flex w-full items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left transition-colors hover:bg-white/[0.05]"
+                      >
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                          Dupla hipótese e combinados
+                        </span>
+                        <span className="text-[11px] text-primary">
+                          {showComboOdds ? "Ocultar" : "Opcional · mostrar"}
+                        </span>
+                      </button>
+                      <div className={`grid-cols-2 gap-3 ${showComboOdds ? "grid" : "hidden"}`}>
                         <FormField
                           label="1X"
                           value={formData.odd_1x}
@@ -1752,15 +1702,9 @@ export default function MatchAnalysis() {
                 <div className="space-y-6">
                   <SectionCard title="Bankroll Settings">
                     <div className="space-y-4">
-                      <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                          Risk Control
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          These settings control how aggressive the final stake can be.
-                          Keep them conservative if you want smaller recommended exposure.
-                        </p>
-                      </div>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Valores mais baixos tornam a stake mais conservadora.
+                      </p>
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <FormField
                           label="Bankroll (EUR)"
@@ -2437,17 +2381,16 @@ export default function MatchAnalysis() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-16 text-center shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-8 text-center shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
               >
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                  <Target className="h-8 w-8 text-primary" strokeWidth={1.5} />
+                <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <Target className="h-5 w-5 text-primary" strokeWidth={1.5} />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground">
-                  Ready to Analyze
+                <h3 className="mb-1 text-base font-semibold text-foreground">
+                  A análise aparece aqui
                 </h3>
-                <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-                  Fill in the match data on the left and click "Run Analysis" to
-                  detect value opportunities.
+                <p className="mx-auto max-w-sm text-xs text-muted-foreground">
+                  Preenche os dados do jogo e clica em "Run Analysis".
                 </p>
               </motion.div>
             )}
