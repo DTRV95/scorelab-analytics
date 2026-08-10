@@ -12,6 +12,7 @@ import {
 } from "@/lib/portofolioEngine";
 import { decorateResult } from "@/lib/eliteBetSystem";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { MatchPrefill } from "@/components/MatchPrefill";
 import {
   getDecisionFromMetrics,
   getOddsBand,
@@ -1370,6 +1371,13 @@ export default function MatchAnalysis() {
                           label: `${preset.country} · ${preset.label}`,
                         }))}
                       description="Pick the league first so the model starts from the right scoring baseline."
+                    />
+
+                    <MatchPrefill
+                      league={formData.liga}
+                      onPrefill={(values) =>
+                        setFormData((prev) => ({ ...prev, ...values }))
+                      }
                     />
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

@@ -160,7 +160,16 @@ For the backend production environment, set:
 
 ```env
 SCORELAB_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app
+FOOTBALL_DATA_KEY=your_football_data_org_key
 ```
+
+`FOOTBALL_DATA_KEY` is optional. With a free key from
+[football-data.org](https://www.football-data.org/client/register), the match
+analysis form can auto-fill team statistics for the competitions covered by the
+free tier (Liga Portugal, Premier League, Championship, La Liga, Serie A,
+Bundesliga, Ligue 1, Eredivisie). Every other league keeps being filled by hand,
+and odds are always entered manually so the edge is measured against the odds
+you can actually bet.
 
 User data (analyses, multiples, bankroll and roadmap settings) is stored per account in Supabase with Row Level Security. The backend no longer persists user data.
 

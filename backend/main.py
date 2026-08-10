@@ -1,12 +1,13 @@
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from schemas import AnalyzeRequest, AnalyzeResponse
 from model import analisar_jogo
+import football_data
 
 app = FastAPI(title="ScoreLab API")
 limiter = Limiter(key_func=get_remote_address)
@@ -35,3 +36,33 @@ def root():
 @limiter.limit("30/minute")
 def analyze(request: Request, data: AnalyzeRequest):
     return analisar_jogo(data)
+
+
+@app.get("/data/status")
+def data_status():
+    """Frontend uses this to decide which leagues can offer auto-fill."""
+    configured = football_data.is_configured()
+    return {
+        "configured": configured,
+        "leagues": football_data.supported_leagues() if configured else [],
+    }
+
+
+@app.get("/data/fixtures")
+@limiter.limit("20/minute")
+def data_fixtures(request: Request, league: str):
+    try:
+        fixtures = football_data.upcoming_fixtures(league)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"league": league, "fixtures": fixtures}
+
+
+@app.get("/data/prefill")
+@limiter.limit("20/minute")
+def data_prefill(request: Request, league: str, fixture_id: int):
+    try:
+        return football_data.build_prefill(league, fixture_id)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

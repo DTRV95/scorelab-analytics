@@ -14,3 +14,8 @@ services:
         value: 3.12.6
       - key: SCORELAB_ALLOWED_ORIGINS
         value: https://scorelab-analytics.vercel.app,http://localhost:8080
+      # Chave gratuita de football-data.org (registo em football-data.org/client/register).
+      # Definir no dashboard do Render; sem ela o preenchimento automatico fica
+      # desligado e o formulario continua a funcionar manualmente.
+      - key: FOOTBALL_DATA_KEY
+        sync: false
