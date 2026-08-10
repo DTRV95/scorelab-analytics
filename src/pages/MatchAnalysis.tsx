@@ -1612,7 +1612,7 @@ export default function MatchAnalysis() {
                 </SectionCard>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div id="scorelab-odds" className="scroll-mt-24 grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <SectionCard title="Market Odds">
                   <div className="space-y-5">
                     <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-3">

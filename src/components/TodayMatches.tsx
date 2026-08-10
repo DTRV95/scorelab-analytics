@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Download, Loader2, RefreshCw } from "lucide-react";
+import { CalendarDays, Loader2, RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
 
@@ -31,19 +31,25 @@ function dayKey(date: Date) {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-function dayLabel(date: Date) {
+function dayLabels(date: Date) {
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
 
-  if (dayKey(date) === dayKey(today)) return "Hoje";
-  if (dayKey(date) === dayKey(tomorrow)) return "Amanhã";
+  if (dayKey(date) === dayKey(today)) return { short: "Hoje", long: "Hoje" };
+  if (dayKey(date) === dayKey(tomorrow)) return { short: "Amanhã", long: "Amanhã" };
 
-  return new Intl.DateTimeFormat("pt-PT", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date);
+  return {
+    short: new Intl.DateTimeFormat("pt-PT", {
+      weekday: "short",
+      day: "2-digit",
+    }).format(date),
+    long: new Intl.DateTimeFormat("pt-PT", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+    }).format(date),
+  };
 }
 
 function timeLabel(date: Date) {
@@ -64,6 +70,7 @@ export function TodayMatches({
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [applied, setApplied] = useState("");
+  const [activeDay, setActiveDay] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
@@ -95,7 +102,9 @@ export function TodayMatches({
         return body;
       })
       .then((data) => {
-        if (!cancelled) setMatches(data.matches ?? []);
+        if (cancelled) return;
+        setMatches(data.matches ?? []);
+        setActiveDay(0);
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
@@ -109,15 +118,18 @@ export function TodayMatches({
     };
   }, [enabled, reloadToken]);
 
-  const grouped = useMemo(() => {
-    const groups = new Map<string, { label: string; items: BoardMatch[] }>();
+  const days = useMemo(() => {
+    const groups = new Map<
+      string,
+      { short: string; long: string; items: BoardMatch[] }
+    >();
 
     matches.forEach((match) => {
       if (!match.kickoff) return;
       const date = new Date(match.kickoff);
       if (Number.isNaN(date.getTime())) return;
       const key = dayKey(date);
-      if (!groups.has(key)) groups.set(key, { label: dayLabel(date), items: [] });
+      if (!groups.has(key)) groups.set(key, { ...dayLabels(date), items: [] });
       groups.get(key)!.items.push(match);
     });
 
@@ -125,6 +137,8 @@ export function TodayMatches({
   }, [matches]);
 
   if (enabled === null || enabled === false) return null;
+
+  const current = days[Math.min(activeDay, Math.max(days.length - 1, 0))];
 
   const applyMatch = async (match: BoardMatch) => {
     setApplyingId(match.fixture_id);
@@ -156,6 +170,13 @@ export function TodayMatches({
 
       onSelect(match.league, values);
       setApplied(`${data.equipa_casa} vs ${data.equipa_fora}`);
+
+      // Take the user straight to what is still missing, on the page.
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("scorelab-odds")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -172,8 +193,8 @@ export function TodayMatches({
             Jogos do Dia
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Escolhe um jogo e as estatísticas das equipas são preenchidas com os
-            resultados reais da época. Só ficam a faltar as odds.
+            Escolhe um jogo: as estatísticas das equipas são preenchidas com os
+            resultados reais da época e só ficam a faltar as odds.
           </p>
         </div>
         <Button
@@ -191,8 +212,9 @@ export function TodayMatches({
       {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
       {applied && !error && (
-        <p className="mt-3 text-xs text-primary">
-          Preenchido com {applied}. Confirma os valores e adiciona as odds.
+        <p className="mt-3 rounded-xl bg-primary/10 px-3 py-2 text-xs text-primary ring-1 ring-primary/20">
+          {applied} carregado. Introduz as odds em baixo e a análise aparece aqui
+          mesmo na página.
         </p>
       )}
 
@@ -209,50 +231,65 @@ export function TodayMatches({
         </p>
       )}
 
-      {grouped.length > 0 && (
-        <div className="mt-3 max-h-80 space-y-3 overflow-y-auto pr-1">
-          {grouped.map((group) => (
-            <div key={group.label}>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
-                {group.label}
-              </p>
-              <div className="space-y-1.5">
-                {group.items.map((match) => {
-                  const date = match.kickoff ? new Date(match.kickoff) : null;
-                  return (
-                    <div
-                      key={match.fixture_id}
-                      className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-foreground">
-                          {match.home_name} vs {match.away_name}
-                        </p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {date ? timeLabel(date) : ""} · {match.league}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 flex-none gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
-                        disabled={applyingId !== null}
-                        onClick={() => applyMatch(match)}
-                      >
-                        {applyingId === match.fixture_id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Download className="h-3.5 w-3.5" />
-                        )}
-                        Analisar
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+      {days.length > 0 && (
+        <>
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+            {days.map((day, index) => {
+              const isActive = index === Math.min(activeDay, days.length - 1);
+              return (
+                <button
+                  key={day.long}
+                  onClick={() => setActiveDay(index)}
+                  className={`flex-none rounded-xl px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                    isActive
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                      : "bg-white/[0.04] text-muted-foreground ring-1 ring-white/8 hover:text-white/80"
+                  }`}
+                >
+                  {day.short}
+                  <span className="ml-1.5 text-[10px] opacity-60">
+                    {day.items.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+            {current?.items.map((match) => {
+              const date = match.kickoff ? new Date(match.kickoff) : null;
+              return (
+                <div
+                  key={match.fixture_id}
+                  className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">
+                      {match.home_name} vs {match.away_name}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {date ? timeLabel(date) : ""} · {match.league}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 flex-none gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
+                    disabled={applyingId !== null}
+                    onClick={() => applyMatch(match)}
+                  >
+                    {applyingId === match.fixture_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Zap className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    )}
+                    Analisar
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
