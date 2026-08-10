@@ -12,7 +12,7 @@ import {
 } from "@/lib/portofolioEngine";
 import { decorateResult } from "@/lib/eliteBetSystem";
 import { buildApiUrl } from "@/lib/apiConfig";
-import { MatchPrefill } from "@/components/MatchPrefill";
+import { TodayMatches } from "@/components/TodayMatches";
 import {
   getDecisionFromMetrics,
   getOddsBand,
@@ -1338,6 +1338,17 @@ export default function MatchAnalysis() {
               <div className="space-y-6">
                 <SectionCard title="League Setup">
                   <div className="space-y-4">
+                    <TodayMatches
+                      onSelect={(league, values) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          liga: league,
+                          ...(LEAGUE_PRESET_MAP[league] ?? {}),
+                          ...values,
+                        }))
+                      }
+                    />
+
                     <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -1373,12 +1384,6 @@ export default function MatchAnalysis() {
                       description="Pick the league first so the model starts from the right scoring baseline."
                     />
 
-                    <MatchPrefill
-                      league={formData.liga}
-                      onPrefill={(values) =>
-                        setFormData((prev) => ({ ...prev, ...values }))
-                      }
-                    />
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                       <InsightTile

@@ -119,15 +119,24 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
     return payload
 
 
-def get_season_matches(league_key: str) -> List[Dict[str, Any]]:
+def current_season_year(now: Optional[time.struct_time] = None) -> int:
+    """European seasons are labelled by their starting year (2026 = 2026/27)."""
+    stamp = now or time.gmtime()
+    return stamp.tm_year if stamp.tm_mon >= 7 else stamp.tm_year - 1
+
+
+def get_season_matches(
+    league_key: str, season: Optional[int] = None
+) -> List[Dict[str, Any]]:
     code = _competition_code(league_key)
-    cache_key = f"matches:{code}"
+    cache_key = f"matches:{code}:{season or 'current'}"
 
     cached = _cache_get(cache_key, MATCHES_TTL)
     if cached is not None:
         return cached
 
-    payload = _request(f"/competitions/{code}/matches")
+    params = {"season": season} if season else None
+    payload = _request(f"/competitions/{code}/matches", params)
     matches = payload.get("matches")
     if not isinstance(matches, list):
         raise ProviderUnavailable("Resposta sem jogos para esta competição.")
@@ -170,6 +179,41 @@ def upcoming_fixtures(league_key: str, limit: int = 40) -> List[Dict[str, Any]]:
 
     fixtures.sort(key=lambda item: item.get("kickoff") or "")
     return fixtures[:limit]
+
+
+def matches_for_days(days: int = 7) -> Dict[str, Any]:
+    """Every analysable fixture across the covered competitions, next N days.
+
+    Competitions that fail are skipped instead of breaking the whole board, so a
+    single unavailable league never hides the rest.
+    """
+    horizon = time.time() + max(1, days) * 24 * 60 * 60
+    board: List[Dict[str, Any]] = []
+    unavailable: List[str] = []
+
+    for league_key in supported_leagues():
+        try:
+            fixtures = upcoming_fixtures(league_key, limit=100)
+        except ProviderUnavailable:
+            unavailable.append(league_key)
+            continue
+
+        for fixture in fixtures:
+            kickoff = fixture.get("kickoff")
+            if not kickoff:
+                continue
+            try:
+                stamp = time.mktime(
+                    time.strptime(kickoff.replace("Z", "UTC"), "%Y-%m-%dT%H:%M:%S%Z")
+                ) - time.timezone
+            except ValueError:
+                continue
+            if stamp > horizon:
+                continue
+            board.append({**fixture, "league": league_key})
+
+    board.sort(key=lambda item: item.get("kickoff") or "")
+    return {"matches": board, "unavailable": unavailable}
 
 
 def _team_side_record(
@@ -257,7 +301,8 @@ def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
 
     if home["games"] == 0 and away["games"] == 0:
         raise ProviderUnavailable(
-            "Ainda não há jogos disputados suficientes nesta época para preencher."
+            "Ainda não há jogos disputados suficientes para preencher este jogo. "
+            "Preenche os dados manualmente."
         )
 
     payload: Dict[str, Any] = {

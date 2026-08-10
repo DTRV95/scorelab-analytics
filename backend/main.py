@@ -59,6 +59,18 @@ def data_fixtures(request: Request, league: str):
     return {"league": league, "fixtures": fixtures}
 
 
+@app.get("/data/today")
+@limiter.limit("10/minute")
+def data_today(request: Request, days: int = 7):
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.matches_for_days(days)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/prefill")
 @limiter.limit("20/minute")
 def data_prefill(request: Request, league: str, fixture_id: int):
