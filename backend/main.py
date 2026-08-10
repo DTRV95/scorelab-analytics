@@ -30,7 +30,17 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"message": "ScoreLab API is running"}
+    """Health check that also reports which features this build actually has,
+    so a stale deploy or a missing key is visible from a single URL."""
+    return {
+        "message": "ScoreLab API is running",
+        "features": {
+            "analyze": True,
+            "match_data": True,
+            "match_data_key_configured": football_data.is_configured(),
+            "leagues": football_data.supported_leagues(),
+        },
+    }
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 @limiter.limit("30/minute")
