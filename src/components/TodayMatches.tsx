@@ -75,18 +75,27 @@ export function TodayMatches({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(buildApiUrl("/data/status"))
+    // The engine sleeps on the free tier and can take ~50s to wake up; give it
+    // room instead of deciding it is unavailable.
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 90_000);
+
+    fetch(buildApiUrl("/data/status"), { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!cancelled) setEnabled(Boolean(data?.configured));
       })
       .catch(() => {
         if (!cancelled) setEnabled(false);
-      });
+      })
+      .finally(() => window.clearTimeout(timeout));
+
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
     };
-  }, []);
+  }, [reloadToken]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -136,7 +145,17 @@ export function TodayMatches({
     return [...groups.values()];
   }, [matches]);
 
-  if (enabled === null || enabled === false) return null;
+  if (enabled === null) {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        A ligar ao motor de dados... pode demorar até um minuto se estiver
+        parado há algum tempo.
+      </div>
+    );
+  }
+
+  if (enabled === false) return null;
 
   const current = days[Math.min(activeDay, Math.max(days.length - 1, 0))];
 

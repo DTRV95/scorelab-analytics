@@ -11,6 +11,7 @@ results, so a competition costs one request per cache window no matter how many
 analyses are run against it.
 """
 
+import concurrent.futures
 import json
 import os
 import time
@@ -191,10 +192,19 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
     board: List[Dict[str, Any]] = []
     unavailable: List[str] = []
 
-    for league_key in supported_leagues():
+    def load(league_key: str):
         try:
-            fixtures = upcoming_fixtures(league_key, limit=100)
-        except ProviderUnavailable:
+            return league_key, upcoming_fixtures(league_key, limit=100), None
+        except ProviderUnavailable as exc:
+            return league_key, [], exc
+
+    # Fetch the competitions concurrently: sequentially this is 8 round trips
+    # and makes the first (cold cache) load painfully slow.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(load, supported_leagues()))
+
+    for league_key, fixtures, failure in results:
+        if failure is not None:
             unavailable.append(league_key)
             continue
 
