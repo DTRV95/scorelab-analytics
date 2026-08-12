@@ -587,6 +587,20 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     sourceUrl: "https://www.betexplorer.com/football/denmark/superliga/stats/",
     sourceNote: "2025/26 league stats, updated for the current season snapshot.",
   },
+  {
+    key: "Primera B Chile",
+    label: "Primera B",
+    country: "Chile",
+    tier: "2nd division",
+    league_home_goals_avg: "1.25",
+    league_away_goals_avg: "0.95",
+    dixon_coles_rho: "-0.10",
+    shrinkage_matches: "8",
+    sourceLabel: "Por calibrar",
+    sourceUrl: "https://footystats.org/chile/primera-b",
+    sourceNote:
+      "Valores provisórios, ainda não medidos na fonte. Confirma as médias reais da época e ajusta em Avançado antes de confiar na análise.",
+  },
 ];
 
 export const LEAGUE_PRESET_MAP = Object.fromEntries(
