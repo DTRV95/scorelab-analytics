@@ -81,6 +81,19 @@ def data_today(request: Request, days: int = 7):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/data/calibration")
+@limiter.limit("10/minute")
+def data_calibration(request: Request):
+    """Live league baselines, so presets never silently go stale."""
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.calibration()
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/prefill")
 @limiter.limit("20/minute")
 def data_prefill(request: Request, league: str, fixture_id: int):

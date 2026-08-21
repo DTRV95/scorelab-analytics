@@ -13,6 +13,7 @@ import {
 import { decorateResult } from "@/lib/eliteBetSystem";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { TodayMatches } from "@/components/TodayMatches";
+import { LeagueCalibration } from "@/components/LeagueCalibration";
 import {
   getDecisionFromMetrics,
   getOddsBand,
@@ -1330,6 +1331,13 @@ export default function MatchAnalysis() {
                           label: `${preset.country} · ${preset.label}`,
                         }))}
                       description="Pick the league first so the model starts from the right scoring baseline."
+                    />
+
+                    <LeagueCalibration
+                      league={formData.liga}
+                      onCalibrate={(values) =>
+                        setFormData((prev) => ({ ...prev, ...values }))
+                      }
                     />
 
 

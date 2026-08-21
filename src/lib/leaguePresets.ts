@@ -26,7 +26,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/portugal/liga-portugal/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Liga Portugal 2",
@@ -39,7 +39,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/portugal/liga-portugal-2/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Liga Revelação Sub23",
@@ -52,7 +52,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "DollarClown",
     sourceUrl: "https://dollarclown.com/portugal/liga-revelao-u23/goals-scored",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Premier League",
@@ -65,7 +65,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/england/premier-league/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Championship",
@@ -78,7 +78,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/england/championship/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "League One",
@@ -91,7 +91,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/england/league-one/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Argelia Ligue 1",
@@ -104,7 +104,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "8",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/algeria/ligue-1",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Bahraini Premier League",
@@ -117,7 +117,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/bahrain/bahraini-premier-league",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Botola Pro",
@@ -130,7 +130,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "8",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/morocco/botola-pro",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Brazil Serie A",
@@ -156,7 +156,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/nicaragua/primera-division",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Liga Nacional de Futbol de Guatemala",
@@ -169,7 +169,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/guatemala/liga-nacional-de-futbol-de-guatemala",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Primera Categoria Serie A",
@@ -208,7 +208,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/slovenia/prvaliga",
-    sourceNote: "2025/26 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "La Liga",
@@ -221,7 +221,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/spain/laliga/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "LaLiga2",
@@ -234,7 +234,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/spain/laliga2/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Serie A",
@@ -247,7 +247,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/italy/serie-a/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Serie B",
@@ -260,7 +260,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/italy/serie-b",
-    sourceNote: "2025/26 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Premier Division Ireland",
@@ -312,7 +312,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/japan/j1-league",
-    sourceNote: "2025 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025 — confirma antes de usar na época seguinte.",
   },
   {
     key: "Bundesliga",
@@ -325,7 +325,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/germany/bundesliga/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "2. Bundesliga",
@@ -338,7 +338,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/germany/2-bundesliga/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Ligue 1",
@@ -351,7 +351,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/france/ligue-1/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Ligue 2",
@@ -364,7 +364,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/france/ligue-2/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Veikkausliiga",
@@ -390,7 +390,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/netherlands/eredivisie",
-    sourceNote: "2025/26 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Eerste Divisie",
@@ -403,7 +403,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/netherlands/eerste-divisie/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Super Lig",
@@ -416,7 +416,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/turkey/super-lig/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "1. Lig",
@@ -429,7 +429,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/turkey/1-lig/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Saudi Pro League",
@@ -442,7 +442,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/saudi-arabia/saudi-professional-league/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Primera División",
@@ -455,7 +455,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "8",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/argentina/primera-division",
-    sourceNote: "2026 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2026, o último retrato disponível.",
   },
   {
     key: "Primera Nacional",
@@ -468,7 +468,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "8",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/argentina/prim-b-nacional",
-    sourceNote: "2026 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2026, o último retrato disponível.",
   },
   {
     key: "Jupiler Pro League",
@@ -481,7 +481,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/belgium/jupiler-pro-league/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Challenger Pro League",
@@ -507,7 +507,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "7",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/bulgaria/first-league",
-    sourceNote: "2025/26 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Chinese Super League",
@@ -520,7 +520,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/china/chinese-super-league",
-    sourceNote: "2025 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025 — confirma antes de usar na época seguinte.",
   },
   {
     key: "Greece Super League",
@@ -533,7 +533,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/greece/super-league",
-    sourceNote: "2025/26 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Switzerland Super League",
@@ -546,7 +546,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/switzerland/super-league",
-    sourceNote: "2025/26 league stats, using the latest snapshot available.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "HNL",
@@ -559,7 +559,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/croatia/hnl/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "K League 1",
@@ -572,7 +572,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "6",
     sourceLabel: "FootyStats",
     sourceUrl: "https://footystats.org/south-korea/k-league-1",
-    sourceNote: "2025 snapshot based on current home and away scoring averages across the competition.",
+    sourceNote: "Médias da época 2025 — confirma antes de usar na época seguinte.",
   },
   {
     key: "Denmark Superliga",
@@ -585,7 +585,7 @@ export const LEAGUE_PRESETS: LeaguePreset[] = [
     shrinkage_matches: "5",
     sourceLabel: "BetExplorer",
     sourceUrl: "https://www.betexplorer.com/football/denmark/superliga/stats/",
-    sourceNote: "2025/26 league stats, updated for the current season snapshot.",
+    sourceNote: "Médias da época 2025/26 — confirma antes de usar em 2026/27.",
   },
   {
     key: "Primera B Chile",

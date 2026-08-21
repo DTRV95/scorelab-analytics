@@ -290,6 +290,29 @@ def league_goal_averages(matches: List[Dict[str, Any]]) -> Dict[str, float]:
     }
 
 
+def calibration() -> Dict[str, Any]:
+    """Measured goal averages for every covered competition.
+
+    These come from actual results of the season in progress, so they replace
+    the hand-entered presets whenever live data exists.
+    """
+
+    def measure(league_key: str):
+        try:
+            matches = get_season_matches(league_key)
+        except ProviderUnavailable:
+            return league_key, None
+        return league_key, league_goal_averages(matches) or None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(measure, supported_leagues()))
+
+    return {
+        "leagues": {key: value for key, value in results if value},
+        "pending": [key for key, value in results if not value],
+    }
+
+
 def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
     matches = get_season_matches(league_key)
 
