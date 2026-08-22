@@ -89,6 +89,7 @@ interface BackendResponse {
   lambda_casa: number;
   lambda_fora: number;
   total_golos_esperados: number;
+  margem_casa_pct?: number;
   mercados: BackendMarket[];
 }
 
@@ -869,6 +870,7 @@ export default function MatchAnalysis() {
     awayXg: 0,
     totalXg: 0,
     confidence: 0,
+    bookMargin: 0,
   });
 
   const bankrollStats = getBankrollStats();
@@ -1166,6 +1168,7 @@ export default function MatchAnalysis() {
         awayXg: data.lambda_fora,
         totalXg: data.total_golos_esperados,
         confidence: Number((bestResultForSummary?.confidence ?? 0).toFixed(1)),
+        bookMargin: Number(data.margem_casa_pct ?? 0),
       };
 
       setResults(calibratedResults);
@@ -1826,12 +1829,20 @@ export default function MatchAnalysis() {
                 transition={{ duration: 0.5 }}
                 className="space-y-4"
               >
+                {summary.bookMargin > 6 && (
+                  <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs text-warning ring-1 ring-warning/20">
+                    Esta casa está a cobrar {summary.bookMargin.toFixed(1)}% de margem.
+                    Acima de ~6% é muito difícil ter lucro a longo prazo, por muito
+                    bom que seja o modelo — compara odds noutras casas antes de apostar.
+                  </p>
+                )}
+
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {[
                     { label: "Home xG", value: summary.homeXg.toFixed(2) },
                     { label: "Away xG", value: summary.awayXg.toFixed(2) },
                     { label: "Total xG", value: summary.totalXg.toFixed(2) },
-                    { label: "Confidence", value: summary.confidence.toFixed(1) },
+                    { label: "Margem da casa", value: `${summary.bookMargin.toFixed(1)}%` },
                   ].map((s, i) => (
                     <motion.div
                       key={s.label}

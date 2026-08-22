@@ -66,4 +66,5 @@ class AnalyzeResponse(BaseModel):
     lambda_casa: float
     lambda_fora: float
     total_golos_esperados: float
+    margem_casa_pct: float = 0.0
     mercados: List[MarketResult]

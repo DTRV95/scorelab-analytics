@@ -322,8 +322,32 @@ def fair_probs_three_way(home_odd: float, draw_odd: float, away_odd: float) -> T
     return tuple(inv / total for inv in invs)
 
 
-def fair_prob_single_market(odd: float) -> float:
-    return safe_div(1.0, odd, 0.0)
+def book_overround(data) -> float:
+    """Average bookmaker margin measured on the markets that come in complete
+    sets. Used to strip the same margin from markets priced alone (double
+    chance and combos), which otherwise look worse than they really are."""
+    books = [
+        (data.odd_casa, data.odd_empate, data.odd_fora),
+        (data.odd_mais_25, data.odd_menos_25),
+        (data.odd_mais_35, data.odd_menos_35),
+        (data.odd_ambas_marcam, data.odd_ambas_nao_marcam),
+    ]
+
+    overrounds = []
+    for book in books:
+        if any(odd <= 1 for odd in book):
+            continue
+        total = sum(1.0 / odd for odd in book)
+        if 1.0 < total < 1.5:
+            overrounds.append(total)
+
+    if not overrounds:
+        return 1.0
+    return sum(overrounds) / len(overrounds)
+
+
+def fair_prob_single_market(odd: float, overround: float = 1.0) -> float:
+    return safe_div(1.0, odd, 0.0) / max(overround, 1.0)
 
 
 def _base_market_masks(max_goals: int = MAX_GOALS) -> Dict[str, np.ndarray]:
@@ -644,12 +668,13 @@ def analisar_jogo(data):
     fair_over35, fair_under35 = fair_probs_two_way(data.odd_mais_35, data.odd_menos_35)
     fair_btts_yes, fair_btts_no = fair_probs_two_way(data.odd_ambas_marcam, data.odd_ambas_nao_marcam)
     fair_home, fair_draw, fair_away = fair_probs_three_way(data.odd_casa, data.odd_empate, data.odd_fora)
-    fair_1x = fair_prob_single_market(data.odd_1x)
-    fair_2x = fair_prob_single_market(data.odd_2x)
-    fair_1x_under35 = fair_prob_single_market(data.odd_1x_menos_35)
-    fair_2x_under35 = fair_prob_single_market(data.odd_2x_menos_35)
-    fair_1x_over15 = fair_prob_single_market(data.odd_1x_mais_15)
-    fair_2x_over15 = fair_prob_single_market(data.odd_2x_mais_15)
+    overround = book_overround(data)
+    fair_1x = fair_prob_single_market(data.odd_1x, overround)
+    fair_2x = fair_prob_single_market(data.odd_2x, overround)
+    fair_1x_under35 = fair_prob_single_market(data.odd_1x_menos_35, overround)
+    fair_2x_under35 = fair_prob_single_market(data.odd_2x_menos_35, overround)
+    fair_1x_over15 = fair_prob_single_market(data.odd_1x_mais_15, overround)
+    fair_2x_over15 = fair_prob_single_market(data.odd_2x_mais_15, overround)
 
     market_definitions = [
         ("Mais de 2.5 Golos", data.odd_mais_25, fair_over25),
@@ -691,5 +716,6 @@ def analisar_jogo(data):
         "lambda_casa": round(lambda_casa, 3),
         "lambda_fora": round(lambda_fora, 3),
         "total_golos_esperados": round(total_golos_esperados, 3),
+        "margem_casa_pct": round((overround - 1) * 100, 2),
         "mercados": markets,
     }
