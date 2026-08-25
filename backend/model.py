@@ -147,17 +147,18 @@ def get_attack_defense_strengths(data) -> Dict[str, float]:
 
 
 def estimate_lambdas(data) -> Tuple[float, float]:
+    """Expected goals for each side.
+
+    Small samples are handled by shrink_rate, which pulls the observed scoring
+    rates towards the league baseline. They must NOT also scale the expected
+    goals down: doing so regresses the forecast towards zero instead of towards
+    the average match, and systematically understates goals, BTTS and overs.
+    """
     strengths = get_attack_defense_strengths(data)
     context = get_league_context(data)
 
-    sample_factor_home = clamp(effective_sample(data.jogos_casa, data.jogos_casa_rec) / 12.0, 0.75, 1.1)
-    sample_factor_away = clamp(effective_sample(data.jogos_fora, data.jogos_fora_rec) / 12.0, 0.75, 1.1)
-
     lambda_home = context.home_goals_avg * strengths["home_attack_strength"] * strengths["away_defense_weakness"]
     lambda_away = context.away_goals_avg * strengths["away_attack_strength"] * strengths["home_defense_weakness"]
-
-    lambda_home *= sample_factor_home
-    lambda_away *= sample_factor_away
 
     return clamp(lambda_home, 0.15, 3.8), clamp(lambda_away, 0.15, 3.4)
 
