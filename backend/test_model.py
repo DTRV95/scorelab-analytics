@@ -8,7 +8,7 @@ numbers.
 """
 
 from schemas import AnalyzeRequest
-from model import analisar_jogo, estimate_lambdas
+from model import analisar_jogo, estimate_lambdas, pair_shift
 
 LEAGUE_HOME = 1.49
 LEAGUE_AWAY = 1.21
@@ -150,6 +150,36 @@ def test_thin_samples_are_not_bet_on():
         result = analisar_jogo(average_match(games))
         bets = [m for m in result["mercados"] if m["decisao"] == "Apostar"]
         assert not bets, (games, bets)
+
+
+def test_heuristic_nudges_fade_at_the_extremes():
+    """The nudge must shrink as a market approaches certainty.
+
+    Unchecked, a +10 point nudge once turned a 90% market into 99%, i.e. odds
+    of 1.01. Near the extremes the underlying estimate is least reliable, so
+    that is exactly where a heuristic should hold back.
+    """
+    big_nudge = 0.10
+
+    coin_flip = pair_shift(0.50, big_nudge) - 0.50
+    near_certain = pair_shift(0.95, big_nudge) - 0.95
+
+    assert coin_flip > 0.08, coin_flip
+    assert near_certain < 0.02, near_certain
+    assert pair_shift(0.97, big_nudge) <= 0.98
+    assert pair_shift(0.03, -big_nudge) >= 0.02
+
+
+def test_recent_form_moves_the_forecast_without_dominating_it():
+    """Five games are mostly noise: they may tilt the forecast, not rewrite it."""
+    normal = estimate_lambdas(average_match(12))[0]
+
+    hot = estimate_lambdas(average_match(12, golos_marcados_casa_rec=15))[0]
+    cold = estimate_lambdas(average_match(12, golos_marcados_casa_rec=0))[0]
+
+    assert hot > normal > cold, (cold, normal, hot)
+    assert hot / normal < 1.30, f"hot streak moved the forecast {hot / normal:.2f}x"
+    assert cold / normal > 0.75, f"cold streak moved the forecast {cold / normal:.2f}x"
 
 
 def test_book_margin_is_measured():

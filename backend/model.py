@@ -44,7 +44,10 @@ def weighted_rate(total_value: int, total_games: int, recent_value: int, recent_
     if total_games <= 0:
         return recent_rate
 
-    recent_weight = clamp(0.45 + (recent_games / max(total_games, 1)) * 0.25, 0.45, 0.72)
+    # Recent form deserves weight in proportion to how much evidence it carries.
+    # A five game streak inside a twelve game season is mostly noise: letting it
+    # dominate makes the model chase hot and cold runs that regress anyway.
+    recent_weight = clamp(recent_games / max(total_games + recent_games, 1), 0.0, 0.35)
     return recent_rate * recent_weight + total_rate * (1 - recent_weight)
 
 
@@ -252,7 +255,14 @@ def market_probabilities_from_matrix(matrix: np.ndarray) -> Dict[str, float]:
 
 
 def pair_shift(probability: float, shift: float) -> float:
-    return clamp(probability + shift, 0.01, 0.99)
+    """Apply a heuristic nudge, damped towards the extremes.
+
+    The 4p(1-p) factor is 1 for a coin-flip market and fades to 0 as the
+    probability approaches 0 or 1, where the estimate is least reliable and an
+    unchecked nudge would manufacture near-certainties.
+    """
+    damping = 4.0 * probability * (1.0 - probability)
+    return clamp(probability + shift * damping, 0.02, 0.98)
 
 
 def apply_goal_pressure_adjustments(
