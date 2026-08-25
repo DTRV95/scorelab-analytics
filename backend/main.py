@@ -6,7 +6,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from schemas import AnalyzeRequest, AnalyzeResponse
-from model import analisar_jogo
+from model import analisar_jogo, model_self_check
 import football_data
 
 app = FastAPI(title="ScoreLab API")
@@ -40,6 +40,7 @@ def root():
             "match_data_key_configured": football_data.is_configured(),
             "leagues": football_data.supported_leagues(),
         },
+        "model": model_self_check(),
     }
 
 @app.post("/analyze", response_model=AnalyzeResponse)

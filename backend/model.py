@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -729,4 +729,41 @@ def analisar_jogo(data):
         "total_golos_esperados": round(total_golos_esperados, 3),
         "margem_casa_pct": round((overround - 1) * 100, 2),
         "mercados": markets,
+    }
+
+
+def model_self_check() -> Dict[str, Any]:
+    """Cheap proof of which model is actually running.
+
+    Two teams performing exactly at the league baseline must produce the
+    league's own average scoreline. A build still carrying the old sample
+    factor returns roughly 1.96 goals instead of ~2.6, so this one number tells
+    a stale deploy apart from a current one without reading any code.
+    """
+
+    class _Average:
+        jogos_casa = jogos_fora = 12
+        jogos_casa_rec = jogos_fora_rec = 5
+        golos_marcados_casa = round(LEAGUE_HOME_GOALS_AVG * 12)
+        golos_sofridos_casa = round(LEAGUE_AWAY_GOALS_AVG * 12)
+        golos_marcados_casa_rec = round(LEAGUE_HOME_GOALS_AVG * 5)
+        golos_sofridos_casa_rec = round(LEAGUE_AWAY_GOALS_AVG * 5)
+        golos_marcados_fora = round(LEAGUE_AWAY_GOALS_AVG * 12)
+        golos_sofridos_fora = round(LEAGUE_HOME_GOALS_AVG * 12)
+        golos_marcados_fora_rec = round(LEAGUE_AWAY_GOALS_AVG * 5)
+        golos_sofridos_fora_rec = round(LEAGUE_HOME_GOALS_AVG * 5)
+        league_home_goals_avg = LEAGUE_HOME_GOALS_AVG
+        league_away_goals_avg = LEAGUE_AWAY_GOALS_AVG
+        dixon_coles_rho = DEFAULT_RHO
+        shrinkage_matches = DEFAULT_SHRINKAGE_MATCHES
+
+    home, away = estimate_lambdas(_Average())
+    total = home + away
+    expected = LEAGUE_HOME_GOALS_AVG + LEAGUE_AWAY_GOALS_AVG
+
+    return {
+        "average_match_goals": round(total, 2),
+        "league_baseline_goals": round(expected, 2),
+        "unbiased": abs(total / expected - 1) < 0.08,
+        "simulations_per_analysis": BOOTSTRAP_ITERATIONS,
     }
