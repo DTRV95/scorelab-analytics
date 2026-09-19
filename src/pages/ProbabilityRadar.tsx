@@ -324,8 +324,7 @@ export default function ProbabilityRadar() {
   }, [enabled, reloadToken, isManualRefresh]);
 
   // Grouped by day first, then by league — matches inside each league stay in
-  // the order the board already sorted them, so the strongest signal in that
-  // league still leads.
+  // the order the board already sorted them, chronologically by kickoff.
   const dayGroups = useMemo(() => {
     const groups = new Map<
       string,

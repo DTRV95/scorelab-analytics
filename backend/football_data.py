@@ -419,7 +419,7 @@ def probability_board(days: int = 7, limit: int = 80) -> Dict[str, Any]:
             }
         )
 
-    ranked.sort(key=lambda item: item["headline_pct"], reverse=True)
+    ranked.sort(key=lambda item: item["kickoff"] or "")
 
     return {
         "matches": ranked[:limit],
