@@ -125,7 +125,7 @@ def build_board_season():
     return played + upcoming
 
 
-def test_board_ranks_the_strongest_forecast_first():
+def test_board_is_ordered_by_kickoff_time():
     with_season(build_board_season())
 
     board = football_data.probability_board(days=14)
@@ -133,7 +133,7 @@ def test_board_ranks_the_strongest_forecast_first():
 
     assert leaders[0] == ("Strong FC", "Mid A")
     assert board["matches"] == sorted(
-        board["matches"], key=lambda item: item["headline_pct"], reverse=True
+        board["matches"], key=lambda item: item["kickoff"] or ""
     )
 
 
