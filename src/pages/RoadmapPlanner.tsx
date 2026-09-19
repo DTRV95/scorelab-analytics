@@ -1649,7 +1649,7 @@ export default function RoadmapPlanner() {
           }
         />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <MetricCard
             label="Free Bankroll"
             value={formatCurrency(roadmap.availableBankroll)}
@@ -2101,7 +2101,7 @@ export default function RoadmapPlanner() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <MetricCard
                 label="Success Chance"
                 value={formatPct(roadmap.bankrollSimulation.successRatePct)}
@@ -2285,7 +2285,7 @@ export default function RoadmapPlanner() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
             <MetricCard
               label="Target Gap"
               value={formatCurrency(roadmap.availableTargetGap)}
