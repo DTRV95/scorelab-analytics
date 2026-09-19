@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
-import { TodayMatches, dayLabels, timeLabel } from "@/components/TodayMatches";
+import { TodayMatches, dayKey, dayLabels, timeLabel } from "@/components/TodayMatches";
 import { LeagueCalibration } from "@/components/LeagueCalibration";
 import {
   ProbabilityBreakdown,
@@ -97,11 +97,106 @@ const initialFormData: FormData = {
   ...LEAGUE_PRESET_MAP[DEFAULT_LEAGUE_KEY],
 };
 
-function kickoffLabel(kickoff: string | null) {
+function kickoffTime(kickoff: string | null) {
   if (!kickoff) return "";
   const date = new Date(kickoff);
   if (Number.isNaN(date.getTime())) return "";
-  return `${dayLabels(date).short} · ${timeLabel(date)}`;
+  return timeLabel(date);
+}
+
+function BoardMatchRow({
+  match,
+  isExpanded,
+  onToggle,
+  onContinue,
+  continuing,
+}: {
+  match: BoardMatch;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onContinue: () => void;
+  continuing: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        onClick={onToggle}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 flex-none text-white/40" />
+        ) : (
+          <ChevronRight className="h-4 w-4 flex-none text-white/40" />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-white">
+            {match.home_name} vs {match.away_name}
+          </p>
+          <p className="truncate text-[11px] text-white/45">
+            {kickoffTime(match.kickoff)}
+          </p>
+        </div>
+
+        <div className="flex-none text-right">
+          <p className="text-[11px] text-white/50">
+            {MARKET_LABELS[match.headline_market] ?? match.headline_market}
+          </p>
+          <p className="font-mono text-lg font-semibold text-white">
+            {match.headline_pct.toFixed(1)}%
+          </p>
+        </div>
+
+        <span
+          className={`flex-none rounded-full px-2 py-1 text-[10px] font-medium ring-1 ${sampleTone(
+            match.amostra_label
+          )}`}
+        >
+          {match.amostra_label}
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-4 border-t border-white/8 px-4 py-4">
+              <ProbabilityBreakdown data={match} />
+
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                <p className="text-xs leading-relaxed text-white/60">
+                  Tens as odds do teu bookmaker para este jogo? Continua para
+                  a Análise de Valor para veres o edge, a classificação do
+                  mercado e a stake sugerida.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-3 h-10 w-full gap-2 rounded-xl border-cyan-400/30 text-xs text-cyan-100 hover:bg-cyan-400/10"
+                  disabled={continuing}
+                  onClick={onContinue}
+                >
+                  {continuing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      Continuar para Análise de Valor
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 /**
@@ -123,6 +218,7 @@ export default function ProbabilityRadar() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [continuingId, setContinuingId] = useState<number | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [activeDay, setActiveDay] = useState(0);
 
   // The manual path: kept for leagues or matchups the auto board can't cover.
   const [manualOpen, setManualOpen] = useState(false);
@@ -193,6 +289,41 @@ export default function ProbabilityRadar() {
       window.clearTimeout(timeout);
     };
   }, [enabled, reloadToken]);
+
+  // Grouped by day first, then by league — matches inside each league stay in
+  // the order the board already sorted them, so the strongest signal in that
+  // league still leads.
+  const dayGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { short: string; long: string; items: BoardMatch[] }
+    >();
+
+    board.forEach((match) => {
+      if (!match.kickoff) return;
+      const date = new Date(match.kickoff);
+      if (Number.isNaN(date.getTime())) return;
+      const key = dayKey(date);
+      if (!groups.has(key)) groups.set(key, { ...dayLabels(date), items: [] });
+      groups.get(key)!.items.push(match);
+    });
+
+    return [...groups.values()];
+  }, [board]);
+
+  const currentDay = dayGroups[Math.min(activeDay, Math.max(dayGroups.length - 1, 0))];
+
+  const leagueGroups = useMemo(() => {
+    if (!currentDay) return [];
+
+    const groups = new Map<string, BoardMatch[]>();
+    currentDay.items.forEach((match) => {
+      if (!groups.has(match.league)) groups.set(match.league, []);
+      groups.get(match.league)!.push(match);
+    });
+
+    return [...groups.entries()].map(([league, items]) => ({ league, items }));
+  }, [currentDay]);
 
   const continueToValueAnalysis = async (match: BoardMatch) => {
     setContinuingId(match.fixture_id);
@@ -391,99 +522,61 @@ export default function ProbabilityRadar() {
                 </p>
               )}
 
-              {board.length > 0 && (
-                <div className="space-y-2">
-                  {board.map((match) => {
-                    const isExpanded = expandedId === match.fixture_id;
-                    return (
-                      <div
-                        key={match.fixture_id}
-                        className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]"
-                      >
+              {dayGroups.length > 0 && (
+                <>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {dayGroups.map((day, index) => {
+                      const isActive = index === Math.min(activeDay, dayGroups.length - 1);
+                      return (
                         <button
-                          type="button"
-                          className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
-                          onClick={() =>
-                            setExpandedId(isExpanded ? null : match.fixture_id)
-                          }
+                          key={day.long}
+                          onClick={() => setActiveDay(index)}
+                          className={`flex-none rounded-xl px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                            isActive
+                              ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                              : "bg-white/[0.04] text-muted-foreground ring-1 ring-white/8 hover:text-white/80"
+                          }`}
                         >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 flex-none text-white/40" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 flex-none text-white/40" />
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-white">
-                              {match.home_name} vs {match.away_name}
-                            </p>
-                            <p className="truncate text-[11px] text-white/45">
-                              {match.league}
-                              {match.kickoff ? ` · ${kickoffLabel(match.kickoff)}` : ""}
-                            </p>
-                          </div>
-
-                          <div className="flex-none text-right">
-                            <p className="text-[11px] text-white/50">
-                              {MARKET_LABELS[match.headline_market] ?? match.headline_market}
-                            </p>
-                            <p className="font-mono text-lg font-semibold text-white">
-                              {match.headline_pct.toFixed(1)}%
-                            </p>
-                          </div>
-
-                          <span
-                            className={`flex-none rounded-full px-2 py-1 text-[10px] font-medium ring-1 ${sampleTone(
-                              match.amostra_label
-                            )}`}
-                          >
-                            {match.amostra_label}
+                          {day.short}
+                          <span className="ml-1.5 text-[10px] opacity-60">
+                            {day.items.length}
                           </span>
                         </button>
+                      );
+                    })}
+                  </div>
 
-                        <AnimatePresence initial={false}>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.22 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="space-y-4 border-t border-white/8 px-4 py-4">
-                                <ProbabilityBreakdown data={match} />
-
-                                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
-                                  <p className="text-xs leading-relaxed text-white/60">
-                                    Tens as odds do teu bookmaker para este jogo?
-                                    Continua para a Análise de Valor para veres o
-                                    edge, a classificação do mercado e a stake
-                                    sugerida.
-                                  </p>
-                                  <Button
-                                    variant="outline"
-                                    className="mt-3 h-10 w-full gap-2 rounded-xl border-cyan-400/30 text-xs text-cyan-100 hover:bg-cyan-400/10"
-                                    disabled={continuingId === match.fixture_id}
-                                    onClick={() => continueToValueAnalysis(match)}
-                                  >
-                                    {continuingId === match.fixture_id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <>
-                                        Continuar para Análise de Valor
-                                        <ArrowRight className="h-3.5 w-3.5" />
-                                      </>
-                                    )}
-                                  </Button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                  <div className="mt-4 space-y-5">
+                    {leagueGroups.map(({ league, items }) => (
+                      <div key={league} className="space-y-2">
+                        <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
+                          {league}
+                          <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-white/45">
+                            {items.length}
+                          </span>
+                        </p>
+                        <div className="space-y-2">
+                          {items.map((match) => (
+                            <BoardMatchRow
+                              key={match.fixture_id}
+                              match={match}
+                              isExpanded={expandedId === match.fixture_id}
+                              onToggle={() =>
+                                setExpandedId(
+                                  expandedId === match.fixture_id
+                                    ? null
+                                    : match.fixture_id
+                                )
+                              }
+                              onContinue={() => continueToValueAnalysis(match)}
+                              continuing={continuingId === match.fixture_id}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                </>
               )}
 
               {(skippedCount > 0 || unavailableLeagues.length > 0) && (
