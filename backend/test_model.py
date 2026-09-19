@@ -270,21 +270,15 @@ def test_probability_view_includes_the_double_chance_and_goals_combos():
         assert 0 <= mercados[market]["probabilidade_pct"] <= 100
 
 
-def test_headline_market_ignores_double_chance():
-    """1X/2X (and the combos built on them) clear 60%+ on almost every
-    match — ranking on them would just reorder the board by which side is
-    the bigger favourite, not by which match has the strongest single
-    signal."""
+def test_headline_market_is_the_single_highest_probability():
+    """The headline is simply whichever market is most likely to happen —
+    1X/2X and the double-chance-plus-goals combos are eligible too, since
+    they're real markets a bettor can back like any other."""
     mercados = probabilidades_jogo(average_match(9))["mercados"]
     headline = pick_headline_market(mercados)
 
-    assert headline["mercado"] not in (
-        "1X",
-        "2X",
-        "1X e Menos de 3.5 Golos",
-        "2X e Menos de 3.5 Golos",
-        "1X e Mais de 1.5 Golos",
-        "2X e Mais de 1.5 Golos",
+    assert headline["probabilidade_pct"] == max(
+        m["probabilidade_pct"] for m in mercados
     )
 
 
@@ -298,11 +292,9 @@ def test_headline_market_is_the_strongest_real_signal():
     )
     mercados = probabilidades_jogo(lopsided)["mercados"]
     headline = pick_headline_market(mercados)
-    core_markets = {m["mercado"]: m["probabilidade_pct"] for m in mercados}
 
-    assert headline["mercado"] == "Casa"
     assert headline["probabilidade_pct"] == max(
-        pct for market, pct in core_markets.items() if market not in ("1X", "2X")
+        m["probabilidade_pct"] for m in mercados
     )
 
 

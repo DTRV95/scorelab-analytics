@@ -572,28 +572,9 @@ PROBABILITY_MARKETS: List[Tuple[str, str]] = [
 ]
 
 
-# The markets a match can be ranked on. 1X/2X are deliberately left out: as
-# compound safety-net markets they read high on almost every match (a strong
-# home side and its opposite away dog both clear 60%+ on 1X), which would
-# make a "highest probability" ranking mostly reflect that structural fact
-# instead of which match the model is genuinely most confident about.
-HEADLINE_MARKETS = {
-    "Casa",
-    "Empate",
-    "Fora",
-    "Mais de 2.5 Golos",
-    "Menos de 2.5 Golos",
-    "Mais de 3.5 Golos",
-    "Menos de 3.5 Golos",
-    "Ambas Marcam",
-    "BTTS No",
-}
-
-
 def pick_headline_market(mercados: List[Dict[str, Any]]) -> Dict[str, Any]:
     """The single strongest signal in a match, for ranking a board of them."""
-    candidates = [m for m in mercados if m["mercado"] in HEADLINE_MARKETS]
-    return max(candidates, key=lambda m: m["probabilidade_pct"])
+    return max(mercados, key=lambda m: m["probabilidade_pct"])
 
 
 def probabilidades_jogo(data) -> Dict[str, Any]:
