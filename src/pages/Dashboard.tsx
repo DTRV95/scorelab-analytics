@@ -13,11 +13,12 @@ import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   ArrowRight,
   BrainCircuit,
+  ChevronDown,
   Crosshair,
   Gauge,
   ShieldCheck,
@@ -36,7 +37,7 @@ import {
   ComposedChart,
   Bar,
 } from "recharts";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getMultipleMarketPerformance,
@@ -56,6 +57,11 @@ import { useScoreLabData } from "@/hooks/useScoreLabData";
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const collapse = {
+  hidden: { height: 0, opacity: 0 },
+  visible: { height: "auto", opacity: 1, transition: { duration: 0.2 } },
 };
 
 const fadeUp = {
@@ -437,93 +443,119 @@ function CustomTooltip({
   );
 }
 
-function ChartCard({
-  title,
-  description,
-  data,
-  xKey,
-  barKey = "roi",
-  cardClassName = "",
-  chartHeightClassName = "h-[240px]",
-}: {
-  title: string;
-  description: string;
+type BucketChartOption = {
+  key: string;
+  label: string;
   data: ChartRow[];
   xKey: string;
-  barKey?: string;
-  cardClassName?: string;
-  chartHeightClassName?: string;
-}) {
-  const safeData: ChartRow[] = Array.isArray(data) ? data : [];
+};
+
+function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
+  const firstWithData = options.find((option) => option.data.length > 0);
+  const [activeKey, setActiveKey] = useState(
+    (firstWithData ?? options[0])?.key
+  );
+  const active = options.find((option) => option.key === activeKey) ?? options[0];
+  const safeData: ChartRow[] = Array.isArray(active?.data) ? active.data : [];
 
   return (
-    <SectionCard title={title} description={description} badge="ROI" className={cardClassName}>
-      <div className={`scorelab-chart-cinematic relative ${chartHeightClassName}`}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={safeData}
-            margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
-            barCategoryGap="28%"
+    <SectionCard
+      title="ROI por Segmento"
+      description="Confirma se o edge, a confiança e o risco se estão mesmo a traduzir em lucro."
+      badge="ROI"
+    >
+      <div className="mb-4 flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => setActiveKey(option.key)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              option.key === activeKey
+                ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100"
+                : "border-white/8 bg-white/[0.03] text-white/50 hover:text-white/75"
+            }`}
           >
-            <CartesianGrid
-              stroke="rgba(255,255,255,0.06)"
-              vertical={false}
-              strokeDasharray="3 3"
-            />
-
-            <XAxis
-              dataKey={xKey}
-              axisLine={false}
-              tickLine={false}
-              tickMargin={10}
-              tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
-            />
-
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tickMargin={10}
-              tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
-            />
-
-            <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.03)" }}
-              content={<CustomTooltip valueLabel="ROI" />}
-            />
-
-            <Area
-              type="monotone"
-              dataKey={barKey}
-              stroke="none"
-              fill="rgba(125,245,238,0.045)"
-              isAnimationActive
-              animationDuration={850}
-            />
-
-            <Bar
-              dataKey={barKey}
-              radius={[12, 12, 12, 12]}
-              maxBarSize={72}
-              isAnimationActive
-              animationDuration={780}
-            >
-              {safeData.map((entry, index) => {
-                const value = Number(entry[barKey] ?? 0);
-                return (
-                  <Cell
-                    key={index}
-                    fill={
-                      value >= 0
-                        ? "rgba(34,197,94,0.95)"
-                        : "rgba(239,68,68,0.95)"
-                    }
-                  />
-                );
-              })}
-            </Bar>
-          </ComposedChart>
-        </ResponsiveContainer>
+            {option.label}
+            {option.data.length === 0 ? (
+              <span className="ml-1.5 text-white/30">·</span>
+            ) : null}
+          </button>
+        ))}
       </div>
+
+      {safeData.length > 0 ? (
+        <div className="scorelab-chart-cinematic relative h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={safeData}
+              margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
+              barCategoryGap="28%"
+            >
+              <CartesianGrid
+                stroke="rgba(255,255,255,0.06)"
+                vertical={false}
+                strokeDasharray="3 3"
+              />
+
+              <XAxis
+                dataKey={active.xKey}
+                axisLine={false}
+                tickLine={false}
+                tickMargin={10}
+                tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+              />
+
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tickMargin={10}
+                tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
+              />
+
+              <Tooltip
+                cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                content={<CustomTooltip valueLabel="ROI" />}
+              />
+
+              <Area
+                type="monotone"
+                dataKey="roi"
+                stroke="none"
+                fill="rgba(125,245,238,0.045)"
+                isAnimationActive
+                animationDuration={850}
+              />
+
+              <Bar
+                dataKey="roi"
+                radius={[12, 12, 12, 12]}
+                maxBarSize={72}
+                isAnimationActive
+                animationDuration={780}
+              >
+                {safeData.map((entry, index) => {
+                  const value = Number(entry.roi ?? 0);
+                  return (
+                    <Cell
+                      key={index}
+                      fill={
+                        value >= 0
+                          ? "rgba(34,197,94,0.95)"
+                          : "rgba(239,68,68,0.95)"
+                      }
+                    />
+                  );
+                })}
+              </Bar>
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm text-white/50">
+          Ainda sem amostra suficiente para este segmento.
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -724,6 +756,7 @@ export default function Dashboard() {
       : "cyan";
 
   const layout = useSectionLayout("dashboard", DASHBOARD_SECTIONS);
+  const [validationOpen, setValidationOpen] = useState(false);
 
   return (
     <AppLayout>
@@ -842,7 +875,7 @@ export default function Dashboard() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.035),rgba(125,245,238,0.045),rgba(255,255,255,0.025))] p-3 sm:grid-cols-3"
+          className="grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.035),rgba(125,245,238,0.045),rgba(255,255,255,0.025))] p-3 sm:grid-cols-2"
         >
           {[
             {
@@ -860,14 +893,6 @@ export default function Dashboard() {
                 ? `${leadingLeague.roi}% ROI · ${leadingLeague.bestMarket}`
                 : "No reliable league signal yet",
               icon: Sparkles,
-            },
-            {
-              label: "Top Value Today",
-              value: topValueToday?.analysis.match ?? "No live edge",
-              detail: topValueToday
-                ? `${topValueToday.bestBet.market} · ${topValueToday.bestBet.valueBet.toFixed(1)}% edge`
-                : `${dashboardData.analysesToday} analyses today`,
-              icon: Crosshair,
             },
           ].map((item) => (
             <div
@@ -893,7 +918,7 @@ export default function Dashboard() {
           <span>Executive Summary</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <CompactStatCard
             label="Settled Bets"
             value={
@@ -919,17 +944,6 @@ export default function Dashboard() {
             label="Avg Confidence"
             value={dashboardData.avgConfidence.toFixed(1)}
             change={`${dashboardData.valueBetsFound} value bets found`}
-          />
-          <CompactStatCard
-            label="Bankroll"
-            value={`€${bankrollStats.currentBankroll.toFixed(2)}`}
-            change={`Open exposure €${dashboardData.openExposure.toFixed(2)} · ${dashboardData.riskLevel}`}
-          />
-          <CompactStatCard
-            label="Bankroll Growth"
-            value={`${bankrollStats.bankrollGrowthPct.toFixed(2)}%`}
-            change={`Started at €${bankrollStats.initialBankroll.toFixed(2)}`}
-            changeType={bankrollStats.bankrollGrowthPct >= 0 ? "positive" : "negative"}
           />
         </div>
 
@@ -1118,63 +1132,46 @@ export default function Dashboard() {
           <span>Performance Charts</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <ChartCard
-            title="ROI by Odds Bucket"
-            description="Shows which odds ranges are actually profitable."
-            data={oddsBucketChartData}
-            xKey="bucket"
-          />
-
-          <ChartCard
-            title="ROI by Edge Bucket"
-            description="Checks whether higher edge is really translating into profit."
-            data={edgeBucketChartData}
-            xKey="bucket"
-          />
-
-          <ChartCard
-            title="ROI by Confidence Bucket"
-            description="Tests whether high confidence really performs better."
-            data={confidenceBucketChartData}
-            xKey="bucket"
-          />
-
-          <ChartCard
-            title="ROI by Risk"
-            description="Find out whether Low, Medium or High risk is damaging returns."
-            data={riskChartData}
-            xKey="risk"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <ChartCard
-            title="ROI by Edge Lower Bound"
-            description="Checks whether stronger edge safety margins are adding value."
-            data={edgeLowerBoundChartData}
-            xKey="bucket"
-            cardClassName="border-white/6 opacity-[0.94]"
-            chartHeightClassName="h-[205px]"
-          />
-
-          <ChartCard
-            title="ROI by Robustness"
-            description="A lighter read on whether robust picks are paying off."
-            data={robustnessChartData}
-            xKey="bucket"
-            cardClassName="border-white/6 opacity-[0.94]"
-            chartHeightClassName="h-[205px]"
-          />
-        </div>
+        <MultiBucketChart
+          options={[
+            { key: "odds", label: "Odds", data: oddsBucketChartData, xKey: "bucket" },
+            { key: "edge", label: "Edge", data: edgeBucketChartData, xKey: "bucket" },
+            { key: "confidence", label: "Confiança", data: confidenceBucketChartData, xKey: "bucket" },
+            { key: "risk", label: "Risco", data: riskChartData, xKey: "risk" },
+            { key: "edgeLowerBound", label: "Edge (limite)", data: edgeLowerBoundChartData, xKey: "bucket" },
+            { key: "robustness", label: "Robustez", data: robustnessChartData, xKey: "bucket" },
+          ]}
+        />
 
         </LayoutSection>
 
         <LayoutSection id="validation" layout={layout}>
-        <div className="scorelab-section-kicker">
-          <span>Validation Core</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setValidationOpen((open) => !open)}
+          className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3.5 text-left"
+        >
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-white">Validation Core</p>
+            <p className="mt-0.5 text-xs text-white/50">
+              Leitura detalhada por mercado, liga e tier — abre quando precisares de auditar.
+            </p>
+          </div>
+          <ChevronDown
+            className={`h-4 w-4 flex-none text-white/40 transition-transform ${validationOpen ? "rotate-180" : ""}`}
+          />
+        </button>
 
+        <AnimatePresence initial={false}>
+        {validationOpen && (
+          <motion.div
+            variants={collapse}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="overflow-hidden"
+          >
+          <div className="flex flex-col gap-7 pt-4">
         <SectionCard
           title="Validation Core"
           description="This is the central read on what the model is validating by market and by league."
@@ -1481,6 +1478,10 @@ export default function Dashboard() {
             </table>
           </div>
         </SectionCard>
+          </div>
+          </motion.div>
+        )}
+        </AnimatePresence>
         </LayoutSection>
       </motion.div>
     </AppLayout>
