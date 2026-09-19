@@ -8,7 +8,7 @@ numbers.
 """
 
 from schemas import AnalyzeRequest
-from model import analisar_jogo, estimate_lambdas, pair_shift
+from model import analisar_jogo, estimate_lambdas, pair_shift, probabilidades_jogo
 
 LEAGUE_HOME = 1.49
 LEAGUE_AWAY = 1.21
@@ -200,6 +200,51 @@ def test_book_margin_is_measured():
     )
     assert cheap["margem_casa_pct"] < expensive["margem_casa_pct"]
     assert expensive["margem_casa_pct"] > 6
+
+
+def test_probability_view_needs_no_odds_and_manufactures_no_decision():
+    """The odds-free view must never carry a value, a stake or a decision —
+    only what the model expects to happen."""
+    result = probabilidades_jogo(average_match(9))
+
+    assert result["mercados"], "expected at least one market"
+    for market in result["mercados"]:
+        assert set(market.keys()) == {"mercado", "grupo", "probabilidade_pct", "min_pct", "max_pct"}
+        assert market["min_pct"] <= market["probabilidade_pct"] <= market["max_pct"]
+
+
+def test_probability_view_markets_sum_to_one():
+    probs = {
+        m["mercado"]: m["probabilidade_pct"] for m in probabilidades_jogo(average_match(9))["mercados"]
+    }
+
+    for a, b in (
+        ("Mais de 2.5 Golos", "Menos de 2.5 Golos"),
+        ("Mais de 3.5 Golos", "Menos de 3.5 Golos"),
+        ("Ambas Marcam", "BTTS No"),
+    ):
+        assert abs(probs[a] + probs[b] - 100) < 0.5, (a, b)
+
+    assert abs(probs["Casa"] + probs["Empate"] + probs["Fora"] - 100) < 0.5
+
+
+def test_probability_view_agrees_with_the_priced_analysis():
+    """Both views are built on the same forecast, so a shared market must read
+    the same whether or not odds were ever supplied."""
+    priced = {m["mercado"]: m["prob_usada_pct"] for m in analisar_jogo(average_match(9))["mercados"]}
+    pure = {m["mercado"]: m["probabilidade_pct"] for m in probabilidades_jogo(average_match(9))["mercados"]}
+
+    for market in pure:
+        assert abs(pure[market] - priced[market]) < 3.0, (market, pure[market], priced[market])
+
+
+def test_probability_view_sample_confidence_reflects_the_evidence():
+    thin = probabilidades_jogo(average_match(2))
+    solid = probabilidades_jogo(average_match(20))
+
+    assert thin["amostra_pct"] < solid["amostra_pct"]
+    assert thin["amostra_label"] == "Baixa"
+    assert solid["amostra_label"] == "Alta"
 
 
 if __name__ == "__main__":

@@ -6,8 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from schemas import AnalyzeRequest, AnalyzeResponse
-from model import analisar_jogo, model_self_check
+from schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    ProbabilityRequest,
+    ProbabilityResponse,
+)
+from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
 
 MAX_RESULT_LOOKUPS = 200
@@ -39,6 +44,7 @@ def root():
         "message": "ScoreLab API is running",
         "features": {
             "analyze": True,
+            "analyze_probabilities": True,
             "match_data": True,
             "match_results": True,
             "match_data_key_configured": football_data.is_configured(),
@@ -51,6 +57,13 @@ def root():
 @limiter.limit("30/minute")
 def analyze(request: Request, data: AnalyzeRequest):
     return analisar_jogo(data)
+
+
+@app.post("/analyze/probabilities", response_model=ProbabilityResponse)
+@limiter.limit("30/minute")
+def analyze_probabilities(request: Request, data: ProbabilityRequest):
+    """The odds-free read of a match: what the model expects to happen."""
+    return probabilidades_jogo(data)
 
 
 @app.get("/data/status")

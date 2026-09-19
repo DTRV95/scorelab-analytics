@@ -1,9 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, BrainCircuit, Flag, Radar, Target, Wallet } from "lucide-react";
+import { BarChart3, BrainCircuit, Flag, Percent, Radar, Target, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const mobileItems = [
   { title: "Painel", url: "/dashboard", icon: BarChart3 },
+  { title: "Prob.", url: "/probability", icon: Percent },
   { title: "Analisar", url: "/analysis", icon: Target },
   { title: "Radar", url: "/radar", icon: Radar },
   { title: "Banca", url: "/bankroll", icon: Wallet },
@@ -16,7 +17,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--scorelab-chrome-border)] bg-[linear-gradient(180deg,rgba(4,18,33,0.84),rgba(2,10,22,0.96))] px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur-2xl lg:hidden">
-      <div className="mx-auto grid max-w-lg grid-cols-6 gap-1">
+      <div className="mx-auto grid max-w-lg grid-cols-7 gap-1">
         {mobileItems.map((item) => {
           const isActive =
             location.pathname === item.url ||

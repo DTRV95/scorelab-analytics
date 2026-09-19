@@ -1,4 +1,5 @@
-﻿import {
+﻿import { useLocation } from "react-router-dom";
+import {
   getBankrollStats,
   getAnalyses,
   saveAnalysis,
@@ -42,7 +43,7 @@ import {
   Layers3,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart,
@@ -69,6 +70,7 @@ import {
   LEAGUE_PRESETS,
   LEAGUE_PRESET_MAP,
 } from "@/lib/leaguePresets";
+import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
 
 type RiskLevel = "Low" | "Medium" | "High";
 
@@ -196,101 +198,6 @@ const loadingSteps = [
 
 const SCORE_MATRIX_MAX_GOALS = 10;
 
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="scorelab-stage-3d scorelab-board-3d scorelab-analytics-panel relative overflow-hidden rounded-[28px] border border-white/8 p-5">
-      <div className="relative z-10 mb-5 flex items-center justify-between gap-3 border-b border-white/6 pb-3">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/58">
-          {title}
-        </h3>
-        <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_18px_var(--scorelab-accent-b)]" />
-      </div>
-      <div className="relative z-10">{children}</div>
-    </div>
-  );
-}
-
-function FormField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  description,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  description?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
-        {label}
-      </label>
-      <input
-        type={type}
-        step={type === "number" ? "any" : undefined}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
-      />
-      {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
-          {description}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  description,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  description?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
-        {label}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white focus:outline-none"
-      >
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            className="bg-background text-foreground"
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
-          {description}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 function InsightTile({
   label,
@@ -855,11 +762,25 @@ function formatCurrency(value: number): string {
 }
 
 export default function MatchAnalysis() {
+  const location = useLocation();
   const initialBankrollStats = getBankrollStats();
   const [formData, setFormData] = useState<FormData>(() => ({
     ...initialFormData,
     banca: formatBankrollForInput(initialBankrollStats.currentBankroll),
   }));
+
+  // Coming from "Probabilidade" with a match already typed in: carry those
+  // stats over instead of making the user retype them for the odds step.
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: Partial<FormData> } | null)
+      ?.prefill;
+    if (!prefill) return;
+
+    setFormData((prev) => ({ ...prev, ...prefill }));
+    window.history.replaceState({}, document.title);
+    // Only ever consumed once, right after navigating in with state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
