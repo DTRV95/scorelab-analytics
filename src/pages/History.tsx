@@ -1,7 +1,16 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ListChecks,
+  Plus,
+  TrendingUp,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { MatchResultsPanel } from "@/components/MatchResultsPanel";
 import { calculateBetQualityScore, type BetQualityScore } from "@/lib/betQualityScore";
@@ -133,17 +142,36 @@ function PremiumCard({
   );
 }
 
+const METRIC_TONE_CLASS = {
+  cyan: "border-cyan-300/25 bg-cyan-300/10 text-cyan-200",
+  emerald: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
+  amber: "border-amber-300/25 bg-amber-300/10 text-amber-200",
+};
+
 function MetricBlock({
   label,
   value,
+  icon: Icon,
+  tone = "cyan",
 }: {
   label: string;
   value: React.ReactNode;
+  icon?: typeof ListChecks;
+  tone?: "cyan" | "emerald" | "amber";
 }) {
   return (
     <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-      <div className="mb-2 h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+      <div className="flex items-center justify-between gap-2">
+        <div className="h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
+        {Icon ? (
+          <span
+            className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border ${METRIC_TONE_CLASS[tone]}`}
+          >
+            <Icon className="h-3 w-3" strokeWidth={2} />
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
         {label}
       </p>
       <div className="mt-1.5 text-base font-semibold text-white">{value}</div>
@@ -894,10 +922,10 @@ export default function History() {
           variants={fadeUp}
           className="grid grid-cols-2 gap-3 xl:grid-cols-5"
         >
-          <MetricBlock label="Visible Analyses" value={summary.total} />
-          <MetricBlock label="Bets Placed" value={summary.placed} />
-          <MetricBlock label="Settled" value={summary.settled} />
-          <MetricBlock label="Greens" value={summary.greens} />
+          <MetricBlock label="Visible Analyses" value={summary.total} icon={ListChecks} tone="cyan" />
+          <MetricBlock label="Bets Placed" value={summary.placed} icon={Wallet} tone="cyan" />
+          <MetricBlock label="Settled" value={summary.settled} icon={CheckCircle2} tone="cyan" />
+          <MetricBlock label="Greens" value={summary.greens} icon={TrendingUp} tone="emerald" />
           <MetricBlock
             label="Needs Update"
             value={
@@ -909,6 +937,8 @@ export default function History() {
                 {summary.needsUpdate}
               </span>
             }
+            icon={AlertTriangle}
+            tone="amber"
           />
         </motion.div>
 
@@ -1180,6 +1210,15 @@ export default function History() {
               const auditedReds =
                 analysis.modelAudit?.outcomes.filter((item) => item.outcome === "red").length ?? 0;
               const auditedTotal = auditedGreens + auditedReds;
+              const cardAccent = needsAttention
+                ? "border-l-amber-400"
+                : trackedBetCount === 0
+                ? "border-l-white/15"
+                : totalProfitLoss > 0
+                ? "border-l-emerald-400"
+                : totalProfitLoss < 0
+                ? "border-l-red-400"
+                : "border-l-cyan-400";
 
               return (
                 <motion.div
@@ -1188,7 +1227,7 @@ export default function History() {
                   ref={(el) => {
                     analysisRefs.current[analysis.id] = el;
                   }}
-                  className={`scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
+                  className={`scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[28px] border border-white/8 border-l-4 ${cardAccent} bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
                     highlightedAnalysisId === analysis.id
                       ? "ring-2 ring-emerald-500/30"
                       : ""
@@ -1209,12 +1248,12 @@ export default function History() {
                               Analysis
                             </p>
                             {needsAttention ? (
-                              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-300">
+                              <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-950">
                                 Needs Update
                               </span>
                             ) : null}
                             {trackedBetCount > 0 ? (
-                              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-300">
+                              <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
                                 {trackedBetCount} Bet{trackedBetCount > 1 ? "s" : ""} Tracked
                               </span>
                             ) : (
@@ -1264,7 +1303,19 @@ export default function History() {
                             />
                             <InlineStat
                               label="P/L"
-                              value={`EUR ${totalProfitLoss.toFixed(2)}`}
+                              value={
+                                <span
+                                  className={`font-bold ${
+                                    totalProfitLoss > 0
+                                      ? "text-emerald-300"
+                                      : totalProfitLoss < 0
+                                      ? "text-red-300"
+                                      : "text-white"
+                                  }`}
+                                >
+                                  EUR {totalProfitLoss.toFixed(2)}
+                                </span>
+                              }
                             />
                             <InlineStat
                               label="Open"
@@ -1286,7 +1337,7 @@ export default function History() {
                           <button
                             type="button"
                             onClick={() => handleAddToMultiple(analysis, displayBet)}
-                            className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs text-cyan-200 transition hover:bg-cyan-400/15"
+                            className="rounded-full bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-400"
                           >
                             <span className="inline-flex items-center gap-1">
                               <Plus className="h-3.5 w-3.5" />
