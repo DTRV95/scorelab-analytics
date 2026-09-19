@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Loader2, RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchMatchPrefill } from "@/lib/matchPrefill";
 import type { AnalysisFixture } from "@/types/analysis";
 
 interface BoardMatch {
@@ -13,26 +14,11 @@ interface BoardMatch {
   league: string;
 }
 
-const STAT_FIELDS = [
-  "jogos_casa",
-  "golos_marcados_casa",
-  "golos_sofridos_casa",
-  "jogos_casa_rec",
-  "golos_marcados_casa_rec",
-  "golos_sofridos_casa_rec",
-  "jogos_fora",
-  "golos_marcados_fora",
-  "golos_sofridos_fora",
-  "jogos_fora_rec",
-  "golos_marcados_fora_rec",
-  "golos_sofridos_fora_rec",
-] as const;
-
-function dayKey(date: Date) {
+export function dayKey(date: Date) {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-function dayLabels(date: Date) {
+export function dayLabels(date: Date) {
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
@@ -53,7 +39,7 @@ function dayLabels(date: Date) {
   };
 }
 
-function timeLabel(date: Date) {
+export function timeLabel(date: Date) {
   return new Intl.DateTimeFormat("pt-PT", {
     hour: "2-digit",
     minute: "2-digit",
@@ -168,36 +154,13 @@ export function TodayMatches({
     setApplyingId(match.fixture_id);
     setError("");
     try {
-      const response = await fetch(
-        buildApiUrl(
-          `/data/prefill?league=${encodeURIComponent(match.league)}&fixture_id=${match.fixture_id}`
-        )
+      const { values, fixture } = await fetchMatchPrefill(
+        match.league,
+        match.fixture_id
       );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.detail || "Falha ao preencher.");
 
-      const values: Record<string, string> = {
-        equipa_casa: String(data.equipa_casa ?? ""),
-        equipa_fora: String(data.equipa_fora ?? ""),
-      };
-      STAT_FIELDS.forEach((field) => {
-        values[field] = String(data[field] ?? "");
-      });
-      if (data.league_averages) {
-        values.league_home_goals_avg = String(
-          data.league_averages.league_home_goals_avg
-        );
-        values.league_away_goals_avg = String(
-          data.league_averages.league_away_goals_avg
-        );
-      }
-
-      onSelect(match.league, values, {
-        id: match.fixture_id,
-        league: match.league,
-        kickoff: match.kickoff ?? null,
-      });
-      setApplied(`${data.equipa_casa} vs ${data.equipa_fora}`);
+      onSelect(match.league, values, fixture);
+      setApplied(`${values.equipa_casa} vs ${values.equipa_fora}`);
 
       // Take the user straight to what is still missing, on the page.
       window.requestAnimationFrame(() => {

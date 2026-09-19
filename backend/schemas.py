@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class AnalyzeRequest(BaseModel):
@@ -92,6 +92,30 @@ class ProbabilityResponse(BaseModel):
     amostra_pct: float
     amostra_label: str
     mercados: List[ProbabilityMarketResult]
+
+
+class ProbabilityBoardMatch(BaseModel):
+    """One row of the auto-ranked probability board."""
+
+    fixture_id: int
+    league: str
+    home_name: str
+    away_name: str
+    kickoff: Optional[str] = None
+    headline_market: str
+    headline_pct: float
+    amostra_pct: float
+    amostra_label: str
+    lambda_casa: float
+    lambda_fora: float
+    total_golos_esperados: float
+    mercados: List[ProbabilityMarketResult]
+
+
+class ProbabilityBoardResponse(BaseModel):
+    matches: List[ProbabilityBoardMatch]
+    unavailable: List[str]
+    skipped: int
 
 
 class MarketResult(BaseModel):

@@ -772,11 +772,23 @@ export default function MatchAnalysis() {
   // Coming from "Probabilidade" with a match already typed in: carry those
   // stats over instead of making the user retype them for the odds step.
   useEffect(() => {
-    const prefill = (location.state as { prefill?: Partial<FormData> } | null)
-      ?.prefill;
+    const incoming = location.state as
+      | { prefill?: Partial<FormData>; fixture?: AnalysisFixture }
+      | null;
+    const prefill = incoming?.prefill;
     if (!prefill) return;
 
     setFormData((prev) => ({ ...prev, ...prefill }));
+    // Carried over so the eventual saved analysis can still be linked to its
+    // fixture for automatic result settlement, exactly as picking it here
+    // via "Jogos do Dia" would.
+    if (incoming.fixture && prefill.equipa_casa && prefill.equipa_fora) {
+      setSelectedFixture({
+        ...incoming.fixture,
+        homeTeam: prefill.equipa_casa,
+        awayTeam: prefill.equipa_fora,
+      });
+    }
     window.history.replaceState({}, document.title);
     // Only ever consumed once, right after navigating in with state.
     // eslint-disable-next-line react-hooks/exhaustive-deps

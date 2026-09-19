@@ -345,6 +345,89 @@ def calibration() -> Dict[str, Any]:
     }
 
 
+def probability_board(days: int = 7, limit: int = 80) -> Dict[str, Any]:
+    """Every analysable fixture, forecast and ranked by its strongest signal.
+
+    Reuses matches_for_days and build_prefill, so it costs nothing beyond
+    what those already fetch and cache: this only adds a numpy simulation
+    per fixture, no extra requests to the data provider.
+    """
+    # Imported here, not at module load: model.py has no reason to know this
+    # module exists, and importing it up top would make every football_data
+    # call pay numpy's import cost even when only fixtures are needed.
+    from model import pick_headline_market, probabilidades_jogo
+    from schemas import ProbabilityRequest
+
+    board = matches_for_days(days)
+    ranked: List[Dict[str, Any]] = []
+    skipped = 0
+
+    for fixture in board["matches"]:
+        try:
+            prefill = build_prefill(fixture["league"], fixture["fixture_id"])
+            averages = prefill.get("league_averages") or {}
+            data = ProbabilityRequest(
+                equipa_casa=prefill["equipa_casa"],
+                equipa_fora=prefill["equipa_fora"],
+                liga=fixture["league"],
+                jogos_casa=prefill["jogos_casa"],
+                golos_marcados_casa=prefill["golos_marcados_casa"],
+                golos_sofridos_casa=prefill["golos_sofridos_casa"],
+                jogos_casa_rec=prefill["jogos_casa_rec"],
+                golos_marcados_casa_rec=prefill["golos_marcados_casa_rec"],
+                golos_sofridos_casa_rec=prefill["golos_sofridos_casa_rec"],
+                jogos_fora=prefill["jogos_fora"],
+                golos_marcados_fora=prefill["golos_marcados_fora"],
+                golos_sofridos_fora=prefill["golos_sofridos_fora"],
+                jogos_fora_rec=prefill["jogos_fora_rec"],
+                golos_marcados_fora_rec=prefill["golos_marcados_fora_rec"],
+                golos_sofridos_fora_rec=prefill["golos_sofridos_fora_rec"],
+                **(
+                    {
+                        "league_home_goals_avg": averages["league_home_goals_avg"],
+                        "league_away_goals_avg": averages["league_away_goals_avg"],
+                    }
+                    if averages
+                    else {}
+                ),
+            )
+            result = probabilidades_jogo(data)
+            headline = pick_headline_market(result["mercados"])
+        except ProviderUnavailable:
+            skipped += 1
+            continue
+        except Exception:
+            # One malformed fixture must never take the whole board down.
+            skipped += 1
+            continue
+
+        ranked.append(
+            {
+                "fixture_id": fixture["fixture_id"],
+                "league": fixture["league"],
+                "home_name": fixture["home_name"],
+                "away_name": fixture["away_name"],
+                "kickoff": fixture.get("kickoff"),
+                "headline_market": headline["mercado"],
+                "headline_pct": headline["probabilidade_pct"],
+                "amostra_pct": result["amostra_pct"],
+                "amostra_label": result["amostra_label"],
+                "lambda_casa": result["lambda_casa"],
+                "lambda_fora": result["lambda_fora"],
+                "total_golos_esperados": result["total_golos_esperados"],
+                "mercados": result["mercados"],
+            }
+        )
+
+    ranked.sort(key=lambda item: item["headline_pct"], reverse=True)
+
+    return {
+        "matches": ranked[:limit],
+        "unavailable": board["unavailable"],
+        "skipped": skipped,
+    }
+
+
 def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
     matches = get_season_matches(league_key)
 
