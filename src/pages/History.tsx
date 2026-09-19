@@ -1098,7 +1098,7 @@ export default function History() {
           description="Paper-tracks analysed matches without touching bankroll, ROI or financial performance."
           badge={`${modelAuditSummary.auditedMatches} audited`}
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <MetricBlock
               label="Audited Markets"
               value={modelAuditSummary.auditedMarkets}
@@ -1338,7 +1338,7 @@ export default function History() {
                       {isExpanded ? (
                       <div className="space-y-4 pt-1">
                         {displayBet && (
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+                          <div className="grid grid-cols-2 gap-3 xl:grid-cols-6">
                             <MetricBlock
                               label={
                                 primaryEntry?.tracking.selectedMarket

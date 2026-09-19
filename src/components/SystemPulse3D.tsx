@@ -56,7 +56,9 @@ export function SystemPulse3D({
   return (
     <div
       className={`scorelab-stage-3d scorelab-board-3d scorelab-premium-edge relative h-full overflow-hidden border border-white/8 bg-[linear-gradient(160deg,rgba(13,28,44,0.82)_0%,rgba(4,11,24,0.96)_100%)] ${
-        isCompact ? "min-h-[150px] rounded-xl p-3" : "min-h-[220px] rounded-[28px] p-4"
+        isCompact
+          ? "min-h-0 rounded-xl p-3 sm:min-h-[150px]"
+          : "min-h-[220px] rounded-[28px] p-4"
       }`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[length:32px_32px] opacity-30" />
@@ -72,7 +74,11 @@ export function SystemPulse3D({
           <p className={`${isCompact ? "mt-1 text-xs leading-5" : "mt-1 text-sm leading-6"} max-w-[18rem] text-white/54`}>{detail}</p>
         </div>
 
-        <div className={`relative mx-auto [perspective:900px] ${isCompact ? "h-20 w-36" : "h-36 w-52"}`}>
+        <div
+          className={`relative mx-auto [perspective:900px] ${
+            isCompact ? "hidden h-20 w-36 sm:block" : "h-36 w-52"
+          }`}
+        >
           <motion.div
             aria-hidden
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border ${palette.line} ${palette.soft} ${palette.glow} [transform-style:preserve-3d] ${

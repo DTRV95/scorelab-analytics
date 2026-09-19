@@ -652,7 +652,7 @@ export default function ModelLab() {
           }
         />
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <MetricBlock
             label="Audited Markets"
             value={summary.auditedMarkets}
@@ -680,7 +680,7 @@ export default function ModelLab() {
           description="Machine learning readiness based on audited market outcomes. This is the training base before any ML model is allowed to influence decisions."
           badge={learningSummary.readiness.level}
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <MetricBlock
               label="Training Rows"
               value={learningSummary.readiness.rows}
@@ -713,7 +713,7 @@ export default function ModelLab() {
           description="Checks designed to stop the lab from over-trusting raw hit rate or old aggregate data."
           badge="Critical Read"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             {diagnosticCards.map((card) => {
               const toneClass =
                 card.tone === "emerald"

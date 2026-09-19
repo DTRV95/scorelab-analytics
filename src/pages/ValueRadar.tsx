@@ -339,7 +339,7 @@ export default function ValueRadar() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6"
+          className="grid grid-cols-2 gap-4 xl:grid-cols-6"
         >
           <MetricBlock label="Visible Points" value={summary.total} />
           <MetricBlock label="Bets" value={summary.bets} />
@@ -717,7 +717,7 @@ export default function ValueRadar() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+              <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
                 <MetricBlock label="Market" value={selectedPoint.market} />
                 <MetricBlock
                   label="Model Probability"

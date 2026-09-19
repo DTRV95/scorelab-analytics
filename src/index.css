@@ -1199,7 +1199,27 @@
       padding-bottom: 0.875rem !important;
     }
 
-    .scorelab-mobile-overview :where(.grid) {
+    /* A grid with no responsive prefix on its column count (plain
+       "grid-cols-2"/"grid-cols-3", not "sm:grid-cols-2") means the author
+       wanted that many columns at every width, phones included — almost
+       always a row of small stat tiles (a number, a short label). Collapsing
+       those to one full-width card each was what actually produced "boxes
+       where the data only fills a third of the box": the tile keeps its
+       compact height but stretches to the whole screen width. Keep 2 or 3
+       columns for those; only a grid that was already single-column at the
+       base breakpoint (a bare .grid, or one gated behind sm:/md:/...) falls
+       through to the 1-column rule below, since that already matches what
+       its own author intended for a phone. */
+    .scorelab-mobile-overview :where(.grid[class~="grid-cols-2"]) {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .scorelab-mobile-overview :where(.grid[class~="grid-cols-3"]) {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .scorelab-mobile-overview
+      :where(.grid):not([class~="grid-cols-2"]):not([class~="grid-cols-3"]) {
       grid-template-columns: minmax(0, 1fr) !important;
     }
 

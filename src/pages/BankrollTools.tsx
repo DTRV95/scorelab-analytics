@@ -633,7 +633,7 @@ export default function BankrollTools() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-2.5 xl:grid-cols-4"
         >
             <CompactStatCard
               label="Free Bankroll"
@@ -663,7 +663,7 @@ export default function BankrollTools() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-2.5 xl:grid-cols-4"
         >
             <CompactStatCard
               label="Potential Profit"
@@ -697,7 +697,7 @@ export default function BankrollTools() {
             description="A practical read on how capital is behaving right now."
             badge="Overview"
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               <FocusMetric
                 label="Hit Rate"
                 value={`${stats.hitRate.toFixed(2)}%`}
@@ -1243,7 +1243,7 @@ export default function BankrollTools() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <FocusMetric
                     label="Audited Matches"
                     value={String(modelAuditSummary.auditedMatches)}
