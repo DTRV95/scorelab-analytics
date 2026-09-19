@@ -29,9 +29,13 @@ export const MARKET_LABELS: Record<string, string> = {
   "Menos de 3.5 Golos": "Menos de 3.5 Golos",
   "Ambas Marcam": "Ambas Marcam",
   "BTTS No": "Ambas Não Marcam",
+  "1X e Menos de 3.5 Golos": "1X e Menos de 3.5 Golos",
+  "2X e Menos de 3.5 Golos": "2X e Menos de 3.5 Golos",
+  "1X e Mais de 1.5 Golos": "1X e Mais de 1.5 Golos",
+  "2X e Mais de 1.5 Golos": "2X e Mais de 1.5 Golos",
 };
 
-const GROUP_ORDER = ["Resultado", "Golos", "Ambas Marcam"];
+const GROUP_ORDER = ["Resultado", "Golos", "Ambas Marcam", "Combinados"];
 
 function barTone(pct: number) {
   if (pct >= 60) return "bg-emerald-400";

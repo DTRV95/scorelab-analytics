@@ -20,6 +20,10 @@ const data = {
     { mercado: "Menos de 3.5 Golos", grupo: "Golos", probabilidade_pct: 72.6, min_pct: 66.8, max_pct: 77.9 },
     { mercado: "Ambas Marcam", grupo: "Ambas Marcam", probabilidade_pct: 55.7, min_pct: 49.3, max_pct: 62.2 },
     { mercado: "BTTS No", grupo: "Ambas Marcam", probabilidade_pct: 44.3, min_pct: 37.8, max_pct: 50.7 },
+    { mercado: "1X e Menos de 3.5 Golos", grupo: "Combinados", probabilidade_pct: 50.2, min_pct: 43.1, max_pct: 57.3 },
+    { mercado: "2X e Menos de 3.5 Golos", grupo: "Combinados", probabilidade_pct: 44.2, min_pct: 37.4, max_pct: 51.0 },
+    { mercado: "1X e Mais de 1.5 Golos", grupo: "Combinados", probabilidade_pct: 51.2, min_pct: 44.0, max_pct: 58.4 },
+    { mercado: "2X e Mais de 1.5 Golos", grupo: "Combinados", probabilidade_pct: 43.2, min_pct: 36.5, max_pct: 50.0 },
   ],
 };
 
@@ -47,13 +51,24 @@ describe("ProbabilityBreakdown", () => {
     });
   });
 
-  it("groups markets under Resultado, Golos and Ambas Marcam", () => {
+  it("groups markets under Resultado, Golos, Ambas Marcam and Combinados", () => {
     render(<ProbabilityBreakdown data={data} />);
 
     expect(screen.getByText("Resultado")).toBeInTheDocument();
     expect(screen.getByText("Golos")).toBeInTheDocument();
     // Appears twice: once as the group heading, once as the market row itself.
     expect(screen.getAllByText("Ambas Marcam")).toHaveLength(2);
+    expect(screen.getByText("Combinados")).toBeInTheDocument();
+  });
+
+  it("shows the double-chance and goals combos", () => {
+    render(<ProbabilityBreakdown data={data} />);
+
+    expect(screen.getByText("1X e Menos de 3.5 Golos")).toBeInTheDocument();
+    expect(screen.getByText("2X e Menos de 3.5 Golos")).toBeInTheDocument();
+    expect(screen.getByText("1X e Mais de 1.5 Golos")).toBeInTheDocument();
+    expect(screen.getByText("2X e Mais de 1.5 Golos")).toBeInTheDocument();
+    expect(screen.getByText("50.2%")).toBeInTheDocument();
   });
 
   it("skips a group entirely when the backend sends no markets for it", () => {

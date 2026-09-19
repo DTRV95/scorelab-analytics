@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -97,6 +97,10 @@ function renderPage() {
   );
 }
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -171,5 +175,55 @@ describe("ProbabilityRadar board", () => {
     fireEvent.click(screen.getByText(/análise manual/i).closest("button")!);
 
     expect(await screen.findByText("Equipa da Casa")).toBeInTheDocument();
+  });
+
+  it("reopening the tab shows the same board instantly, with no new fetch", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/data/status")) {
+        return Promise.resolve({ ok: true, json: async () => ({ configured: true }) } as Response);
+      }
+      if (url.includes("/data/probability-board")) {
+        return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = renderPage();
+    await screen.findByText("Porto vs Nacional");
+    const callsAfterFirstLoad = fetchMock.mock.calls.length;
+    expect(callsAfterFirstLoad).toBeGreaterThan(0);
+
+    first.unmount();
+    renderPage();
+
+    // Cached data renders straight away — no "a ligar ao motor" wait, and no
+    // new network call for either the status check or the board itself.
+    expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirstLoad);
+  });
+
+  it("still fetches fresh data when the user asks for a refresh", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/data/status")) {
+        return Promise.resolve({ ok: true, json: async () => ({ configured: true }) } as Response);
+      }
+      if (url.includes("/data/probability-board")) {
+        return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+    await screen.findByText("Porto vs Nacional");
+    const callsAfterFirstLoad = fetchMock.mock.calls.length;
+
+    fireEvent.click(screen.getByTitle(/recalcular/i));
+    await screen.findByText("Porto vs Nacional");
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad);
   });
 });
