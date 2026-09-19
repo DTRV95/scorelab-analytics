@@ -3,9 +3,7 @@ import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { AITypewriter } from "@/components/AITypewriter";
 import { MatchResultsPanel } from "@/components/MatchResultsPanel";
-import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateBetQualityScore, type BetQualityScore } from "@/lib/betQualityScore";
 import {
   buildDecisionMemorySnapshot,
@@ -37,41 +35,6 @@ import {
 import type { SavedAnalysis, BetStatus, TrackedAnalysisBet } from "@/types/analysis";
 import { useSearchParams } from "react-router-dom";
 
-interface HistoryAISummary {
-  configured: boolean;
-  summary: string;
-  strengths: string[];
-  risks: string[];
-  next_actions: string[];
-  disclaimer: string;
-}
-
-interface HistoryAISummaryPayload {
-  visible_analyses: number;
-  placed_bets: number;
-  settled_bets: number;
-  pending_bets: number;
-  greens: number;
-  reds: number;
-  needs_update: number;
-  avg_confidence: number;
-  avg_edge: number;
-  filter_summary: string;
-  strongest_market: string | null;
-  weakest_market: string | null;
-  top_markets: Array<{
-    market: string;
-    bets: number;
-    roi: number;
-    hit_rate: number;
-    profit_loss: number;
-  }>;
-  recent_matches: string[];
-  multiple_draft_legs: number;
-  pending_multiples: number;
-  settled_multiples: number;
-}
-
 const darkSelectClass =
   "h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
 
@@ -81,7 +44,6 @@ const darkSelectStyle = {
   colorScheme: "dark" as const,
 };
 
-const SHOW_AI_READS = false;
 const INITIAL_VISIBLE_ANALYSES = 18;
 
 const stagger = {
@@ -390,112 +352,6 @@ function buildQualitySnapshot(
   };
 }
 
-function buildHistoryFallbackSummary(
-  payload: HistoryAISummaryPayload
-): HistoryAISummary {
-  const strengths: string[] = [];
-  const risks: string[] = [];
-  const nextActions: string[] = [];
-
-  if (payload.strongest_market) {
-    strengths.push(
-      `${payload.strongest_market} is the strongest visible market inside the current history view.`
-    );
-  }
-
-  if (payload.settled_bets > 0) {
-    strengths.push(
-      `This filtered history already contains ${payload.settled_bets} settled bets, so it can start validating real patterns.`
-    );
-  }
-
-  if (payload.needs_update > 0) {
-    risks.push(
-      `${payload.needs_update} tracked bets still need cleanup, so the review is not fully clean yet.`
-    );
-  }
-
-  if (payload.weakest_market) {
-    risks.push(
-      `${payload.weakest_market} is the weakest visible market right now, so it deserves more caution.`
-    );
-  }
-
-  if (
-    payload.pending_bets > payload.settled_bets &&
-    payload.pending_bets > 0
-  ) {
-    risks.push(
-      `There are more pending bets than settled ones in this view, so recent conclusions are still fragile.`
-    );
-  }
-
-  if (payload.multiple_draft_legs > 0) {
-    nextActions.push(
-      `You already have ${payload.multiple_draft_legs} legs in the multiple builder, so compare them against the strongest history zones before saving.`
-    );
-  }
-
-  nextActions.push(
-    "Keep the tracking fields clean first so the history review reflects the real decision quality."
-  );
-  nextActions.push(
-    "Use the strongest visible markets as the base for the next selections."
-  );
-
-  return {
-    configured: false,
-    summary: `This history view shows ${payload.visible_analyses} analyses, ${payload.placed_bets} tracked bets and ${payload.settled_bets} settled results, with ${payload.avg_confidence.toFixed(1)} average confidence and ${payload.avg_edge.toFixed(1)}% average edge.`,
-    strengths: strengths.slice(0, 3),
-    risks: risks.slice(0, 3),
-    next_actions: nextActions.slice(0, 3),
-    disclaimer:
-      "This review interprets the visible history and tracking data. It supports review discipline, but it does not replace the betting model.",
-  };
-}
-
-function AIReviewColumn({
-  title,
-  tone,
-  items,
-  startDelay = 0,
-}: {
-  title: string;
-  tone: "emerald" | "red" | "cyan";
-  items: string[];
-  startDelay?: number;
-}) {
-  const toneClasses =
-    tone === "emerald"
-      ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
-      : tone === "red"
-      ? "border-red-400/15 bg-red-400/[0.04] text-red-200"
-      : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200";
-
-  return (
-    <div className={`rounded-xl border p-3.5 ${toneClasses}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
-        {title}
-      </p>
-      <div className="mt-3 space-y-2.5">
-        {items.map((item, index) => (
-          <div
-            key={`${title}-${index}`}
-            className="flex items-start gap-2 text-sm leading-6"
-          >
-            <span className="mt-[2px] inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-current/20 text-[10px] font-semibold opacity-80">
-              {index + 1}
-            </span>
-            <p className="text-current/90">
-              <AITypewriter text={item} startDelay={startDelay + index * 220} />
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function History() {
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [multipleDraft, setMultipleDraft] = useState(getMultipleDraft());
@@ -525,10 +381,7 @@ export default function History() {
   >("newest");
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ANALYSES);
-  const [aiSummary, setAiSummary] = useState<HistoryAISummary | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
   const [auditDrafts, setAuditDrafts] = useState<Record<string, { home: string; away: string }>>({});
-  const hasLoadedAiReviewRef = useRef(false);
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const expandedIdSet = useMemo(() => new Set(expandedIds), [expandedIds]);
 
@@ -1003,228 +856,6 @@ export default function History() {
     return { total, placed, settled, greens, reds, needsUpdate };
   }, [filteredAnalyses, trackingEntriesByAnalysisId]);
 
-  const historyAiPayload = useMemo<HistoryAISummaryPayload>(() => {
-    const trackedEntries = filteredAnalyses.flatMap((analysis) =>
-      trackingEntriesByAnalysisId.get(analysis.id) ?? []
-    );
-    const viewBets = trackedEntries.filter((entry) => entry.tracking.betPlaced);
-    const settledBets = viewBets.filter((entry) =>
-      ["green", "red", "void"].includes(entry.tracking.resultStatus)
-    );
-    const pendingBets = viewBets.filter(
-      (entry) => entry.tracking.resultStatus === "pending"
-    );
-
-    const displayResults = viewBets
-      .map((entry) => {
-        const result = entry.tracking.selectedMarket
-          ? entry.analysis.results.find((item) => item.market === entry.tracking.selectedMarket)
-          : getBestBet(entry.analysis.results);
-
-        return result ? { entry, result } : null;
-      })
-      .filter(
-        (
-          item
-        ): item is {
-          entry: ReturnType<typeof getAnalysisTrackingEntries>[number];
-          result: NonNullable<ReturnType<typeof getBestBet>>;
-        } => item !== null
-      );
-
-    const avgConfidence =
-      displayResults.length > 0
-        ? displayResults.reduce((sum, item) => sum + item.result.confidence, 0) /
-          displayResults.length
-        : 0;
-    const avgEdge =
-      displayResults.length > 0
-        ? displayResults.reduce((sum, item) => sum + item.result.valueBet, 0) /
-          displayResults.length
-        : 0;
-
-    const marketMap = new Map<
-      string,
-      {
-        market: string;
-        bets: number;
-        greens: number;
-        reds: number;
-        profit_loss: number;
-        hit_rate: number;
-        roi: number;
-        totalStake: number;
-      }
-    >();
-
-    settledBets.forEach((entry) => {
-      const market = entry.tracking.selectedMarket;
-      if (!market) return;
-
-      const current = marketMap.get(market) || {
-        market,
-        bets: 0,
-        greens: 0,
-        reds: 0,
-        profit_loss: 0,
-        hit_rate: 0,
-        roi: 0,
-        totalStake: 0,
-      };
-
-      current.bets += 1;
-      current.profit_loss += entry.tracking.profitLoss || 0;
-      current.totalStake += entry.tracking.stakeUsed || 0;
-      if (entry.tracking.resultStatus === "green") current.greens += 1;
-      if (entry.tracking.resultStatus === "red") current.reds += 1;
-
-      const settled = current.greens + current.reds;
-      current.hit_rate = settled > 0 ? (current.greens / settled) * 100 : 0;
-      current.roi =
-        current.totalStake > 0
-          ? (current.profit_loss / current.totalStake) * 100
-          : 0;
-
-      marketMap.set(market, current);
-    });
-
-    const rankedMarkets = Array.from(marketMap.values())
-      .filter((item) => item.bets > 0)
-      .sort((a, b) => b.roi - a.roi);
-
-    const strongestMarket = rankedMarkets[0]?.market ?? null;
-    const weakestMarket =
-      rankedMarkets.length > 1
-        ? rankedMarkets[rankedMarkets.length - 1]?.market ?? null
-        : null;
-
-    const filterSummary = [
-      `status:${statusFilter}`,
-      `bet:${betPlacedFilter}`,
-      `market:${marketFilter}`,
-      `date:${dateFilter}`,
-      `sort:${sortBy}`,
-      searchTerm.trim() ? `search:${searchTerm.trim()}` : null,
-    ]
-      .filter(Boolean)
-      .join(" | ");
-
-    return {
-      visible_analyses: filteredAnalyses.length,
-      placed_bets: viewBets.length,
-      settled_bets: settledBets.length,
-      pending_bets: pendingBets.length,
-      greens: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "green").length,
-      reds: filteredAnalyses.filter((analysis) => analysis.tracking.resultStatus === "red").length,
-      needs_update: filteredAnalyses.filter((analysis) =>
-        (trackingEntriesByAnalysisId.get(analysis.id) ?? []).some((entry) =>
-          needsTrackedBetAttention(entry.tracking)
-        )
-      ).length,
-      avg_confidence: Number(avgConfidence.toFixed(1)),
-      avg_edge: Number(avgEdge.toFixed(2)),
-      filter_summary: filterSummary,
-      strongest_market: strongestMarket,
-      weakest_market: weakestMarket,
-      top_markets: rankedMarkets.slice(0, 3).map((item) => ({
-        market: item.market,
-        bets: item.bets,
-        roi: Number(item.roi.toFixed(2)),
-        hit_rate: Number(item.hit_rate.toFixed(2)),
-        profit_loss: Number(item.profit_loss.toFixed(2)),
-      })),
-      recent_matches: filteredAnalyses
-        .slice(0, 3)
-        .map((analysis) => `${analysis.homeTeam} vs ${analysis.awayTeam}`),
-      multiple_draft_legs: multipleDraft.length,
-      pending_multiples: savedMultiples.filter(
-        (multiple) =>
-          multiple.tracking.betPlaced &&
-          multiple.tracking.resultStatus === "pending"
-      ).length,
-      settled_multiples: savedMultiples.filter((multiple) =>
-        ["green", "red", "void"].includes(multiple.tracking.resultStatus)
-      ).length,
-    };
-  }, [
-    filteredAnalyses,
-    trackingEntriesByAnalysisId,
-    multipleDraft.length,
-    savedMultiples,
-    statusFilter,
-    betPlacedFilter,
-    marketFilter,
-    dateFilter,
-    sortBy,
-    searchTerm,
-  ]);
-
-  const historyAiPayloadKey = useMemo(
-    () => JSON.stringify(historyAiPayload),
-    [historyAiPayload]
-  );
-
-  useEffect(() => {
-    if (!SHOW_AI_READS) {
-      setAiLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      controller.abort();
-    }, 8000);
-    const showLoadingState = !hasLoadedAiReviewRef.current;
-
-    const run = async () => {
-      if (showLoadingState) {
-        setAiLoading(true);
-      }
-      try {
-        const response = await fetch(buildApiUrl("/ai/history-review"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          signal: controller.signal,
-          body: historyAiPayloadKey,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to load history AI review (${response.status})`);
-        }
-
-        const data = (await response.json()) as HistoryAISummary;
-        if (!isCancelled) {
-          setAiSummary(data);
-          hasLoadedAiReviewRef.current = true;
-        }
-      } catch {
-        if (!isCancelled) {
-          const parsedPayload = JSON.parse(
-            historyAiPayloadKey
-          ) as HistoryAISummaryPayload;
-          setAiSummary(buildHistoryFallbackSummary(parsedPayload));
-          hasLoadedAiReviewRef.current = true;
-        }
-      } finally {
-        window.clearTimeout(timeoutId);
-        if (!isCancelled && showLoadingState) {
-          setAiLoading(false);
-        }
-      }
-    };
-
-    run();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-      window.clearTimeout(timeoutId);
-    };
-  }, [historyAiPayloadKey]);
-
   const handleAddToMultiple = (
     analysis: SavedAnalysis,
     result: SavedAnalysis["results"][number] | null
@@ -1284,73 +915,6 @@ export default function History() {
         <motion.div variants={fadeUp}>
           <MatchResultsPanel analyses={analyses} onUpdated={setAnalyses} />
         </motion.div>
-
-        {SHOW_AI_READS ? (
-        <PremiumCard
-          title="AI History Review"
-          description="A quick reading of what the current history view is validating, where the tracking still needs work and what deserves more care next."
-          badge={aiSummary?.configured ? "AI Live" : "Fallback"}
-        >
-          {aiLoading ? (
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-white/55">
-              Building history review...
-            </div>
-          ) : aiSummary ? (
-            <div className="space-y-3.5">
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
-                    History Read
-                  </p>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
-                    {aiSummary.configured ? "OpenAI Live" : "Local Fallback"}
-                  </span>
-                </div>
-                <p className="mt-2.5 text-sm leading-7 text-white/75">
-                  <AITypewriter text={aiSummary.summary} startDelay={120} />
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                <AIReviewColumn
-                  title="Strengths"
-                  tone="emerald"
-                  startDelay={380}
-                  items={
-                    aiSummary.strengths.length
-                      ? aiSummary.strengths
-                      : ["No clear strength is standing out strongly enough yet."]
-                  }
-                />
-                <AIReviewColumn
-                  title="Risks"
-                  tone="red"
-                  startDelay={760}
-                  items={
-                    aiSummary.risks.length
-                      ? aiSummary.risks
-                      : ["No major history risk is standing out strongly right now."]
-                  }
-                />
-                <AIReviewColumn
-                  title="Next Actions"
-                  tone="cyan"
-                  startDelay={1140}
-                  items={
-                    aiSummary.next_actions.length
-                      ? aiSummary.next_actions
-                      : ["Keep logging results cleanly so the history read stays useful."]
-                  }
-                />
-              </div>
-
-              <p className="text-xs leading-6 text-white/40">
-                {aiSummary.disclaimer}
-              </p>
-            </div>
-          ) : null}
-        </PremiumCard>
-        ) : null}
 
         <PremiumCard
           title="Filters & Search"

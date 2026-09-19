@@ -7,6 +7,7 @@ import {
   Command as CommandIcon,
   Flag,
   Layers3,
+  Percent,
   Radar,
   Search,
   Settings,
@@ -45,6 +46,7 @@ const formatCurrency = (value: number) =>
 
 const pages = [
   { title: "Dashboard", detail: "System overview", url: "/dashboard", icon: BarChart3 },
+  { title: "Probability", detail: "See a match's odds-free forecast", url: "/probability", icon: Percent },
   { title: "Match Analysis", detail: "Analyze a new game", url: "/analysis", icon: Target },
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
   { title: "Model Lab", detail: "Audit calibration truth", url: "/model-lab", icon: BrainCircuit },

@@ -120,12 +120,6 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
     return payload
 
 
-def current_season_year(now: Optional[time.struct_time] = None) -> int:
-    """European seasons are labelled by their starting year (2026 = 2026/27)."""
-    stamp = now or time.gmtime()
-    return stamp.tm_year if stamp.tm_mon >= 7 else stamp.tm_year - 1
-
-
 def get_season_matches(
     league_key: str, season: Optional[int] = None
 ) -> List[Dict[str, Any]]:
