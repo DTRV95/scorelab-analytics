@@ -87,6 +87,86 @@ def test_unsupported_leagues_fall_back_to_manual_entry():
     raise AssertionError("uma liga sem dados gratuitos tem de falhar explicitamente")
 
 
+def team_match(
+    match_id,
+    home_id,
+    away_id,
+    home_name="Home",
+    away_name="Away",
+    status="FINISHED",
+    home=1,
+    away=1,
+    kickoff="2026-09-13T18:30:00Z",
+):
+    return {
+        "id": match_id,
+        "status": status,
+        "utcDate": kickoff,
+        "matchday": 1,
+        "homeTeam": {"id": home_id, "name": home_name, "shortName": home_name},
+        "awayTeam": {"id": away_id, "name": away_name, "shortName": away_name},
+        "score": {"fullTime": {"home": home, "away": away}},
+    }
+
+
+def build_board_season():
+    """A season with a clear favourite, a coin-flip pair, and two brand new
+    teams with no history at all."""
+    played = []
+    for _ in range(10):
+        played.append(team_match(len(played) + 1, 1, 2, "Strong FC", "Weak FC", home=3, away=0))
+        played.append(team_match(len(played) + 1, 3, 4, "Mid A", "Mid B", home=1, away=1))
+
+    upcoming = [
+        team_match(9001, 1, 3, "Strong FC", "Mid A", status="SCHEDULED", kickoff="2026-09-20T18:00:00Z"),
+        team_match(9002, 4, 2, "Mid B", "Weak FC", status="SCHEDULED", kickoff="2026-09-21T18:00:00Z"),
+        team_match(9003, 90, 91, "New FC", "Newer FC", status="SCHEDULED", kickoff="2026-09-20T18:00:00Z"),
+    ]
+    return played + upcoming
+
+
+def test_board_ranks_the_strongest_forecast_first():
+    with_season(build_board_season())
+
+    board = football_data.probability_board(days=14)
+    leaders = [(item["home_name"], item["away_name"]) for item in board["matches"]]
+
+    assert leaders[0] == ("Strong FC", "Mid A")
+    assert board["matches"] == sorted(
+        board["matches"], key=lambda item: item["headline_pct"], reverse=True
+    )
+
+
+def test_board_skips_a_fixture_between_two_unknown_teams():
+    with_season(build_board_season())
+
+    board = football_data.probability_board(days=14)
+
+    assert "New FC" not in [item["home_name"] for item in board["matches"]]
+    assert board["skipped"] >= 1
+
+
+def test_board_reports_uncovered_competitions_as_unavailable():
+    with_season(build_board_season())
+
+    board = football_data.probability_board(days=14)
+
+    assert "Premier League" in board["unavailable"]
+
+
+def test_board_carries_the_full_breakdown_per_match():
+    with_season(build_board_season())
+
+    board = football_data.probability_board(days=14)
+    (leader,) = [
+        item for item in board["matches"] if item["home_name"] == "Strong FC"
+    ]
+
+    market_names = {m["mercado"] for m in leader["mercados"]}
+    assert leader["headline_market"] in market_names
+    assert {"Casa", "Empate", "Fora", "Ambas Marcam"} <= market_names
+
+
 if __name__ == "__main__":
     checks = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for check in checks:

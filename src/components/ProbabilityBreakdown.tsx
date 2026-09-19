@@ -17,7 +17,7 @@ export interface ProbabilityResult {
   mercados: ProbabilityMarket[];
 }
 
-const MARKET_LABELS: Record<string, string> = {
+export const MARKET_LABELS: Record<string, string> = {
   Casa: "Vitória Casa",
   Empate: "Empate",
   Fora: "Vitória Fora",
@@ -39,7 +39,7 @@ function barTone(pct: number) {
   return "bg-white/25";
 }
 
-function sampleTone(label: string) {
+export function sampleTone(label: string) {
   if (label === "Alta") return "text-emerald-300 bg-emerald-400/10 ring-emerald-400/20";
   if (label === "Média") return "text-amber-300 bg-amber-400/10 ring-amber-400/20";
   return "text-rose-300 bg-rose-400/10 ring-rose-400/20";

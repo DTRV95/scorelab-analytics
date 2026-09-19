@@ -8,7 +8,13 @@ numbers.
 """
 
 from schemas import AnalyzeRequest
-from model import analisar_jogo, estimate_lambdas, pair_shift, probabilidades_jogo
+from model import (
+    analisar_jogo,
+    estimate_lambdas,
+    pair_shift,
+    pick_headline_market,
+    probabilidades_jogo,
+)
 
 LEAGUE_HOME = 1.49
 LEAGUE_AWAY = 1.21
@@ -245,6 +251,34 @@ def test_probability_view_sample_confidence_reflects_the_evidence():
     assert thin["amostra_pct"] < solid["amostra_pct"]
     assert thin["amostra_label"] == "Baixa"
     assert solid["amostra_label"] == "Alta"
+
+
+def test_headline_market_ignores_double_chance():
+    """1X/2X clear 60%+ on almost every match — ranking on them would just
+    reorder the board by which side is the bigger favourite, not by which
+    match has the strongest single signal."""
+    mercados = probabilidades_jogo(average_match(9))["mercados"]
+    headline = pick_headline_market(mercados)
+
+    assert headline["mercado"] not in ("1X", "2X")
+
+
+def test_headline_market_is_the_strongest_real_signal():
+    lopsided = average_match(
+        12,
+        golos_marcados_casa=40,
+        golos_sofridos_casa=2,
+        golos_marcados_casa_rec=18,
+        golos_sofridos_casa_rec=0,
+    )
+    mercados = probabilidades_jogo(lopsided)["mercados"]
+    headline = pick_headline_market(mercados)
+    core_markets = {m["mercado"]: m["probabilidade_pct"] for m in mercados}
+
+    assert headline["mercado"] == "Casa"
+    assert headline["probabilidade_pct"] == max(
+        pct for market, pct in core_markets.items() if market not in ("1X", "2X")
+    )
 
 
 if __name__ == "__main__":

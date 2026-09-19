@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 from schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
+    ProbabilityBoardResponse,
     ProbabilityRequest,
     ProbabilityResponse,
 )
@@ -16,6 +17,7 @@ from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
 
 MAX_RESULT_LOOKUPS = 200
+MAX_BOARD_MATCHES = 80
 
 app = FastAPI(title="ScoreLab API")
 limiter = Limiter(key_func=get_remote_address)
@@ -45,6 +47,7 @@ def root():
         "features": {
             "analyze": True,
             "analyze_probabilities": True,
+            "probability_board": True,
             "match_data": True,
             "match_results": True,
             "match_data_key_configured": football_data.is_configured(),
@@ -95,6 +98,26 @@ def data_today(request: Request, days: int = 7):
 
     try:
         return football_data.matches_for_days(days)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/data/probability-board", response_model=ProbabilityBoardResponse)
+@limiter.limit("10/minute")
+def data_probability_board(request: Request, days: int = 7):
+    """Every analysable fixture, forecast automatically and ranked by the
+    model's strongest single signal — no picking a match required.
+
+    Runs entirely on data the season cache already holds, so it costs no
+    extra requests to the data provider beyond what /data/today already
+    triggers. A fixture with too little history to forecast is skipped,
+    never guessed at.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.probability_board(days, limit=MAX_BOARD_MATCHES)
     except football_data.ProviderUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
