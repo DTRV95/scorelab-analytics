@@ -253,14 +253,39 @@ def test_probability_view_sample_confidence_reflects_the_evidence():
     assert solid["amostra_label"] == "Alta"
 
 
+def test_probability_view_includes_the_double_chance_and_goals_combos():
+    """Same combos analisar_jogo prices for a bookmaker's combo market —
+    the odds-free view should read them too, not just the base markets."""
+    mercados = {m["mercado"]: m for m in probabilidades_jogo(average_match(9))["mercados"]}
+    combos = (
+        "1X e Menos de 3.5 Golos",
+        "2X e Menos de 3.5 Golos",
+        "1X e Mais de 1.5 Golos",
+        "2X e Mais de 1.5 Golos",
+    )
+
+    for market in combos:
+        assert market in mercados, market
+        assert mercados[market]["grupo"] == "Combinados"
+        assert 0 <= mercados[market]["probabilidade_pct"] <= 100
+
+
 def test_headline_market_ignores_double_chance():
-    """1X/2X clear 60%+ on almost every match — ranking on them would just
-    reorder the board by which side is the bigger favourite, not by which
-    match has the strongest single signal."""
+    """1X/2X (and the combos built on them) clear 60%+ on almost every
+    match — ranking on them would just reorder the board by which side is
+    the bigger favourite, not by which match has the strongest single
+    signal."""
     mercados = probabilidades_jogo(average_match(9))["mercados"]
     headline = pick_headline_market(mercados)
 
-    assert headline["mercado"] not in ("1X", "2X")
+    assert headline["mercado"] not in (
+        "1X",
+        "2X",
+        "1X e Menos de 3.5 Golos",
+        "2X e Menos de 3.5 Golos",
+        "1X e Mais de 1.5 Golos",
+        "2X e Mais de 1.5 Golos",
+    )
 
 
 def test_headline_market_is_the_strongest_real_signal():

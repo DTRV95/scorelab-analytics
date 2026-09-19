@@ -550,8 +550,9 @@ def sample_confidence(data) -> Tuple[float, str]:
 
 
 # Core markets a bettor can reason about from a final score alone, grouped for
-# display. The combo markets from analisar_jogo are left out here on purpose:
-# they only mean anything once a specific book quotes them.
+# display, including the double-chance + goals combos analisar_jogo also
+# prices — same distributions either way, so the two views can never disagree
+# about what one of these markets is worth.
 PROBABILITY_MARKETS: List[Tuple[str, str]] = [
     ("Casa", "Resultado"),
     ("Empate", "Resultado"),
@@ -564,6 +565,10 @@ PROBABILITY_MARKETS: List[Tuple[str, str]] = [
     ("Menos de 3.5 Golos", "Golos"),
     ("Ambas Marcam", "Ambas Marcam"),
     ("BTTS No", "Ambas Marcam"),
+    ("1X e Menos de 3.5 Golos", "Combinados"),
+    ("2X e Menos de 3.5 Golos", "Combinados"),
+    ("1X e Mais de 1.5 Golos", "Combinados"),
+    ("2X e Mais de 1.5 Golos", "Combinados"),
 ]
 
 

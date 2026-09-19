@@ -29,6 +29,11 @@ import {
   LEAGUE_PRESETS,
   LEAGUE_PRESET_MAP,
 } from "@/lib/leaguePresets";
+import {
+  readCachedBoard,
+  writeCachedBoard,
+  type BoardMatch,
+} from "@/lib/probabilityBoardCache";
 
 const stagger = {
   hidden: {},
@@ -40,15 +45,7 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-interface BoardMatch extends ProbabilityResult {
-  fixture_id: number;
-  league: string;
-  home_name: string;
-  away_name: string;
-  kickoff: string | null;
-  headline_market: string;
-  headline_pct: number;
-}
+const BOARD_DAYS = 7;
 
 interface FormData {
   equipa_casa: string;
@@ -232,7 +229,18 @@ export default function ProbabilityRadar() {
   const [manualLoading, setManualLoading] = useState(false);
   const [manualError, setManualError] = useState("");
 
+  // reloadToken only advances when the user hits refresh — a plain remount
+  // (navigating away and back) always leaves it at 0.
+  const isManualRefresh = reloadToken > 0;
+
   useEffect(() => {
+    // A fresh cached board proves the backend answered recently — skip the
+    // status round trip entirely and let the board effect serve the cache.
+    if (!isManualRefresh && readCachedBoard(BOARD_DAYS)) {
+      setEnabled(true);
+      return;
+    }
+
     let cancelled = false;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 90_000);
@@ -252,10 +260,26 @@ export default function ProbabilityRadar() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [reloadToken]);
+  }, [reloadToken, isManualRefresh]);
 
   useEffect(() => {
     if (!enabled) return;
+
+    // Once loaded for these days, stay loaded: reopening the tab (or the
+    // whole browser, within the cache window) shows the same board
+    // instantly instead of recomputing it. Only an explicit refresh, or the
+    // cache going stale, triggers a real fetch again.
+    if (!isManualRefresh) {
+      const cached = readCachedBoard(BOARD_DAYS);
+      if (cached) {
+        setBoard(cached.matches);
+        setUnavailableLeagues(cached.unavailable);
+        setSkippedCount(cached.skipped);
+        setBoardLoading(false);
+        setBoardError("");
+        return;
+      }
+    }
 
     let cancelled = false;
     setBoardLoading(true);
@@ -264,7 +288,7 @@ export default function ProbabilityRadar() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 90_000);
 
-    fetch(buildApiUrl("/data/probability-board?days=7"), {
+    fetch(buildApiUrl(`/data/probability-board?days=${BOARD_DAYS}`), {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -276,9 +300,13 @@ export default function ProbabilityRadar() {
       })
       .then((data) => {
         if (cancelled) return;
-        setBoard(data.matches ?? []);
-        setUnavailableLeagues(data.unavailable ?? []);
-        setSkippedCount(data.skipped ?? 0);
+        const matches = data.matches ?? [];
+        const unavailable = data.unavailable ?? [];
+        const skipped = data.skipped ?? 0;
+        setBoard(matches);
+        setUnavailableLeagues(unavailable);
+        setSkippedCount(skipped);
+        writeCachedBoard({ days: BOARD_DAYS, matches, unavailable, skipped });
       })
       .catch((err: Error) => {
         if (!cancelled) setBoardError(err.message);
@@ -293,7 +321,7 @@ export default function ProbabilityRadar() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [enabled, reloadToken]);
+  }, [enabled, reloadToken, isManualRefresh]);
 
   // Grouped by day first, then by league — matches inside each league stay in
   // the order the board already sorted them, so the strongest signal in that
