@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { getMarketPerformance } from "@/lib/analysisStorage";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
+import { useAuth } from "@/contexts/AuthContext";
+import { isOwnerEmail } from "@/lib/ownerAccess";
 
 export const OPEN_COMMAND_CENTER_EVENT = "scorelab:open-command-center";
 
@@ -60,6 +62,12 @@ const pages = [
 export function ScoreLabCommandCenter() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const isOwner = isOwnerEmail(user?.email);
+  const visiblePages = useMemo(
+    () => pages.filter((page) => page.title !== "Model Lab" || isOwner),
+    [isOwner]
+  );
   const {
     analyses,
     multiples,
@@ -200,7 +208,7 @@ export function ScoreLabCommandCenter() {
             <CommandSeparator className="my-2 bg-cyan-100/10" />
 
             <CommandGroup heading="Navigation">
-              {pages.map((page) => (
+              {visiblePages.map((page) => (
                 <CommandItem
                   key={page.url}
                   value={`${page.title} ${page.detail}`}

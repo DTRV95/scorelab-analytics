@@ -57,6 +57,8 @@ import {
   type LeagueIntelligenceRow,
 } from "@/lib/leagueIntelligence";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
+import { useAuth } from "@/contexts/AuthContext";
+import { isOwnerEmail } from "@/lib/ownerAccess";
 
 const stagger = {
   hidden: {},
@@ -629,6 +631,8 @@ const DASHBOARD_SECTIONS: SectionDef[] = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isOwner = isOwnerEmail(user?.email);
   const { analyses, multiples, financialSnapshot, dataVersion } = useScoreLabData();
   const bankrollStats = financialSnapshot.stats;
 
@@ -867,7 +871,7 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-3">
+              <div className={`mt-4 grid grid-cols-1 gap-2.5 ${isOwner ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
                 <DecisionAction
                   label="Analyze Match"
                   detail="Run a fresh market read through the model."
@@ -881,13 +885,15 @@ export default function Dashboard() {
                   onClick={() => navigate("/radar")}
                   tone="emerald"
                 />
-                <DecisionAction
-                  label="Model Lab"
-                  detail="Inspect trust, drift and similar-match memory."
-                  icon={BrainCircuit}
-                  onClick={() => navigate("/model-lab")}
-                  tone="amber"
-                />
+                {isOwner ? (
+                  <DecisionAction
+                    label="Model Lab"
+                    detail="Inspect trust, drift and similar-match memory."
+                    icon={BrainCircuit}
+                    onClick={() => navigate("/model-lab")}
+                    tone="amber"
+                  />
+                ) : null}
               </div>
             </div>
 
