@@ -7,7 +7,7 @@ import {
   queueEntitySync,
 } from "@/lib/persistenceSync";
 import { buildModelAuditSnapshot } from "@/lib/modelAudit";
-import type { TrackedAnalysisBet, TrackedBet } from "@/types/analysis";
+import type { BetStatus, TrackedAnalysisBet, TrackedBet } from "@/types/analysis";
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
@@ -210,6 +210,7 @@ function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
       ...result,
       market: normalizeMarketName(result.market) || result.market,
     })),
+    fixture: analysis.fixture ?? null,
     modelAudit: analysis.modelAudit ?? null,
     tracking: normalizeTrackingBet(analysis.tracking, PRIMARY_TRACKING_BET_ID),
     extraBets: Array.isArray(analysis.extraBets)
@@ -451,6 +452,106 @@ export function updateAnalysisModelAudit(
         awayGoals,
       }),
     };
+  });
+
+  overwriteAnalyses(updated);
+  return updated;
+}
+
+export interface FixtureScoreUpdate {
+  analysisId: string;
+  homeGoals: number;
+  awayGoals: number;
+}
+
+export interface FixtureSettlement {
+  analysisId: string;
+  betId: string;
+  resultStatus: Exclude<BetStatus, "pending">;
+}
+
+/**
+ * Write a batch of final scores and bet settlements in a single pass.
+ *
+ * Going bet by bet would rewrite (and re-sync) the whole history once per bet,
+ * so a season's worth of results is applied here as one update.
+ */
+export function applyFixtureResults({
+  scores = [],
+  settlements = [],
+}: {
+  scores?: FixtureScoreUpdate[];
+  settlements?: FixtureSettlement[];
+}): SavedAnalysis[] {
+  const scoreById = new Map(scores.map((score) => [score.analysisId, score]));
+  const settlementsByAnalysis = new Map<string, FixtureSettlement[]>();
+  settlements.forEach((settlement) => {
+    settlementsByAnalysis.set(settlement.analysisId, [
+      ...(settlementsByAnalysis.get(settlement.analysisId) ?? []),
+      settlement,
+    ]);
+  });
+
+  if (scoreById.size === 0 && settlementsByAnalysis.size === 0) {
+    return getAnalyses();
+  }
+
+  const settledAt = new Date().toISOString();
+
+  const updated = getAnalyses().map((analysis) => {
+    const score = scoreById.get(analysis.id);
+    const pending = settlementsByAnalysis.get(analysis.id) ?? [];
+    if (!score && pending.length === 0) return analysis;
+
+    let next = analysis;
+
+    if (score) {
+      next = {
+        ...next,
+        modelAudit: buildModelAuditSnapshot({
+          analysis: next,
+          homeGoals: score.homeGoals,
+          awayGoals: score.awayGoals,
+        }),
+      };
+    }
+
+    pending.forEach((settlement) => {
+      if (settlement.betId === PRIMARY_TRACKING_BET_ID) {
+        next = {
+          ...next,
+          tracking: recalculateTracking(
+            {
+              ...next.tracking,
+              resultStatus: settlement.resultStatus,
+              settledAt,
+            },
+            next.tracking.betPlaced && !next.tracking.placedAt
+              ? next.createdAt
+              : undefined
+          ),
+        };
+        return;
+      }
+
+      next = {
+        ...next,
+        extraBets: (next.extraBets || []).map((bet) =>
+          bet.id === settlement.betId
+            ? recalculateTracking(
+                {
+                  ...bet,
+                  resultStatus: settlement.resultStatus,
+                  settledAt,
+                },
+                bet.betPlaced && !bet.placedAt ? next.createdAt : undefined
+              )
+            : bet
+        ),
+      };
+    });
+
+    return next;
   });
 
   overwriteAnalyses(updated);

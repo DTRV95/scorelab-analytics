@@ -226,6 +226,44 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
     return {"matches": board, "unavailable": unavailable}
 
 
+def results_for_fixtures(
+    league_key: str, fixture_ids: List[int]
+) -> List[Dict[str, Any]]:
+    """Final scores for fixtures already analysed.
+
+    Served from the same season cache the auto-fill uses, so checking results
+    for a whole history of analyses costs no extra quota.
+    """
+    matches = get_season_matches(league_key)
+    by_id = {match.get("id"): match for match in matches}
+
+    results: List[Dict[str, Any]] = []
+    for fixture_id in fixture_ids:
+        match = by_id.get(fixture_id)
+        if not match:
+            continue
+
+        home_goals, away_goals = _full_time_goals(match)
+        finished = _is_finished(match) and home_goals is not None and away_goals is not None
+        home_team = match.get("homeTeam") or {}
+        away_team = match.get("awayTeam") or {}
+
+        results.append(
+            {
+                "fixture_id": fixture_id,
+                "status": match.get("status"),
+                "finished": finished,
+                "home_goals": home_goals if finished else None,
+                "away_goals": away_goals if finished else None,
+                "kickoff": match.get("utcDate"),
+                "home_name": home_team.get("shortName") or home_team.get("name"),
+                "away_name": away_team.get("shortName") or away_team.get("name"),
+            }
+        )
+
+    return results
+
+
 def _team_side_record(
     matches: List[Dict[str, Any]], team_id: int, side: str
 ) -> Dict[str, int]:
@@ -339,6 +377,11 @@ def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
         )
 
     payload: Dict[str, Any] = {
+        # Carried into the saved analysis so the result can be matched back to
+        # this exact fixture later, without name-guessing.
+        "fixture_id": fixture_id,
+        "league": league_key,
+        "kickoff": target.get("utcDate"),
         "equipa_casa": home_team.get("shortName") or home_team.get("name") or "",
         "equipa_fora": away_team.get("shortName") or away_team.get("name") or "",
         "jogos_casa": home["games"],

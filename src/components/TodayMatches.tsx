@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Loader2, RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
+import type { AnalysisFixture } from "@/types/analysis";
 
 interface BoardMatch {
   fixture_id: number;
@@ -62,7 +63,11 @@ function timeLabel(date: Date) {
 export function TodayMatches({
   onSelect,
 }: {
-  onSelect: (league: string, values: Record<string, string>) => void;
+  onSelect: (
+    league: string,
+    values: Record<string, string>,
+    fixture: AnalysisFixture
+  ) => void;
 }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [matches, setMatches] = useState<BoardMatch[]>([]);
@@ -187,7 +192,11 @@ export function TodayMatches({
         );
       }
 
-      onSelect(match.league, values);
+      onSelect(match.league, values, {
+        id: match.fixture_id,
+        league: match.league,
+        kickoff: match.kickoff ?? null,
+      });
       setApplied(`${data.equipa_casa} vs ${data.equipa_fora}`);
 
       // Take the user straight to what is still missing, on the page.

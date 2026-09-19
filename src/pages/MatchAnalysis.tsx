@@ -53,7 +53,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Progress } from "@/components/ui/progress";
-import type { AnalysisResult, SavedAnalysis } from "@/types/analysis";
+import type {
+  AnalysisFixture,
+  AnalysisResult,
+  SavedAnalysis,
+} from "@/types/analysis";
 import { getHistoricalSignalsForResult } from "@/lib/edgeInteligence";
 import {
   applyCalibrationToResult,
@@ -865,6 +869,11 @@ export default function MatchAnalysis() {
   const [showLeagueAdvanced, setShowLeagueAdvanced] = useState(false);
   const [showComboOdds, setShowComboOdds] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  // Set when the analysis is started from "Jogos do Dia". The team names are
+  // kept alongside so an edited form never gets stamped with the wrong fixture.
+  const [selectedFixture, setSelectedFixture] = useState<
+    (AnalysisFixture & { homeTeam: string; awayTeam: string }) | null
+  >(null);
   const [summary, setSummary] = useState({
     homeXg: 0,
     awayXg: 0,
@@ -1176,12 +1185,27 @@ export default function MatchAnalysis() {
 
       const bankrollBefore = calculateNextBankrollBefore();
 
+      // Only keep the fixture link if the form still describes that same match:
+      // an edited team name means the user moved on to a different game.
+      const fixture =
+        selectedFixture &&
+        selectedFixture.league === formData.liga &&
+        selectedFixture.homeTeam === formData.equipa_casa &&
+        selectedFixture.awayTeam === formData.equipa_fora
+          ? {
+              id: selectedFixture.id,
+              league: selectedFixture.league,
+              kickoff: selectedFixture.kickoff,
+            }
+          : null;
+
       const analysisToSave: SavedAnalysis = {
         id: createAnalysisId(),
         createdAt: new Date().toISOString(),
         homeTeam: formData.equipa_casa,
         awayTeam: formData.equipa_fora,
         league: formData.liga,
+        fixture,
         summary: summaryData,
         results: calibratedResults,
         tracking: {
@@ -1309,14 +1333,19 @@ export default function MatchAnalysis() {
                 <SectionCard title="League Setup">
                   <div className="space-y-4">
                     <TodayMatches
-                      onSelect={(league, values) =>
+                      onSelect={(league, values, fixture) => {
                         setFormData((prev) => ({
                           ...prev,
                           liga: league,
                           ...(LEAGUE_PRESET_MAP[league] ?? {}),
                           ...values,
-                        }))
-                      }
+                        }));
+                        setSelectedFixture({
+                          ...fixture,
+                          homeTeam: values.equipa_casa ?? "",
+                          awayTeam: values.equipa_fora ?? "",
+                        });
+                      }}
                     />
 
                     <SelectField

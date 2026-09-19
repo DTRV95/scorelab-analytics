@@ -33,7 +33,17 @@ function normalizeMarket(market: string): string {
   return market.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function isGreenMarket(market: string, homeGoals: number, awayGoals: number): boolean | null {
+/**
+ * Did this market win, given the final score?
+ *
+ * `null` means the market cannot be settled from the score alone (corners,
+ * cards, handicaps), and must stay with the user.
+ */
+export function isGreenMarket(
+  market: string,
+  homeGoals: number,
+  awayGoals: number
+): boolean | null {
   const normalized = normalizeMarket(market);
   const totalGoals = homeGoals + awayGoals;
   const homeWin = homeGoals > awayGoals;
