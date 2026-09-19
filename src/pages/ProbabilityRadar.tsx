@@ -219,6 +219,11 @@ export default function ProbabilityRadar() {
   const [continuingId, setContinuingId] = useState<number | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
+  // Closed by default on phones so the actual board — the reason someone
+  // opens this page — isn't pushed below the fold by an explainer paragraph.
+  const [infoOpen, setInfoOpen] = useState(
+    () => typeof window === "undefined" || window.innerWidth >= 768
+  );
 
   // The manual path: kept for leagues or matchups the auto board can't cover.
   const [manualOpen, setManualOpen] = useState(false);
@@ -438,11 +443,11 @@ export default function ProbabilityRadar() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-6 p-4 sm:p-5 md:p-6"
+        className="space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6"
       >
         <motion.div
           variants={fadeUp}
-          className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.32)]"
+          className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.32)] sm:p-5"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%)]" />
           <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -450,10 +455,10 @@ export default function ProbabilityRadar() {
               <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
                 Probabilidade
               </div>
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+              <h1 className="mt-3 text-xl font-semibold tracking-tight text-white sm:mt-4 sm:text-2xl md:text-3xl">
                 Os jogos com maior probabilidade, já calculados
               </h1>
-              <p className="mt-2 text-sm leading-7 text-white/60">
+              <p className="mt-2 text-xs leading-6 text-white/60 sm:text-sm sm:leading-7">
                 Sem odds, sem valor, sem stake — só o que o modelo espera que
                 aconteça, ordenado do sinal mais forte para o mais fraco. Abre
                 um jogo para veres todas as probabilidades.
@@ -474,18 +479,39 @@ export default function ProbabilityRadar() {
 
         <motion.div
           variants={fadeUp}
-          className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+          className="rounded-2xl border border-white/8 bg-white/[0.03]"
         >
-          <Info className="mt-0.5 h-4 w-4 flex-none text-cyan-300" strokeWidth={1.7} />
-          <div className="text-xs leading-relaxed text-white/55">
-            <p className="font-semibold text-white/75">Como usar isto de forma profissional</p>
-            <p className="mt-1">
-              1. Olha primeiro para a probabilidade, nunca para a odd. 2. Compara com o preço do
-              bookmaker — só há valor quando a tua probabilidade é claramente maior do que a implícita
-              na odd. 3. Aposta pouco por jogo e só em mercados onde a amostra é sólida (evita os
-              marcados como "Baixa").
+          <button
+            type="button"
+            onClick={() => setInfoOpen((open) => !open)}
+            className="flex w-full items-center gap-3 p-4 text-left"
+          >
+            <Info className="h-4 w-4 flex-none text-cyan-300" strokeWidth={1.7} />
+            <p className="flex-1 text-xs font-semibold text-white/75">
+              Como usar isto de forma profissional
             </p>
-          </div>
+            <ChevronDown
+              className={`h-4 w-4 flex-none text-white/40 transition-transform ${infoOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          <AnimatePresence initial={false}>
+            {infoOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <p className="px-4 pb-4 text-xs leading-relaxed text-white/55">
+                  1. Olha primeiro para a probabilidade, nunca para a odd. 2. Compara com o preço do
+                  bookmaker — só há valor quando a tua probabilidade é claramente maior do que a implícita
+                  na odd. 3. Aposta pouco por jogo e só em mercados onde a amostra é sólida (evita os
+                  marcados como "Baixa").
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {enabled === null && (

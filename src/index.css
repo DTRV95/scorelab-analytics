@@ -1216,13 +1216,6 @@
       line-height: 1.32 !important;
     }
 
-    .scorelab-mobile-overview :where(.scorelab-board-3d p[class*="leading-"], .scorelab-board-3d [class*="text-white/58"], .scorelab-board-3d [class*="text-white/60"], .scorelab-board-3d [class*="text-muted-foreground"]) {
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
     .scorelab-mobile-overview :where(.scorelab-board-3d [class*="text-[1.28rem]"], .scorelab-board-3d [class*="text-[1.45rem]"], .scorelab-board-3d [class*="text-xl"], .scorelab-board-3d [class*="text-lg"]) {
       font-size: 0.98rem !important;
       line-height: 1.12 !important;
@@ -1260,7 +1253,11 @@
       min-width: 620px !important;
     }
 
-    .scorelab-mobile-overview :where(.scorelab-board-3d [class*="flex"]) {
+    /* Row layouts only: applying this to a flex-col container turns it into a
+       multi-column layout instead of wrapping badges onto a new line, which
+       silently pushed later children (e.g. a hero's description paragraph)
+       into a second column off the edge of the card. */
+    .scorelab-mobile-overview :where(.scorelab-board-3d [class*="flex"]:not([class*="flex-col"])) {
       flex-wrap: wrap;
     }
 
