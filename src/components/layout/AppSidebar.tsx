@@ -15,8 +15,10 @@ import {
   BrainCircuit,
   Percent,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { isOwnerEmail } from "@/lib/ownerAccess";
 
 const navGroups = [
   {
@@ -53,6 +55,18 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user } = useAuth();
+  const isOwner = isOwnerEmail(user?.email);
+  const visibleNavGroups = useMemo(
+    () =>
+      navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.title !== "Model Lab" || isOwner),
+        }))
+        .filter((group) => group.items.length > 0),
+    [isOwner]
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Overview: true,
@@ -93,7 +107,7 @@ export function AppSidebar() {
 
         <nav className="relative flex-1 overflow-y-auto p-3">
           <div className="space-y-4">
-            {navGroups.map((group) => (
+            {visibleNavGroups.map((group) => (
               <div key={group.title} className="space-y-1">
                 {!collapsed && (
                   <button
