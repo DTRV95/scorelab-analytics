@@ -117,12 +117,25 @@ export interface TrackedAnalysisBet extends TrackedBet {
   id: string;
 }
 
+/**
+ * Link back to the fixture in the data provider.
+ *
+ * Only analyses started from "Jogos do Dia" carry one; it is what lets the
+ * final score be fetched automatically instead of typed by hand.
+ */
+export interface AnalysisFixture {
+  id: number;
+  league: string;
+  kickoff: string | null;
+}
+
 export interface SavedAnalysis {
   id: string;
   createdAt: string;
   homeTeam: string;
   awayTeam: string;
   league: string;
+  fixture?: AnalysisFixture | null;
   summary: AnalysisSummary;
   results: AnalysisResult[];
   modelAudit?: ModelAuditSnapshot | null;

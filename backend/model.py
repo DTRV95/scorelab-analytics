@@ -166,94 +166,6 @@ def estimate_lambdas(data) -> Tuple[float, float]:
     return clamp(lambda_home, 0.15, 3.8), clamp(lambda_away, 0.15, 3.4)
 
 
-def poisson_prob(lmbda: float, goals: int) -> float:
-    return math.exp(-lmbda) * (lmbda ** goals) / math.factorial(goals)
-
-
-def dixon_coles_tau(i: int, j: int, lambda_home: float, lambda_away: float, rho: float) -> float:
-    if i == 0 and j == 0:
-        return 1 - (lambda_home * lambda_away * rho)
-    if i == 0 and j == 1:
-        return 1 + (lambda_home * rho)
-    if i == 1 and j == 0:
-        return 1 + (lambda_away * rho)
-    if i == 1 and j == 1:
-        return 1 - rho
-    return 1.0
-
-
-def score_matrix(lambda_home: float, lambda_away: float, rho: float = DEFAULT_RHO, max_goals: int = MAX_GOALS) -> np.ndarray:
-    matrix = np.zeros((max_goals + 1, max_goals + 1))
-    for i in range(max_goals + 1):
-        for j in range(max_goals + 1):
-            base = poisson_prob(lambda_home, i) * poisson_prob(lambda_away, j)
-            tau = dixon_coles_tau(i, j, lambda_home, lambda_away, rho)
-            matrix[i, j] = max(base * tau, 0.0)
-
-    total = matrix.sum()
-    if total <= 0:
-        return matrix
-    return matrix / total
-
-
-def market_probabilities_from_matrix(matrix: np.ndarray) -> Dict[str, float]:
-    home = 0.0
-    draw = 0.0
-    away = 0.0
-    over25 = 0.0
-    over35 = 0.0
-    btts_yes = 0.0
-    one_x_under35 = 0.0
-    two_x_under35 = 0.0
-    one_x_over15 = 0.0
-    two_x_over15 = 0.0
-
-    size = matrix.shape[0]
-    for i in range(size):
-        for j in range(size):
-            p = matrix[i, j]
-            total_goals = i + j
-            if i > j:
-                home += p
-            elif i == j:
-                draw += p
-            else:
-                away += p
-
-            if total_goals >= 3:
-                over25 += p
-            if total_goals >= 4:
-                over35 += p
-            if i >= 1 and j >= 1:
-                btts_yes += p
-            if total_goals <= 3 and i >= j:
-                one_x_under35 += p
-            if total_goals <= 3 and j >= i:
-                two_x_under35 += p
-            if total_goals >= 2 and i >= j:
-                one_x_over15 += p
-            if total_goals >= 2 and j >= i:
-                two_x_over15 += p
-
-    return {
-        "Mais de 2.5 Golos": over25,
-        "Menos de 2.5 Golos": max(0.0, 1 - over25),
-        "Mais de 3.5 Golos": over35,
-        "Menos de 3.5 Golos": max(0.0, 1 - over35),
-        "Ambas Marcam": btts_yes,
-        "BTTS No": max(0.0, 1 - btts_yes),
-        "Casa": home,
-        "Empate": draw,
-        "Fora": away,
-        "1X": home + draw,
-        "2X": away + draw,
-        "1X e Menos de 3.5 Golos": one_x_under35,
-        "2X e Menos de 3.5 Golos": two_x_under35,
-        "1X e Mais de 1.5 Golos": one_x_over15,
-        "2X e Mais de 1.5 Golos": two_x_over15,
-    }
-
-
 def pair_shift(probability: float, shift: float) -> float:
     """Apply a heuristic nudge, damped towards the extremes.
 
@@ -263,57 +175,6 @@ def pair_shift(probability: float, shift: float) -> float:
     """
     damping = 4.0 * probability * (1.0 - probability)
     return clamp(probability + shift * damping, 0.02, 0.98)
-
-
-def apply_goal_pressure_adjustments(
-    market_probs: Dict[str, float],
-    lambda_home: float,
-    lambda_away: float,
-    data,
-) -> Dict[str, float]:
-    adjusted = dict(market_probs)
-    strengths = get_attack_defense_strengths(data)
-    total_xg = lambda_home + lambda_away
-    lower_team_xg = min(lambda_home, lambda_away)
-    balance = lower_team_xg / max(max(lambda_home, lambda_away), 0.01)
-    mutual_scoring_pressure = clamp((lower_team_xg - 0.65) / 0.75, 0.0, 1.0)
-    open_game_pressure = clamp((total_xg - 2.35) / 1.1, 0.0, 1.0)
-    defensive_fragility = clamp(
-        (
-            strengths["home_defense_weakness"]
-            + strengths["away_defense_weakness"]
-            - 1.85
-        )
-        / 1.15,
-        0.0,
-        1.0,
-    )
-    low_goal_pressure = clamp((2.25 - total_xg) / 0.8, 0.0, 1.0)
-
-    btts_shift = (
-        0.075 * mutual_scoring_pressure * open_game_pressure * clamp(balance, 0.35, 1.0)
-        + 0.035 * defensive_fragility * mutual_scoring_pressure
-        - 0.055 * low_goal_pressure
-    )
-    over25_shift = (
-        0.065 * open_game_pressure
-        + 0.035 * defensive_fragility
-        - 0.045 * low_goal_pressure
-    )
-    over35_shift = (
-        0.035 * clamp((total_xg - 2.75) / 1.0, 0.0, 1.0)
-        + 0.018 * defensive_fragility
-        - 0.035 * low_goal_pressure
-    )
-
-    adjusted["Ambas Marcam"] = pair_shift(adjusted["Ambas Marcam"], btts_shift)
-    adjusted["BTTS No"] = 1 - adjusted["Ambas Marcam"]
-    adjusted["Mais de 2.5 Golos"] = pair_shift(adjusted["Mais de 2.5 Golos"], over25_shift)
-    adjusted["Menos de 2.5 Golos"] = 1 - adjusted["Mais de 2.5 Golos"]
-    adjusted["Mais de 3.5 Golos"] = pair_shift(adjusted["Mais de 3.5 Golos"], over35_shift)
-    adjusted["Menos de 3.5 Golos"] = 1 - adjusted["Mais de 3.5 Golos"]
-
-    return adjusted
 
 
 def fair_probs_two_way(odd_a: float, odd_b: float) -> Tuple[float, float]:
@@ -662,18 +523,86 @@ def analyze_market(market_name: str, odd: float, fair_prob: float, model_prob: f
     }
 
 
-def analisar_jogo(data):
-    lambda_casa, lambda_fora = estimate_lambdas(data)
-    total_golos_esperados = lambda_casa + lambda_fora
-    context = get_league_context(data)
+def forecast(data) -> Tuple[float, float, Dict[str, Tuple[float, float, float]]]:
+    """The odds-free half of an analysis: expected goals and the market
+    probability distributions derived purely from team form and the league
+    context. Both the priced analysis and the probability-only view build on
+    exactly this, so a fix here can never leave the two disagreeing."""
+    lambda_home, lambda_away = estimate_lambdas(data)
+    distributions = estimate_market_distributions(lambda_home, lambda_away, data)
+    return lambda_home, lambda_away, distributions
 
-    base_matrix = score_matrix(lambda_casa, lambda_fora, rho=context.rho)
-    model_probs = apply_goal_pressure_adjustments(
-        market_probabilities_from_matrix(base_matrix),
-        lambda_casa,
-        lambda_fora,
-        data,
-    )
+
+def sample_confidence(data) -> Tuple[float, str]:
+    """How much evidence backs this forecast, independent of any market price."""
+    home_sample = effective_sample(data.jogos_casa, data.jogos_casa_rec)
+    away_sample = effective_sample(data.jogos_fora, data.jogos_fora_rec)
+    quality = clamp(min(home_sample, away_sample) / 12.0, 0.0, 1.0)
+
+    if quality >= 0.75:
+        label = "Alta"
+    elif quality >= 0.45:
+        label = "Média"
+    else:
+        label = "Baixa"
+
+    return round(quality * 100, 1), label
+
+
+# Core markets a bettor can reason about from a final score alone, grouped for
+# display. The combo markets from analisar_jogo are left out here on purpose:
+# they only mean anything once a specific book quotes them.
+PROBABILITY_MARKETS: List[Tuple[str, str]] = [
+    ("Casa", "Resultado"),
+    ("Empate", "Resultado"),
+    ("Fora", "Resultado"),
+    ("1X", "Resultado"),
+    ("2X", "Resultado"),
+    ("Mais de 2.5 Golos", "Golos"),
+    ("Menos de 2.5 Golos", "Golos"),
+    ("Mais de 3.5 Golos", "Golos"),
+    ("Menos de 3.5 Golos", "Golos"),
+    ("Ambas Marcam", "Ambas Marcam"),
+    ("BTTS No", "Ambas Marcam"),
+]
+
+
+def probabilidades_jogo(data) -> Dict[str, Any]:
+    """What the model thinks will happen — nothing about whether to bet on it.
+
+    No odds go in, so nothing here can be an edge, a stake or a decision:
+    those only mean something once a real price is on the table. This is
+    meant to be read first, before ever looking at a bookmaker's odds.
+    """
+    lambda_home, lambda_away, distributions = forecast(data)
+    sample_pct, sample_label = sample_confidence(data)
+
+    mercados = []
+    for market_name, grupo in PROBABILITY_MARKETS:
+        mean_prob, p05, p95 = distributions[market_name]
+        mercados.append(
+            {
+                "mercado": market_name,
+                "grupo": grupo,
+                "probabilidade_pct": round(mean_prob * 100, 1),
+                "min_pct": round(min(p05, p95) * 100, 1),
+                "max_pct": round(max(p05, p95) * 100, 1),
+            }
+        )
+
+    return {
+        "lambda_casa": round(lambda_home, 3),
+        "lambda_fora": round(lambda_away, 3),
+        "total_golos_esperados": round(lambda_home + lambda_away, 3),
+        "amostra_pct": sample_pct,
+        "amostra_label": sample_label,
+        "mercados": mercados,
+    }
+
+
+def analisar_jogo(data):
+    lambda_casa, lambda_fora, distributions = forecast(data)
+    total_golos_esperados = lambda_casa + lambda_fora
 
     fair_over25, fair_under25 = fair_probs_two_way(data.odd_mais_25, data.odd_menos_25)
     fair_over35, fair_under35 = fair_probs_two_way(data.odd_mais_35, data.odd_menos_35)
@@ -704,8 +633,6 @@ def analisar_jogo(data):
         ("1X e Mais de 1.5 Golos", data.odd_1x_mais_15, fair_1x_over15),
         ("2X e Mais de 1.5 Golos", data.odd_2x_mais_15, fair_2x_over15),
     ]
-
-    distributions = estimate_market_distributions(lambda_casa, lambda_fora, data)
 
     markets = []
     for market_name, odd, fair_prob in market_definitions:

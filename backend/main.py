@@ -1,13 +1,21 @@
 import os
+from typing import List
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from schemas import AnalyzeRequest, AnalyzeResponse
-from model import analisar_jogo, model_self_check
+from schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    ProbabilityRequest,
+    ProbabilityResponse,
+)
+from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
+
+MAX_RESULT_LOOKUPS = 200
 
 app = FastAPI(title="ScoreLab API")
 limiter = Limiter(key_func=get_remote_address)
@@ -36,7 +44,9 @@ def root():
         "message": "ScoreLab API is running",
         "features": {
             "analyze": True,
+            "analyze_probabilities": True,
             "match_data": True,
+            "match_results": True,
             "match_data_key_configured": football_data.is_configured(),
             "leagues": football_data.supported_leagues(),
         },
@@ -47,6 +57,13 @@ def root():
 @limiter.limit("30/minute")
 def analyze(request: Request, data: AnalyzeRequest):
     return analisar_jogo(data)
+
+
+@app.post("/analyze/probabilities", response_model=ProbabilityResponse)
+@limiter.limit("30/minute")
+def analyze_probabilities(request: Request, data: ProbabilityRequest):
+    """The odds-free read of a match: what the model expects to happen."""
+    return probabilidades_jogo(data)
 
 
 @app.get("/data/status")
@@ -93,6 +110,40 @@ def data_calibration(request: Request):
         return football_data.calibration()
     except football_data.ProviderUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/data/results")
+@limiter.limit("20/minute")
+def data_results(request: Request, league: str, fixture_ids: str):
+    """Final scores for fixtures the user already analysed.
+
+    Takes a comma-separated list so a whole history settles in one call per
+    competition, all of it served from the cached season.
+    """
+    ids: List[int] = []
+    for chunk in fixture_ids.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            ids.append(int(chunk))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="fixture_ids inválido.")
+
+    if not ids:
+        raise HTTPException(status_code=400, detail="Indica pelo menos um jogo.")
+    if len(ids) > MAX_RESULT_LOOKUPS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Máximo de {MAX_RESULT_LOOKUPS} jogos por pedido.",
+        )
+
+    try:
+        results = football_data.results_for_fixtures(league, ids)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"league": league, "results": results}
 
 
 @app.get("/data/prefill")

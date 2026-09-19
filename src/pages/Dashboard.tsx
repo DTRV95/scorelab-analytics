@@ -5,6 +5,7 @@ import {
   useSectionLayout,
   type SectionDef,
 } from "@/components/LayoutCustomizer";
+import { MatchResultsPanel } from "@/components/MatchResultsPanel";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { SystemPulse3D } from "@/components/SystemPulse3D";
@@ -1095,6 +1096,12 @@ export default function Dashboard() {
             </div>
           </div>
         </motion.section>
+
+        {/* Outside the customizer on purpose: keeping the history truthful is
+            not a panel the user should be able to hide. */}
+        <motion.div variants={fadeUp}>
+          <MatchResultsPanel analyses={analyses} />
+        </motion.div>
 
         <LayoutSection id="quick" layout={layout}>
 

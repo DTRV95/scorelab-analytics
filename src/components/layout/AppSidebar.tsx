@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Radar,
   BrainCircuit,
+  Percent,
 } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -29,6 +30,7 @@ const navGroups = [
   {
     title: "Analysis",
     items: [
+      { title: "Probability", url: "/probability", icon: Percent },
       { title: "Match Analysis", url: "/analysis", icon: Target },
       { title: "Value Radar", url: "/radar", icon: Radar },
       { title: "Model Lab", url: "/model-lab", icon: BrainCircuit },

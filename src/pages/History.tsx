@@ -4,6 +4,7 @@ import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AITypewriter } from "@/components/AITypewriter";
+import { MatchResultsPanel } from "@/components/MatchResultsPanel";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateBetQualityScore, type BetQualityScore } from "@/lib/betQualityScore";
 import {
@@ -1278,6 +1279,10 @@ export default function History() {
               </span>
             }
           />
+        </motion.div>
+
+        <motion.div variants={fadeUp}>
+          <MatchResultsPanel analyses={analyses} onUpdated={setAnalyses} />
         </motion.div>
 
         {SHOW_AI_READS ? (
