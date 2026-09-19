@@ -13,16 +13,20 @@ import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
 import { StadiumLightSweep } from "@/components/ArenaEffects";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Activity,
   ArrowRight,
   BrainCircuit,
+  CheckCircle2,
   ChevronDown,
   Crosshair,
   Gauge,
+  Inbox,
   ShieldCheck,
   Sparkles,
+  Target,
+  TrendingUp,
   Zap,
 } from "lucide-react";
 import {
@@ -37,7 +41,7 @@ import {
   ComposedChart,
   Bar,
 } from "recharts";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getMultipleMarketPerformance,
@@ -73,16 +77,56 @@ type ChartRow = Record<string, string | number | null | undefined>;
 
 type LeaguePerformanceRow = LeagueIntelligenceRow;
 
+function AnimatedNumber({ value }: { value: string | number }) {
+  const match = String(value).match(/^(\D*)(-?[\d.,]*\d)(\D*)$/);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!match || !ref.current) return;
+    const target = Number(match[2].replace(/,/g, ""));
+    if (Number.isNaN(target)) return;
+    const decimals = match[2].includes(".") ? match[2].split(".")[1].length : 0;
+    const node = ref.current;
+    const controls = animate(0, target, {
+      duration: 0.9,
+      ease: "easeOut",
+      onUpdate: (latest) => {
+        node.textContent = latest.toFixed(decimals);
+      },
+    });
+    return () => controls.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [String(value)]);
+
+  if (!match) return <>{value}</>;
+
+  return (
+    <>
+      {match[1]}
+      <span ref={ref}>0</span>
+      {match[3]}
+    </>
+  );
+}
+
+const STAT_TONE_CLASS = {
+  positive: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
+  negative: "border-red-300/25 bg-red-300/10 text-red-200",
+  neutral: "border-cyan-300/25 bg-cyan-300/10 text-cyan-200",
+};
+
 function CompactStatCard({
   label,
   value,
   change,
   changeType = "neutral",
+  icon: Icon,
 }: {
   label: string;
   value: string | number;
   change?: string;
   changeType?: "positive" | "negative" | "neutral";
+  icon?: typeof Activity;
 }) {
   return (
     <PulseOnChange value={`${value}-${change ?? ""}`}>
@@ -94,12 +138,21 @@ function CompactStatCard({
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
         <div className="relative">
-          <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
-            {label}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+              {label}
+            </p>
+            {Icon ? (
+              <span
+                className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border ${STAT_TONE_CLASS[changeType]}`}
+              >
+                <Icon className="h-3 w-3" strokeWidth={2} />
+              </span>
+            ) : null}
+          </div>
           <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
           <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
-            {value}
+            <AnimatedNumber value={value} />
           </p>
           {change ? (
             <p
@@ -552,8 +605,13 @@ function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm text-white/50">
-          Ainda sem amostra suficiente para este segmento.
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-white/40">
+            <Inbox className="h-4 w-4" strokeWidth={1.6} />
+          </span>
+          <p className="text-sm text-white/50">
+            Ainda sem amostra suficiente para este segmento.
+          </p>
         </div>
       )}
     </SectionCard>
@@ -927,23 +985,27 @@ export default function Dashboard() {
               bankrollStats.totalVoids
             }
             change={`${bankrollStats.hitRate.toFixed(1)}% hit rate`}
+            icon={CheckCircle2}
           />
           <CompactStatCard
             label="ROI"
             value={`${bankrollStats.roi.toFixed(2)}%`}
             change={`P/L €${bankrollStats.totalProfitLoss.toFixed(2)}`}
             changeType={bankrollStats.roi >= 0 ? "positive" : "negative"}
+            icon={TrendingUp}
           />
           <CompactStatCard
             label="Win Rate"
             value={`${bankrollStats.hitRate.toFixed(2)}%`}
             change={`${bankrollStats.totalGreens} green · ${bankrollStats.totalReds} red`}
             changeType={bankrollStats.hitRate >= 50 ? "positive" : "negative"}
+            icon={Target}
           />
           <CompactStatCard
             label="Avg Confidence"
             value={dashboardData.avgConfidence.toFixed(1)}
             change={`${dashboardData.valueBetsFound} value bets found`}
+            icon={Gauge}
           />
         </div>
 
@@ -1054,8 +1116,13 @@ export default function Dashboard() {
               description="No standout value pick has been tracked today yet."
               badge="Live Board"
             >
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm text-white/55">
-                Run today's analyses and the strongest live angle will appear here.
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5">
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-cyan-200/70">
+                  <Crosshair className="h-4 w-4" strokeWidth={1.6} />
+                </span>
+                <p className="text-sm text-white/55">
+                  Run today's analyses and the strongest live angle will appear here.
+                </p>
               </div>
             </SectionCard>
           )}
