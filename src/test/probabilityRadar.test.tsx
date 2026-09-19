@@ -34,7 +34,7 @@ const boardPayload = {
       league: "Premier League",
       home_name: "City",
       away_name: "United",
-      kickoff: "2026-09-21T15:00:00Z",
+      kickoff: "2026-09-20T20:00:00Z",
       headline_market: "Mais de 2.5 Golos",
       headline_pct: 55.1,
       amostra_pct: 40,
@@ -45,6 +45,24 @@ const boardPayload = {
       mercados: [
         { mercado: "Casa", grupo: "Resultado", probabilidade_pct: 45, min_pct: 38, max_pct: 52 },
         { mercado: "Mais de 2.5 Golos", grupo: "Golos", probabilidade_pct: 55.1, min_pct: 46, max_pct: 64 },
+      ],
+    },
+    {
+      fixture_id: 3,
+      league: "Bundesliga",
+      home_name: "Bayern",
+      away_name: "Dortmund",
+      kickoff: "2026-09-21T17:30:00Z",
+      headline_market: "Mais de 2.5 Golos",
+      headline_pct: 60.0,
+      amostra_pct: 85,
+      amostra_label: "Alta",
+      lambda_casa: 2.0,
+      lambda_fora: 1.4,
+      total_golos_esperados: 3.4,
+      mercados: [
+        { mercado: "Casa", grupo: "Resultado", probabilidade_pct: 50, min_pct: 42, max_pct: 58 },
+        { mercado: "Mais de 2.5 Golos", grupo: "Golos", probabilidade_pct: 60.0, min_pct: 52, max_pct: 68 },
       ],
     },
   ],
@@ -85,16 +103,34 @@ afterEach(() => {
 });
 
 describe("ProbabilityRadar board", () => {
-  it("loads and shows every match ranked highest probability first, with no odds anywhere", async () => {
+  it("groups the default day by league, ranked highest probability first within each", async () => {
     mockFetchSequence();
     renderPage();
 
     const rows = await screen.findAllByText(/vs/);
-    expect(rows[0]).toHaveTextContent("Porto vs Nacional");
-    expect(rows[1]).toHaveTextContent("City vs United");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Porto vs Nacional",
+      "City vs United",
+    ]);
+    expect(screen.getByText("Liga Portugal")).toBeInTheDocument();
+    expect(screen.getByText("Premier League")).toBeInTheDocument();
 
-    expect(screen.getByText("78.4%")).toBeInTheDocument();
-    expect(screen.getByText("55.1%")).toBeInTheDocument();
+    // The next day's match is not shown until that day tab is picked.
+    expect(screen.queryByText("Bayern vs Dortmund")).not.toBeInTheDocument();
+  });
+
+  it("switches which day's matches are visible via the day tabs", async () => {
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+
+    const dayTabs = screen.getAllByRole("button", { name: /\d/ });
+    fireEvent.click(dayTabs[1]);
+
+    expect(await screen.findByText("Bayern vs Dortmund")).toBeInTheDocument();
+    expect(screen.getByText("Bundesliga")).toBeInTheDocument();
+    expect(screen.queryByText("Porto vs Nacional")).not.toBeInTheDocument();
   });
 
   it("expands a row into the full breakdown only when clicked", async () => {
