@@ -12,10 +12,6 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const isAnalysisPage = location.pathname === "/analysis";
-  const routeClassName =
-    location.pathname === "/"
-      ? "scorelab-route-dashboard"
-      : `scorelab-route-${location.pathname.replace(/^\/+/, "").replace(/[^a-z0-9-]/gi, "-") || "home"}`;
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -30,11 +26,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
         <main className="flex-1 px-3 pb-28 pt-4 sm:px-5 md:px-7 md:pb-12 md:pt-6 xl:px-8">
           <div className="mx-auto max-w-[1280px]">
+            {/* The per-route class that used to go here only fed a rule that
+                hid whole sections on phones. Nothing styles a route by name
+                now, so the page is just compacted, not cut short. */}
             <div
               className={
                 isAnalysisPage
                   ? ""
-                  : `scorelab-mobile-compact scorelab-mobile-overview ${routeClassName}`
+                  : "scorelab-mobile-compact scorelab-mobile-overview"
               }
             >
               {children}
