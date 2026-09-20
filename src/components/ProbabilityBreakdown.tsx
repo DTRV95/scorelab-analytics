@@ -28,6 +28,9 @@ export const MARKET_LABELS: Record<string, string> = {
   "Mais de 3.5 Golos": "Mais de 3.5 Golos",
   "Menos de 3.5 Golos": "Menos de 3.5 Golos",
   "Ambas Marcam": "Ambas Marcam",
+  // Stored multiples normalise "Ambas Marcam" to the BTTS spelling, so both
+  // names have to land on the same Portuguese label.
+  "BTTS Yes": "Ambas Marcam",
   "BTTS No": "Ambas Não Marcam",
   "1X e Menos de 3.5 Golos": "1X e Menos de 3.5 Golos",
   "2X e Menos de 3.5 Golos": "2X e Menos de 3.5 Golos",

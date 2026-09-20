@@ -8,6 +8,7 @@ import {
   persistMultipleRecord,
   queueEntitySync,
 } from "@/lib/persistenceSync";
+type AnalysisFixture = import("../types/analysis").AnalysisFixture;
 type AnalysisResult = import("../types/analysis").AnalysisResult;
 type BetStatus = import("../types/analysis").BetStatus;
 type SavedAnalysis = import("../types/analysis").SavedAnalysis;
@@ -15,7 +16,7 @@ type SavedAnalysis = import("../types/analysis").SavedAnalysis;
 type MultipleRiskLevel = "Low" | "Medium" | "High";
 type MultipleTier = "discard" | "watchlist" | "bet" | "elite" | "premium";
 
-interface MultipleLeg {
+export interface MultipleLeg {
   analysisId: string;
   homeTeam: string;
   awayTeam: string;
@@ -29,9 +30,15 @@ interface MultipleLeg {
   risk: MultipleRiskLevel;
   tier: MultipleTier;
   resultStatus: BetStatus;
+  /**
+   * Link back to the fixture, on legs added straight from the board. It is what
+   * lets the final score close the leg on its own; legs built from a saved
+   * analysis have none and stay hand-settled.
+   */
+  fixture?: AnalysisFixture | null;
 }
 
-interface MultipleTracking {
+export interface MultipleTracking {
   betPlaced: boolean;
   stakeUsed: number | null;
   oddUsed: number | null;
@@ -44,7 +51,7 @@ interface MultipleTracking {
   notes: string;
 }
 
-interface MultipleBet {
+export interface MultipleBet {
   id: string;
   createdAt: string;
   legs: MultipleLeg[];
@@ -636,6 +643,49 @@ export function updateMultipleLegStatus(
           ? { ...leg, resultStatus }
           : leg
       ),
+    };
+
+    return {
+      ...nextBet,
+      tracking: deriveMultipleTrackingFromLegs(nextBet, nextBet.tracking),
+    };
+  });
+
+  saveMultiples(updated);
+  return updated;
+}
+
+/**
+ * Closes several multiples in one write, from the final scores.
+ *
+ * Doing them one leg at a time would re-derive and re-save the whole list per
+ * leg; a multiple only means anything once all its legs are known, so the
+ * batch is also the honest unit.
+ */
+export function settleMultiples(
+  settlements: {
+    multipleId: string;
+    legs: { analysisId: string; market: string; resultStatus: BetStatus }[];
+  }[]
+) {
+  if (!settlements.length) return getSavedMultiples();
+
+  const byId = new Map(settlements.map((item) => [item.multipleId, item]));
+
+  const updated = getSavedMultiples().map((bet) => {
+    const settlement = byId.get(bet.id);
+    if (!settlement) return bet;
+
+    const nextBet = {
+      ...bet,
+      legs: bet.legs.map((leg) => {
+        const match = settlement.legs.find(
+          (item) =>
+            item.analysisId === leg.analysisId &&
+            normalizeMarketName(item.market) === normalizeMarketName(leg.market)
+        );
+        return match ? { ...leg, resultStatus: match.resultStatus } : leg;
+      }),
     };
 
     return {
