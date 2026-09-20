@@ -702,7 +702,7 @@ export default function ValueRadar() {
                       backgroundColor: "hsl(222,47%,7%)",
                       border: "1px solid rgba(255,255,255,0.1)",
                       borderRadius: 16,
-                      color: "white",
+                      color: "hsl(var(--foreground))",
                     }}
                   />
                   <Bar dataKey="count" radius={[12, 12, 12, 12]} maxBarSize={54}>
@@ -763,7 +763,7 @@ export default function ValueRadar() {
                       backgroundColor: "hsl(222,47%,7%)",
                       border: "1px solid rgba(255,255,255,0.1)",
                       borderRadius: 16,
-                      color: "white",
+                      color: "hsl(var(--foreground))",
                     }}
                   />
                   <Bar dataKey="count" radius={[12, 12, 12, 12]} maxBarSize={54}>

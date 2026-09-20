@@ -20,9 +20,7 @@ const darkSelectClass =
   "h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
 
 const darkSelectStyle = {
-  backgroundColor: "#0f172a",
-  color: "white",
-  colorScheme: "dark" as const,
+  colorScheme: "light" as const,
 };
 
 const stagger = {

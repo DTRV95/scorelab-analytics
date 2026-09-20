@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
-  HudSignalLine,
   HudStatusPill,
   type HudTone,
 } from "@/components/HudLayer";
-import { PitchMarkings } from "@/components/ArenaEffects";
 
 type MatchdayHeroProps = {
   eyebrow: string;
@@ -36,8 +34,6 @@ export function MatchdayHero({
       variants={fadeUp}
       className="scorelab-premium-edge relative overflow-hidden rounded-[32px] border border-border p-5 md:p-6"
     >
-      <HudSignalLine tone={tone} className="absolute inset-x-6 top-0" />
-      <PitchMarkings intensity="soft" className="top-auto h-[46%] opacity-20" />
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-24" />
 
       <div className="relative z-10 grid gap-5 xl:grid-cols-[1fr_380px] xl:items-stretch">
