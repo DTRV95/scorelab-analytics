@@ -823,7 +823,7 @@ export default function ModelLab() {
                           backgroundColor: "hsl(222,47%,7%)",
                           border: "1px solid rgba(255,255,255,0.1)",
                           borderRadius: 14,
-                          color: "white",
+                          color: "hsl(var(--foreground))",
                         }}
                       />
                       <Bar dataKey="avgModelProb" name="Expected %" fill="rgba(56,189,248,0.55)" radius={[8, 8, 0, 0]} />
@@ -845,7 +845,7 @@ export default function ModelLab() {
                           backgroundColor: "hsl(222,47%,7%)",
                           border: "1px solid rgba(255,255,255,0.1)",
                           borderRadius: 14,
-                          color: "white",
+                          color: "hsl(var(--foreground))",
                         }}
                       />
                       <Bar dataKey="brierScore" name="Brier score" radius={[8, 8, 0, 0]}>

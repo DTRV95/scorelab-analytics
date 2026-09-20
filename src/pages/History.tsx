@@ -48,9 +48,7 @@ const darkSelectClass =
   "h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
 
 const darkSelectStyle = {
-  backgroundColor: "#0f172a",
-  color: "white",
-  colorScheme: "dark" as const,
+  colorScheme: "light" as const,
 };
 
 const INITIAL_VISIBLE_ANALYSES = 18;
@@ -990,11 +988,11 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-foreground">All Status</option>
-                <option value="pending" className="bg-slate-900 text-foreground">Pending</option>
-                <option value="green" className="bg-slate-900 text-foreground">Greens</option>
-                <option value="red" className="bg-slate-900 text-foreground">Reds</option>
-                <option value="void" className="bg-slate-900 text-foreground">Voids</option>
+                <option value="all" className="bg-card text-foreground">All Status</option>
+                <option value="pending" className="bg-card text-foreground">Pending</option>
+                <option value="green" className="bg-card text-foreground">Greens</option>
+                <option value="red" className="bg-card text-foreground">Reds</option>
+                <option value="void" className="bg-card text-foreground">Voids</option>
               </select>
 
               <select
@@ -1007,9 +1005,9 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-foreground">All Bets</option>
-                <option value="placed" className="bg-slate-900 text-foreground">Bet Placed</option>
-                <option value="not-placed" className="bg-slate-900 text-foreground">No Bet Placed</option>
+                <option value="all" className="bg-card text-foreground">All Bets</option>
+                <option value="placed" className="bg-card text-foreground">Bet Placed</option>
+                <option value="not-placed" className="bg-card text-foreground">No Bet Placed</option>
               </select>
 
               <select
@@ -1018,9 +1016,9 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-foreground">All Markets</option>
+                <option value="all" className="bg-card text-foreground">All Markets</option>
                 {availableMarkets.map((market) => (
-                  <option key={market} value={market} className="bg-slate-900 text-foreground">
+                  <option key={market} value={market} className="bg-card text-foreground">
                     {market}
                   </option>
                 ))}
@@ -1036,10 +1034,10 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-foreground">All Dates</option>
-                <option value="today" className="bg-slate-900 text-foreground">Today</option>
-                <option value="last7" className="bg-slate-900 text-foreground">Last 7 Days</option>
-                <option value="month" className="bg-slate-900 text-foreground">This Month</option>
+                <option value="all" className="bg-card text-foreground">All Dates</option>
+                <option value="today" className="bg-card text-foreground">Today</option>
+                <option value="last7" className="bg-card text-foreground">Last 7 Days</option>
+                <option value="month" className="bg-card text-foreground">This Month</option>
               </select>
 
               <select
@@ -1057,11 +1055,11 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="newest" className="bg-slate-900 text-foreground">Newest</option>
-                <option value="oldest" className="bg-slate-900 text-foreground">Oldest</option>
-                <option value="edge" className="bg-slate-900 text-foreground">Highest Edge</option>
-                <option value="confidence" className="bg-slate-900 text-foreground">Highest Confidence</option>
-                <option value="profitLoss" className="bg-slate-900 text-foreground">Highest P/L</option>
+                <option value="newest" className="bg-card text-foreground">Newest</option>
+                <option value="oldest" className="bg-card text-foreground">Oldest</option>
+                <option value="edge" className="bg-card text-foreground">Highest Edge</option>
+                <option value="confidence" className="bg-card text-foreground">Highest Confidence</option>
+                <option value="profitLoss" className="bg-card text-foreground">Highest P/L</option>
               </select>
             </div>
 
@@ -1599,14 +1597,14 @@ export default function History() {
                                             style={darkSelectStyle}
                                             disabled={!tracking.betPlaced}
                                           >
-                                            <option value="" className="bg-slate-900 text-foreground">
+                                            <option value="" className="bg-card text-foreground">
                                               Select market
                                             </option>
                                             {analysis.results.map((result) => (
                                               <option
                                                 key={`${entry.betId}-${result.market}`}
                                                 value={result.market}
-                                                className="bg-slate-900 text-foreground"
+                                                className="bg-card text-foreground"
                                               >
                                                 {result.market}
                                               </option>
@@ -1626,10 +1624,10 @@ export default function History() {
                                             style={darkSelectStyle}
                                             disabled={!tracking.betPlaced}
                                           >
-                                            <option value="pending" className="bg-slate-900 text-foreground">Pending</option>
-                                            <option value="green" className="bg-slate-900 text-foreground">Green</option>
-                                            <option value="red" className="bg-slate-900 text-foreground">Red</option>
-                                            <option value="void" className="bg-slate-900 text-foreground">Void</option>
+                                            <option value="pending" className="bg-card text-foreground">Pending</option>
+                                            <option value="green" className="bg-card text-foreground">Green</option>
+                                            <option value="red" className="bg-card text-foreground">Red</option>
+                                            <option value="void" className="bg-card text-foreground">Void</option>
                                           </select>
                                         </InputField>
 

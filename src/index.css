@@ -320,6 +320,31 @@
     color: hsl(var(--primary));
   }
 
+  /* The public landing page keeps its original dark art direction. The app
+     behind the login is the light sportsbook; this scope stops the light
+     tokens leaking into a page designed against navy. */
+  .sl-dark-scope {
+    --background: 222 54% 4%;
+    --foreground: 210 40% 98%;
+    --card: 208 58% 9%;
+    --card-foreground: 210 40% 98%;
+    --card-hover: 199 58% 13%;
+    --popover: 209 45% 9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 154 78% 48%;
+    --primary-foreground: 222 47% 4%;
+    --primary-glow: 186 92% 56%;
+    --secondary: 202 46% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 202 46% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 193 62% 16%;
+    --accent-foreground: 210 40% 98%;
+    --border: 198 28% 18%;
+    --input: 198 28% 18%;
+    --ring: 178 88% 48%;
+  }
+
   .sl-divider {
     border-top: 1px solid hsl(var(--border));
   }
