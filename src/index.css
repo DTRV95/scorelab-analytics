@@ -324,6 +324,36 @@
     border-top: 1px solid hsl(var(--border));
   }
 
+  /* Pages still on the old dark layout. They paint their own dark card
+     backgrounds but read the semantic tokens for text and borders, so the
+     light values turn their labels into dark-on-dark. Scoping the dark
+     neutrals back keeps them readable until each one is ported; brand
+     colours (primary, destructive, warning) stay on the new palette because
+     they read fine on navy. Delete a page from SPORTSBOOK_ROUTES' opposite
+     and this stops applying to it. */
+  .sl-legacy {
+    --background: 222 54% 4%;
+    --foreground: 210 40% 98%;
+    --card: 208 58% 9%;
+    --card-foreground: 210 40% 98%;
+    --card-hover: 199 58% 13%;
+    --popover: 209 45% 9%;
+    --popover-foreground: 210 40% 98%;
+    --secondary: 202 46% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 202 46% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 193 62% 16%;
+    --accent-foreground: 210 40% 98%;
+    --border: 198 28% 18%;
+    --input: 198 28% 18%;
+
+    color: hsl(var(--foreground));
+    background: linear-gradient(180deg, rgba(3, 9, 18, 1) 0%, rgba(5, 17, 31, 1) 42%, rgba(2, 10, 22, 1) 100%);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
   .card-shadow {
     box-shadow: var(--shadow-card);
   }
