@@ -8,11 +8,8 @@ import {
 import { MatchResultsPanel } from "@/components/MatchResultsPanel";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { SystemPulse3D } from "@/components/SystemPulse3D";
-import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
 import { PulseOnChange } from "@/components/MotionIntelligence";
 import { MiniHeatmap } from "@/components/DataObjects";
-import { StadiumLightSweep } from "@/components/ArenaEffects";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Activity,
@@ -23,7 +20,6 @@ import {
   Crosshair,
   Gauge,
   Inbox,
-  ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
@@ -112,9 +108,9 @@ function AnimatedNumber({ value }: { value: string | number }) {
 }
 
 const STAT_TONE_CLASS = {
-  positive: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
-  negative: "border-red-300/25 bg-red-300/10 text-red-200",
-  neutral: "border-cyan-300/25 bg-cyan-300/10 text-cyan-200",
+  positive: "border-emerald-600/25 bg-emerald-50 text-emerald-700",
+  negative: "border-red-600/25 bg-red-50 text-red-700",
+  neutral: "border-slate-300 bg-slate-100 text-slate-600",
 };
 
 function CompactStatCard({
@@ -132,46 +128,40 @@ function CompactStatCard({
 }) {
   return (
     <PulseOnChange value={`${value}-${change ?? ""}`}>
-      <StadiumLightSweep trigger={`${value}-${change ?? ""}`}>
       <motion.div
-        whileHover={{ y: -3 }}
+        whileHover={{ y: -2 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
-        className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object relative overflow-hidden rounded-[20px] border border-white/8 px-4 py-3.5"
+        className="sl-card sl-card-interactive h-full px-4 py-3.5"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
-              {label}
-            </p>
-            {Icon ? (
-              <span
-                className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border ${STAT_TONE_CLASS[changeType]}`}
-              >
-                <Icon className="h-3 w-3" strokeWidth={2} />
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-          <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
-            <AnimatedNumber value={value} />
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+            {label}
           </p>
-          {change ? (
-            <p
-              className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
-                changeType === "positive"
-                  ? "text-emerald-300"
-                  : changeType === "negative"
-                  ? "text-red-300"
-                  : "text-white/42"
-              }`}
+          {Icon ? (
+            <span
+              className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border ${STAT_TONE_CLASS[changeType]}`}
             >
-              {change}
-            </p>
+              <Icon className="h-3 w-3" strokeWidth={2} />
+            </span>
           ) : null}
         </div>
+        <p className="mt-3 font-mono-data text-[1.28rem] font-bold tracking-[-0.03em] text-foreground md:text-[1.46rem]">
+          <AnimatedNumber value={value} />
+        </p>
+        {change ? (
+          <p
+            className={`mt-2 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
+              changeType === "positive"
+                ? "text-emerald-700"
+                : changeType === "negative"
+                ? "text-red-700"
+                : "text-muted-foreground"
+            }`}
+          >
+            {change}
+          </p>
+        ) : null}
       </motion.div>
-      </StadiumLightSweep>
     </PulseOnChange>
   );
 }
@@ -185,46 +175,31 @@ function AutoInsightCard({
   detail: string;
   tone: "positive" | "negative" | "neutral";
 }) {
+  // A coloured left edge instead of a glow: it survives a white background,
+  // and a column of them still scans as a list rather than a light show.
   const toneClass =
     tone === "positive"
-      ? {
-          glow: "from-emerald-300/20 via-emerald-300/6 to-transparent",
-          dot: "bg-emerald-300 shadow-[0_0_18px_rgba(52,211,153,0.75)]",
-          text: "text-emerald-200",
-        }
+      ? { edge: "border-l-emerald-600", dot: "bg-emerald-600" }
       : tone === "negative"
-      ? {
-          glow: "from-red-300/18 via-red-300/6 to-transparent",
-          dot: "bg-red-300 shadow-[0_0_18px_rgba(248,113,113,0.7)]",
-          text: "text-red-200",
-        }
-      : {
-          glow: "from-cyan-300/18 via-cyan-300/6 to-transparent",
-          dot: "bg-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.7)]",
-          text: "text-white/72",
-        };
+      ? { edge: "border-l-red-600", dot: "bg-red-600" }
+      : { edge: "border-l-slate-400", dot: "bg-slate-400" };
 
   return (
-    <StadiumLightSweep trigger={`${title}-${detail}`}>
-      <motion.div
-        whileHover={{ y: -3, scale: 1.005 }}
-        transition={{ type: "spring", stiffness: 360, damping: 28 }}
-        className="scorelab-board-3d relative min-h-[108px] overflow-hidden rounded-[24px] border border-white/8 p-4"
-      >
-        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,var(--tw-gradient-stops))] ${toneClass.glow}`} />
-        <div className="relative flex h-full gap-3">
-          <span className={`mt-1 h-2.5 w-2.5 flex-none rounded-full ${toneClass.dot}`} />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
-              {title}
-            </p>
-            <p className={`mt-3 text-sm leading-7 ${toneClass.text}`}>
-              {detail}
-            </p>
-          </div>
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ type: "spring", stiffness: 360, damping: 28 }}
+      className={`sl-card sl-card-interactive h-full border-l-4 p-4 ${toneClass.edge}`}
+    >
+      <div className="flex h-full gap-3">
+        <span className={`mt-1.5 h-2 w-2 flex-none rounded-full ${toneClass.dot}`} />
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            {title}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-foreground">{detail}</p>
         </div>
-      </motion.div>
-    </StadiumLightSweep>
+      </div>
+    </motion.div>
   );
 }
 
@@ -244,15 +219,15 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`scorelab-board-3d scorelab-analytics-panel overflow-hidden rounded-[26px] border border-white/8 ${className}`}
+      className={`sl-card overflow-hidden ${className}`}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
+      <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3.5">
         <div>
-          <h2 className="text-sm font-semibold text-white md:text-[15px]">{title}</h2>
-          <p className="mt-1 text-xs leading-6 text-white/58 md:text-[13px]">{description}</p>
+          <h2 className="text-sm font-bold text-foreground md:text-[15px]">{title}</h2>
+          <p className="mt-1 text-xs leading-6 text-muted-foreground md:text-[13px]">{description}</p>
         </div>
         {badge ? (
-          <span className="scorelab-analytics-badge rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
+          <span className="sl-pill sl-pill-muted flex-none uppercase tracking-[0.14em]">
             {badge}
           </span>
         ) : null}
@@ -279,26 +254,25 @@ function DecisionAction({
 }) {
   const toneClass =
     tone === "emerald"
-      ? "from-emerald-300/16 text-emerald-100"
+      ? "border-emerald-600/20 bg-emerald-50 text-emerald-700"
       : tone === "amber"
-      ? "from-amber-300/16 text-amber-100"
-      : "from-cyan-300/16 text-cyan-100";
+      ? "border-amber-600/20 bg-amber-50 text-amber-700"
+      : "border-primary/20 bg-primary/10 text-primary";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group relative min-h-[64px] overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${toneClass} via-white/[0.035] to-white/[0.015] p-3 text-left transition hover:-translate-y-0.5 hover:border-white/16`}
+      className="sl-card sl-card-interactive group min-h-[64px] p-3 text-left transition hover:-translate-y-0.5"
     >
-      <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-current/35 to-transparent" />
-      <div className="relative flex items-start justify-between gap-3">
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-current/15 bg-black/20">
-          <Icon className="h-4 w-4" strokeWidth={1.6} />
+      <div className="flex items-start justify-between gap-3">
+        <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg border ${toneClass}`}>
+          <Icon className="h-4 w-4" strokeWidth={2} />
         </span>
-        <ArrowRight className="mt-1.5 h-4 w-4 flex-none text-white/28 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
+        <ArrowRight className="mt-1.5 h-4 w-4 flex-none text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" strokeWidth={2} />
       </div>
-      <p className="relative mt-2.5 text-sm font-semibold text-white">{label}</p>
-      <p className="relative mt-1 text-xs leading-5 text-white/52">{detail}</p>
+      <p className="mt-2.5 text-sm font-bold text-foreground">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </button>
   );
 }
@@ -483,15 +457,15 @@ function CustomTooltip({
   const value = payload[0]?.value;
 
   return (
-    <div className="scorelab-chart-tooltip rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
-      <p className="mb-1 text-xs uppercase tracking-wider text-white/50">
+    <div className="sl-card border border-border px-4 py-3 text-sm">
+      <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <div className="flex items-center gap-2">
         <div className="h-2 w-2 rounded-full bg-emerald-400" />
-        <p className="text-sm text-white/70">{valueLabel}</p>
+        <p className="text-sm text-foreground">{valueLabel}</p>
       </div>
-      <p className="mt-1 text-lg font-semibold text-white">
+      <p className="mt-1 text-lg font-semibold text-foreground">
         {typeof value === "number" ? value.toFixed(1) : value}
       </p>
     </div>
@@ -527,20 +501,20 @@ function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
             onClick={() => setActiveKey(option.key)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               option.key === activeKey
-                ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100"
-                : "border-white/8 bg-white/[0.03] text-white/50 hover:text-white/75"
+                ? "border-cyan-300/40 bg-cyan-300/15 text-primary"
+                : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground hover:text-foreground"
             }`}
           >
             {option.label}
             {option.data.length === 0 ? (
-              <span className="ml-1.5 text-white/30">·</span>
+              <span className="ml-1.5 text-muted-foreground">·</span>
             ) : null}
           </button>
         ))}
       </div>
 
       {safeData.length > 0 ? (
-        <div className="scorelab-chart-cinematic relative h-[260px]">
+        <div className="relative h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={safeData}
@@ -548,7 +522,7 @@ function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
               barCategoryGap="28%"
             >
               <CartesianGrid
-                stroke="rgba(255,255,255,0.06)"
+                stroke="hsl(var(--border))"
                 vertical={false}
                 strokeDasharray="3 3"
               />
@@ -558,18 +532,18 @@ function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
                 axisLine={false}
                 tickLine={false}
                 tickMargin={10}
-                tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
               />
 
               <YAxis
                 axisLine={false}
                 tickLine={false}
                 tickMargin={10}
-                tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
               />
 
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                cursor={{ fill: "hsl(var(--muted))" }}
                 content={<CustomTooltip valueLabel="ROI" />}
               />
 
@@ -607,11 +581,11 @@ function MultiBucketChart({ options }: { options: BucketChartOption[] }) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-white/40">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-10 text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-[hsl(var(--sl-surface))] text-muted-foreground">
             <Inbox className="h-4 w-4" strokeWidth={1.6} />
           </span>
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-muted-foreground">
             Ainda sem amostra suficiente para este segmento.
           </p>
         </div>
@@ -826,106 +800,65 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="scorelab-dashboard-flow flex flex-col gap-7 p-4 sm:p-5 md:p-6"
+        className="flex flex-col gap-6 pb-2"
       >
-        <div className="-mb-4 flex justify-end">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="sl-section-title">Início</h1>
+            <p className="sl-meta mt-1">
+              Desempenho, risco e a próxima análise a fazer.
+            </p>
+          </div>
           <LayoutCustomizeButton layout={layout} />
         </div>
-        <motion.section
-          variants={fadeUp}
-          className="scorelab-board-3d relative overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(8,23,42,0.96)_0%,rgba(4,12,24,0.98)_58%,rgba(3,25,27,0.94)_100%)] p-4 shadow-[0_18px_70px_-46px_rgba(34,211,238,0.55)]"
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.055)_0_1px,transparent_1px_96px),linear-gradient(180deg,rgba(255,255,255,0.025)_0_1px,transparent_1px_72px)] opacity-30" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/35 to-transparent" />
 
-          <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-            <div className="min-w-0">
-              <div className="hidden flex-wrap items-center gap-2 sm:flex">
-                <HudStatusPill
-                  label="Decision OS"
-                  tone="cyan"
-                  pulse={false}
-                  icon={<HudStateIcon state="online" />}
-                />
-                <HudStatusPill
-                  label={`${dashboardData.riskLevel} Exposure`}
-                  tone={dashboardData.riskLevel === "High" ? "red" : "cyan"}
-                  icon={<HudStateIcon state={dashboardData.riskLevel === "High" ? "risk" : "online"} />}
-                />
-                <HudStatusPill
-                  label={`${bankrollStats.totalPending} Pending`}
-                  tone={bankrollStats.totalPending > 0 ? "amber" : "emerald"}
-                  icon={<HudStateIcon state={bankrollStats.totalPending > 0 ? "scanning" : "online"} />}
-                />
-              </div>
+        {/* Live state, not performance: how exposed the bankroll is right now
+            and how many bets are still open. The performance figures live in
+            the summary below, so they are deliberately not repeated here. */}
+        <motion.section variants={fadeUp} className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`sl-pill ${
+                dashboardData.riskLevel === "High" ? "sl-pill-loss" : "sl-pill-win"
+              }`}
+            >
+              Exposição {dashboardData.riskLevel === "High" ? "alta" : dashboardData.riskLevel === "Moderate" ? "moderada" : "baixa"}
+            </span>
+            <span
+              className={`sl-pill ${
+                bankrollStats.totalPending > 0 ? "sl-pill-open" : "sl-pill-muted"
+              }`}
+            >
+              {bankrollStats.totalPending} por resolver
+            </span>
+            <span className="sl-pill sl-pill-muted">
+              {marketPerformanceRows.length} mercados seguidos
+            </span>
+          </div>
 
-              <div className="mt-5 max-w-4xl">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/48">
-                  ScoreLab Dashboard
-                </p>
-                <h1 className="mt-2 max-w-3xl text-2xl font-semibold leading-tight tracking-normal text-white sm:text-[1.9rem] lg:text-[2.35rem]">
-                  Keep the model, bankroll and value signals in one place.
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
-                  A simple overview of performance, risk and the next analysis to check.
-                </p>
-              </div>
-
-              <div className={`mt-4 grid grid-cols-1 gap-2.5 ${isOwner ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-                <DecisionAction
-                  label="Analyze Match"
-                  detail="Run a fresh market read through the model."
-                  icon={Crosshair}
-                  onClick={() => navigate("/analysis")}
-                />
-                <DecisionAction
-                  label="Value Radar"
-                  detail="Scan saved opportunities by edge and confidence."
-                  icon={Zap}
-                  onClick={() => navigate("/radar")}
-                  tone="emerald"
-                />
-                {isOwner ? (
-                  <DecisionAction
-                    label="Model Lab"
-                    detail="Inspect trust, drift and similar-match memory."
-                    icon={BrainCircuit}
-                    onClick={() => navigate("/model-lab")}
-                    tone="amber"
-                  />
-                ) : null}
-              </div>
-            </div>
-
-            <div className="grid gap-2.5">
-              <SystemPulse3D
-                label="System Pulse"
-                value={`${bankrollStats.roi.toFixed(1)}% ROI`}
-                detail={`${dashboardData.riskLevel} risk with EUR ${dashboardData.openExposure.toFixed(2)} open.`}
-                tone={dashboardPulseTone}
-                size="compact"
+          <div className={`grid grid-cols-1 gap-3 ${isOwner ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+            <DecisionAction
+              label="Analyze Match"
+              detail="Run a fresh market read through the model."
+              icon={Crosshair}
+              onClick={() => navigate("/analysis")}
+            />
+            <DecisionAction
+              label="Value Radar"
+              detail="Scan saved opportunities by edge and confidence."
+              icon={Zap}
+              onClick={() => navigate("/radar")}
+              tone="emerald"
+            />
+            {isOwner ? (
+              <DecisionAction
+                label="Model Lab"
+                detail="Inspect trust, drift and similar-match memory."
+                icon={BrainCircuit}
+                onClick={() => navigate("/model-lab")}
+                tone="amber"
               />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                  <Gauge className="h-4 w-4 text-cyan-200" strokeWidth={1.6} />
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
-                    Markets
-                  </p>
-                  <p className="mt-1 font-mono-data text-xl font-semibold text-white">
-                    {marketPerformanceRows.length}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                  <ShieldCheck className="h-4 w-4 text-emerald-200" strokeWidth={1.6} />
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
-                    Confidence
-                  </p>
-                  <p className="mt-1 font-mono-data text-xl font-semibold text-white">
-                    {dashboardData.avgConfidence.toFixed(1)}
-                  </p>
-                </div>
-              </div>
-            </div>
+            ) : null}
           </div>
         </motion.section>
 
@@ -939,7 +872,7 @@ export default function Dashboard() {
 
         <motion.div
           variants={fadeUp}
-          className="grid grid-cols-1 gap-3 rounded-[28px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.035),rgba(125,245,238,0.045),rgba(255,255,255,0.025))] p-3 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
           {[
             {
@@ -961,16 +894,16 @@ export default function Dashboard() {
           ].map((item) => (
             <div
               key={item.label}
-              className="min-w-0 rounded-2xl border border-white/8 bg-black/15 px-4 py-3"
+              className="min-w-0 rounded-2xl border border-border bg-muted px-4 py-3"
             >
               <div className="flex items-center gap-2">
-                <item.icon className="h-3.5 w-3.5 flex-none text-cyan-100/70" strokeWidth={1.6} />
-                <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/42">
+                <item.icon className="h-3.5 w-3.5 flex-none text-primary" strokeWidth={1.6} />
+                <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   {item.label}
                 </p>
               </div>
-              <p className="mt-2 truncate text-sm font-semibold text-white">{item.value}</p>
-              <p className="mt-1 truncate text-xs text-white/48">{item.detail}</p>
+              <p className="mt-2 truncate text-sm font-semibold text-foreground">{item.value}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</p>
             </div>
           ))}
         </motion.div>
@@ -978,9 +911,7 @@ export default function Dashboard() {
         </LayoutSection>
 
         <LayoutSection id="summary" layout={layout}>
-        <div className="scorelab-section-kicker">
-          <span>Executive Summary</span>
-        </div>
+        <h2 className="sl-section-title text-[15px]">Executive Summary</h2>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <CompactStatCard
@@ -1020,9 +951,7 @@ export default function Dashboard() {
         <LayoutSection id="signals" layout={layout}>
         {(dashboardData.autoInsights ?? []).length > 0 && (
           <>
-          <div className="scorelab-section-kicker">
-            <span>AI Signals</span>
-          </div>
+          <h2 className="sl-section-title text-[15px]">AI Signals</h2>
           <motion.div
             variants={fadeUp}
             className="grid grid-cols-1 gap-4 xl:grid-cols-2"
@@ -1042,34 +971,30 @@ export default function Dashboard() {
         </LayoutSection>
 
         <LayoutSection id="predictions" layout={layout}>
-        <div className="scorelab-section-kicker">
-          <span>Prediction Board</span>
-        </div>
+        <h2 className="sl-section-title text-[15px]">Prediction Board</h2>
 
           {topValueToday ? (
             <motion.div
               variants={fadeUp}
-              className="scorelab-board-3d scorelab-top-value-card relative overflow-hidden rounded-[30px] border border-white/8 p-5"
+              className="sl-card overflow-hidden p-5"
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,var(--scorelab-accent-a-soft),transparent_32%),radial-gradient(circle_at_12%_100%,var(--scorelab-accent-b-soft),transparent_28%)]" />
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--scorelab-control-border-hover),transparent)]" />
               <div className="relative space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--scorelab-control-border)] bg-[var(--scorelab-control-bg)] px-3 py-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_var(--scorelab-accent-b-soft)]" />
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/58">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         Top Value Today
                       </p>
                     </div>
-                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white md:text-[1.55rem]">
+                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-foreground md:text-[1.55rem]">
                       {topValueToday.analysis.homeTeam} vs {topValueToday.analysis.awayTeam}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-white/58">
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Strongest calibrated live angle on today's board.
                     </p>
                   </div>
-                  <span className="scorelab-chrome-control rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                  <span className="sl-pill sl-pill-win flex-none">
                     {topValueToday.bestBet.market}
                   </span>
                 </div>
@@ -1082,24 +1007,24 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="scorelab-chrome-control rounded-2xl border p-3.5">
+                <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
                   <ConfidenceMeter score={topValueToday.bestBet.confidence} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="scorelab-chrome-control rounded-2xl border p-3.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       Odds
                     </p>
-                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-white">
+                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-foreground">
                       {topValueToday.bestBet.odds}
                     </p>
                   </div>
-                  <div className="scorelab-chrome-control rounded-2xl border p-3.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       Kelly
                     </p>
-                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-white">
+                    <p className="mt-2 font-mono-data text-[1.15rem] font-semibold text-foreground">
                       {topValueToday.bestBet.kelly.toFixed(2)}%
                     </p>
                   </div>
@@ -1110,7 +1035,7 @@ export default function Dashboard() {
                   onClick={() =>
                     openAnalysisInSimpleBet(topValueToday.analysis, topValueToday.bestBet)
                   }
-                  className="scorelab-brand-mark inline-flex h-11 w-full items-center justify-center rounded-xl border border-[var(--scorelab-control-border-hover)] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition hover:brightness-110"
+                  className="sl-btn-primary inline-flex h-11 w-full items-center justify-center px-4 text-[11px] uppercase tracking-[0.14em]"
                 >
                   Open In Simple Bet
                 </button>
@@ -1122,11 +1047,11 @@ export default function Dashboard() {
               description="No standout value pick has been tracked today yet."
               badge="Live Board"
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5">
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-white/8 bg-white/[0.04] text-cyan-200/70">
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5">
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-[hsl(var(--sl-surface))] text-primary">
                   <Crosshair className="h-4 w-4" strokeWidth={1.6} />
                 </span>
-                <p className="text-sm text-white/55">
+                <p className="text-sm text-muted-foreground">
                   Run today's analyses and the strongest live angle will appear here.
                 </p>
               </div>
@@ -1147,7 +1072,7 @@ export default function Dashboard() {
                 margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
               >
                 <CartesianGrid
-                  stroke="rgba(255,255,255,0.06)"
+                  stroke="hsl(var(--border))"
                   vertical={false}
                   strokeDasharray="3 3"
                 />
@@ -1157,18 +1082,18 @@ export default function Dashboard() {
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
 
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
 
                 <Tooltip
-                  cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }}
+                  cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
                   content={<CustomTooltip valueLabel="Profit/Loss" />}
                 />
 
@@ -1189,7 +1114,7 @@ export default function Dashboard() {
                   activeDot={{
                     r: 5,
                     fill: "rgba(16,185,129,1)",
-                    stroke: "rgba(255,255,255,0.8)",
+                    stroke: "#fff",
                     strokeWidth: 2,
                   }}
                 />
@@ -1201,9 +1126,7 @@ export default function Dashboard() {
         </LayoutSection>
 
         <LayoutSection id="charts" layout={layout}>
-        <div className="scorelab-section-kicker">
-          <span>Performance Charts</span>
-        </div>
+        <h2 className="sl-section-title text-[15px]">Performance Charts</h2>
 
         <MultiBucketChart
           options={[
@@ -1222,16 +1145,16 @@ export default function Dashboard() {
         <button
           type="button"
           onClick={() => setValidationOpen((open) => !open)}
-          className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3.5 text-left"
+          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-3.5 text-left"
         >
           <div className="flex-1">
-            <p className="text-sm font-semibold text-white">Validation Core</p>
-            <p className="mt-0.5 text-xs text-white/50">
+            <p className="text-sm font-semibold text-foreground">Validation Core</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Leitura detalhada por mercado, liga e tier — abre quando precisares de auditar.
             </p>
           </div>
           <ChevronDown
-            className={`h-4 w-4 flex-none text-white/40 transition-transform ${validationOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${validationOpen ? "rotate-180" : ""}`}
           />
         </button>
 
@@ -1254,57 +1177,57 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.045),transparent_30%)]" />
           <div className="relative z-10 space-y-6">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Market Lead
                 </p>
-                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-foreground">
                   {leadingMarket?.market ?? "No clear lead yet"}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/55">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {leadingMarket
                     ? `${leadingMarket.roi}% ROI across ${leadingMarket.bets} bets`
                     : "Need more settled market data"}
                 </p>
               </div>
-              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   League Lead
                 </p>
-                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-foreground">
                   {leadingLeague?.league ?? "No clear lead yet"}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/55">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {leadingLeague
                     ? `${leadingLeague.roi}% ROI · ${leadingLeague.bestMarket}`
                     : "Need more settled league data"}
                 </p>
               </div>
-              <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Validation Focus
                 </p>
-                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">
+                <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.02em] text-foreground">
                   Markets + Leagues
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/55">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Read these two tables together before changing trust levels or exposure.
                 </p>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
+              <div className=" rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-white md:text-[15px]">
+                    <h3 className="text-sm font-semibold text-foreground md:text-[15px]">
                       Performance by Market
                     </h3>
-                    <p className="mt-1 text-xs leading-6 text-white/56 md:text-[13px]">
+                    <p className="mt-1 text-xs leading-6 text-muted-foreground md:text-[13px]">
                       The main table for deciding which market types deserve trust.
                     </p>
                   </div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+                  <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Markets
                   </span>
                 </div>
@@ -1318,10 +1241,10 @@ export default function Dashboard() {
                     }))}
                   />
                 </div>
-                <div className="overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.025]">
+                <div className="overflow-x-auto rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
                   <table className="w-full min-w-[1100px] text-sm">
-                    <thead className="border-b border-white/5">
-                      <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                    <thead className="border-b border-border">
+                      <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="py-3 pr-4">Market</th>
                         <th className="py-3 pr-4">Group</th>
                         <th className="py-3 pr-4">Bets</th>
@@ -1342,7 +1265,7 @@ export default function Dashboard() {
                     <tbody>
                       {marketPerformanceRows.length > 0 ? (
                         marketPerformanceRows.map((row) => (
-                          <tr key={row.market} className="border-t border-white/5">
+                          <tr key={row.market} className="border-t border-border">
                             <td className="py-3 pr-4 font-medium text-foreground">
                               {row.market}
                             </td>
@@ -1382,17 +1305,17 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
+              <div className=" rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-white md:text-[15px]">
+                    <h3 className="text-sm font-semibold text-foreground md:text-[15px]">
                       League Performance
                     </h3>
-                    <p className="mt-1 text-xs leading-6 text-white/56 md:text-[13px]">
+                    <p className="mt-1 text-xs leading-6 text-muted-foreground md:text-[13px]">
                       See which competitions are earning trust and which market is carrying each one.
                     </p>
                   </div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-white/50">
+                  <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Leagues
                   </span>
                 </div>
@@ -1406,10 +1329,10 @@ export default function Dashboard() {
                     }))}
                   />
                 </div>
-                <div className="overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.025]">
+                <div className="overflow-x-auto rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
                   <table className="w-full min-w-[980px] text-sm">
-                    <thead className="border-b border-white/5">
-                      <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                    <thead className="border-b border-border">
+                      <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="py-3 pr-4">League</th>
                         <th className="py-3 pr-4">Bets</th>
                         <th className="py-3 pr-4">Hit Rate</th>
@@ -1427,7 +1350,7 @@ export default function Dashboard() {
                     <tbody>
                       {leaguePerformanceRows.length > 0 ? (
                         leaguePerformanceRows.map((row) => (
-                          <tr key={row.league} className="border-t border-white/5">
+                          <tr key={row.league} className="border-t border-border">
                             <td className="py-3 pr-4 font-medium text-foreground">
                               {row.league}
                             </td>
@@ -1494,8 +1417,8 @@ export default function Dashboard() {
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-sm">
-              <thead className="border-b border-white/5">
-                <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+              <thead className="border-b border-border">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="py-3 pr-4">Tier</th>
                   <th className="py-3 pr-4">Bets</th>
                   <th className="py-3 pr-4">Wins</th>
@@ -1510,7 +1433,7 @@ export default function Dashboard() {
               <tbody>
                 {(dashboardData.performance?.tierPerformance ?? []).length > 0 ? (
                   (dashboardData.performance?.tierPerformance ?? []).map((row) => (
-                    <tr key={row.tier} className="border-t border-white/5">
+                    <tr key={row.tier} className="border-t border-border">
                       <td className="py-3 pr-4">
                         <TierBadge tier={row.tier} />
                       </td>

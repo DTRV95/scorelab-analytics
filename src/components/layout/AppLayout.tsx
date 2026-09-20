@@ -12,7 +12,7 @@ interface AppLayoutProps {
 // paints its own dark cards and reads the semantic tokens expecting dark
 // values, so it gets them scoped back via .sl-legacy. Each entry added here
 // is one page that no longer needs that crutch.
-const SPORTSBOOK_ROUTES = new Set(["/probability"]);
+const SPORTSBOOK_ROUTES = new Set(["/probability", "/dashboard", "/"]);
 
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
