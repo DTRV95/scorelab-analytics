@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { BetSlip } from "@/components/BetSlip";
 import { AppSidebar } from "./AppSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { TopBar } from "./TopBar";
@@ -41,6 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </main>
       </div>
+      <BetSlip />
       <MobileBottomNav />
     </div>
   );

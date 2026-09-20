@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Info,
+  Layers3,
   ListFilter,
   Loader2,
   RefreshCw,
@@ -23,8 +24,14 @@ import {
 } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
-import { buildBetFromBoard, edgeFor, suggestStake } from "@/lib/betFromBoard";
+import {
+  buildBetFromBoard,
+  buildLegFromBoard,
+  edgeFor,
+  suggestStake,
+} from "@/lib/betFromBoard";
 import { calculateNextBankrollBefore, saveAnalysis } from "@/lib/analysisStorage";
+import { addLegToMultipleDraft } from "@/lib/multipleStorage";
 import { fetchMatchPrefill } from "@/lib/matchPrefill";
 import {
   DEFAULT_LEAGUE_KEY,
@@ -117,6 +124,9 @@ function PlaceBetForm({ match }: { match: BoardMatch }) {
   const [odds, setOdds] = useState("");
   const [stake, setStake] = useState("");
   const [saved, setSaved] = useState(false);
+  // Keyed by what was added, so changing the market or the price offers the
+  // button again instead of leaving a stale "added" state on a new selection.
+  const [addedKey, setAddedKey] = useState<string | null>(null);
 
   const modelProb =
     match.mercados.find((m) => m.mercado === market)?.probabilidade_pct ?? 0;
@@ -139,6 +149,15 @@ function PlaceBetForm({ match }: { match: BoardMatch }) {
       })
     );
     setSaved(true);
+  };
+
+  const slipKey = `${market}@${oddsValue}`;
+  const addedToSlip = addedKey === slipKey;
+
+  const addToSlip = () => {
+    if (!hasOdds) return;
+    addLegToMultipleDraft(buildLegFromBoard({ match, market, odds: oddsValue }));
+    setAddedKey(slipKey);
   };
 
   if (saved) {
@@ -243,6 +262,24 @@ function PlaceBetForm({ match }: { match: BoardMatch }) {
         >
           Registar aposta
         </Button>
+
+        {/* The multiple takes no stake here on purpose: the stake belongs to
+            the whole slip, not to one leg, and is typed once in the betslip. */}
+        <button
+          type="button"
+          disabled={!hasOdds || addedToSlip}
+          onClick={addToSlip}
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary/40 text-xs font-semibold text-primary transition disabled:opacity-40"
+        >
+          <Layers3 className="h-3.5 w-3.5" strokeWidth={2.1} />
+          {addedToSlip ? "Na múltipla" : "Adicionar à múltipla"}
+        </button>
+
+        {addedToSlip && (
+          <p className="sl-meta text-center text-[11px]">
+            Abre a múltipla no canto do ecrã para meter a stake.
+          </p>
+        )}
       </div>
     </div>
   );

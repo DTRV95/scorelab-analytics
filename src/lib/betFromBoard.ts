@@ -1,7 +1,9 @@
 import { getKellyPct } from "@/lib/calibrationEngine";
+import type { MultipleLeg } from "@/lib/multipleStorage";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 import type {
   AnalysisResult,
+  BetTier,
   DecisionType,
   RiskLevel,
   SavedAnalysis,
@@ -13,6 +15,23 @@ export interface BoardBetInput {
   odds: number;
   stake: number;
   bankroll: number | null;
+}
+
+export interface BoardSelection {
+  match: BoardMatch;
+  market: string;
+  odds: number;
+}
+
+/**
+ * The id a board selection stands under in a multiple.
+ *
+ * Two selections from the same game share it, which is what the correlation
+ * check keys on — a multiple built from two markets of one match should be
+ * flagged, not counted as two independent bets.
+ */
+export function boardLegId(fixtureId: number): string {
+  return `board-${fixtureId}`;
 }
 
 function roundTo(value: number, decimals = 2) {
@@ -45,10 +64,58 @@ function decisionFor(edge: number): DecisionType {
   return "No Bet";
 }
 
+/**
+ * A board selection has no elite-system grading behind it, so it earns the
+ * tier its edge justifies and nothing more — never "elite", which elsewhere
+ * means a selection that cleared the full screen.
+ */
+function tierFor(edge: number): BetTier {
+  if (edge >= 3) return "bet";
+  if (edge > 0) return "watchlist";
+  return "discard";
+}
+
 function riskFor(odds: number): RiskLevel {
   if (odds <= 1.8) return "Low";
   if (odds <= 3) return "Medium";
   return "High";
+}
+
+/**
+ * Turns a forecast row plus a price into one leg of a multiple.
+ *
+ * It carries the fixture for the same reason a single does: that reference is
+ * what lets the final score close the leg without anyone opening the app.
+ */
+export function buildLegFromBoard({
+  match,
+  market,
+  odds,
+}: BoardSelection): MultipleLeg {
+  const forecast = match.mercados.find((m) => m.mercado === market);
+  const modelProb = forecast?.probabilidade_pct ?? 0;
+  const edge = edgeFor(modelProb, odds);
+
+  return {
+    analysisId: boardLegId(match.fixture_id),
+    homeTeam: match.home_name,
+    awayTeam: match.away_name,
+    match: `${match.home_name} vs ${match.away_name}`,
+    market,
+    odds: roundTo(odds),
+    modelProb: roundTo(modelProb),
+    impliedProb: odds > 1 ? roundTo(100 / odds) : 0,
+    valueBet: edge,
+    confidence: roundTo((match.amostra_pct ?? 0) / 10, 1),
+    risk: riskFor(odds),
+    tier: tierFor(edge),
+    resultStatus: "pending",
+    fixture: {
+      id: match.fixture_id,
+      league: match.league,
+      kickoff: match.kickoff,
+    },
+  };
 }
 
 /**
@@ -89,6 +156,7 @@ export function buildBetFromBoard({
     risk: riskFor(odds),
     confidence,
     decision: decisionFor(edge),
+    tier: tierFor(edge),
   };
 
   return {

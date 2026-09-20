@@ -34,6 +34,22 @@ function normalizeMarket(market: string): string {
 }
 
 /**
+ * Every way a goals line is written across the app, English and Portuguese.
+ *
+ * Spelled out in words only. A bare "+1.5" or "-3.5" would also match a
+ * handicap, which this function must leave unsettled.
+ */
+const OVER_15 = ["over 1.5", "mais de 1.5", "+ de 1.5", "+ de 1,5"];
+const UNDER_35 = ["under 3.5", "menos de 3.5", "- de 3.5", "- de 3,5"];
+const OVER_35 = ["over 3.5", "mais de 3.5"];
+const OVER_25 = ["over 2.5", "mais de 2.5"];
+const UNDER_25 = ["under 2.5", "menos de 2.5"];
+
+function says(market: string, phrases: string[]): boolean {
+  return phrases.some((phrase) => market.includes(phrase));
+}
+
+/**
  * Did this market win, given the final score?
  *
  * `null` means the market cannot be settled from the score alone (corners,
@@ -52,25 +68,26 @@ export function isGreenMarket(
   const under35 = totalGoals <= 3;
   const over15 = totalGoals >= 2;
 
-  if (
-    normalized.includes("1x") &&
-    (normalized.includes("over 1.5") || normalized.includes("mais de 1.5") || normalized.includes("+1.5") || normalized.includes("+1,5"))
-  ) {
+  // One list of phrasings per line, shared by the plain markets and the double
+  // chance combos. Spelling them out branch by branch is how the combos came to
+  // read only the goals half of a Portuguese name and settle it as if the
+  // result half had won.
+  const saysOver15 = says(normalized, OVER_15);
+  const saysUnder35 = says(normalized, UNDER_35);
+
+  if (normalized.includes("1x") && saysOver15) {
     return (homeWin || draw) && over15;
   }
 
-  if (
-    normalized.includes("2x") &&
-    (normalized.includes("over 1.5") || normalized.includes("mais de 1.5") || normalized.includes("+ de 1.5") || normalized.includes("+ de 1,5") || normalized.includes("+1.5") || normalized.includes("+1,5"))
-  ) {
+  if (normalized.includes("2x") && saysOver15) {
     return (awayWin || draw) && over15;
   }
 
-  if (normalized.includes("1x") && normalized.includes("under 3.5")) {
+  if (normalized.includes("1x") && saysUnder35) {
     return (homeWin || draw) && under35;
   }
 
-  if (normalized.includes("2x") && normalized.includes("under 3.5")) {
+  if (normalized.includes("2x") && saysUnder35) {
     return (awayWin || draw) && under35;
   }
 
@@ -79,10 +96,10 @@ export function isGreenMarket(
   if (normalized === "away" || normalized === "fora") return awayWin;
   if (normalized === "1x") return homeWin || draw;
   if (normalized === "2x") return awayWin || draw;
-  if (normalized.includes("over 2.5") || normalized.includes("mais de 2.5")) return totalGoals >= 3;
-  if (normalized.includes("under 2.5") || normalized.includes("menos de 2.5")) return totalGoals <= 2;
-  if (normalized.includes("over 3.5") || normalized.includes("mais de 3.5")) return totalGoals >= 4;
-  if (normalized.includes("under 3.5") || normalized.includes("menos de 3.5")) return totalGoals <= 3;
+  if (says(normalized, OVER_25)) return totalGoals >= 3;
+  if (says(normalized, UNDER_25)) return totalGoals <= 2;
+  if (says(normalized, OVER_35)) return totalGoals >= 4;
+  if (saysUnder35) return totalGoals <= 3;
   if (normalized.includes("btts yes") || normalized === "btts" || normalized.includes("ambas marcam")) {
     return homeGoals > 0 && awayGoals > 0;
   }

@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCw, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { applyFixtureResults } from "@/lib/analysisStorage";
+import { getSavedMultiples, settleMultiples } from "@/lib/multipleStorage";
 import {
   analysesAwaitingResults,
   buildResultsPlan,
   fetchFixtureResults,
+  fixtureRefs,
+  multiplesAwaitingResults,
   type ResultsPlan,
   type SettlementPreview,
 } from "@/lib/resultsSync";
@@ -14,6 +17,7 @@ import type { SavedAnalysis } from "@/types/analysis";
 const EMPTY_PLAN: ResultsPlan = {
   scores: [],
   settlements: [],
+  multiples: [],
   manual: [],
   finished: 0,
   pending: 0,
@@ -54,6 +58,15 @@ export function MatchResultsPanel({
   const analysesRef = useRef(analyses);
   analysesRef.current = analyses;
 
+  // ...but it does have to re-run when the set of fixtures being waited on
+  // changes. Pages that load their history after mounting hand this panel an
+  // empty list on the first render, and keying only off the ref left those
+  // bets sitting unsettled until the page was reloaded by hand.
+  const awaitingKey = analysesAwaitingResults(analyses)
+    .map((analysis) => analysis.fixture?.id)
+    .sort()
+    .join(",");
+
   const onUpdatedRef = useRef(onUpdated);
   onUpdatedRef.current = onUpdated;
 
@@ -61,7 +74,8 @@ export function MatchResultsPanel({
 
   useEffect(() => {
     const awaiting = analysesAwaitingResults(analysesRef.current);
-    if (awaiting.length === 0) {
+    const multiples = multiplesAwaitingResults(getSavedMultiples());
+    if (awaiting.length === 0 && multiples.length === 0) {
       setPlan(EMPTY_PLAN);
       setChecked(true);
       return;
@@ -71,12 +85,12 @@ export function MatchResultsPanel({
     setLoading(true);
     setSkipped(new Set());
 
-    fetchFixtureResults(awaiting)
+    fetchFixtureResults(fixtureRefs(awaiting, multiples))
       .then(({ results, unavailable: failed }) => {
         if (cancelled) return;
         setUnavailable(failed);
 
-        const found = buildResultsPlan(analysesRef.current, results);
+        const found = buildResultsPlan(analysesRef.current, results, multiples);
         if (found.scores.length === 0) {
           setPlan(found);
           setScoresApplied(0);
@@ -86,7 +100,7 @@ export function MatchResultsPanel({
         const updated = applyFixtureResults({ scores: found.scores });
         publish(updated);
         setScoresApplied(found.scores.length);
-        setPlan(buildResultsPlan(updated, results));
+        setPlan(buildResultsPlan(updated, results, multiples));
       })
       .catch(() => {
         if (!cancelled) setPlan(EMPTY_PLAN);
@@ -100,7 +114,7 @@ export function MatchResultsPanel({
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, awaitingKey]);
 
   const settlementKey = (item: SettlementPreview) =>
     `${item.analysisId}:${item.betId}`;
@@ -108,27 +122,44 @@ export function MatchResultsPanel({
   const pendingSettlements = plan.settlements.filter(
     (item) => !skipped.has(settlementKey(item))
   );
+  const pendingMultiples = plan.multiples.filter(
+    (item) => !skipped.has(`multiple:${item.multipleId}`)
+  );
+  const totalPending = pendingSettlements.length + pendingMultiples.length;
 
   const settleAll = useCallback(() => {
-    if (pendingSettlements.length === 0) return;
+    if (totalPending === 0) return;
 
-    const updated = applyFixtureResults({
-      settlements: pendingSettlements.map((item) => ({
-        analysisId: item.analysisId,
-        betId: item.betId,
-        resultStatus: item.resultStatus,
-      })),
-    });
+    if (pendingSettlements.length > 0) {
+      publish(
+        applyFixtureResults({
+          settlements: pendingSettlements.map((item) => ({
+            analysisId: item.analysisId,
+            betId: item.betId,
+            resultStatus: item.resultStatus,
+          })),
+        })
+      );
+    }
 
-    publish(updated);
-    setSettledCount(pendingSettlements.length);
-    setPlan((previous) => ({ ...previous, settlements: [] }));
-  }, [pendingSettlements]);
+    if (pendingMultiples.length > 0) {
+      settleMultiples(
+        pendingMultiples.map((item) => ({
+          multipleId: item.multipleId,
+          legs: item.legs,
+        }))
+      );
+    }
+
+    setSettledCount(totalPending);
+    setPlan((previous) => ({ ...previous, settlements: [], multiples: [] }));
+  }, [pendingSettlements, pendingMultiples, totalPending]);
 
   const nothingToShow =
     checked &&
     !loading &&
     plan.settlements.length === 0 &&
+    plan.multiples.length === 0 &&
     scoresApplied === 0 &&
     settledCount === 0 &&
     unavailable.length === 0 &&
@@ -136,7 +167,9 @@ export function MatchResultsPanel({
 
   if (nothingToShow) return null;
 
-  const net = pendingSettlements.reduce((sum, item) => sum + item.profitLoss, 0);
+  const net =
+    pendingSettlements.reduce((sum, item) => sum + item.profitLoss, 0) +
+    pendingMultiples.reduce((sum, item) => sum + item.profitLoss, 0);
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-card p-4">
@@ -195,8 +228,58 @@ export function MatchResultsPanel({
         </p>
       )}
 
-      {!loading && pendingSettlements.length > 0 && (
+      {!loading && totalPending > 0 && (
         <div className="mt-3 space-y-1.5">
+          {pendingMultiples.map((item) => (
+            <div
+              key={`multiple:${item.multipleId}`}
+              className="flex items-center gap-2 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
+            >
+              <div className="min-w-0 flex-1">
+                {/* The marker leads the line: at phone width the match names
+                    truncate, and a trailing "(múltipla)" was the first thing
+                    to disappear — exactly the word that says what this is. */}
+                <p className="flex items-center gap-1.5 text-sm text-foreground">
+                  <span className="sl-pill sl-pill-muted flex-none text-[10px]">
+                    Múltipla
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {item.legCount} jogos · {item.stake.toFixed(2)} € @{" "}
+                  {item.odd.toFixed(2)}
+                  {item.resultStatus === "red" && (
+                    <>
+                      {" · falhou "}
+                      {item.legs.filter((leg) => leg.resultStatus === "red").length}
+                    </>
+                  )}
+                </p>
+              </div>
+              <span
+                className={`flex-none rounded-lg px-2 py-1 text-[11px] font-semibold ${
+                  item.resultStatus === "green"
+                    ? "bg-emerald-400/10 text-emerald-700"
+                    : "bg-rose-400/10 text-rose-700"
+                }`}
+              >
+                {money(item.profitLoss)}
+              </span>
+              <button
+                type="button"
+                title="Não liquidar esta"
+                className="flex-none rounded-lg p-1 text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  setSkipped((previous) =>
+                    new Set(previous).add(`multiple:${item.multipleId}`)
+                  )
+                }
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+
           {pendingSettlements.map((item) => (
             <div
               key={settlementKey(item)}
@@ -243,7 +326,7 @@ export function MatchResultsPanel({
               </span>
             </p>
             <Button size="sm" className="h-8 rounded-lg text-xs" onClick={settleAll}>
-              Liquidar {pendingSettlements.length}
+              Liquidar {totalPending}
             </Button>
           </div>
         </div>
@@ -258,7 +341,7 @@ export function MatchResultsPanel({
         </p>
       )}
 
-      {!loading && pendingSettlements.length === 0 && plan.pending > 0 && (
+      {!loading && totalPending === 0 && plan.pending > 0 && (
         <p className="mt-3 text-[11px] text-muted-foreground">
           {plan.pending === 1
             ? "1 jogo analisado ainda não foi disputado."
