@@ -111,41 +111,38 @@ describe("ProbabilityRadar board", () => {
     mockFetchSequence();
     renderPage();
 
-    const rows = await screen.findAllByText(/vs/);
-    expect(rows.map((row) => row.textContent)).toEqual([
-      "Porto vs Nacional",
-      "City vs United",
-    ]);
+    const homeTeams = await screen.findAllByText(/^(Porto|City|Bayern)$/);
+    expect(homeTeams.map((row) => row.textContent)).toEqual(["Porto", "City"]);
     expect(screen.getByText("Liga Portugal")).toBeInTheDocument();
     expect(screen.getByText("Premier League")).toBeInTheDocument();
 
     // The next day's match is not shown until that day tab is picked.
-    expect(screen.queryByText("Bayern vs Dortmund")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bayern")).not.toBeInTheDocument();
   });
 
   it("switches which day's matches are visible via the day tabs", async () => {
     mockFetchSequence();
     renderPage();
 
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
 
     const dayTabs = screen.getAllByRole("button", { name: /\d/ });
     fireEvent.click(dayTabs[1]);
 
-    expect(await screen.findByText("Bayern vs Dortmund")).toBeInTheDocument();
+    expect(await screen.findByText("Bayern")).toBeInTheDocument();
     expect(screen.getByText("Bundesliga")).toBeInTheDocument();
-    expect(screen.queryByText("Porto vs Nacional")).not.toBeInTheDocument();
+    expect(screen.queryByText("Porto")).not.toBeInTheDocument();
   });
 
   it("expands a row into the full breakdown only when clicked", async () => {
     mockFetchSequence();
     renderPage();
 
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
     // Collapsed: only the headline market shows, not the full breakdown.
     expect(screen.queryByText("Empate")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Porto vs Nacional").closest("button")!);
+    fireEvent.click(screen.getAllByRole("button", { name: /ver mercados/i })[0]);
 
     expect(await screen.findByText("Empate")).toBeInTheDocument();
     // Appears twice now: the row header and the full breakdown below it.
@@ -159,7 +156,7 @@ describe("ProbabilityRadar board", () => {
     mockFetchSequence();
     renderPage();
 
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
 
     expect(screen.getByText(/2 jogos sem histórico suficiente/i)).toBeInTheDocument();
     expect(screen.getByText(/Serie A/)).toBeInTheDocument();
@@ -169,7 +166,7 @@ describe("ProbabilityRadar board", () => {
     mockFetchSequence();
     renderPage();
 
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
 
     expect(screen.queryByText("Equipa da Casa")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText(/análise manual/i).closest("button")!);
@@ -191,7 +188,7 @@ describe("ProbabilityRadar board", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const first = renderPage();
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
     const callsAfterFirstLoad = fetchMock.mock.calls.length;
     expect(callsAfterFirstLoad).toBeGreaterThan(0);
 
@@ -200,7 +197,7 @@ describe("ProbabilityRadar board", () => {
 
     // Cached data renders straight away — no "a ligar ao motor" wait, and no
     // new network call for either the status check or the board itself.
-    expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
+    expect(screen.getByText("Porto")).toBeInTheDocument();
     expect(fetchMock.mock.calls.length).toBe(callsAfterFirstLoad);
   });
 
@@ -218,11 +215,11 @@ describe("ProbabilityRadar board", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderPage();
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
     const callsAfterFirstLoad = fetchMock.mock.calls.length;
 
     fireEvent.click(screen.getByTitle(/recalcular/i));
-    await screen.findByText("Porto vs Nacional");
+    await screen.findByText("Porto");
 
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad);
   });

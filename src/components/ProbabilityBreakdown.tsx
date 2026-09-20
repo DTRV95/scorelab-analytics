@@ -38,15 +38,15 @@ export const MARKET_LABELS: Record<string, string> = {
 const GROUP_ORDER = ["Resultado", "Golos", "Ambas Marcam", "Combinados"];
 
 function barTone(pct: number) {
-  if (pct >= 60) return "bg-emerald-400";
-  if (pct >= 40) return "bg-cyan-400";
-  return "bg-white/25";
+  if (pct >= 60) return "bg-emerald-600";
+  if (pct >= 40) return "bg-primary";
+  return "bg-slate-300";
 }
 
 export function sampleTone(label: string) {
-  if (label === "Alta") return "text-emerald-300 bg-emerald-400/10 ring-emerald-400/20";
-  if (label === "Média") return "text-amber-300 bg-amber-400/10 ring-amber-400/20";
-  return "text-rose-300 bg-rose-400/10 ring-rose-400/20";
+  if (label === "Alta") return "text-emerald-700 bg-emerald-50 ring-emerald-600/20";
+  if (label === "Média") return "text-amber-700 bg-amber-50 ring-amber-600/20";
+  return "text-rose-700 bg-rose-50 ring-rose-600/20";
 }
 
 /**
@@ -64,35 +64,35 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/38">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             xG Casa
           </p>
-          <p className="mt-1.5 font-mono text-xl font-semibold text-white">
+          <p className="mt-1.5 font-mono-data text-xl font-bold text-foreground">
             {data.lambda_casa.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/38">
+        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             xG Fora
           </p>
-          <p className="mt-1.5 font-mono text-xl font-semibold text-white">
+          <p className="mt-1.5 font-mono-data text-xl font-bold text-foreground">
             {data.lambda_fora.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/38">
+        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Total Esperado
           </p>
-          <p className="mt-1.5 font-mono text-xl font-semibold text-white">
+          <p className="mt-1.5 font-mono-data text-xl font-bold text-foreground">
             {data.total_golos_esperados.toFixed(2)}
           </p>
         </div>
       </div>
 
       <div
-        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-medium ring-1 ${sampleTone(
+        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${sampleTone(
           data.amostra_label
         )}`}
       >
@@ -101,24 +101,24 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
 
       {groups.map((group) => (
         <div key={group.grupo} className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/38">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
             {group.grupo}
           </p>
           <div className="space-y-2">
             {group.mercados.map((market) => (
               <div
                 key={market.mercado}
-                className="rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3"
+                className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-semibold text-foreground">
                     {MARKET_LABELS[market.mercado] ?? market.mercado}
                   </span>
-                  <span className="font-mono text-sm font-semibold text-white">
+                  <span className="font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
                     {market.probabilidade_pct.toFixed(1)}%
                   </span>
                 </div>
-                <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-slate-200">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${market.probabilidade_pct}%` }}
@@ -128,7 +128,7 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
                     )}`}
                   />
                 </div>
-                <p className="mt-1.5 text-[11px] text-white/40">
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
                   Intervalo plausível: {market.min_pct.toFixed(0)}% – {market.max_pct.toFixed(0)}%
                 </p>
               </div>

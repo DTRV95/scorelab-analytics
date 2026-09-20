@@ -4,415 +4,103 @@
 
 @layer base {
   :root {
-    --background: 222 54% 4%;
-    --foreground: 210 40% 98%;
+    /* Sportsbook light theme: near-white canvas, white cards, orange chrome,
+       green for anything a bettor reads as a number to act on. */
+    --background: 222 27% 95%;
+    --foreground: 216 44% 11%;
 
-    --card: 208 58% 9%;
-    --card-foreground: 210 40% 98%;
-    --card-hover: 199 58% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 44% 11%;
+    --card-hover: 220 30% 97%;
 
-    --popover: 209 45% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 44% 11%;
 
-    --primary: 154 78% 48%;
-    --primary-foreground: 222 47% 4%;
-    --primary-glow: 186 92% 56%;
+    --primary: 14 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 22 100% 54%;
 
-    --secondary: 202 46% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 30% 96%;
+    --secondary-foreground: 216 44% 11%;
 
-    --muted: 202 46% 15%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 30% 96%;
+    --muted-foreground: 219 20% 45%;
 
-    --accent: 193 62% 16%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 30% 96%;
+    --accent-foreground: 216 44% 11%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 4%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
 
-    --border: 198 28% 18%;
-    --input: 198 28% 18%;
-    --ring: 178 88% 48%;
+    --border: 219 30% 91%;
+    --input: 219 30% 91%;
+    --ring: 14 100% 50%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 209 62% 8%;
-    --sidebar-foreground: 215 20% 65%;
-    --sidebar-primary: 154 78% 48%;
-    --sidebar-primary-foreground: 222 47% 4%;
-    --sidebar-accent: 205 36% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 198 26% 16%;
-    --sidebar-ring: 142 71% 45%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 219 20% 45%;
+    --sidebar-primary: 14 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 30% 96%;
+    --sidebar-accent-foreground: 216 44% 11%;
+    --sidebar-border: 219 30% 91%;
+    --sidebar-ring: 14 100% 50%;
 
-    --shadow-card: 0 0 0 1px rgba(130, 246, 255, 0.065), 0 16px 40px -20px rgba(0,0,0,0.58), 0 0 38px -30px rgba(34,211,238,0.18);
-    --shadow-card-hover: 0 0 0 1px rgba(143, 240, 194, 0.11), 0 22px 46px -20px rgba(0,0,0,0.64), 0 0 48px -34px rgba(34,211,238,0.20);
-    --shadow-glow-primary: 0 0 30px -12px hsla(154, 78%, 48%, 0.15), 0 0 54px -24px hsla(190, 92%, 56%, 0.12);
-    --shadow-soft-panel: 0 22px 64px -34px rgba(0, 0, 0, 0.60), 0 0 0 1px rgba(148, 226, 255, 0.06);
+    /* Two greens on purpose: the readable one for figures sitting on white,
+       the saturated one for a filled confirm button. */
+    --sl-green: 146 80% 27%;
+    --sl-green-cta: 150 64% 38%;
+    --sl-nav: 220 33% 11%;
+    --sl-surface: 222 33% 97%;
+
+    --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 6px rgba(16, 24, 40, 0.06);
+    --shadow-card-hover: 0 2px 4px rgba(16, 24, 40, 0.06), 0 8px 20px rgba(16, 24, 40, 0.10);
+    --shadow-glow-primary: 0 6px 18px -6px hsla(14, 100%, 50%, 0.42);
+    --shadow-soft-panel: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 6px rgba(16, 24, 40, 0.06);
+
+    /* LEGACY — the old dark HUD palette, kept only so pages not yet ported to
+       the sportsbook layout keep rendering readable dark cards instead of
+       white-on-white. Each var dies with the last page that references it. */
     --scorelab-surface-bg:
       radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.07), transparent 30%),
-      radial-gradient(circle at 86% 12%, rgba(52, 211, 153, 0.055), transparent 28%),
       linear-gradient(180deg, rgba(8, 18, 40, 0.955) 0%, rgba(4, 11, 28, 0.985) 100%);
     --scorelab-surface-border: rgba(212, 255, 247, 0.078);
     --scorelab-surface-border-strong: rgba(150, 244, 238, 0.16);
     --scorelab-field-bg: rgba(255, 255, 255, 0.042);
     --scorelab-field-bg-hover: rgba(255, 255, 255, 0.062);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.10), transparent 24%),
-      radial-gradient(circle at 86% 10%, rgba(52, 211, 153, 0.085), transparent 22%),
-      linear-gradient(180deg, rgba(2, 9, 20, 1) 0%, rgba(4, 18, 34, 1) 44%, rgba(2, 10, 22, 1) 100%);
-    --scorelab-body-bg:
-      radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.09), transparent 22%),
-      radial-gradient(circle at 86% 8%, rgba(52, 211, 153, 0.08), transparent 20%),
-      linear-gradient(180deg, rgba(3, 9, 18, 1) 0%, rgba(5, 17, 31, 1) 38%, rgba(2, 11, 22, 1) 100%);
+    --scorelab-shell-bg: linear-gradient(180deg, rgba(2, 9, 20, 1) 0%, rgba(4, 18, 34, 1) 44%, rgba(2, 10, 22, 1) 100%);
+    --scorelab-body-bg: none;
     --scorelab-aurora-primary: rgba(34, 211, 238, 0.11);
     --scorelab-aurora-secondary: rgba(52, 211, 153, 0.075);
     --scorelab-accent-a: rgba(34, 211, 238, 0.34);
     --scorelab-accent-b: rgba(52, 211, 153, 0.26);
     --scorelab-accent-a-soft: rgba(34, 211, 238, 0.16);
     --scorelab-accent-b-soft: rgba(52, 211, 153, 0.12);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 31, 50, 0.96) 0%, rgba(5, 23, 42, 0.985) 42%, rgba(2, 13, 27, 0.99) 100%);
+    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 31, 50, 0.96) 0%, rgba(2, 13, 27, 0.99) 100%);
     --scorelab-topbar-bg: linear-gradient(180deg, rgba(10, 34, 54, 0.76) 0%, rgba(5, 20, 38, 0.88) 100%);
     --scorelab-dock-bg: linear-gradient(180deg, rgba(4, 18, 33, 0.82) 0%, rgba(3, 14, 27, 0.72) 100%);
     --scorelab-chrome-border: rgba(125, 245, 238, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(125,245,238,0.08), 0 28px 90px -26px rgba(34,211,238,0.34), 0 0 80px -44px rgba(52,211,153,0.42);
+    --scorelab-chrome-shadow: 0 0 0 1px rgba(125,245,238,0.08), 0 28px 90px -26px rgba(34,211,238,0.34);
     --scorelab-control-bg: rgba(125, 245, 238, 0.045);
     --scorelab-control-bg-hover: rgba(125, 245, 238, 0.07);
     --scorelab-control-border: rgba(125, 245, 238, 0.12);
     --scorelab-control-border-hover: rgba(125, 245, 238, 0.24);
   }
 
-  :root[data-scorelab-appearance="ocean"] {
-    --primary: 190 92% 56%;
-    --primary-glow: 217 91% 60%;
-    --ring: 190 92% 56%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(59, 130, 246, 0.09), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.06), transparent 30%),
-      linear-gradient(180deg, rgba(6, 18, 44, 0.965) 0%, rgba(2, 8, 23, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(59, 130, 246, 0.13), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(45, 212, 191, 0.09), transparent 22%),
-      linear-gradient(180deg, rgba(2, 8, 23, 1) 0%, rgba(5, 18, 42, 1) 46%, rgba(1, 6, 18, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(59, 130, 246, 0.13);
-    --scorelab-aurora-secondary: rgba(45, 212, 191, 0.08);
-    --scorelab-accent-a: rgba(59, 130, 246, 0.36);
-    --scorelab-accent-b: rgba(45, 212, 191, 0.24);
-    --scorelab-accent-a-soft: rgba(59, 130, 246, 0.16);
-    --scorelab-accent-b-soft: rgba(45, 212, 191, 0.10);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 24, 56, 0.96) 0%, rgba(4, 17, 42, 0.985) 48%, rgba(1, 8, 23, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(12, 34, 70, 0.76) 0%, rgba(4, 18, 44, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 17, 42, 0.84) 0%, rgba(2, 10, 28, 0.74) 100%);
-    --scorelab-chrome-border: rgba(96, 165, 250, 0.16);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(96,165,250,0.08), 0 28px 90px -26px rgba(59,130,246,0.34), 0 0 80px -44px rgba(45,212,191,0.34);
-    --scorelab-control-bg: rgba(96, 165, 250, 0.05);
-    --scorelab-control-bg-hover: rgba(96, 165, 250, 0.08);
-    --scorelab-control-border: rgba(96, 165, 250, 0.14);
-    --scorelab-control-border-hover: rgba(45, 212, 191, 0.26);
-  }
 
-  :root[data-scorelab-appearance="emerald"] {
-    --primary: 142 71% 45%;
-    --primary-glow: 84 81% 55%;
-    --ring: 142 71% 45%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(34, 197, 94, 0.09), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(132, 204, 22, 0.06), transparent 30%),
-      linear-gradient(180deg, rgba(5, 28, 22, 0.965) 0%, rgba(2, 13, 10, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(34, 197, 94, 0.13), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(132, 204, 22, 0.085), transparent 22%),
-      linear-gradient(180deg, rgba(3, 14, 11, 1) 0%, rgba(6, 28, 22, 1) 46%, rgba(2, 9, 8, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(34, 197, 94, 0.12);
-    --scorelab-aurora-secondary: rgba(132, 204, 22, 0.075);
-    --scorelab-accent-a: rgba(34, 197, 94, 0.34);
-    --scorelab-accent-b: rgba(132, 204, 22, 0.22);
-    --scorelab-accent-a-soft: rgba(34, 197, 94, 0.15);
-    --scorelab-accent-b-soft: rgba(132, 204, 22, 0.10);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(8, 42, 30, 0.96) 0%, rgba(5, 28, 22, 0.985) 48%, rgba(2, 13, 10, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(10, 48, 35, 0.76) 0%, rgba(4, 25, 18, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 28, 22, 0.84) 0%, rgba(2, 14, 11, 0.74) 100%);
-    --scorelab-chrome-border: rgba(74, 222, 128, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(74,222,128,0.08), 0 28px 90px -26px rgba(34,197,94,0.32), 0 0 80px -44px rgba(132,204,22,0.34);
-    --scorelab-control-bg: rgba(74, 222, 128, 0.045);
-    --scorelab-control-bg-hover: rgba(74, 222, 128, 0.075);
-    --scorelab-control-border: rgba(74, 222, 128, 0.13);
-    --scorelab-control-border-hover: rgba(132, 204, 22, 0.24);
-  }
 
-  :root[data-scorelab-appearance="neon"] {
-    --primary: 186 92% 56%;
-    --primary-glow: 271 91% 65%;
-    --ring: 271 91% 65%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(168, 85, 247, 0.10), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(34, 211, 238, 0.07), transparent 30%),
-      linear-gradient(180deg, rgba(15, 10, 42, 0.965) 0%, rgba(3, 8, 23, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(168, 85, 247, 0.15), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(34, 211, 238, 0.10), transparent 22%),
-      linear-gradient(180deg, rgba(8, 5, 26, 1) 0%, rgba(13, 9, 42, 1) 46%, rgba(2, 6, 18, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(168, 85, 247, 0.14);
-    --scorelab-aurora-secondary: rgba(34, 211, 238, 0.08);
-    --scorelab-accent-a: rgba(168, 85, 247, 0.36);
-    --scorelab-accent-b: rgba(34, 211, 238, 0.24);
-    --scorelab-accent-a-soft: rgba(168, 85, 247, 0.15);
-    --scorelab-accent-b-soft: rgba(34, 211, 238, 0.11);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(24, 13, 58, 0.96) 0%, rgba(13, 9, 42, 0.985) 48%, rgba(2, 6, 18, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(34, 18, 70, 0.78) 0%, rgba(9, 12, 40, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(18, 10, 48, 0.84) 0%, rgba(4, 9, 28, 0.74) 100%);
-    --scorelab-chrome-border: rgba(168, 85, 247, 0.16);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(168,85,247,0.08), 0 28px 90px -26px rgba(168,85,247,0.34), 0 0 80px -44px rgba(34,211,238,0.36);
-    --scorelab-control-bg: rgba(168, 85, 247, 0.05);
-    --scorelab-control-bg-hover: rgba(168, 85, 247, 0.08);
-    --scorelab-control-border: rgba(168, 85, 247, 0.14);
-    --scorelab-control-border-hover: rgba(34, 211, 238, 0.25);
-  }
 
-  :root[data-scorelab-appearance="sunset"] {
-    --primary: 38 92% 58%;
-    --primary-glow: 347 77% 58%;
-    --ring: 38 92% 58%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(251, 191, 36, 0.09), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(244, 63, 94, 0.06), transparent 30%),
-      linear-gradient(180deg, rgba(38, 20, 9, 0.965) 0%, rgba(18, 8, 13, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(251, 191, 36, 0.13), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(244, 63, 94, 0.085), transparent 22%),
-      linear-gradient(180deg, rgba(22, 10, 5, 1) 0%, rgba(38, 18, 12, 1) 46%, rgba(12, 5, 9, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(251, 191, 36, 0.12);
-    --scorelab-aurora-secondary: rgba(244, 63, 94, 0.075);
-    --scorelab-accent-a: rgba(251, 191, 36, 0.34);
-    --scorelab-accent-b: rgba(244, 63, 94, 0.22);
-    --scorelab-accent-a-soft: rgba(251, 191, 36, 0.15);
-    --scorelab-accent-b-soft: rgba(244, 63, 94, 0.10);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(52, 27, 10, 0.96) 0%, rgba(36, 16, 12, 0.985) 48%, rgba(16, 6, 10, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(64, 34, 12, 0.78) 0%, rgba(34, 14, 14, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(38, 18, 10, 0.84) 0%, rgba(18, 7, 12, 0.74) 100%);
-    --scorelab-chrome-border: rgba(251, 191, 36, 0.16);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(251,191,36,0.08), 0 28px 90px -26px rgba(251,191,36,0.30), 0 0 80px -44px rgba(244,63,94,0.34);
-    --scorelab-control-bg: rgba(251, 191, 36, 0.05);
-    --scorelab-control-bg-hover: rgba(251, 191, 36, 0.08);
-    --scorelab-control-border: rgba(251, 191, 36, 0.14);
-    --scorelab-control-border-hover: rgba(244, 63, 94, 0.24);
-  }
 
-  :root[data-scorelab-appearance="minimal"] {
-    --primary: 186 70% 62%;
-    --primary-glow: 210 40% 72%;
-    --ring: 186 70% 62%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(148, 163, 184, 0.045), transparent 32%),
-      linear-gradient(180deg, rgba(9, 13, 20, 0.965) 0%, rgba(2, 4, 10, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(148, 163, 184, 0.06), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(34, 211, 238, 0.035), transparent 22%),
-      linear-gradient(180deg, rgba(5, 8, 13, 1) 0%, rgba(8, 12, 18, 1) 46%, rgba(2, 3, 7, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(148, 163, 184, 0.055);
-    --scorelab-aurora-secondary: rgba(34, 211, 238, 0.035);
-    --scorelab-accent-a: rgba(148, 163, 184, 0.20);
-    --scorelab-accent-b: rgba(34, 211, 238, 0.12);
-    --scorelab-accent-a-soft: rgba(148, 163, 184, 0.08);
-    --scorelab-accent-b-soft: rgba(34, 211, 238, 0.055);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(13, 18, 26, 0.96) 0%, rgba(8, 12, 18, 0.985) 48%, rgba(2, 3, 7, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(16, 22, 31, 0.78) 0%, rgba(7, 10, 15, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(10, 14, 20, 0.84) 0%, rgba(3, 5, 10, 0.74) 100%);
-    --scorelab-chrome-border: rgba(148, 163, 184, 0.12);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(148,163,184,0.06), 0 28px 90px -26px rgba(0,0,0,0.58), 0 0 80px -48px rgba(34,211,238,0.16);
-    --scorelab-control-bg: rgba(148, 163, 184, 0.04);
-    --scorelab-control-bg-hover: rgba(148, 163, 184, 0.065);
-    --scorelab-control-border: rgba(148, 163, 184, 0.12);
-    --scorelab-control-border-hover: rgba(226, 232, 240, 0.18);
-  }
 
-  :root[data-scorelab-appearance="sporting"] {
-    --primary: 145 72% 42%;
-    --primary-glow: 150 100% 88%;
-    --ring: 145 72% 42%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(22, 163, 74, 0.105), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(240, 253, 244, 0.055), transparent 30%),
-      linear-gradient(180deg, rgba(3, 30, 20, 0.965) 0%, rgba(2, 12, 9, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(22, 163, 74, 0.15), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(240, 253, 244, 0.07), transparent 22%),
-      linear-gradient(180deg, rgba(2, 18, 12, 1) 0%, rgba(4, 35, 24, 1) 46%, rgba(1, 8, 6, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(22, 163, 74, 0.14);
-    --scorelab-aurora-secondary: rgba(240, 253, 244, 0.055);
-    --scorelab-accent-a: rgba(22, 163, 74, 0.38);
-    --scorelab-accent-b: rgba(240, 253, 244, 0.18);
-    --scorelab-accent-a-soft: rgba(22, 163, 74, 0.17);
-    --scorelab-accent-b-soft: rgba(240, 253, 244, 0.075);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(3, 38, 24, 0.96) 0%, rgba(2, 26, 18, 0.985) 48%, rgba(1, 10, 7, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(6, 48, 31, 0.78) 0%, rgba(2, 24, 16, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(4, 30, 20, 0.84) 0%, rgba(1, 12, 9, 0.74) 100%);
-    --scorelab-chrome-border: rgba(187, 247, 208, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(187,247,208,0.07), 0 28px 90px -26px rgba(22,163,74,0.34), 0 0 80px -44px rgba(240,253,244,0.20);
-    --scorelab-control-bg: rgba(187, 247, 208, 0.045);
-    --scorelab-control-bg-hover: rgba(187, 247, 208, 0.075);
-    --scorelab-control-border: rgba(187, 247, 208, 0.13);
-    --scorelab-control-border-hover: rgba(240, 253, 244, 0.26);
-  }
 
-  :root[data-scorelab-appearance="porto"] {
-    --primary: 217 91% 60%;
-    --primary-glow: 210 100% 90%;
-    --ring: 217 91% 60%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.11), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(241, 245, 249, 0.055), transparent 30%),
-      linear-gradient(180deg, rgba(3, 18, 48, 0.965) 0%, rgba(1, 7, 22, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(37, 99, 235, 0.16), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(241, 245, 249, 0.065), transparent 22%),
-      linear-gradient(180deg, rgba(1, 8, 24, 1) 0%, rgba(4, 22, 56, 1) 46%, rgba(1, 5, 15, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(37, 99, 235, 0.15);
-    --scorelab-aurora-secondary: rgba(241, 245, 249, 0.05);
-    --scorelab-accent-a: rgba(37, 99, 235, 0.40);
-    --scorelab-accent-b: rgba(241, 245, 249, 0.16);
-    --scorelab-accent-a-soft: rgba(37, 99, 235, 0.18);
-    --scorelab-accent-b-soft: rgba(241, 245, 249, 0.065);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(3, 24, 62, 0.96) 0%, rgba(2, 16, 42, 0.985) 48%, rgba(1, 7, 20, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(5, 32, 76, 0.78) 0%, rgba(2, 16, 42, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(3, 20, 54, 0.84) 0%, rgba(1, 9, 28, 0.74) 100%);
-    --scorelab-chrome-border: rgba(191, 219, 254, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(191,219,254,0.07), 0 28px 90px -26px rgba(37,99,235,0.36), 0 0 80px -44px rgba(241,245,249,0.18);
-    --scorelab-control-bg: rgba(191, 219, 254, 0.045);
-    --scorelab-control-bg-hover: rgba(191, 219, 254, 0.075);
-    --scorelab-control-border: rgba(191, 219, 254, 0.13);
-    --scorelab-control-border-hover: rgba(241, 245, 249, 0.25);
-  }
 
-  :root[data-scorelab-appearance="benfica"] {
-    --primary: 0 72% 51%;
-    --primary-glow: 43 96% 56%;
-    --ring: 0 72% 51%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(220, 38, 38, 0.105), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(245, 158, 11, 0.065), transparent 30%),
-      linear-gradient(180deg, rgba(42, 5, 8, 0.965) 0%, rgba(18, 5, 8, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(220, 38, 38, 0.15), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(245, 158, 11, 0.085), transparent 22%),
-      linear-gradient(180deg, rgba(24, 4, 7, 1) 0%, rgba(50, 8, 12, 1) 46%, rgba(10, 3, 5, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(220, 38, 38, 0.14);
-    --scorelab-aurora-secondary: rgba(245, 158, 11, 0.075);
-    --scorelab-accent-a: rgba(220, 38, 38, 0.38);
-    --scorelab-accent-b: rgba(245, 158, 11, 0.24);
-    --scorelab-accent-a-soft: rgba(220, 38, 38, 0.17);
-    --scorelab-accent-b-soft: rgba(245, 158, 11, 0.10);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(58, 6, 10, 0.96) 0%, rgba(36, 5, 8, 0.985) 48%, rgba(14, 3, 5, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(70, 8, 12, 0.78) 0%, rgba(34, 5, 8, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(42, 5, 8, 0.84) 0%, rgba(16, 3, 6, 0.74) 100%);
-    --scorelab-chrome-border: rgba(248, 113, 113, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(248,113,113,0.07), 0 28px 90px -26px rgba(220,38,38,0.34), 0 0 80px -44px rgba(245,158,11,0.28);
-    --scorelab-control-bg: rgba(248, 113, 113, 0.045);
-    --scorelab-control-bg-hover: rgba(248, 113, 113, 0.075);
-    --scorelab-control-border: rgba(248, 113, 113, 0.13);
-    --scorelab-control-border-hover: rgba(245, 158, 11, 0.25);
-  }
 
-  :root[data-scorelab-appearance="real-madrid"] {
-    --primary: 45 93% 58%;
-    --primary-glow: 210 100% 92%;
-    --ring: 45 93% 58%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(250, 204, 21, 0.075), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(147, 197, 253, 0.06), transparent 30%),
-      linear-gradient(180deg, rgba(10, 15, 24, 0.955) 0%, rgba(3, 6, 12, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(250, 204, 21, 0.11), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(241, 245, 249, 0.06), transparent 22%),
-      linear-gradient(180deg, rgba(8, 11, 17, 1) 0%, rgba(16, 20, 31, 1) 46%, rgba(2, 3, 7, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(250, 204, 21, 0.10);
-    --scorelab-aurora-secondary: rgba(147, 197, 253, 0.055);
-    --scorelab-accent-a: rgba(250, 204, 21, 0.30);
-    --scorelab-accent-b: rgba(241, 245, 249, 0.16);
-    --scorelab-accent-a-soft: rgba(250, 204, 21, 0.13);
-    --scorelab-accent-b-soft: rgba(241, 245, 249, 0.065);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(16, 20, 31, 0.96) 0%, rgba(10, 14, 22, 0.985) 48%, rgba(2, 3, 7, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(20, 25, 36, 0.78) 0%, rgba(8, 11, 18, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(13, 17, 26, 0.84) 0%, rgba(4, 6, 11, 0.74) 100%);
-    --scorelab-chrome-border: rgba(250, 204, 21, 0.14);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(250,204,21,0.06), 0 28px 90px -26px rgba(250,204,21,0.26), 0 0 80px -44px rgba(241,245,249,0.18);
-    --scorelab-control-bg: rgba(250, 204, 21, 0.04);
-    --scorelab-control-bg-hover: rgba(250, 204, 21, 0.065);
-    --scorelab-control-border: rgba(250, 204, 21, 0.12);
-    --scorelab-control-border-hover: rgba(241, 245, 249, 0.23);
-  }
 
-  :root[data-scorelab-appearance="borussia-dortmund"] {
-    --primary: 48 96% 53%;
-    --primary-glow: 48 100% 72%;
-    --ring: 48 96% 53%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(250, 204, 21, 0.105), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(24, 24, 27, 0.16), transparent 30%),
-      linear-gradient(180deg, rgba(18, 15, 2, 0.965) 0%, rgba(5, 5, 4, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(250, 204, 21, 0.16), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(250, 204, 21, 0.055), transparent 22%),
-      linear-gradient(180deg, rgba(8, 8, 4, 1) 0%, rgba(28, 24, 4, 1) 46%, rgba(2, 2, 2, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(250, 204, 21, 0.15);
-    --scorelab-aurora-secondary: rgba(250, 204, 21, 0.05);
-    --scorelab-accent-a: rgba(250, 204, 21, 0.40);
-    --scorelab-accent-b: rgba(15, 23, 42, 0.26);
-    --scorelab-accent-a-soft: rgba(250, 204, 21, 0.18);
-    --scorelab-accent-b-soft: rgba(15, 23, 42, 0.14);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(24, 20, 4, 0.96) 0%, rgba(12, 11, 5, 0.985) 48%, rgba(2, 2, 2, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(30, 26, 5, 0.78) 0%, rgba(8, 8, 4, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(20, 17, 4, 0.84) 0%, rgba(4, 4, 3, 0.74) 100%);
-    --scorelab-chrome-border: rgba(250, 204, 21, 0.16);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(250,204,21,0.08), 0 28px 90px -26px rgba(250,204,21,0.34), 0 0 80px -44px rgba(0,0,0,0.55);
-    --scorelab-control-bg: rgba(250, 204, 21, 0.05);
-    --scorelab-control-bg-hover: rgba(250, 204, 21, 0.085);
-    --scorelab-control-border: rgba(250, 204, 21, 0.14);
-    --scorelab-control-border-hover: rgba(250, 204, 21, 0.30);
-  }
 
-  :root[data-scorelab-appearance="barcelona"] {
-    --primary: 217 91% 60%;
-    --primary-glow: 347 77% 58%;
-    --ring: 217 91% 60%;
-    --scorelab-surface-bg:
-      radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.105), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(190, 18, 60, 0.075), transparent 30%),
-      linear-gradient(180deg, rgba(5, 16, 48, 0.965) 0%, rgba(18, 4, 14, 0.99) 100%);
-    --scorelab-shell-bg:
-      radial-gradient(circle at 12% 9%, rgba(37, 99, 235, 0.15), transparent 25%),
-      radial-gradient(circle at 84% 12%, rgba(190, 18, 60, 0.10), transparent 22%),
-      linear-gradient(180deg, rgba(4, 10, 30, 1) 0%, rgba(20, 8, 36, 1) 46%, rgba(8, 2, 10, 1) 100%);
-    --scorelab-body-bg: var(--scorelab-shell-bg);
-    --scorelab-aurora-primary: rgba(37, 99, 235, 0.14);
-    --scorelab-aurora-secondary: rgba(190, 18, 60, 0.085);
-    --scorelab-accent-a: rgba(37, 99, 235, 0.38);
-    --scorelab-accent-b: rgba(190, 18, 60, 0.28);
-    --scorelab-accent-a-soft: rgba(37, 99, 235, 0.17);
-    --scorelab-accent-b-soft: rgba(190, 18, 60, 0.12);
-    --scorelab-chrome-bg: linear-gradient(180deg, rgba(5, 18, 56, 0.96) 0%, rgba(16, 8, 42, 0.985) 48%, rgba(8, 2, 14, 0.99) 100%);
-    --scorelab-topbar-bg: linear-gradient(180deg, rgba(7, 26, 70, 0.78) 0%, rgba(16, 7, 38, 0.9) 100%);
-    --scorelab-dock-bg: linear-gradient(180deg, rgba(5, 18, 52, 0.84) 0%, rgba(10, 3, 24, 0.74) 100%);
-    --scorelab-chrome-border: rgba(96, 165, 250, 0.15);
-    --scorelab-chrome-shadow: 0 0 0 1px rgba(96,165,250,0.07), 0 28px 90px -26px rgba(37,99,235,0.34), 0 0 80px -44px rgba(190,18,60,0.34);
-    --scorelab-control-bg: rgba(96, 165, 250, 0.045);
-    --scorelab-control-bg-hover: rgba(96, 165, 250, 0.075);
-    --scorelab-control-border: rgba(96, 165, 250, 0.13);
-    --scorelab-control-border-hover: rgba(244, 63, 94, 0.25);
-  }
 }
 
 @layer base {
@@ -437,12 +125,12 @@
 
   ::selection {
     color: hsl(var(--primary-foreground));
-    background: rgba(52, 211, 153, 0.78);
+    background: hsl(var(--primary) / 0.85);
   }
 
   :focus-visible {
-    outline: 2px solid rgba(125, 245, 238, 0.72);
-    outline-offset: 3px;
+    outline: 2px solid hsl(var(--primary) / 0.7);
+    outline-offset: 2px;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -455,6 +143,185 @@
   .font-mono-data {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------------------------------------------------------------
+     Sportsbook layout primitives. Everything a bettor scans lives in
+     one of these: a white card, a three-way outcome row, a chip, or a
+     status pill. Pages compose them instead of hand-rolling gradients.
+     --------------------------------------------------------------- */
+
+  .sl-card {
+    background: hsl(var(--card));
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .sl-card-interactive {
+    transition: box-shadow 160ms ease;
+  }
+
+  .sl-card-interactive:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .sl-meta {
+    color: hsl(var(--muted-foreground));
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  /* The 1 / X / 2 row. Label left, figure right, green so the number is
+     what the eye lands on. */
+  .sl-outcome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 10px;
+    background: hsl(var(--sl-surface));
+    transition: background 140ms ease, border-color 140ms ease;
+  }
+
+  button.sl-outcome:hover {
+    background: hsl(var(--muted));
+    border-color: hsl(var(--muted-foreground) / 0.35);
+  }
+
+  .sl-outcome[data-active="true"] {
+    background: hsl(var(--primary) / 0.08);
+    border-color: hsl(var(--primary) / 0.5);
+  }
+
+  .sl-outcome-label {
+    font-size: 13px;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sl-outcome-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: hsl(var(--sl-green));
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .sl-section-title {
+    font-size: 19px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.015em;
+    color: hsl(var(--foreground));
+  }
+
+  .sl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 999px;
+    background: hsl(var(--card));
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    white-space: nowrap;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+
+  button.sl-chip:hover {
+    border-color: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  .sl-chip[data-active="true"] {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  /* Status tags on a settled slip: outlined, not filled, so a long list of
+     them does not turn into a wall of colour. */
+  .sl-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .sl-pill-win {
+    border-color: hsl(var(--sl-green) / 0.4);
+    background: hsl(var(--sl-green) / 0.08);
+    color: hsl(var(--sl-green));
+  }
+
+  .sl-pill-loss {
+    border-color: hsl(var(--destructive) / 0.4);
+    background: hsl(var(--destructive) / 0.07);
+    color: hsl(var(--destructive));
+  }
+
+  .sl-pill-open {
+    border-color: hsl(var(--warning) / 0.45);
+    background: hsl(var(--warning) / 0.09);
+    color: hsl(var(--warning));
+  }
+
+  .sl-pill-muted {
+    border-color: hsl(var(--border));
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .sl-btn-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-weight: 700;
+    border-radius: 10px;
+    transition: filter 140ms ease;
+  }
+
+  .sl-btn-primary:hover {
+    filter: brightness(1.08);
+  }
+
+  .sl-btn-cta {
+    background: hsl(var(--sl-green-cta));
+    color: #fff;
+    font-weight: 700;
+    border-radius: 10px;
+    transition: filter 140ms ease;
+  }
+
+  .sl-btn-cta:hover {
+    filter: brightness(1.08);
+  }
+
+  .sl-topbar {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .sl-bottomnav {
+    background: hsl(var(--sl-nav));
+  }
+
+  .sl-bottomnav-item[data-active="true"] {
+    background: hsl(var(--primary) / 0.16);
+    color: hsl(var(--primary));
+  }
+
+  .sl-divider {
+    border-top: 1px solid hsl(var(--border));
   }
 
   .card-shadow {
