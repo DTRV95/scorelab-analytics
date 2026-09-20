@@ -18,7 +18,7 @@ export function ValueBadge({ value, className }: ValueBadgeProps) {
         "inline-flex items-center px-2 py-1 rounded-md font-mono-data text-xs font-bold transition-all duration-200",
         isPositive && "bg-primary/10 text-primary ring-1 ring-primary/20",
         !isPositive && !isNeutral && "bg-destructive/10 text-destructive ring-1 ring-destructive/20",
-        isNeutral && "bg-muted text-muted-foreground ring-1 ring-white/10",
+        isNeutral && "bg-muted text-muted-foreground ring-1 ring-border",
         className
       )}
     >
@@ -31,7 +31,7 @@ export function ValueBadge({ value, className }: ValueBadgeProps) {
 export function DecisionBadge({ decision }: { decision: "Bet" | "No Bet" | "Caution" }) {
   const styles =
     decision === "Bet"
-      ? "bg-emerald-500/10 text-emerald-400"
+      ? "bg-emerald-500/10 text-emerald-700"
       : decision === "Caution"
       ? "bg-yellow-500/10 text-yellow-400"
       : "bg-red-500/10 text-red-400";
@@ -76,10 +76,10 @@ export function TierBadge({ tier, className }: TierBadgeProps) {
       : tier === "elite"
       ? "bg-primary/15 text-primary ring-1 ring-primary/30"
       : tier === "bet"
-      ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+      ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20"
       : tier === "watchlist"
       ? "bg-yellow-500/10 text-yellow-400 ring-1 ring-yellow-500/20"
-      : "bg-muted text-muted-foreground ring-1 ring-white/10";
+      : "bg-muted text-muted-foreground ring-1 ring-border";
 
   return (
     <span

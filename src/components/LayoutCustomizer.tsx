@@ -114,7 +114,7 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
         <Button
           variant="ghost"
           size="sm"
-          className="scorelab-chrome-control h-9 gap-2 rounded-2xl border text-xs"
+          className="h-9 gap-2 rounded-2xl border text-xs"
         >
           <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.6} />
           Personalizar
@@ -122,9 +122,9 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 rounded-2xl border-white/10 bg-[linear-gradient(180deg,rgba(8,23,42,0.98),rgba(4,12,24,0.99))] p-3 backdrop-blur-xl"
+        className="w-80 rounded-2xl border-border bg-card p-3 backdrop-blur-xl"
       >
-        <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
+        <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Constrói o teu painel
         </p>
         <div className="space-y-1.5">
@@ -135,11 +135,11 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
             return (
               <div
                 key={id}
-                className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-2.5 py-2"
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-2"
               >
                 <span
                   className={`min-w-0 flex-1 truncate text-sm ${
-                    isHidden ? "text-white/35 line-through" : "text-white/85"
+                    isHidden ? "text-muted-foreground line-through" : "text-foreground"
                   }`}
                 >
                   {def.label}
@@ -147,7 +147,7 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-lg text-white/55 hover:text-white"
+                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
                   disabled={index === 0}
                   onClick={() => layout.move(id, -1)}
                   title="Mover para cima"
@@ -157,7 +157,7 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-lg text-white/55 hover:text-white"
+                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
                   disabled={index === layout.order.length - 1}
                   onClick={() => layout.move(id, 1)}
                   title="Mover para baixo"
@@ -167,7 +167,7 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-lg text-white/55 hover:text-white"
+                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
                   onClick={() => layout.toggle(id)}
                   title={isHidden ? "Mostrar secção" : "Ocultar secção"}
                 >
@@ -179,7 +179,7 @@ export function LayoutCustomizeButton({ layout }: { layout: SectionLayoutApi }) 
         </div>
         <button
           onClick={layout.reset}
-          className="mt-2 w-full rounded-xl px-2 py-1.5 text-center text-xs text-white/45 transition-colors hover:text-white/80"
+          className="mt-2 w-full rounded-xl px-2 py-1.5 text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           Repor disposição original
         </button>

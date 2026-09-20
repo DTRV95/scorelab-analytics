@@ -1,11 +1,18 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
+import { buildApiUrl } from "@/lib/apiConfig";
+import {
+  readCachedBoard,
+  writeCachedBoard,
+  type BoardMatch,
+} from "@/lib/probabilityBoardCache";
 import {
   ResponsiveContainer,
   XAxis,
@@ -29,6 +36,8 @@ const fadeUp = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
+
+const BOARD_DAYS = 7;
 
 type RadarPoint = RadarOpportunity;
 
@@ -61,25 +70,23 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="relative overflow-hidden rounded-3xl border border-border bg-card p-6"
     >
-      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative z-10 mb-5 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Value Radar
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">{title}</h2>
           {description && (
-            <p className="mt-1 text-sm leading-relaxed text-white/60">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
           )}
         </div>
 
         {badge && (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <div className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1 text-xs text-muted-foreground">
             {badge}
           </div>
         )}
@@ -98,9 +105,9 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-xl border border-white/8 bg-white/[0.03] p-3">
-      <p className="text-xs uppercase tracking-wider text-white/45">{label}</p>
-      <div className="mt-1 text-sm font-medium text-white">{value}</div>
+    <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="mt-1 text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }
@@ -117,35 +124,35 @@ function CustomTooltip({
   const point = payload[0].payload;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[hsl(222,47%,7%)] px-4 py-3 shadow-2xl backdrop-blur-md max-w-[260px]">
-      <p className="text-xs uppercase tracking-wider text-white/45">Radar Point</p>
-      <p className="mt-1 text-sm font-semibold text-white">{point.match}</p>
-      <p className="mt-1 text-sm text-white/65">{point.market}</p>
+    <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-2xl backdrop-blur-md max-w-[260px]">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">Radar Point</p>
+      <p className="mt-1 text-sm font-semibold text-foreground">{point.match}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{point.market}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Edge</p>
-          <p className="font-mono-data text-white">{point.edge.toFixed(2)}%</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Edge</p>
+          <p className="font-mono-data text-foreground">{point.edge.toFixed(2)}%</p>
         </div>
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Model</p>
-          <p className="font-mono-data text-white">{point.modelProb.toFixed(1)}%</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Model</p>
+          <p className="font-mono-data text-foreground">{point.modelProb.toFixed(1)}%</p>
         </div>
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Learned</p>
-          <p className="font-mono-data text-white">{point.calibratedProb.toFixed(1)}%</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Learned</p>
+          <p className="font-mono-data text-foreground">{point.calibratedProb.toFixed(1)}%</p>
         </div>
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Confidence</p>
-          <p className="font-mono-data text-white">{point.confidence.toFixed(1)}</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Confidence</p>
+          <p className="font-mono-data text-foreground">{point.confidence.toFixed(1)}</p>
         </div>
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Odds</p>
-          <p className="font-mono-data text-white">{point.odds.toFixed(2)}</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Odds</p>
+          <p className="font-mono-data text-foreground">{point.odds.toFixed(2)}</p>
         </div>
-        <div className="rounded-lg bg-white/[0.03] p-2">
-          <p className="text-white/45">Kelly</p>
-          <p className="font-mono-data text-white">{point.kelly.toFixed(2)}%</p>
+        <div className="rounded-lg bg-[hsl(var(--sl-surface))] p-2">
+          <p className="text-muted-foreground">Kelly</p>
+          <p className="font-mono-data text-foreground">{point.kelly.toFixed(2)}%</p>
         </div>
       </div>
     </div>
@@ -189,7 +196,7 @@ function RadarLegend() {
       {items.map((item) => (
         <div
           key={item.label}
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/65"
+          className="flex items-center gap-2 rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs text-muted-foreground"
         >
           <span
             className="h-2.5 w-2.5 rounded-full"
@@ -217,6 +224,52 @@ export default function ValueRadar() {
   const todayAnalyses = useMemo(
     () => analyses.filter((analysis) => isToday(analysis.createdAt)),
     [analyses]
+  );
+
+  // Same forecast board the Probability page renders, read from its cache
+  // first so opening this tab costs nothing when it was computed recently.
+  const [board, setBoard] = useState<BoardMatch[]>(
+    () => readCachedBoard(BOARD_DAYS)?.matches ?? []
+  );
+  const [boardLoading, setBoardLoading] = useState(false);
+
+  useEffect(() => {
+    if (board.length > 0) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setBoardLoading(true);
+
+    fetch(buildApiUrl(`/data/probability-board?days=${BOARD_DAYS}`), {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const matches = data.matches ?? [];
+        setBoard(matches);
+        writeCachedBoard({
+          days: BOARD_DAYS,
+          matches,
+          unavailable: data.unavailable ?? [],
+          skipped: data.skipped ?? 0,
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setBoardLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const topProbabilities = useMemo(
+    () => [...board].sort((a, b) => b.headline_pct - a.headline_pct).slice(0, 5),
+    [board]
   );
 
   const radarPoints = useMemo<RadarPoint[]>(() => {
@@ -330,11 +383,65 @@ export default function ValueRadar() {
         variants={stagger}
         className="space-y-8 p-6"
       >
-        <motion.div variants={fadeUp}>
-          <h1 className="text-2xl font-bold text-foreground">Value Radar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Visualize your strongest opportunities and compare edge, confidence, odds and decision quality in one place.
-          </p>
+        <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="sl-section-title">Value Radar</h1>
+            <p className="sl-meta mt-1">
+              As previsões mais fortes do modelo, e o edge das análises de hoje
+              onde já tens odds.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* The radar below needs odds to compute edge, so it is empty until you
+            analyse something. This section is not: it reads the same forecast
+            board the Probability page builds, so the page always opens with
+            the model's strongest calls and a way into pricing them. */}
+        <motion.div variants={fadeUp} className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="sl-section-title text-[15px]">
+              Top 5 probabilidades
+            </h2>
+            <button
+              type="button"
+              onClick={() => navigate("/probability")}
+              className="text-[12px] font-semibold text-primary"
+            >
+              Ver todos
+            </button>
+          </div>
+
+          {topProbabilities.length === 0 ? (
+            <p className="sl-card px-4 py-4 text-sm text-muted-foreground">
+              {boardLoading
+                ? "A carregar as previsões dos próximos dias..."
+                : "Ainda sem previsões guardadas. Abre a aba Jogos para as calcular."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {topProbabilities.map((match) => (
+                <article
+                  key={match.fixture_id}
+                  className="sl-card sl-card-interactive flex items-center gap-3 px-4 py-3.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-snug text-foreground">
+                      {match.home_name} vs {match.away_name}
+                    </p>
+                    <p className="sl-meta truncate text-[11px]">{match.league}</p>
+                  </div>
+                  <div className="max-w-[45%] flex-none text-right">
+                    <p className="sl-meta text-[11px] leading-snug">
+                      {MARKET_LABELS[match.headline_market] ?? match.headline_market}
+                    </p>
+                    <p className="font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
+                      {match.headline_pct.toFixed(1)}%
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         <motion.div
@@ -360,7 +467,7 @@ export default function ValueRadar() {
               value={marketSearch}
               onChange={(e) => setMarketSearch(e.target.value)}
               placeholder="Search match or market..."
-              className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             />
 
             <select
@@ -376,7 +483,7 @@ export default function ValueRadar() {
                     | "discard"
                 )
               }
-              className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             >
               <option value="all">All Tiers</option>
               <option value="premium">Premium</option>
@@ -391,7 +498,7 @@ export default function ValueRadar() {
               onChange={(e) =>
                 setDecisionFilter(e.target.value as "all" | "Bet" | "Caution" | "No Bet")
               }
-              className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             >
               <option value="all">All Decisions</option>
               <option value="Bet">Bet</option>
@@ -405,7 +512,7 @@ export default function ValueRadar() {
                 setDecisionFilter("all");
                 setMarketSearch("");
               }}
-              className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white/70 transition hover:bg-white/[0.08]"
+              className="h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
             >
               Reset Filters
             </button>
@@ -418,14 +525,14 @@ export default function ValueRadar() {
           badge="Table"
         >
           {filteredPoints.length === 0 ? (
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-muted-foreground">
               No opportunities from today match the current filters.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-sm">
-                <thead className="border-b border-white/5">
-                  <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                <thead className="border-b border-border">
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="py-3 pr-4">Match</th>
                     <th className="py-3 pr-4">Market</th>
                     <th className="py-3 pr-4">Model %</th>
@@ -445,20 +552,20 @@ export default function ValueRadar() {
                     <tr
                       key={point.id}
                       onClick={() => setSelectedPointId(point.id)}
-                      className={`cursor-pointer border-t border-white/5 transition-colors hover:bg-white/[0.03] ${
-                        selectedPoint?.id === point.id ? "bg-white/[0.04]" : ""
+                      className={`cursor-pointer border-t border-border transition-colors hover:bg-[hsl(var(--sl-surface))] ${
+                        selectedPoint?.id === point.id ? "bg-[hsl(var(--sl-surface))]" : ""
                       }`}
                     >
-                      <td className="py-3 pr-4 font-medium text-white">{point.match}</td>
-                      <td className="py-3 pr-4 text-white/65">{point.market}</td>
-                      <td className="py-3 pr-4 font-mono-data text-white">
+                      <td className="py-3 pr-4 font-medium text-foreground">{point.match}</td>
+                      <td className="py-3 pr-4 text-muted-foreground">{point.market}</td>
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
                         {point.modelProb.toFixed(1)}%
                       </td>
-                      <td className="py-3 pr-4 font-mono-data text-emerald-100">
+                      <td className="py-3 pr-4 font-mono-data text-emerald-700">
                         {point.calibratedProb.toFixed(1)}%
                       </td>
                       <td className="py-3 pr-4">
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/58">
+                        <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                           {point.calibrationLabel}
                         </span>
                       </td>
@@ -468,10 +575,10 @@ export default function ValueRadar() {
                       <td className="py-3 pr-4">
                         <ConfidenceMeter score={point.confidence} className="w-24" />
                       </td>
-                      <td className="py-3 pr-4 font-mono-data text-white">
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
                         {point.odds.toFixed(2)}
                       </td>
-                      <td className="py-3 pr-4 font-mono-data text-white">
+                      <td className="py-3 pr-4 font-mono-data text-foreground">
                         {point.kelly.toFixed(2)}%
                       </td>
                       <td className="py-3 pr-4">
@@ -487,7 +594,7 @@ export default function ValueRadar() {
                             event.stopPropagation();
                             openPointInSimpleBet(point);
                           }}
-                          className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 transition hover:bg-emerald-400/15"
+                          className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-400/15"
                         >
                           Simple Bet
                         </button>
@@ -510,7 +617,7 @@ export default function ValueRadar() {
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid
-                  stroke="rgba(255,255,255,0.06)"
+                  stroke="hsl(var(--border))"
                   strokeDasharray="3 3"
                 />
                 <XAxis
@@ -520,12 +627,12 @@ export default function ValueRadar() {
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   label={{
                     value: "Edge %",
                     position: "insideBottom",
                     offset: -4,
-                    fill: "rgba(255,255,255,0.45)",
+                    fill: "hsl(var(--muted-foreground))",
                   }}
                 />
                 <YAxis
@@ -535,13 +642,13 @@ export default function ValueRadar() {
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   label={{
                     value: "Confidence",
                     angle: -90,
                     position: "insideLeft",
                     offset: 8,
-                    fill: "rgba(255,255,255,0.45)",
+                    fill: "hsl(var(--muted-foreground))",
                   }}
                 />
                 <ZAxis type="number" dataKey="kelly" range={[80, 420]} />
@@ -573,7 +680,7 @@ export default function ValueRadar() {
                   barCategoryGap="28%"
                 >
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="hsl(var(--border))"
                     vertical={false}
                     strokeDasharray="3 3"
                   />
@@ -582,13 +689,13 @@ export default function ValueRadar() {
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -634,7 +741,7 @@ export default function ValueRadar() {
                   barCategoryGap="28%"
                 >
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="hsl(var(--border))"
                     vertical={false}
                     strokeDasharray="3 3"
                   />
@@ -643,13 +750,13 @@ export default function ValueRadar() {
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.62)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.50)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -685,20 +792,20 @@ export default function ValueRadar() {
           badge="Focus"
         >
           {!selectedPoint ? (
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-muted-foreground">
               No visible radar points with the current filters.
             </p>
           ) : (
             <div className="space-y-5">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                     Selected Match
                   </p>
-                  <h3 className="mt-2 text-xl font-semibold text-white">
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">
                     {selectedPoint.match}
                   </h3>
-                  <p className="mt-1 text-sm text-white/55">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {new Date(selectedPoint.createdAt).toLocaleString()}
                   </p>
                 </div>
@@ -710,7 +817,7 @@ export default function ValueRadar() {
                   <button
                     type="button"
                     onClick={() => openPointInSimpleBet(selectedPoint)}
-                    className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 transition hover:bg-emerald-400/15"
+                    className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-400/15"
                   >
                     Open In Simple Bet
                   </button>
@@ -736,8 +843,8 @@ export default function ValueRadar() {
                 <MetricBlock label="Total xG" value={selectedPoint.xg.toFixed(2)} />
                 <MetricBlock label="Risk" value={selectedPoint.risk} />
               </div>
-              <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/42">
+              <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
                   Learning Read
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/68">

@@ -117,12 +117,12 @@ export default function Landing() {
       <nav className="fixed top-0 z-50 w-full border-b border-white/8 bg-background/66 backdrop-blur-2xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_10px_30px_rgba(34,211,238,0.18)]">
-              <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-primary/10 shadow-[0_10px_30px_rgba(34,211,238,0.18)]">
+              <div className="absolute inset-[1px] rounded-[11px] bg-card" />
               <BarChart3 className="relative w-4 h-4 text-cyan-100" strokeWidth={1.7} />
             </div>
             <div>
-              <span className="block bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-lg font-black tracking-[-0.04em] text-transparent">ScoreLab</span>
+              <span className="block bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] text-lg font-black tracking-[-0.04em] ">ScoreLab</span>
               <span className="-mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-white/34 sm:block">Estatística de Futebol</span>
             </div>
           </Link>
@@ -185,18 +185,18 @@ export default function Landing() {
             }}
           >
             <motion.div variants={fadeIn} custom={0} className="mb-6">
-              <Badge variant="outline" className="gap-2 border-primary/18 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] py-1.5 text-muted-foreground shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+              <Badge variant="outline" className="gap-2 border-primary/18 bg-primary py-1.5 text-muted-foreground shadow-[0_0_24px_rgba(34,211,238,0.08)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 Análise Estatística de Futebol — Grátis
               </Badge>
             </motion.div>
             <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-4xl sm:text-5xl font-black leading-[0.98] sm:leading-[0.96] tracking-[-0.05em] sm:tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
               O Mercado{" "}
-              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
+              <span className="text-primary">
                 Erra
               </span>
               .{" "}
-              <span className="text-gradient-primary">Aproveita.</span>
+              <span className="text-primary">Aproveita.</span>
             </motion.h1>
             <motion.p variants={fadeIn} custom={2} className="mt-5 sm:mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-muted-foreground md:text-xl">
               Simulamos cada jogo 10 000 vezes para encontrar o valor que as odds escondem. Grátis.
@@ -213,7 +213,7 @@ export default function Landing() {
                 { value: 10000, suffix: "", label: "Simulações por Análise" },
                 { value: 30, suffix: "+", label: "Ligas Calibradas" },
               ].map(s => (
-                <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+                <Card key={s.label} className="rounded-2xl border-white/8 bg-primary/10 text-center">
                   <CardContent className="p-2.5 sm:p-4">
                     <p className="text-lg sm:text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
                     <p className="mt-0.5 text-[10px] leading-tight sm:text-xs text-muted-foreground">{s.label}</p>
@@ -231,17 +231,17 @@ export default function Landing() {
             className="relative mt-4 hidden lg:block lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
           >
             <div className="relative">
-              <div className="absolute -inset-[1px] rounded-[30px] bg-[linear-gradient(135deg,rgba(34,211,238,0.35),rgba(34,197,94,0.2),rgba(34,211,238,0.1))] opacity-80 blur-[2px]" />
+              <div className="absolute -inset-[1px] rounded-[30px] bg-primary/10 opacity-80 blur-[2px]" />
               <div className="absolute inset-0 rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.14),transparent_34%)]" />
               <div className="absolute left-5 top-5 h-8 w-8 rounded-tl-[18px] border-l border-t border-cyan-300/25" />
               <div className="absolute bottom-5 right-5 h-8 w-8 rounded-br-[18px] border-b border-r border-emerald-300/25" />
-              <div className="rounded-[28px] border border-primary/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.94),rgba(9,16,27,0.96))] p-4 shadow-[0_24px_64px_rgba(0,0,0,0.36)] backdrop-blur-xl">
+              <div className="rounded-[28px] border border-primary/15 bg-card p-4 backdrop-blur-xl">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                     <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
                   <h3 className="mt-1.5 text-lg font-semibold text-foreground">Visão de valor ao vivo</h3>
                 </div>
-                <div className="rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary ring-1 ring-primary/20">
+                <div className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary ring-1 ring-primary/20">
                   Live
                 </div>
               </div>
@@ -320,12 +320,12 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-primary px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Radar className="w-3 h-3" /> Exemplo do Radar
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
               O Teu{" "}
-              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+              <span className="text-primary">
                 Value Radar
               </span>
             </h2>
@@ -343,7 +343,7 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+                className="rounded-[24px] border border-cyan-200/10 bg-card px-5 py-4 backdrop-blur-xl"
               >
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
                 <p className="mt-2 text-2xl font-semibold text-foreground">{item.value}</p>
@@ -370,7 +370,7 @@ export default function Landing() {
           </div>
 
           {/* Scanner table */}
-          <div className="overflow-hidden rounded-[32px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] shadow-[0_28px_80px_-26px_rgba(34,211,238,0.20)] backdrop-blur-xl">
+          <div className="overflow-hidden rounded-[32px] border border-cyan-200/10 bg-card backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-white/6 px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Quadro de oportunidades</p>
@@ -395,17 +395,16 @@ export default function Landing() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                className={`
-                  ${i > 2 ? "hidden md:grid" : "grid"} grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-4 md:px-5 py-4
+                className={`${i > 2 ? "hidden md:grid" : "grid"} grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-4 md:px-5 py-4
                   border-b border-white/5 last:border-b-0
                   hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group
-                  ${item.best ? "bg-[linear-gradient(90deg,rgba(34,211,238,0.08),rgba(34,197,94,0.06))]" : ""}
+                  ${item.best ? "bg-primary" : ""}
                 `}
               >
                 {/* Match Info */}
                 <div>
                   {item.best && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[linear-gradient(90deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
                       🔥 Melhor Valor do Quadro
                     </span>
                   )}
@@ -415,7 +414,7 @@ export default function Landing() {
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">{item.league}</span>
                     {item.tag && (
-                      <span className="text-[10px] text-primary/70 italic">· {item.tag}</span>
+                      <span className="text-[10px] text-primary italic">· {item.tag}</span>
                     )}
                   </div>
                 </div>
@@ -491,13 +490,13 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-primary px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Target className="h-3.5 w-3.5" />
               Funcionalidades
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
               Quantifica o{" "}
-              <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+              <span className="text-primary">
                 Relvado
               </span>
             </h2>
@@ -514,7 +513,7 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+                className="rounded-[24px] border border-cyan-200/10 bg-card px-5 py-4 backdrop-blur-xl"
               >
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
@@ -532,12 +531,12 @@ export default function Landing() {
                 variants={fadeIn}
                 custom={i}
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="group cursor-default rounded-[22px] sm:rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-4 sm:p-6 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)] backdrop-blur-xl"
+                className="group cursor-default rounded-[22px] sm:rounded-[28px] border border-cyan-200/10 bg-card p-4 sm:p-6 transition-all duration-300 hover:-translate-y-1 hover: backdrop-blur-xl"
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)] transition-colors group-hover:bg-primary/20">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)] transition-colors group-hover:bg-primary/20">
                   <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
-                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
+                <div className="mb-3 h-px w-full bg-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{f.title}</h3>
                 <p className="hidden text-sm text-muted-foreground leading-relaxed sm:block">{f.desc}</p>
               </motion.div>
@@ -551,7 +550,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-5xl mx-auto">
           <div className="mb-10 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-primary px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Crosshair className="h-3.5 w-3.5" />
               Filosofia
             </div>
@@ -571,7 +570,7 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+                className="rounded-[24px] border border-cyan-200/10 bg-card px-5 py-4 backdrop-blur-xl"
               >
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
@@ -589,9 +588,9 @@ export default function Landing() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.78)_0%,rgba(8,19,33,0.92)_100%)] px-4 py-3 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.14)]"
+                    className="flex items-center gap-3 rounded-2xl border border-cyan-200/10 bg-card px-4 py-3"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.24)]">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.24)]">
                       <Crosshair className="w-4 h-4 text-primary" strokeWidth={1.5} />
                     </div>
                     <p className="text-foreground font-medium">{point}</p>
@@ -603,7 +602,7 @@ export default function Landing() {
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-8 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)]"
+              className="rounded-[28px] border border-cyan-200/10 bg-card p-8 backdrop-blur-xl"
             >
               <div className="space-y-6">
                 <div>
@@ -637,7 +636,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-primary px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <ChevronRight className="h-3.5 w-3.5" />
               Processo
             </div>
@@ -657,7 +656,7 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+                className="rounded-[24px] border border-cyan-200/10 bg-card px-5 py-4 backdrop-blur-xl"
               >
                 <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
@@ -675,12 +674,12 @@ export default function Landing() {
                 variants={fadeIn}
                 custom={i}
                 whileHover={{ y: -4, scale: 1.01 }}
-                className="relative rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-5 transition-all duration-300 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
+                className="relative rounded-[28px] border border-cyan-200/10 bg-card p-5 transition-all duration-300 backdrop-blur-xl hover:-translate-y-1 hover:"
               >
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
                   <span className="text-sm font-bold font-mono-data text-primary">{step.num}</span>
                 </div>
-                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
+                <div className="mb-3 h-px w-full bg-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{step.title}</h3>
                 <p className="hidden text-sm text-muted-foreground sm:block">{step.desc}</p>
                 {i < steps.length - 1 && (
@@ -697,7 +696,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
         <div className="relative mx-auto max-w-3xl">
           <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-primary px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
               <Shield className="h-3.5 w-3.5" />
               Perguntas Frequentes
             </div>
@@ -725,7 +724,7 @@ export default function Landing() {
               <AccordionItem
                 key={item.q}
                 value={`faq-${i}`}
-                className="rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] px-5 backdrop-blur-xl"
+                className="rounded-2xl border border-cyan-200/10 bg-card px-5 backdrop-blur-xl"
               >
                 <AccordionTrigger className="text-left text-sm sm:text-base font-semibold text-foreground hover:no-underline">
                   {item.q}
@@ -742,12 +741,11 @@ export default function Landing() {
       {/* CTA Footer */}
       <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,var(--scorelab-accent-a-soft),transparent_28%),radial-gradient(circle_at_50%_80%,var(--scorelab-accent-b-soft),transparent_34%),linear-gradient(180deg,rgba(7,17,31,0.84),rgba(5,12,21,0.98))]" />
-        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[36px] border border-cyan-100/10 bg-[linear-gradient(135deg,rgba(13,30,47,0.92),rgba(8,19,33,0.98))] px-6 py-12 text-center shadow-[0_34px_96px_-40px_rgba(34,211,238,0.32)] backdrop-blur-xl md:px-12 md:py-16">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.055),transparent)] opacity-70" />
+        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[36px] border border-cyan-100/10 bg-card px-6 py-12 text-center backdrop-blur-xl md:px-12 md:py-16">
           <Badge variant="outline" className="relative mb-5 border-primary/18 text-primary">Pronto para o pontapé de saída</Badge>
           <h2 className="relative text-3xl font-black tracking-[-0.045em] text-foreground md:text-5xl">
             Pronto para Encontrar o teu{" "}
-            <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
+            <span className="text-primary">
               Edge?
             </span>
           </h2>
@@ -763,11 +761,11 @@ export default function Landing() {
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr] md:items-start">
           <div>
             <div className="flex items-center gap-2">
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_8px_22px_rgba(34,211,238,0.14)]">
-              <div className="absolute inset-[1px] rounded-[7px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-primary/25 bg-primary/10 shadow-[0_8px_22px_rgba(34,211,238,0.14)]">
+              <div className="absolute inset-[1px] rounded-[7px] bg-card" />
               <BarChart3 className="relative w-3 h-3 text-cyan-100" strokeWidth={1.6} />
             </div>
-            <span className="text-sm font-semibold bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
+            <span className="text-sm font-semibold text-primary">ScoreLab</span>
             </div>
             <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Onde a estatística do futebol, a disciplina de mercado e a gestão de banca se tornam um só sistema.</p>
           </div>

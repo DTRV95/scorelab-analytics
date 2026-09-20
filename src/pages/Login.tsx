@@ -42,7 +42,7 @@ export default function Login() {
             <span className="font-bold text-2xl text-foreground">ScoreLab</span>
           </div>
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Bem-vindo de volta ao teu <span className="text-gradient-primary">edge</span>.
+            Bem-vindo de volta ao teu <span className="text-primary">edge</span>.
           </h2>
           <p className="text-muted-foreground leading-relaxed">
             Acede às tuas análises, acompanha as oportunidades diárias e mantém a tua banca otimizada.

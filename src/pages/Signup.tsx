@@ -51,7 +51,7 @@ export default function Signup() {
             <span className="font-bold text-2xl text-foreground">ScoreLab</span>
           </div>
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Começa hoje a encontrar o teu <span className="text-gradient-primary">edge</span>.
+            Começa hoje a encontrar o teu <span className="text-primary">edge</span>.
           </h2>
           <p className="text-muted-foreground leading-relaxed">
             Uma bancada de análise orientada por dados: probabilidades, deteção de valor e disciplina de banca num só lugar. Grátis.

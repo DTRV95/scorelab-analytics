@@ -1063,7 +1063,6 @@ export default function Dashboard() {
           badge="P/L"
           className="relative"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
 
           <div className="relative h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -1174,10 +1173,9 @@ export default function Dashboard() {
           badge="Core"
           className="relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.045),transparent_30%)]" />
           <div className="relative z-10 space-y-6">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Market Lead
                 </p>
@@ -1190,7 +1188,7 @@ export default function Dashboard() {
                     : "Need more settled market data"}
                 </p>
               </div>
-              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   League Lead
                 </p>
@@ -1203,7 +1201,7 @@ export default function Dashboard() {
                     : "Need more settled league data"}
                 </p>
               </div>
-              <div className=" rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Validation Focus
                 </p>
@@ -1217,7 +1215,7 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-6">
-              <div className=" rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
+              <div className="rounded-[24px] border border-border bg-card p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground md:text-[15px]">
@@ -1305,7 +1303,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className=" rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(4,11,28,0.97)_100%)] p-4">
+              <div className="rounded-[24px] border border-border bg-card p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground md:text-[15px]">

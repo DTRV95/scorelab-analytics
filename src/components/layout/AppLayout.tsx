@@ -8,16 +8,9 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-// Pages already rebuilt on the sportsbook layout. Everything else still
-// paints its own dark cards and reads the semantic tokens expecting dark
-// values, so it gets them scoped back via .sl-legacy. Each entry added here
-// is one page that no longer needs that crutch.
-const SPORTSBOOK_ROUTES = new Set(["/probability", "/dashboard", "/"]);
-
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const isAnalysisPage = location.pathname === "/analysis";
-  const isLegacyPage = !SPORTSBOOK_ROUTES.has(location.pathname);
   const routeClassName =
     location.pathname === "/"
       ? "scorelab-route-dashboard"
@@ -37,14 +30,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         <main className="flex-1 px-3 pb-28 pt-4 sm:px-5 md:px-7 md:pb-12 md:pt-6 xl:px-8">
           <div className="mx-auto max-w-[1280px]">
             <div
-              className={[
-                isLegacyPage ? "sl-legacy" : "",
+              className={
                 isAnalysisPage
                   ? ""
-                  : `scorelab-mobile-compact scorelab-mobile-overview ${routeClassName}`,
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                  : `scorelab-mobile-compact scorelab-mobile-overview ${routeClassName}`
+              }
             >
               {children}
             </div>

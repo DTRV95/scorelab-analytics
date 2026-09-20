@@ -139,14 +139,14 @@ export function MatchResultsPanel({
   const net = pendingSettlements.reduce((sum, item) => sum + item.profitLoss, 0);
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-[linear-gradient(180deg,rgba(34,211,238,0.06),rgba(255,255,255,0.02))] p-4">
+    <div className="rounded-2xl border border-primary/20 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-semibold text-white">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Trophy className="h-4 w-4 text-primary" strokeWidth={1.7} />
             Resultados dos jogos
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-white/55">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Os resultados finais dos jogos escolhidos em "Jogos do Dia" são
             buscados automaticamente. As apostas só são liquidadas quando
             confirmas.
@@ -155,7 +155,7 @@ export function MatchResultsPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 flex-none rounded-lg text-white/50 hover:text-white"
+          className="h-8 w-8 flex-none rounded-lg text-muted-foreground hover:text-foreground"
           title="Verificar resultados agora"
           disabled={loading}
           onClick={() => {
@@ -169,7 +169,7 @@ export function MatchResultsPanel({
       </div>
 
       {loading && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-white/55">
+        <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> A verificar
           resultados...
         </p>
@@ -186,7 +186,7 @@ export function MatchResultsPanel({
       )}
 
       {!loading && settledCount > 0 && (
-        <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200 ring-1 ring-emerald-400/20">
+        <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/10 px-3 py-2 text-xs text-emerald-700 ring-1 ring-emerald-400/20">
           <CheckCircle2 className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
           {settledCount === 1
             ? "1 aposta liquidada."
@@ -200,22 +200,22 @@ export function MatchResultsPanel({
           {pendingSettlements.map((item) => (
             <div
               key={settlementKey(item)}
-              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+              className="flex items-center gap-2 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-white">
+                <p className="truncate text-sm text-foreground">
                   {item.match}{" "}
-                  <span className="text-white/45">{item.score}</span>
+                  <span className="text-muted-foreground">{item.score}</span>
                 </p>
-                <p className="truncate text-[11px] text-white/50">
+                <p className="truncate text-[11px] text-muted-foreground">
                   {item.market} · {item.stake.toFixed(2)} € @ {item.odd.toFixed(2)}
                 </p>
               </div>
               <span
                 className={`flex-none rounded-lg px-2 py-1 text-[11px] font-semibold ${
                   item.resultStatus === "green"
-                    ? "bg-emerald-400/10 text-emerald-300"
-                    : "bg-rose-400/10 text-rose-300"
+                    ? "bg-emerald-400/10 text-emerald-700"
+                    : "bg-rose-400/10 text-rose-700"
                 }`}
               >
                 {money(item.profitLoss)}
@@ -223,7 +223,7 @@ export function MatchResultsPanel({
               <button
                 type="button"
                 title="Não liquidar esta"
-                className="flex-none rounded-lg p-1 text-white/35 hover:text-white/70"
+                className="flex-none rounded-lg p-1 text-muted-foreground hover:text-foreground"
                 onClick={() =>
                   setSkipped((previous) =>
                     new Set(previous).add(settlementKey(item))
@@ -236,9 +236,9 @@ export function MatchResultsPanel({
           ))}
 
           <div className="flex items-center justify-between gap-3 pt-1">
-            <p className="text-[11px] text-white/50">
+            <p className="text-[11px] text-muted-foreground">
               Saldo destas apostas:{" "}
-              <span className={net >= 0 ? "text-emerald-300" : "text-rose-300"}>
+              <span className={net >= 0 ? "text-emerald-700" : "text-rose-700"}>
                 {money(net)}
               </span>
             </p>
@@ -250,7 +250,7 @@ export function MatchResultsPanel({
       )}
 
       {!loading && plan.manual.length > 0 && (
-        <p className="mt-3 text-[11px] text-white/45">
+        <p className="mt-3 text-[11px] text-muted-foreground">
           {plan.manual.length === 1
             ? "1 aposta continua por liquidar à mão"
             : `${plan.manual.length} apostas continuam por liquidar à mão`}
@@ -259,7 +259,7 @@ export function MatchResultsPanel({
       )}
 
       {!loading && pendingSettlements.length === 0 && plan.pending > 0 && (
-        <p className="mt-3 text-[11px] text-white/45">
+        <p className="mt-3 text-[11px] text-muted-foreground">
           {plan.pending === 1
             ? "1 jogo analisado ainda não foi disputado."
             : `${plan.pending} jogos analisados ainda não foram disputados.`}
@@ -267,7 +267,7 @@ export function MatchResultsPanel({
       )}
 
       {!loading && unavailable.length > 0 && (
-        <p className="mt-3 text-[11px] text-amber-300/80">
+        <p className="mt-3 text-[11px] text-amber-700/80">
           Sem resposta da fonte de dados para: {unavailable.join(", ")}. Tenta
           novamente daqui a pouco.
         </p>

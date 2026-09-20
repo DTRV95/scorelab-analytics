@@ -75,9 +75,9 @@ const MAX_STRETCH_RETURN_ON_STAKE_PCT = 30;
 const ROADMAP_RADAR_MIN_MODEL_PROB = 80;
 const ROADMAP_TIMEZONE = "Europe/Lisbon";
 const surfaceCardClass =
-  "scorelab-board-3d scorelab-tilt-3d rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.02)_100%)] p-5 backdrop-blur-sm";
+  "rounded-[24px] border border-border bg-card p-5";
 const compactSurfaceCardClass =
-  "scorelab-board-3d scorelab-tilt-3d rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] p-4 backdrop-blur-sm";
+  "rounded-[22px] border border-border bg-[hsl(var(--sl-surface))] p-4";
 
 function formatCurrency(value: number) {
   if (!Number.isFinite(value)) return "EUR 0.00";
@@ -799,24 +799,22 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5"
+      className="relative overflow-hidden rounded-[28px] border border-border bg-card p-5"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
-      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/45">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
             Mission System
           </p>
-          <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-white md:text-[1.2rem]">
+          <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground md:text-[1.2rem]">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-6 text-white/56">{description}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
           ) : null}
         </div>
         {badge ? (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-white/50">
+          <div className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {badge}
           </div>
         ) : null}
@@ -842,25 +840,24 @@ function MetricCard({
       <StadiumLightSweep trigger={`${label}-${String(value)}-${change ?? ""}`}>
       <motion.div
         variants={fadeUp}
-        className="scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,22,38,0.96)_0%,rgba(5,14,28,0.98)_100%)] px-4 py-3.5"
+        className="relative overflow-hidden rounded-[20px] border border-border bg-card px-4 py-3.5"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
         <div className="relative">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-100/38">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
             {label}
           </p>
-          <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-          <div className="mt-3 text-[1rem] font-semibold tracking-[-0.03em] text-white md:text-[1.14rem]">
+          <div className="mt-2 h-1 w-8 rounded-full bg-primary" />
+          <div className="mt-3 text-[1rem] font-semibold tracking-[-0.03em] text-foreground md:text-[1.14rem]">
             {value}
           </div>
           {change ? (
             <p
               className={`mt-2.5 text-[9px] font-semibold uppercase tracking-[0.15em] leading-4 ${
                 tone === "positive"
-                  ? "text-emerald-300"
+                  ? "text-emerald-700"
                   : tone === "negative"
-                  ? "text-red-300"
-                  : "text-white/42"
+                  ? "text-red-700"
+                  : "text-muted-foreground"
               }`}
             >
               {change}
@@ -885,19 +882,19 @@ function InputField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/40">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
         {label}
       </label>
-      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4">
         <input
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full bg-transparent text-sm text-white outline-none"
+          className="h-11 w-full bg-transparent text-sm text-foreground outline-none"
         />
         {suffix ? (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {suffix}
           </span>
         ) : null}
@@ -1616,8 +1613,8 @@ export default function RoadmapPlanner() {
           statusIcon={<HudStateIcon state={roadmap.systemCommand.tone === "negative" ? "risk" : roadmap.systemCommand.tone === "positive" ? "execution" : "scanning"} />}
           title={
             <>
-              <span className="text-white">Intelligent </span>
-              <span className="bg-[linear-gradient(90deg,rgba(103,232,249,0.98)_0%,rgba(52,211,153,0.98)_100%)] bg-clip-text text-transparent">
+              <span className="text-foreground">Intelligent </span>
+              <span className="text-primary">
                 Roadmap
               </span>
             </>
@@ -1682,35 +1679,35 @@ export default function RoadmapPlanner() {
           >
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className={compactSurfaceCardClass}>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                   Active Mission
                 </p>
-                <p className="mt-2 text-base font-semibold text-white">
+                <p className="mt-2 text-base font-semibold text-foreground">
                   {formatCurrency(roadmap.startingBankroll)} to {formatCurrency(roadmap.targetAmount)}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/46">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Day {roadmap.currentPlanDay} of {parsedInputs.targetDays} · started {effectiveStartedAt}
                 </p>
               </div>
               <div className={compactSurfaceCardClass}>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                   Mission Status
                 </p>
-                <p className="mt-2 text-base font-semibold text-white">
+                <p className="mt-2 text-base font-semibold text-foreground">
                   {missionTracker.state.label}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/46">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   {formatPct(missionTracker.completionRate)} complete
                 </p>
               </div>
               <div className={compactSurfaceCardClass}>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                   Mission History
                 </p>
-                <p className="mt-2 text-base font-semibold text-white">
+                <p className="mt-2 text-base font-semibold text-foreground">
                   {missionHistory.length} saved
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/46">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   {missionHistory.filter((mission) => mission.status === "success").length} successful · {missionHistory.filter((mission) => mission.status === "failed").length} failed
                 </p>
               </div>
@@ -1739,28 +1736,28 @@ export default function RoadmapPlanner() {
               <button
                 type="button"
                 onClick={handleSavePlan}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-400/15"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 transition hover:bg-emerald-400/15"
               >
                 Save Active Mission
               </button>
               <button
                 type="button"
                 onClick={() => archiveCurrentMission("success")}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition hover:bg-cyan-400/15"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary transition hover:bg-primary/10"
               >
                 Close As Success
               </button>
               <button
                 type="button"
                 onClick={() => archiveCurrentMission("failed")}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-red-400/20 bg-red-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-200 transition hover:bg-red-400/15"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-red-400/20 bg-red-400/10 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-700 transition hover:bg-red-400/15"
               >
                 Close As Failed
               </button>
               <button
                 type="button"
                 onClick={handleStartNewMission}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/78 transition hover:bg-white/[0.1]"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground transition hover:bg-white/[0.1]"
               >
                 Start New Mission
               </button>
@@ -1772,30 +1769,30 @@ export default function RoadmapPlanner() {
                     targetDays: String(DEFAULT_ROADMAP_SETTINGS.targetDays),
                   })
                 }
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/[0.08]"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
               >
                 Reset Inputs
               </button>
               {savedMessage ? (
-                <span className="text-sm text-emerald-300">{savedMessage}</span>
+                <span className="text-sm text-emerald-700">{savedMessage}</span>
               ) : null}
             </div>
 
-            <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-white/42">
+            <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
               Mission started on {effectiveStartedAt}.
             </p>
 
-            <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+            <div className="mt-4 rounded-[22px] border border-border bg-[hsl(var(--sl-surface))] p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Recent Missions
                 </p>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/34">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   Last {Math.min(3, missionHistory.length)}
                 </p>
               </div>
               {missionHistory.length === 0 ? (
-                <p className="mt-3 text-sm leading-6 text-white/52">
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   No closed missions yet. When a plan ends, close it as success or failed and it will appear here.
                 </p>
               ) : (
@@ -1803,13 +1800,13 @@ export default function RoadmapPlanner() {
                   {missionHistory.slice(0, 3).map((mission) => (
                     <div
                       key={mission.id}
-                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/8 bg-white/[0.035] p-3 md:grid-cols-[1fr_auto]"
+                      className="grid grid-cols-1 gap-2 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3 md:grid-cols-[1fr_auto]"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-white">
+                        <p className="text-sm font-semibold text-foreground">
                           {formatCurrency(mission.startingBankroll)} to {formatCurrency(mission.targetAmount)}
                         </p>
-                        <p className="mt-1 text-xs leading-5 text-white/46">
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
                           {getIsoDateOnly(mission.startedAt)} to {getIsoDateOnly(mission.endedAt)} · {formatPct(mission.progressPct)} complete
                         </p>
                       </div>
@@ -1817,8 +1814,8 @@ export default function RoadmapPlanner() {
                         <div
                           className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
                             mission.status === "success"
-                              ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
-                              : "border-red-300/25 bg-red-300/10 text-red-200"
+                              ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-700"
+                              : "border-red-300/25 bg-red-300/10 text-red-700"
                           }`}
                         >
                           {mission.status}
@@ -1826,7 +1823,7 @@ export default function RoadmapPlanner() {
                         <button
                           type="button"
                           onClick={() => handleDeleteMission(mission.id)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/54 transition hover:border-red-300/20 hover:bg-red-400/10 hover:text-red-200"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-[hsl(var(--sl-surface))] text-muted-foreground transition hover:border-red-300/20 hover:bg-red-400/10 hover:text-red-700"
                           aria-label="Delete mission"
                           title="Delete mission"
                         >
@@ -1847,46 +1844,46 @@ export default function RoadmapPlanner() {
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className={surfaceCardClass}>
-                <div className="flex items-center gap-2 text-emerald-200">
+                <div className="flex items-center gap-2 text-emerald-700">
                   <Wallet className="h-4 w-4" strokeWidth={1.6} />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
                     Daily Stake Cap
                   </p>
                 </div>
-                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-white md:text-[1.28rem]">
+                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-foreground md:text-[1.28rem]">
                   {formatCurrency(roadmap.missionStake)}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/56">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Maximum daily exposure before the mission should stop adding risk.
                 </p>
               </div>
 
               <div className={surfaceCardClass}>
-                <div className="flex items-center gap-2 text-cyan-200">
+                <div className="flex items-center gap-2 text-primary">
                   <TrendingUp className="h-4 w-4" strokeWidth={1.6} />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
                     Profit Target
                   </p>
                 </div>
-                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-white md:text-[1.28rem]">
+                <p className="mt-3 text-[1.18rem] font-semibold tracking-[-0.02em] text-foreground md:text-[1.28rem]">
                   {formatCurrency(roadmap.requiredProfitToday)}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/56">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   The radar below calculates the exact stake per qualifying event.
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 rounded-[22px] border border-cyan-300/12 bg-cyan-300/[0.045] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+            <div className="mt-3 rounded-[22px] border border-primary/30 bg-primary/5 p-4 backdrop-blur-sm">
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="flex items-center gap-2 text-cyan-100">
+                  <div className="flex items-center gap-2 text-primary">
                     <ShieldCheck className="h-4 w-4" strokeWidth={1.6} />
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
                       Mission Guardrails
                     </p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-white/58">
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Operational checks before adding risk to the mission.
                   </p>
                 </div>
@@ -1910,16 +1907,16 @@ export default function RoadmapPlanner() {
                         ? "border-emerald-300/18 bg-emerald-300/[0.07]"
                         : guardrail.tone === "negative"
                         ? "border-red-300/18 bg-red-300/[0.07]"
-                        : "border-white/10 bg-white/[0.04]"
+                        : "border-border bg-[hsl(var(--sl-surface))]"
                     }`}
                   >
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       {guardrail.label}
                     </p>
-                    <p className="mt-2 text-sm font-semibold text-white">
+                    <p className="mt-2 text-sm font-semibold text-foreground">
                       {guardrail.state}
                     </p>
-                    <p className="mt-1 text-[11px] leading-5 text-white/48">
+                    <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
                       {guardrail.detail}
                     </p>
                   </div>
@@ -1927,16 +1924,16 @@ export default function RoadmapPlanner() {
               </div>
             </div>
 
-            <div className="mt-3 rounded-[22px] border border-emerald-300/12 bg-emerald-300/[0.055] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+            <div className="mt-3 rounded-[22px] border border-emerald-300/12 bg-emerald-300/[0.055] p-4 backdrop-blur-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/48">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700/48">
                     Radar Execution
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-white/62">
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Highest-probability radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% and the exact stake needed to reach today's profit target.
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-white/40">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     {roadmap.isRadarExecutionFromToday
                       ? "Using today's radar board."
                       : `Using latest available radar board from ${roadmap.radarExecutionSourceDate}.`}
@@ -1949,10 +1946,10 @@ export default function RoadmapPlanner() {
                       : "border-amber-300/20 bg-amber-300/10"
                   }`}
                 >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Fit
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
+                  <p className="mt-1 text-sm font-semibold text-foreground">
                     {roadmap.radarExecutionPlan.fullyCovered ? "Ready" : "Short"}
                   </p>
                 </div>
@@ -1965,29 +1962,29 @@ export default function RoadmapPlanner() {
                       type="button"
                       key={`${pick.id}-${pick.market}`}
                       onClick={() => handleOpenRadarPick(pick)}
-                      className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-white/8 bg-white/[0.035] p-3 text-left transition hover:border-emerald-300/25 hover:bg-emerald-300/[0.06] md:grid-cols-[1fr_auto]"
+                      className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3 text-left transition hover:border-emerald-300/25 hover:bg-emerald-300/[0.06] md:grid-cols-[1fr_auto]"
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-white">
+                          <p className="text-sm font-semibold text-foreground">
                             {index + 1}. {pick.match}
                           </p>
                           <span
                             className={`rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] ${
                               pick.guardrail.tone === "positive"
-                                ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
+                                ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-700"
                                 : pick.guardrail.tone === "negative"
-                                ? "border-red-300/25 bg-red-300/10 text-red-200"
-                                : "border-amber-300/25 bg-amber-300/10 text-amber-200"
+                                ? "border-red-300/25 bg-red-300/10 text-red-700"
+                                : "border-amber-300/25 bg-amber-300/10 text-amber-700"
                             }`}
                           >
                             {pick.guardrail.label}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs leading-5 text-white/52">
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
                           {pick.market} · {pick.league} · learned {formatPct(normalizeProbabilityPct(pick.calibratedProb))} · model {formatPct(normalizeProbabilityPct(pick.modelProb))} · odds {pick.odds.toFixed(2)} · {pick.decision}
                         </p>
-                        <p className="mt-1 text-xs leading-5 text-white/38">
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
                           {pick.guardrail.reason}
                         </p>
                       </div>
@@ -1999,42 +1996,42 @@ export default function RoadmapPlanner() {
                               : "border-amber-300/20 bg-amber-300/10"
                           }`}
                         >
-                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                             Stake Needed
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-white">
+                          <p className="mt-1 text-sm font-semibold text-foreground">
                             {formatCurrency(pick.suggestedStake)}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                             Profit
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-emerald-200">
+                          <p className="mt-1 text-sm font-semibold text-emerald-700">
                             {formatCurrency(pick.projectedProfit)}
                           </p>
                         </div>
                       </div>
                     </button>
                   ))}
-                  <p className="text-xs leading-5 text-white/42">
+                  <p className="text-xs leading-5 text-muted-foreground">
                     Green highlight means the exact stake needed for today's profit target fits inside today's remaining daily cap.
                   </p>
                   {!roadmap.radarExecutionPlan.fullyCovered ? (
-                    <p className="text-xs leading-5 text-amber-200/72">
+                    <p className="text-xs leading-5 text-amber-700/72">
                       None of the highest-probability radar events can hit today's profit target inside the remaining stake capacity.
                     </p>
                   ) : null}
                   {roadmap.radarExecutionPlan.picks.every(
                     (pick) => pick.guardrail.label !== "Clean"
                   ) ? (
-                    <p className="text-xs leading-5 text-red-200/72">
+                    <p className="text-xs leading-5 text-red-700/72">
                       No clean execution is available. The roadmap is showing the board, but not giving a strong entry signal.
                     </p>
                   ) : null}
                 </div>
               ) : (
-                <p className="mt-4 rounded-2xl border border-white/8 bg-white/[0.035] p-3 text-sm leading-6 text-white/54">
+                <p className="mt-4 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3 text-sm leading-6 text-muted-foreground">
                   No radar events above {ROADMAP_RADAR_MIN_MODEL_PROB}% are available in the latest board. Keep the plan on hold instead of forcing lower-probability picks.
                 </p>
               )}
@@ -2058,40 +2055,40 @@ export default function RoadmapPlanner() {
             >
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     Simulation Read
                   </p>
-                  <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-white">
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
                     {roadmap.bankrollSimulation.recommendation.label}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-white/58">
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {roadmap.bankrollSimulation.recommendation.detail}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-white/48">
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {roadmap.bankrollSimulation.recommendation.explanation}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2 text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Inputs
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-white/58">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Simulation hit {formatPct(roadmap.bankrollSimulation.hitRatePct)}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-white/44">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Real hit {formatPct(roadmap.realHitRate)} · {roadmap.settledBetsForSimulation} settled bets
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-white/44">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Avg odds {roadmap.bankrollSimulation.averageOdds.toFixed(2)}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-white/44">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Break-even {formatPct(roadmap.bankrollSimulation.breakEvenHitRatePct)}
                   </p>
                   <p
                     className={`mt-1 text-xs font-semibold leading-5 ${
                       roadmap.bankrollSimulation.edgeGapPct >= 0
-                        ? "text-emerald-200"
-                        : "text-red-200"
+                        ? "text-emerald-700"
+                        : "text-red-700"
                     }`}
                   >
                     Edge gap {roadmap.bankrollSimulation.edgeGapPct >= 0 ? "+" : ""}
@@ -2149,29 +2146,29 @@ export default function RoadmapPlanner() {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[0.82fr_1.18fr]">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   What this means
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/54">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Break-even is the hit rate needed to stop losing money at the current average odds.
                   Edge gap shows whether the simulation hit rate is above or below that line.
                   The simulator uses a conservative hit rate until the sample reaches stronger confidence.
                   Current sample confidence is {formatPct(roadmap.simulationSampleConfidencePct)}.
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/42">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Plan fit compares today's profit target and total target gap against the maximum profit possible from the current daily cap and average odds.
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Recommended Actions
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   {roadmap.bankrollSimulation.recommendation.actions.map((action) => (
                     <div
                       key={action}
-                      className="rounded-xl border border-white/8 bg-black/10 px-3 py-2 text-xs leading-5 text-white/58"
+                      className="rounded-xl border border-border bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground"
                     >
                       {action}
                     </div>
@@ -2180,7 +2177,7 @@ export default function RoadmapPlanner() {
               </div>
             </div>
 
-            <p className="mt-4 text-xs leading-5 text-white/42">
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">
               This is not a guarantee. It is a pressure test that asks whether the mission still makes sense under variance.
               {roadmap.bankrollSimulation.daysToTargetMedian !== null
                 ? ` Median successful path reaches the target around day ${roadmap.bankrollSimulation.daysToTargetMedian}.`
@@ -2194,12 +2191,12 @@ export default function RoadmapPlanner() {
             badge="Progress"
           >
           <div
-            className={`rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] ${
+            className={`rounded-[24px] border p-4 ${
               missionTracker.state.tone === "positive"
                 ? "border-emerald-400/20 bg-emerald-400/10"
                 : missionTracker.state.tone === "negative"
                 ? "border-red-400/20 bg-red-400/10"
-                : "border-cyan-400/20 bg-cyan-400/10"
+                : "border-primary/30 bg-primary/10"
             }`}
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -2207,22 +2204,22 @@ export default function RoadmapPlanner() {
                 <div
                   className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl ${
                     missionTracker.state.tone === "positive"
-                      ? "bg-emerald-400/15 text-emerald-200"
+                      ? "bg-emerald-400/15 text-emerald-700"
                       : missionTracker.state.tone === "negative"
-                      ? "bg-red-400/15 text-red-200"
-                      : "bg-cyan-400/15 text-cyan-200"
+                      ? "bg-red-400/15 text-red-700"
+                      : "bg-primary/10 text-primary"
                   }`}
                 >
                   <CheckCircle2 className="h-5 w-5" strokeWidth={1.8} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Primary Mission
                   </p>
-                  <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-white">
+                  <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-foreground">
                     {missionTracker.state.label}
                   </h3>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground">
                     {missionTracker.state.description}
                   </p>
                 </div>
@@ -2246,23 +2243,23 @@ export default function RoadmapPlanner() {
           </div>
 
           <div
-            className={`mt-4 rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(0,0,0,0.14)] ${
+            className={`mt-4 rounded-[24px] border p-4 ${
               roadmap.systemCommand.tone === "positive"
                 ? "border-emerald-400/20 bg-emerald-400/10"
                 : roadmap.systemCommand.tone === "negative"
                 ? "border-red-400/20 bg-red-400/10"
-                : "border-cyan-400/20 bg-cyan-400/10"
+                : "border-primary/30 bg-primary/10"
             }`}
           >
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/48">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   System Command
                 </p>
-                <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-white">
+                <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-foreground">
                   {roadmap.systemCommand.label}
                 </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground">
                   {roadmap.systemCommand.body}
                 </p>
               </div>
@@ -2270,10 +2267,10 @@ export default function RoadmapPlanner() {
               <div
                 className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
                   roadmap.systemCommand.tone === "positive"
-                    ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                    ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-700"
                     : roadmap.systemCommand.tone === "negative"
-                    ? "border-red-300/30 bg-red-300/10 text-red-200"
-                    : "border-cyan-300/30 bg-cyan-300/10 text-cyan-200"
+                    ? "border-red-300/30 bg-red-300/10 text-red-700"
+                    : "border-primary/30 bg-primary/10 text-primary"
                 }`}
               >
                 {roadmap.systemCommand.tone === "positive"
@@ -2322,12 +2319,12 @@ export default function RoadmapPlanner() {
 
         <div className="space-y-6">
           <PremiumCard title="Daily Log" description="Compact mission log. Showing the current mission window by default." badge="Log">
-            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/42">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                   Mission Window
                 </p>
-                <p className="mt-1 text-sm text-white/62">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Showing {visibleLog.length} of {roadmap.dailyLog.length} days around plan day {roadmap.currentPlanDay}.
                 </p>
               </div>
@@ -2335,7 +2332,7 @@ export default function RoadmapPlanner() {
                 <button
                   type="button"
                   onClick={() => setShowFullDailyLog((current) => !current)}
-                  className="rounded-full border border-cyan-100/12 bg-cyan-100/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-50/68 transition hover:border-cyan-100/22 hover:bg-cyan-100/[0.07]"
+                  className="rounded-full border border-primary/30 bg-primary/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary transition hover:border-primary/30 hover:bg-primary/5"
                 >
                   {showFullDailyLog ? "Show 5 Lines" : `Show ${hiddenDailyLogRows} More`}
                 </button>
@@ -2343,8 +2340,8 @@ export default function RoadmapPlanner() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
-                <thead className="border-b border-white/5">
-                  <tr className="text-left text-xs uppercase tracking-wider text-white/45">
+                <thead className="border-b border-border">
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="py-3 pr-4">Day</th>
                     <th className="py-3 pr-4">Target Stake</th>
                     <th className="py-3 pr-4">Placed Stake</th>
@@ -2356,14 +2353,14 @@ export default function RoadmapPlanner() {
                 </thead>
                 <tbody>
                   {visibleLog.map((row) => (
-                    <tr key={`${row.day}-${row.date}`} className="border-t border-white/5">
-                      <td className="py-3 pr-4 font-medium text-white">D{row.day}</td>
-                      <td className="py-3 pr-4 text-white">{formatCurrency(row.targetStake)}</td>
-                      <td className="py-3 pr-4 text-white">{formatCurrency(row.actualStake)}</td>
-                      <td className="py-3 pr-4 text-white">{formatCurrency(row.targetProfit)}</td>
-                      <td className="py-3 pr-4 text-white">{formatCurrency(row.actualProfit)}</td>
-                      <td className="py-3 pr-4 text-white">{row.settledBets}</td>
-                      <td className="py-3 pr-4 text-white/70">{row.status}</td>
+                    <tr key={`${row.day}-${row.date}`} className="border-t border-border">
+                      <td className="py-3 pr-4 font-medium text-foreground">D{row.day}</td>
+                      <td className="py-3 pr-4 text-foreground">{formatCurrency(row.targetStake)}</td>
+                      <td className="py-3 pr-4 text-foreground">{formatCurrency(row.actualStake)}</td>
+                      <td className="py-3 pr-4 text-foreground">{formatCurrency(row.targetProfit)}</td>
+                      <td className="py-3 pr-4 text-foreground">{formatCurrency(row.actualProfit)}</td>
+                      <td className="py-3 pr-4 text-foreground">{row.settledBets}</td>
+                      <td className="py-3 pr-4 text-foreground">{row.status}</td>
                     </tr>
                   ))}
                 </tbody>

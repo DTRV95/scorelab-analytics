@@ -80,23 +80,22 @@ function PremiumCard({
   return (
     <motion.section
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="relative overflow-hidden rounded-3xl border border-border bg-card p-6"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative z-10 mb-5 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Model Calibration
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">{title}</h2>
           {description ? (
-            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-white/60">
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
           ) : null}
         </div>
         {badge ? (
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1 text-xs text-muted-foreground">
             {badge}
           </span>
         ) : null}
@@ -108,12 +107,12 @@ function PremiumCard({
 
 function MetricBlock({ label, value, hint }: { label: string; value: ReactNode; hint: string }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-white/[0.035] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
-      <div className="mt-2 font-mono-data text-xl font-semibold text-white">{value}</div>
-      <p className="mt-1 text-xs leading-5 text-white/48">{hint}</p>
+      <div className="mt-2 font-mono-data text-xl font-semibold text-foreground">{value}</div>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -491,11 +490,11 @@ function buildRecalibrationRules({
 
 function SegmentTable({ rows }: { rows: SegmentRow[] }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+    <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] text-sm">
-          <thead className="border-b border-white/5">
-            <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+          <thead className="border-b border-border">
+            <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">Segment</th>
               <th className="px-4 py-3">Samples</th>
               <th className="px-4 py-3">Hit</th>
@@ -511,16 +510,16 @@ function SegmentTable({ rows }: { rows: SegmentRow[] }) {
               const tone = getSegmentTone(row);
               const toneClass =
                 tone === "emerald"
-                  ? "text-emerald-300"
+                  ? "text-emerald-700"
                   : tone === "red"
-                  ? "text-red-300"
+                  ? "text-red-700"
                   : tone === "amber"
-                  ? "text-amber-300"
-                  : "text-cyan-300";
+                  ? "text-amber-700"
+                  : "text-primary";
 
               return (
-                <tr key={row.label} className="border-t border-white/5 text-white hover:bg-white/[0.03]">
-                  <td className="px-4 py-3 font-medium text-white/88">{row.label}</td>
+                <tr key={row.label} className="border-t border-border text-foreground hover:bg-[hsl(var(--sl-surface))]">
+                  <td className="px-4 py-3 font-medium text-foreground">{row.label}</td>
                   <td className="px-4 py-3 font-mono-data">{row.samples}</td>
                   <td className="px-4 py-3 font-mono-data">{row.hitRate.toFixed(1)}%</td>
                   <td className="px-4 py-3 font-mono-data">{row.avgModelProb.toFixed(1)}%</td>
@@ -533,12 +532,12 @@ function SegmentTable({ rows }: { rows: SegmentRow[] }) {
                   <td className="px-4 py-3">
                     <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                       row.reliabilityLabel === "Reliable"
-                        ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200"
+                        ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-700"
                         : row.reliabilityLabel === "Promising"
-                        ? "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"
+                        ? "border-primary/30 bg-primary/5 text-primary"
                         : row.reliabilityLabel === "Unstable"
-                        ? "border-red-300/20 bg-red-300/[0.08] text-red-200"
-                        : "border-white/10 bg-white/[0.04] text-white/50"
+                        ? "border-red-300/20 bg-red-300/[0.08] text-red-700"
+                        : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground"
                     }`}>
                       {row.reliabilityLabel} · {row.reliabilityScore}
                     </span>
@@ -702,7 +701,7 @@ export default function ModelLab() {
               hint={learningSummary.readiness.recommendation}
             />
           </div>
-          <div className="mt-4 rounded-2xl border border-cyan-300/12 bg-cyan-300/[0.035] p-4 text-sm leading-6 text-white/62">
+          <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm leading-6 text-muted-foreground">
             The next ML step should only train a lightweight, interpretable model when this dataset reaches
             enough volume. Until then, ScoreLab keeps using the mathematical model plus guarded calibration.
           </div>
@@ -722,17 +721,17 @@ export default function ModelLab() {
                   ? "border-red-300/18 bg-red-300/[0.045]"
                   : card.tone === "amber"
                   ? "border-amber-300/18 bg-amber-300/[0.045]"
-                  : "border-cyan-300/18 bg-cyan-300/[0.045]";
+                  : "border-primary/30 bg-primary/5";
 
               return (
                 <div key={card.title} className={`rounded-2xl border p-4 ${toneClass}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {card.title}
                   </p>
-                  <p className="mt-2 font-mono-data text-xl font-semibold text-white">
+                  <p className="mt-2 font-mono-data text-xl font-semibold text-foreground">
                     {card.value}
                   </p>
-                  <p className="mt-2 text-xs leading-5 text-white/54">{card.detail}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{card.detail}</p>
                 </div>
               );
             })}
@@ -748,9 +747,9 @@ export default function ModelLab() {
             {insights.map((insight, index) => (
               <div
                 key={insight}
-                className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 text-sm leading-6 text-white/68"
+                className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4 text-sm leading-6 text-white/68"
               >
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-cyan-200/20 text-[10px] text-cyan-100/70">
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/30 text-[10px] text-primary">
                   {index + 1}
                 </span>
                 {insight}
@@ -768,12 +767,12 @@ export default function ModelLab() {
             {recalibrationRules.map((rule) => {
               const toneClass =
                 rule.tone === "emerald"
-                  ? "border-emerald-300/18 bg-emerald-300/[0.045] text-emerald-100"
+                  ? "border-emerald-300/18 bg-emerald-300/[0.045] text-emerald-700"
                   : rule.tone === "red"
-                  ? "border-red-300/18 bg-red-300/[0.045] text-red-100"
+                  ? "border-red-300/18 bg-red-300/[0.045] text-red-700"
                   : rule.tone === "amber"
-                  ? "border-amber-300/18 bg-amber-300/[0.045] text-amber-100"
-                  : "border-cyan-300/18 bg-cyan-300/[0.045] text-cyan-100";
+                  ? "border-amber-300/18 bg-amber-300/[0.045] text-amber-700"
+                  : "border-primary/30 bg-primary/5 text-primary";
 
               return (
                 <div
@@ -785,14 +784,14 @@ export default function ModelLab() {
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-55">
                         Suggested Rule
                       </p>
-                      <h3 className="mt-2 text-base font-semibold text-white">{rule.title}</h3>
+                      <h3 className="mt-2 text-base font-semibold text-foreground">{rule.title}</h3>
                     </div>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/58">
+                    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       {rule.tone}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm font-medium leading-6 text-white/82">{rule.action}</p>
-                  <p className="mt-2 text-xs leading-5 text-white/52">{rule.reason}</p>
+                  <p className="mt-3 text-sm font-medium leading-6 text-foreground">{rule.action}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{rule.reason}</p>
                 </div>
               );
             })}
@@ -805,7 +804,7 @@ export default function ModelLab() {
             description="Go to Simple Bet, open analysed matches, insert final scores, and this page will become the calibration lab."
             badge="Empty"
           >
-            <p className="text-sm leading-6 text-white/60">
+            <p className="text-sm leading-6 text-muted-foreground">
               This page does not need real-money bets. It only needs final scores from analysed games.
             </p>
           </PremiumCard>
@@ -816,9 +815,9 @@ export default function ModelLab() {
                 <div className="h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={probabilityRows}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }} />
+                      <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(222,47%,7%)",
@@ -838,9 +837,9 @@ export default function ModelLab() {
                 <div className="h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={oddsRows}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }} />
+                      <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(222,47%,7%)",

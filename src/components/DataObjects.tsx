@@ -12,10 +12,10 @@ const toneStroke: Record<HudTone, string> = {
 };
 
 const toneText: Record<HudTone, string> = {
-  cyan: "text-cyan-100",
-  emerald: "text-emerald-100",
-  amber: "text-amber-100",
-  red: "text-red-100",
+  cyan: "text-primary",
+  emerald: "text-emerald-700",
+  amber: "text-amber-700",
+  red: "text-red-700",
 };
 
 const toneGlow: Record<HudTone, string> = {
@@ -51,7 +51,7 @@ export function AnalyticOrb({
   const box = size === "sm" ? 96 : 116;
 
   return (
-    <div className={cn("relative grid place-items-center rounded-3xl border border-cyan-100/10 bg-cyan-100/[0.03] p-3", toneGlow[tone])}>
+    <div className={cn("relative grid place-items-center rounded-3xl border border-primary/30 bg-primary/5 p-3", toneGlow[tone])}>
       <svg width={box} height={box} viewBox={`0 0 ${box} ${box}`} className="-rotate-90">
         <circle
           cx={box / 2}
@@ -76,14 +76,14 @@ export function AnalyticOrb({
         />
       </svg>
       <div className="absolute text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/36">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {label}
         </p>
         <p className={cn("mt-1 font-mono-data text-lg font-semibold", toneText[tone])}>
           <MotionNumber value={pct} formatter={(latest) => `${latest.toFixed(0)}%`} />
         </p>
       </div>
-      {detail ? <div className="mt-2 text-center text-xs leading-5 text-white/48">{detail}</div> : null}
+      {detail ? <div className="mt-2 text-center text-xs leading-5 text-muted-foreground">{detail}</div> : null}
     </div>
   );
 }
@@ -109,16 +109,16 @@ export function RiskBar({
       : "from-emerald-300 via-emerald-400 to-cyan-300";
 
   return (
-    <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.03] p-3">
+    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/38">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {label}
         </p>
         <p className={cn("font-mono-data text-xs font-semibold", toneText[tone])}>
           <MotionNumber value={pct} formatter={(latest) => `${latest.toFixed(0)}%`} />
         </p>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
         <motion.div
           className={cn("h-full rounded-full bg-gradient-to-r", fill)}
           initial={{ width: 0 }}
@@ -126,7 +126,7 @@ export function RiskBar({
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
         />
       </div>
-      <div className="mt-2 flex justify-between text-[10px] uppercase tracking-[0.14em] text-white/32">
+      <div className="mt-2 flex justify-between text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         <span>Clean</span>
         <span>{maxLabel}</span>
       </div>
@@ -144,8 +144,8 @@ export function MiniHeatmap({
   const sorted = [...items].sort((a, b) => b.value - a.value).slice(0, 8);
 
   return (
-    <div className="rounded-3xl border border-cyan-100/10 bg-cyan-100/[0.025] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/42">
+    <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
         {title}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -166,16 +166,16 @@ export function MiniHeatmap({
                   opacity: 0.48 + intensity / 190,
                 }}
               >
-                <p className="truncate text-xs font-medium text-white/78">{item.label}</p>
-                <p className={cn("mt-1 font-mono-data text-sm font-semibold", isPositive ? "text-emerald-200" : "text-red-200")}>
+                <p className="truncate text-xs font-medium text-foreground">{item.label}</p>
+                <p className={cn("mt-1 font-mono-data text-sm font-semibold", isPositive ? "text-emerald-700" : "text-red-700")}>
                   {item.value.toFixed(1)}%
                 </p>
-                {item.detail ? <p className="mt-1 truncate text-[10px] text-white/38">{item.detail}</p> : null}
+                {item.detail ? <p className="mt-1 truncate text-[10px] text-muted-foreground">{item.detail}</p> : null}
               </div>
             );
           })
         ) : (
-          <p className="col-span-full text-sm text-white/45">Not enough data yet.</p>
+          <p className="col-span-full text-sm text-muted-foreground">Not enough data yet.</p>
         )}
       </div>
     </div>

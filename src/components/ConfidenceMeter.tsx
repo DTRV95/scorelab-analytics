@@ -23,7 +23,7 @@ export function ConfidenceMeter({ score, className, showLabel = true, animated =
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+      <div className="flex-1 h-2 rounded-full bg-[hsl(var(--sl-surface))] overflow-hidden">
         <motion.div
           initial={animated ? { width: 0 } : false}
           animate={{ width: `${percentage}%` }}
