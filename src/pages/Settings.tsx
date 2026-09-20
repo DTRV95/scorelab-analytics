@@ -39,19 +39,19 @@ function SettingsSection({
     <div
       className={
         tone === "danger"
-          ? "scorelab-stage-3d scorelab-board-3d rounded-xl border border-red-500/20 bg-red-500/[0.04] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
-          : "scorelab-stage-3d scorelab-board-3d rounded-xl bg-card ring-surface p-6 card-shadow"
+          ? " rounded-xl border border-red-500/20 bg-red-500/[0.04] p-6"
+          : " rounded-xl bg-card ring-surface p-6 card-shadow"
       }
     >
       <div className="mb-5 flex items-center gap-2">
         <Icon
-          className={tone === "danger" ? "h-4 w-4 text-red-300" : "h-4 w-4 text-muted-foreground"}
+          className={tone === "danger" ? "h-4 w-4 text-red-700" : "h-4 w-4 text-muted-foreground"}
           strokeWidth={1.5}
         />
         <h2
           className={
             tone === "danger"
-              ? "text-sm font-semibold uppercase tracking-wider text-red-200"
+              ? "text-sm font-semibold uppercase tracking-wider text-red-700"
               : "text-sm font-semibold uppercase tracking-wider text-muted-foreground"
           }
         >
@@ -170,7 +170,7 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection title="Subscription" icon={CreditCard}>
-            <div className="scorelab-board-3d scorelab-tilt-3d mb-4 rounded-lg bg-white/[0.03] p-4 ring-1 ring-white/5">
+            <div className="mb-4 rounded-lg bg-[hsl(var(--sl-surface))] p-4 ring-1 ring-border">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">Pro Plan</p>

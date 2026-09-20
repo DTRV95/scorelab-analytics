@@ -24,7 +24,7 @@
     --secondary-foreground: 216 44% 11%;
 
     --muted: 220 30% 96%;
-    --muted-foreground: 219 20% 45%;
+    --muted-foreground: 219 24% 38%;
 
     --accent: 220 30% 96%;
     --accent-foreground: 216 44% 11%;
@@ -42,7 +42,7 @@
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 219 20% 45%;
+    --sidebar-foreground: 219 24% 38%;
     --sidebar-primary: 14 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 30% 96%;
@@ -347,6 +347,8 @@
     --accent-foreground: 210 40% 98%;
     --border: 198 28% 18%;
     --input: 198 28% 18%;
+    --sl-green: 152 62% 50%;
+    --sl-surface: 208 45% 12%;
 
     color: hsl(var(--foreground));
     background: linear-gradient(180deg, rgba(3, 9, 18, 1) 0%, rgba(5, 17, 31, 1) 42%, rgba(2, 10, 22, 1) 100%);
@@ -367,13 +369,12 @@
   }
 
   .glass-surface {
-    @apply backdrop-blur-xl;
-    background: linear-gradient(180deg, rgba(10, 24, 40, 0.82) 0%, rgba(8, 20, 33, 0.88) 100%);
+    background: hsl(var(--card));
     box-shadow: var(--shadow-card);
   }
 
   .gradient-hero {
-    background: linear-gradient(135deg, hsl(222 47% 6%) 0%, hsl(222 47% 4%) 50%, hsl(160 30% 8%) 100%);
+    background: hsl(var(--card));
   }
 
   .gradient-primary {
@@ -383,21 +384,18 @@
   }
 
   .text-gradient-primary {
-    background: linear-gradient(135deg, #ffffff 0%, hsl(var(--primary-glow)) 46%, hsl(var(--primary)) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: hsl(var(--primary));
   }
 
   .ring-surface {
     @apply ring-1;
-    --tw-ring-color: rgba(125, 245, 238, 0.12);
+    --tw-ring-color: hsl(var(--border));
   }
 
   .input-surface {
     @apply border-none ring-1;
-    background: linear-gradient(180deg, rgba(15, 37, 55, 0.82) 0%, rgba(8, 25, 42, 0.92) 100%);
-    --tw-ring-color: rgba(130, 246, 255, 0.16);
+    background: hsl(var(--sl-surface));
+    --tw-ring-color: hsl(var(--border));
   }
 
   .input-surface:focus-within {
@@ -414,9 +412,7 @@
   }
 
   .panel-soft {
-    background:
-      radial-gradient(circle at top right, rgba(34, 211, 238, 0.045), transparent 34%),
-      linear-gradient(180deg, rgba(9, 27, 45, 0.96) 0%, rgba(4, 15, 30, 0.99) 100%);
+    background: hsl(var(--card));
     box-shadow: var(--shadow-soft-panel);
   }
 
@@ -514,28 +510,10 @@
   }
 
   .scorelab-premium-hero {
-    background:
-      radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.075), transparent 20%),
-      radial-gradient(circle at 82% 0%, var(--scorelab-accent-a-soft), transparent 34%),
-      radial-gradient(circle at 92% 84%, var(--scorelab-accent-b-soft), transparent 32%),
-      linear-gradient(135deg, rgba(12, 22, 38, 0.985) 0%, rgba(6, 14, 28, 0.99) 48%, rgba(13, 20, 31, 0.985) 100%);
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.14) inset,
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 36px 96px -52px rgba(0, 0, 0, 0.78),
-      0 0 84px -48px var(--scorelab-accent-a);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-card);
   }
 
-  .scorelab-premium-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.055) 18%, transparent 34%),
-      linear-gradient(180deg, rgba(255,255,255,0.045), transparent 42%);
-    opacity: 0.76;
-  }
 
   .scorelab-analytics-panel {
     background:
@@ -621,31 +599,19 @@
   }
 
   .scorelab-chart-tooltip {
-    border-color: rgba(190, 255, 246, 0.16);
-    background:
-      radial-gradient(circle at 88% 8%, var(--scorelab-accent-a-soft), transparent 34%),
-      linear-gradient(180deg, rgba(8, 21, 36, 0.98), rgba(3, 9, 20, 0.995));
-    box-shadow:
-      0 22px 58px -28px rgba(0, 0, 0, 0.78),
-      0 0 42px -32px var(--scorelab-accent-a);
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+    box-shadow: var(--shadow-card-hover);
   }
 
   .scorelab-chart-tooltip p {
-    color: rgba(226, 255, 251, 0.72);
+    color: hsl(var(--muted-foreground));
   }
 
   .scorelab-premium-input {
-    border-color: rgba(216, 255, 250, 0.115);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.03));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.045),
-      0 12px 28px -24px var(--scorelab-accent-a);
-    transition:
-      border-color 180ms ease,
-      background-color 180ms ease,
-      box-shadow 180ms ease,
-      transform 180ms ease;
+    background: hsl(var(--sl-surface));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
   }
 
   .scorelab-premium-input:hover {
@@ -712,24 +678,11 @@
   }
 
   .scorelab-stage-3d {
-    perspective: 1200px;
-    transform-style: preserve-3d;
+    background: none;
   }
 
   .scorelab-board-3d {
-    position: relative;
-    transform-style: preserve-3d;
-    isolation: isolate;
-    backdrop-filter: blur(18px) saturate(1.12);
-    border-color: var(--scorelab-surface-border);
-    background: var(--scorelab-surface-bg);
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.11) inset,
-      0 -1px 0 rgba(34, 211, 238, 0.035) inset,
-      0 0 0 1px rgba(125, 245, 238, 0.065),
-      0 18px 34px rgba(0, 0, 0, 0.38),
-      0 42px 86px rgba(0, 0, 0, 0.24),
-      0 0 42px -34px rgba(34, 211, 238, 0.34);
+    background: none;
   }
 
   .scorelab-board-3d :where(input, select, textarea) {
@@ -1224,17 +1177,11 @@
   }
 
   .scorelab-depth-grid {
-    background-image:
-      linear-gradient(90deg, rgba(125, 245, 238, 0.022) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(52, 211, 153, 0.018) 1px, transparent 1px);
-    background-size: 72px 72px;
-    filter: blur(0.4px);
-    transform: rotateX(62deg) translateY(36px) translateZ(-32px);
-    transform-origin: center bottom;
+    background: none;
   }
 
   .scorelab-hud-scan {
-    animation: hud-scan 2.9s ease-in-out infinite;
+    background: none;
   }
 
   .scorelab-holo-noise {
@@ -1275,22 +1222,10 @@
   }
 
   .scorelab-premium-edge {
-    position: relative;
-    overflow: hidden;
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-card);
   }
 
-  .scorelab-premium-edge::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    pointer-events: none;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(125, 245, 238, 0.18), transparent 28%, rgba(52, 211, 153, 0.12) 68%, transparent);
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    padding: 1px;
-    opacity: 0.72;
-  }
 }
 
 @keyframes hud-scan {

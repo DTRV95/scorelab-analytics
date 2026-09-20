@@ -144,68 +144,68 @@ export function ScoreLabCommandCenter() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden border-cyan-100/14 bg-[linear-gradient(180deg,rgba(7,24,42,0.98)_0%,rgba(3,13,26,0.99)_100%)] p-0 shadow-[0_28px_90px_-32px_rgba(34,211,238,0.36)] sm:max-w-2xl">
+      <DialogContent className="overflow-hidden border-primary/30 bg-card p-0 sm:max-w-2xl">
         <DialogTitle className="sr-only">ScoreLab Command Center</DialogTitle>
         <DialogDescription className="sr-only">
           Search pages, actions, and live analytical shortcuts.
         </DialogDescription>
-        <div className="border-b border-cyan-100/10 px-4 py-3">
+        <div className="border-b border-primary/30 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100/45">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
                 Command Center
               </p>
-              <p className="mt-1 text-sm text-white/70">
+              <p className="mt-1 text-sm text-foreground">
                 Jump, inspect and act without leaving flow.
               </p>
             </div>
-            <div className="hidden items-center gap-1 rounded-full border border-cyan-100/12 bg-cyan-100/[0.04] px-2.5 py-1 text-[10px] text-cyan-50/55 sm:flex">
+            <div className="hidden items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[10px] text-primary sm:flex">
               <CommandIcon className="h-3 w-3" strokeWidth={1.7} />
               Ctrl K
             </div>
           </div>
         </div>
 
-        <Command className="bg-transparent text-white">
+        <Command className="bg-transparent text-foreground">
           <CommandInput
             placeholder="Search pages, actions, radar picks..."
-            className="text-white placeholder:text-white/35"
+            className="text-foreground placeholder:text-muted-foreground"
           />
           <CommandList className="max-h-[520px] px-2 py-3">
-            <CommandEmpty className="py-8 text-center text-sm text-white/45">
+            <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
               No command found.
             </CommandEmpty>
 
             <CommandGroup heading="Live Intelligence">
               <div className="grid grid-cols-2 gap-2 px-2 pb-2 md:grid-cols-4">
-                <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/36">Bankroll</p>
-                  <p className="mt-1 font-mono-data text-sm font-semibold text-white">
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Bankroll</p>
+                  <p className="mt-1 font-mono-data text-sm font-semibold text-foreground">
                     {formatCurrency(intelligence.freeBankroll)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/36">ROI</p>
-                  <p className="mt-1 font-mono-data text-sm font-semibold text-white">
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">ROI</p>
+                  <p className="mt-1 font-mono-data text-sm font-semibold text-foreground">
                     {intelligence.roi.toFixed(2)}%
                   </p>
                 </div>
-                <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/36">Hit Rate</p>
-                  <p className="mt-1 font-mono-data text-sm font-semibold text-white">
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Hit Rate</p>
+                  <p className="mt-1 font-mono-data text-sm font-semibold text-foreground">
                     {intelligence.hitRate.toFixed(1)}%
                   </p>
                 </div>
-                <div className="rounded-2xl border border-cyan-100/10 bg-cyan-100/[0.035] p-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/36">Pending</p>
-                  <p className="mt-1 font-mono-data text-sm font-semibold text-white">
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Pending</p>
+                  <p className="mt-1 font-mono-data text-sm font-semibold text-foreground">
                     {intelligence.pending}
                   </p>
                 </div>
               </div>
             </CommandGroup>
 
-            <CommandSeparator className="my-2 bg-cyan-100/10" />
+            <CommandSeparator className="my-2 bg-primary/10" />
 
             <CommandGroup heading="Navigation">
               {visiblePages.map((page) => (
@@ -213,41 +213,41 @@ export function ScoreLabCommandCenter() {
                   key={page.url}
                   value={`${page.title} ${page.detail}`}
                   onSelect={() => runCommand(page.url)}
-                  className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
+                  className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
                 >
-                  <page.icon className="mr-3 h-4 w-4 text-cyan-200/70" strokeWidth={1.7} />
+                  <page.icon className="mr-3 h-4 w-4 text-primary" strokeWidth={1.7} />
                   <div>
                     <p className="text-sm font-medium">{page.title}</p>
-                    <p className="text-xs text-white/42">{page.detail}</p>
+                    <p className="text-xs text-muted-foreground">{page.detail}</p>
                   </div>
                 </CommandItem>
               ))}
             </CommandGroup>
 
-            <CommandSeparator className="my-2 bg-cyan-100/10" />
+            <CommandSeparator className="my-2 bg-primary/10" />
 
             <CommandGroup heading="Smart Actions">
               <CommandItem
                 value="new analysis analyze match"
                 onSelect={() => runCommand("/analysis")}
-                className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
+                className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
               >
-                <Sparkles className="mr-3 h-4 w-4 text-emerald-200/75" strokeWidth={1.7} />
+                <Sparkles className="mr-3 h-4 w-4 text-emerald-700/75" strokeWidth={1.7} />
                 <div>
                   <p className="text-sm font-medium">Start new analysis</p>
-                  <p className="text-xs text-white/42">Open the model input flow.</p>
+                  <p className="text-xs text-muted-foreground">Open the model input flow.</p>
                 </div>
                 <CommandShortcut>NEW</CommandShortcut>
               </CommandItem>
               <CommandItem
                 value="today execution roadmap orders"
                 onSelect={() => runCommand("/roadmap")}
-                className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
+                className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
               >
-                <Zap className="mr-3 h-4 w-4 text-cyan-200/75" strokeWidth={1.7} />
+                <Zap className="mr-3 h-4 w-4 text-primary" strokeWidth={1.7} />
                 <div>
                   <p className="text-sm font-medium">Open today's execution desk</p>
-                  <p className="text-xs text-white/42">
+                  <p className="text-xs text-muted-foreground">
                     Mission orders, stake logic and roadmap state.
                   </p>
                 </div>
@@ -256,19 +256,19 @@ export function ScoreLabCommandCenter() {
 
             {intelligence.radar.length > 0 ? (
               <>
-                <CommandSeparator className="my-2 bg-cyan-100/10" />
+                <CommandSeparator className="my-2 bg-primary/10" />
                 <CommandGroup heading="High Probability Radar">
                   {intelligence.radar.slice(0, 5).map((point) => (
                     <CommandItem
                       key={`${point.id}-${point.market}`}
                       value={`${point.match} ${point.market} ${point.calibratedProb}`}
                       onSelect={() => openRadarPoint(point)}
-                      className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
+                      className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
                     >
-                      <Radar className="mr-3 h-4 w-4 text-emerald-200/75" strokeWidth={1.7} />
+                      <Radar className="mr-3 h-4 w-4 text-emerald-700/75" strokeWidth={1.7} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{point.match}</p>
-                        <p className="text-xs text-white/42">
+                        <p className="text-xs text-muted-foreground">
                           {point.market} · learned {point.calibratedProb.toFixed(1)}% · odds{" "}
                           {point.odds.toFixed(2)}
                         </p>
@@ -280,22 +280,22 @@ export function ScoreLabCommandCenter() {
               </>
             ) : null}
 
-            <CommandSeparator className="my-2 bg-cyan-100/10" />
+            <CommandSeparator className="my-2 bg-primary/10" />
 
             <CommandGroup heading="System Read">
               <CommandItem
                 value="best market bankroll risk exposure"
                 onSelect={() => runCommand("/bankroll")}
-                className="rounded-2xl px-3 py-3 text-white/78 data-[selected=true]:bg-cyan-100/[0.08] data-[selected=true]:text-white"
+                className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
               >
-                <Search className="mr-3 h-4 w-4 text-cyan-200/75" strokeWidth={1.7} />
+                <Search className="mr-3 h-4 w-4 text-primary" strokeWidth={1.7} />
                 <div>
                   <p className="text-sm font-medium">
                     {intelligence.bestMarket
                       ? `${intelligence.bestMarket.market} is leading`
                       : "Not enough settled market data yet"}
                   </p>
-                  <p className="text-xs text-white/42">
+                  <p className="text-xs text-muted-foreground">
                     Open exposure: {formatCurrency(intelligence.openExposure)}
                   </p>
                 </div>

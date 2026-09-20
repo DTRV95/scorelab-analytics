@@ -45,7 +45,7 @@ import type { SavedAnalysis, BetStatus, TrackedAnalysisBet } from "@/types/analy
 import { useSearchParams } from "react-router-dom";
 
 const darkSelectClass =
-  "h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
+  "h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
 
 const darkSelectStyle = {
   backgroundColor: "#0f172a",
@@ -113,25 +113,23 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="relative overflow-hidden rounded-[28px] border border-border bg-card p-5"
     >
-      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/42">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Simple Bet
           </p>
-          <h2 className="mt-2 text-base font-semibold text-white md:text-lg">{title}</h2>
+          <h2 className="mt-2 text-base font-semibold text-foreground md:text-lg">{title}</h2>
           {description && (
-            <p className="mt-1 text-sm leading-6 text-white/58">
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {description}
             </p>
           )}
         </div>
 
         {badge && (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <div className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1 text-xs text-muted-foreground">
             {badge}
           </div>
         )}
@@ -143,9 +141,9 @@ function PremiumCard({
 }
 
 const METRIC_TONE_CLASS = {
-  cyan: "border-cyan-300/25 bg-cyan-300/10 text-cyan-200",
-  emerald: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
-  amber: "border-amber-300/25 bg-amber-300/10 text-amber-200",
+  cyan: "border-primary/30 bg-primary/10 text-primary",
+  emerald: "border-emerald-300/25 bg-emerald-300/10 text-emerald-700",
+  amber: "border-amber-300/25 bg-amber-300/10 text-amber-700",
 };
 
 function MetricBlock({
@@ -160,9 +158,9 @@ function MetricBlock({
   tone?: "cyan" | "emerald" | "amber";
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
+        <div className="h-1.5 w-10 rounded-full bg-primary" />
         {Icon ? (
           <span
             className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border ${METRIC_TONE_CLASS[tone]}`}
@@ -171,10 +169,10 @@ function MetricBlock({
           </span>
         ) : null}
       </div>
-      <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+      <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <div className="mt-1.5 text-base font-semibold text-white">{value}</div>
+      <div className="mt-1.5 text-base font-semibold text-foreground">{value}</div>
     </div>
   );
 }
@@ -187,11 +185,11 @@ function InlineStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <div className="mt-1 text-sm font-medium text-white">{value}</div>
+      <div className="mt-1 text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }
@@ -205,14 +203,14 @@ function ActiveFilterPill({
 }) {
   const toneClasses =
     tone === "emerald"
-      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-700"
       : tone === "amber"
-      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
+      ? "border-amber-400/20 bg-amber-400/10 text-amber-700"
       : tone === "red"
-      ? "border-red-400/20 bg-red-400/10 text-red-200"
+      ? "border-red-400/20 bg-red-400/10 text-red-700"
       : tone === "cyan"
-      ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-200"
-      : "border-white/10 bg-white/[0.04] text-white/65";
+      ? "border-primary/30 bg-primary/10 text-primary"
+      : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground";
 
   return (
     <span
@@ -226,10 +224,10 @@ function ActiveFilterPill({
 function QualityScoreBadge({ quality }: { quality: BetQualityScore }) {
   const toneClasses =
     quality.tone === "positive"
-      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-700"
       : quality.tone === "negative"
-      ? "border-red-400/25 bg-red-400/10 text-red-100"
-      : "border-amber-400/25 bg-amber-400/10 text-amber-100";
+      ? "border-red-400/25 bg-red-400/10 text-red-700"
+      : "border-amber-400/25 bg-amber-400/10 text-amber-700";
 
   return (
     <div className={`rounded-2xl border px-3 py-2 text-right ${toneClasses}`}>
@@ -250,7 +248,7 @@ function PostBetTruthPanel({ truth }: { truth: PostBetTruth }) {
       ? "border-emerald-400/14 bg-emerald-400/[0.055] text-emerald-50"
       : truth.tone === "negative"
       ? "border-red-400/14 bg-red-400/[0.055] text-red-50"
-      : "border-cyan-400/14 bg-cyan-400/[0.045] text-cyan-50";
+      : "border-primary/30 bg-primary/5 text-primary";
 
   return (
     <div className={`rounded-2xl border p-3 ${toneClasses}`}>
@@ -258,7 +256,7 @@ function PostBetTruthPanel({ truth }: { truth: PostBetTruth }) {
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-65">
           Post-Bet Truth
         </p>
-        <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+        <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
           {truth.verdict}
         </span>
       </div>
@@ -278,13 +276,13 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+    <div className="rounded-[24px] border border-border bg-[hsl(var(--sl-surface))] p-4">
       <div className="mb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {title}
         </p>
         {description ? (
-          <p className="mt-1 text-xs leading-5 text-white/50">{description}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children}
@@ -300,8 +298,8 @@ function InputField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+      <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </label>
       {children}
@@ -902,17 +900,16 @@ export default function History() {
       >
         <motion.div
           variants={fadeUp}
-          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+          className="relative overflow-hidden rounded-[32px] border border-border bg-card p-5"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
           <div className="relative max-w-3xl">
-              <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
+              <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
                 Simple Bet Workspace
               </div>
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 Simple Bet
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
                 Review saved analyses, update tracking, build disciplined multiples and use the filtered history to understand what is really validating.
               </p>
           </div>
@@ -931,7 +928,7 @@ export default function History() {
             value={
               <span
                 className={
-                  summary.needsUpdate > 0 ? "text-amber-300" : "text-white"
+                  summary.needsUpdate > 0 ? "text-amber-700" : "text-foreground"
                 }
               >
                 {summary.needsUpdate}
@@ -980,7 +977,7 @@ export default function History() {
                 placeholder="Search team or market..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
               />
 
               <select
@@ -993,11 +990,11 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-white">All Status</option>
-                <option value="pending" className="bg-slate-900 text-white">Pending</option>
-                <option value="green" className="bg-slate-900 text-white">Greens</option>
-                <option value="red" className="bg-slate-900 text-white">Reds</option>
-                <option value="void" className="bg-slate-900 text-white">Voids</option>
+                <option value="all" className="bg-slate-900 text-foreground">All Status</option>
+                <option value="pending" className="bg-slate-900 text-foreground">Pending</option>
+                <option value="green" className="bg-slate-900 text-foreground">Greens</option>
+                <option value="red" className="bg-slate-900 text-foreground">Reds</option>
+                <option value="void" className="bg-slate-900 text-foreground">Voids</option>
               </select>
 
               <select
@@ -1010,9 +1007,9 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-white">All Bets</option>
-                <option value="placed" className="bg-slate-900 text-white">Bet Placed</option>
-                <option value="not-placed" className="bg-slate-900 text-white">No Bet Placed</option>
+                <option value="all" className="bg-slate-900 text-foreground">All Bets</option>
+                <option value="placed" className="bg-slate-900 text-foreground">Bet Placed</option>
+                <option value="not-placed" className="bg-slate-900 text-foreground">No Bet Placed</option>
               </select>
 
               <select
@@ -1021,9 +1018,9 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-white">All Markets</option>
+                <option value="all" className="bg-slate-900 text-foreground">All Markets</option>
                 {availableMarkets.map((market) => (
-                  <option key={market} value={market} className="bg-slate-900 text-white">
+                  <option key={market} value={market} className="bg-slate-900 text-foreground">
                     {market}
                   </option>
                 ))}
@@ -1039,10 +1036,10 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="all" className="bg-slate-900 text-white">All Dates</option>
-                <option value="today" className="bg-slate-900 text-white">Today</option>
-                <option value="last7" className="bg-slate-900 text-white">Last 7 Days</option>
-                <option value="month" className="bg-slate-900 text-white">This Month</option>
+                <option value="all" className="bg-slate-900 text-foreground">All Dates</option>
+                <option value="today" className="bg-slate-900 text-foreground">Today</option>
+                <option value="last7" className="bg-slate-900 text-foreground">Last 7 Days</option>
+                <option value="month" className="bg-slate-900 text-foreground">This Month</option>
               </select>
 
               <select
@@ -1060,11 +1057,11 @@ export default function History() {
                 className={darkSelectClass}
                 style={darkSelectStyle}
               >
-                <option value="newest" className="bg-slate-900 text-white">Newest</option>
-                <option value="oldest" className="bg-slate-900 text-white">Oldest</option>
-                <option value="edge" className="bg-slate-900 text-white">Highest Edge</option>
-                <option value="confidence" className="bg-slate-900 text-white">Highest Confidence</option>
-                <option value="profitLoss" className="bg-slate-900 text-white">Highest P/L</option>
+                <option value="newest" className="bg-slate-900 text-foreground">Newest</option>
+                <option value="oldest" className="bg-slate-900 text-foreground">Oldest</option>
+                <option value="edge" className="bg-slate-900 text-foreground">Highest Edge</option>
+                <option value="confidence" className="bg-slate-900 text-foreground">Highest Confidence</option>
+                <option value="profitLoss" className="bg-slate-900 text-foreground">Highest P/L</option>
               </select>
             </div>
 
@@ -1073,8 +1070,8 @@ export default function History() {
                 onClick={() => setBetPlacedFilter("placed")}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   betPlacedFilter === "placed"
-                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-700"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
                 }`}
               >
                 Bet Placed
@@ -1083,8 +1080,8 @@ export default function History() {
                 onClick={() => setStatusFilter("pending")}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   statusFilter === "pending"
-                    ? "border-yellow-400/30 bg-yellow-400/15 text-yellow-200"
-                    : "border-yellow-500/20 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/15"
+                    ? "border-yellow-400/30 bg-yellow-400/15 text-yellow-700"
+                    : "border-yellow-500/20 bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/15"
                 }`}
               >
                 Pending
@@ -1093,8 +1090,8 @@ export default function History() {
                 onClick={() => setStatusFilter("green")}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   statusFilter === "green"
-                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-700"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
                 }`}
               >
                 Greens
@@ -1103,20 +1100,20 @@ export default function History() {
                 onClick={() => setStatusFilter("red")}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   statusFilter === "red"
-                    ? "border-red-400/30 bg-red-400/15 text-red-200"
-                    : "border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/15"
+                    ? "border-red-400/30 bg-red-400/15 text-red-700"
+                    : "border-red-500/20 bg-red-500/10 text-red-700 hover:bg-red-500/15"
                 }`}
               >
                 Reds
               </button>
               <button
                 onClick={resetFilters}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/60 transition hover:bg-white/[0.08]"
+                className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-[hsl(var(--sl-surface))]"
               >
                 Reset Filters
               </button>
 
-              <span className="ml-auto text-sm text-white/50">
+              <span className="ml-auto text-sm text-muted-foreground">
                 Showing {visibleAnalyses.length} of {filteredAnalyses.length} analyses
               </span>
             </div>
@@ -1146,7 +1143,7 @@ export default function History() {
               value={modelAuditSummary.brierScore.toFixed(3)}
             />
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/55">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Add final scores inside each analysis to measure whether markets were correctly
             priced, even when no money was placed.
           </p>
@@ -1159,7 +1156,7 @@ export default function History() {
               description="No analyses match the selected filters."
               badge="Empty"
             >
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 Try widening the date range, resetting filters, or searching by a team name.
               </p>
             </PremiumCard>
@@ -1227,24 +1224,23 @@ export default function History() {
                   ref={(el) => {
                     analysisRefs.current[analysis.id] = el;
                   }}
-                  className={`scorelab-board-3d scorelab-tilt-3d relative overflow-hidden rounded-[28px] border border-white/8 border-l-4 ${cardAccent} bg-[linear-gradient(180deg,rgba(8,18,40,0.94)_0%,rgba(5,13,30,0.98)_100%)] p-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] transition-all duration-300 ${
+                  className={`relative overflow-hidden rounded-[28px] border border-border border-l-4 ${cardAccent} bg-card p-4 transition-all duration-300 ${
                     highlightedAnalysisId === analysis.id
                       ? "ring-2 ring-emerald-500/30"
                       : ""
                   }`}
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
 
                   <div className="relative space-y-4">
                     <button
                       type="button"
                       onClick={() => toggleExpanded(analysis.id)}
-                      className="w-full rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5 text-left transition hover:bg-white/[0.05]"
+                      className="w-full rounded-[24px] border border-border bg-[hsl(var(--sl-surface))] p-3.5 text-left transition hover:bg-[hsl(var(--sl-surface))]"
                     >
                       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                               Analysis
                             </p>
                             {needsAttention ? (
@@ -1253,19 +1249,19 @@ export default function History() {
                               </span>
                             ) : null}
                             {trackedBetCount > 0 ? (
-                              <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+                              <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-foreground">
                                 {trackedBetCount} Bet{trackedBetCount > 1 ? "s" : ""} Tracked
                               </span>
                             ) : (
-                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55">
+                              <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Analysis Only
                               </span>
                             )}
                           </div>
-                          <h3 className="mt-2 truncate text-[1.1rem] font-semibold text-white md:text-[1.2rem]">
+                          <h3 className="mt-2 truncate text-[1.1rem] font-semibold text-foreground md:text-[1.2rem]">
                             {matchLabel}
                           </h3>
-                          <p className="mt-1 text-[13px] text-white/52">
+                          <p className="mt-1 text-[13px] text-muted-foreground">
                             {formatDateTime(analysis.createdAt)}
                           </p>
                         </div>
@@ -1274,7 +1270,7 @@ export default function History() {
                           <div className="flex flex-wrap items-center gap-2">
                             {displayBet?.tier && <TierBadge tier={displayBet.tier} />}
                             {displayBet && <DecisionBadge decision={displayBet.decision} />}
-                            <div className="rounded-full border border-white/10 bg-white/5 p-2 text-white/55">
+                            <div className="rounded-full border border-border bg-[hsl(var(--sl-surface))] p-2 text-muted-foreground">
                               <ChevronDown
                                 className={`h-4 w-4 transition-transform duration-300 ${
                                   isExpanded ? "rotate-180" : ""
@@ -1307,10 +1303,10 @@ export default function History() {
                                 <span
                                   className={`font-bold ${
                                     totalProfitLoss > 0
-                                      ? "text-emerald-300"
+                                      ? "text-emerald-700"
                                       : totalProfitLoss < 0
-                                      ? "text-red-300"
-                                      : "text-white"
+                                      ? "text-red-700"
+                                      : "text-foreground"
                                   }`}
                                 >
                                   EUR {totalProfitLoss.toFixed(2)}
@@ -1329,7 +1325,7 @@ export default function History() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
                         {totalMissingFields > 0 ? (
-                          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
+                          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700">
                             {totalMissingFields} missing field{totalMissingFields > 1 ? "s" : ""}
                           </span>
                         ) : null}
@@ -1337,7 +1333,7 @@ export default function History() {
                           <button
                             type="button"
                             onClick={() => handleAddToMultiple(analysis, displayBet)}
-                            className="rounded-full bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-400"
+                            className="rounded-full bg-orange-500 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-orange-400"
                           >
                             <span className="inline-flex items-center gap-1">
                               <Plus className="h-3.5 w-3.5" />
@@ -1349,7 +1345,7 @@ export default function History() {
                           <button
                             type="button"
                             onClick={() => autofillTrackingFromBestBet(analysis)}
-                            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08]"
+                            className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                           >
                             Quick Fill From Best Bet
                           </button>
@@ -1357,20 +1353,20 @@ export default function History() {
                         <button
                           type="button"
                           onClick={() => handleAddSecondBet(analysis)}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08]"
+                          className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                         >
                           Add Another Bet
                         </button>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[13px] text-white/48">
+                        <p className="text-[13px] text-muted-foreground">
                           {isExpanded
                             ? "Tracking panel open"
                             : "Expand to update stake, result and bankroll impact."}
                         </p>
                         <button
                           onClick={() => handleDeleteAnalysis(analysis.id, matchLabel)}
-                          className="h-10 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
+                          className="h-10 rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-700 transition hover:bg-red-500/15"
                         >
                           Delete
                         </button>
@@ -1421,18 +1417,18 @@ export default function History() {
                           </div>
                         )}
 
-                        <div className="rounded-[24px] border border-cyan-300/12 bg-cyan-300/[0.035] p-4">
+                        <div className="rounded-[24px] border border-primary/30 bg-primary/5 p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                                 Model Audit
                               </p>
-                              <p className="mt-2 text-sm leading-6 text-white/58">
+                              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                                 Insert the final score to audit every market in this analysis without
                                 counting it as a real-money bet.
                               </p>
                               {analysis.modelAudit ? (
-                                <p className="mt-2 text-xs text-cyan-100/70">
+                                <p className="mt-2 text-xs text-primary">
                                   Current audit: {analysis.homeTeam} {analysis.modelAudit.homeGoals}-
                                   {analysis.modelAudit.awayGoals} {analysis.awayTeam} · {auditedGreens}/
                                   {auditedTotal} markets green.
@@ -1448,7 +1444,7 @@ export default function History() {
                                   onChange={(event) =>
                                     updateAuditDraft(analysis, "home", event.target.value)
                                   }
-                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                  className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 />
                               </InputField>
                               <InputField label={analysis.awayTeam || "Away"}>
@@ -1459,13 +1455,13 @@ export default function History() {
                                   onChange={(event) =>
                                     updateAuditDraft(analysis, "away", event.target.value)
                                   }
-                                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                  className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 />
                               </InputField>
                               <button
                                 type="button"
                                 onClick={() => saveModelAudit(analysis)}
-                                className="h-11 self-end rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100 transition hover:bg-cyan-400/15"
+                                className="h-11 self-end rounded-xl border border-primary/30 bg-primary/10 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-primary transition hover:bg-primary/10"
                               >
                                 Save Audit
                               </button>
@@ -1473,7 +1469,7 @@ export default function History() {
                                 <button
                                   type="button"
                                   onClick={() => clearModelAudit(analysis.id)}
-                                  className="h-11 self-end rounded-xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/58 transition hover:bg-white/[0.08]"
+                                  className="h-11 self-end rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                                 >
                                   Clear
                                 </button>
@@ -1496,21 +1492,21 @@ export default function History() {
                             return (
                               <div
                                 key={entry.betId}
-                                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+                                className="rounded-[24px] border border-border bg-[hsl(var(--sl-surface))] p-4"
                               >
                                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                                   <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                                       {entry.label}
                                     </p>
-                                    <p className="mt-1 text-sm text-white/55">
+                                    <p className="mt-1 text-sm text-muted-foreground">
                                       {tracking.selectedMarket || "Select the market you actually placed."}
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <QualityScoreBadge quality={quality} />
                                     {missingFields.length > 0 && tracking.betPlaced ? (
-                                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-300">
+                                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-700">
                                         Needs update
                                       </span>
                                     ) : null}
@@ -1518,7 +1514,7 @@ export default function History() {
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteTrackedBet(analysis, entry.betId)}
-                                        className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-red-300 transition hover:bg-red-500/15"
+                                        className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-red-700 transition hover:bg-red-500/15"
                                       >
                                         Remove
                                       </button>
@@ -1527,18 +1523,18 @@ export default function History() {
                                 </div>
 
                                 <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-                                  <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/38">
+                                  <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                       Decision Memory
                                     </p>
-                                    <p className="mt-2 text-sm leading-6 text-white/58">
+                                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
                                       {quality.summary}
                                     </p>
-                                    <p className="mt-2 text-xs leading-5 text-white/42">
+                                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
                                       Action: {quality.actions.join(" ")}
                                     </p>
                                     {tracking.decisionMemory ? (
-                                      <p className="mt-2 text-[11px] leading-5 text-white/34">
+                                      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
                                         Captured {tracking.decisionMemory.market} at {tracking.decisionMemory.odds.toFixed(2)} odds, {tracking.decisionMemory.edge.toFixed(1)}% edge and {tracking.decisionMemory.confidence.toFixed(1)}/10 confidence.
                                       </p>
                                     ) : null}
@@ -1550,7 +1546,7 @@ export default function History() {
                                     ).slice(0, 2).map((item) => (
                                       <div
                                         key={`strength-${entry.betId}-${item}`}
-                                        className="rounded-2xl border border-emerald-400/12 bg-emerald-400/[0.045] px-3 py-2 text-xs leading-5 text-emerald-100/72"
+                                        className="rounded-2xl border border-emerald-400/12 bg-emerald-400/[0.045] px-3 py-2 text-xs leading-5 text-emerald-700/72"
                                       >
                                         {item}
                                       </div>
@@ -1558,7 +1554,7 @@ export default function History() {
                                     {quality.risks.slice(0, 2).map((item) => (
                                       <div
                                         key={`risk-${entry.betId}-${item}`}
-                                        className="rounded-2xl border border-amber-400/12 bg-amber-400/[0.045] px-3 py-2 text-xs leading-5 text-amber-100/72"
+                                        className="rounded-2xl border border-amber-400/12 bg-amber-400/[0.045] px-3 py-2 text-xs leading-5 text-amber-700/72"
                                       >
                                         {item}
                                       </div>
@@ -1578,15 +1574,15 @@ export default function History() {
                                     description="Update the actual details for this specific bet."
                                   >
                                     <div className="space-y-3.5">
-                                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                                        <label className="flex items-center gap-3 text-sm text-white">
+                                      <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                                        <label className="flex items-center gap-3 text-sm text-foreground">
                                           <input
                                             type="checkbox"
                                             checked={tracking.betPlaced}
                                             onChange={(e) =>
                                               handleBetPlacedToggle(analysis, entry.betId, e.target.checked)
                                             }
-                                            className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                            className="h-4 w-4 rounded border-border bg-transparent"
                                           />
                                           I placed this bet
                                         </label>
@@ -1603,14 +1599,14 @@ export default function History() {
                                             style={darkSelectStyle}
                                             disabled={!tracking.betPlaced}
                                           >
-                                            <option value="" className="bg-slate-900 text-white">
+                                            <option value="" className="bg-slate-900 text-foreground">
                                               Select market
                                             </option>
                                             {analysis.results.map((result) => (
                                               <option
                                                 key={`${entry.betId}-${result.market}`}
                                                 value={result.market}
-                                                className="bg-slate-900 text-white"
+                                                className="bg-slate-900 text-foreground"
                                               >
                                                 {result.market}
                                               </option>
@@ -1630,10 +1626,10 @@ export default function History() {
                                             style={darkSelectStyle}
                                             disabled={!tracking.betPlaced}
                                           >
-                                            <option value="pending" className="bg-slate-900 text-white">Pending</option>
-                                            <option value="green" className="bg-slate-900 text-white">Green</option>
-                                            <option value="red" className="bg-slate-900 text-white">Red</option>
-                                            <option value="void" className="bg-slate-900 text-white">Void</option>
+                                            <option value="pending" className="bg-slate-900 text-foreground">Pending</option>
+                                            <option value="green" className="bg-slate-900 text-foreground">Green</option>
+                                            <option value="red" className="bg-slate-900 text-foreground">Red</option>
+                                            <option value="void" className="bg-slate-900 text-foreground">Void</option>
                                           </select>
                                         </InputField>
 
@@ -1647,7 +1643,7 @@ export default function History() {
                                                   e.target.value === "" ? null : Number(e.target.value),
                                               })
                                             }
-                                            className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                            className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                                             disabled={!tracking.betPlaced}
                                           />
                                         </InputField>
@@ -1663,7 +1659,7 @@ export default function History() {
                                                   e.target.value === "" ? null : Number(e.target.value),
                                               })
                                             }
-                                            className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                            className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                                             disabled={!tracking.betPlaced}
                                           />
                                         </InputField>
@@ -1678,7 +1674,7 @@ export default function History() {
                                               notes: e.target.value,
                                             })
                                           }
-                                          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                          className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                                           disabled={!tracking.betPlaced}
                                         />
                                       </InputField>
@@ -1735,7 +1731,7 @@ export default function History() {
                   onClick={() =>
                     setVisibleCount((current) => current + INITIAL_VISIBLE_ANALYSES)
                   }
-                  className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-400/15"
+                  className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 transition hover:bg-emerald-400/15"
                 >
                   Load {Math.min(INITIAL_VISIBLE_ANALYSES, filteredAnalyses.length - visibleCount)} more
                 </button>

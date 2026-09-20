@@ -31,11 +31,11 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 function AppLoadingState() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] px-6 py-5 text-center shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100/50">
+      <div className="sl-card px-6 py-5 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           ScoreLab Sync
         </p>
-        <p className="mt-3 text-sm text-white/72">
+        <p className="mt-3 text-sm text-foreground">
           Loading your workspace...
         </p>
       </div>

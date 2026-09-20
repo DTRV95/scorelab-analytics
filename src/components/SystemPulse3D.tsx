@@ -55,13 +55,12 @@ export function SystemPulse3D({
 
   return (
     <div
-      className={`scorelab-stage-3d scorelab-board-3d scorelab-premium-edge relative h-full overflow-hidden border border-white/8 bg-[linear-gradient(160deg,rgba(13,28,44,0.82)_0%,rgba(4,11,24,0.96)_100%)] ${
+      className={`scorelab-stage-3d scorelab-board-3d scorelab-premium-edge relative h-full overflow-hidden border border-white/8 bg-card ${
         isCompact
           ? "min-h-0 rounded-xl p-3 sm:min-h-[150px]"
           : "min-h-[220px] rounded-[28px] p-4"
       }`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[length:32px_32px] opacity-30" />
       <div className={`scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 opacity-45 ${isCompact ? "h-16" : "h-28"}`} />
       <div className={`pointer-events-none absolute inset-x-6 rounded-[50%] bg-black/35 blur-xl ${isCompact ? "bottom-3 h-8" : "bottom-5 h-14"}`} />
 

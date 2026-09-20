@@ -138,7 +138,7 @@ export function TodayMatches({
 
   if (enabled === null) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-3 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         A ligar ao motor de dados... pode demorar até um minuto se estiver
         parado há algum tempo.
@@ -176,7 +176,7 @@ export function TodayMatches({
   };
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-[linear-gradient(180deg,rgba(34,211,238,0.06),rgba(255,255,255,0.02))] p-4">
+    <div className="rounded-2xl border border-primary/20 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -234,7 +234,7 @@ export function TodayMatches({
                   className={`flex-none rounded-xl px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                     isActive
                       ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                      : "bg-white/[0.04] text-muted-foreground ring-1 ring-white/8 hover:text-white/80"
+                      : "bg-[hsl(var(--sl-surface))] text-muted-foreground ring-1 ring-border hover:text-foreground"
                   }`}
                 >
                   {day.short}
@@ -252,7 +252,7 @@ export function TodayMatches({
               return (
                 <div
                   key={match.fixture_id}
-                  className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-foreground">

@@ -209,12 +209,12 @@ function InsightTile({
   hint: string;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object rounded-2xl border border-white/8 p-4">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
+    <div className="rounded-2xl border border-border p-4">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-sm font-medium text-white">{value}</p>
-      <p className="mt-1 text-xs text-white/45">{hint}</p>
+      <p className="mt-2 text-sm font-medium text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -230,8 +230,8 @@ function StepChip({
     <div
       className={`rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-colors ${
         active
-          ? "bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25"
-          : "bg-white/[0.05] text-white/45 ring-1 ring-white/10"
+          ? "bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/25"
+          : "bg-[hsl(var(--sl-surface))] text-muted-foreground ring-1 ring-border"
       }`}
     >
       {label}
@@ -254,25 +254,25 @@ function MissionTile({
 }) {
   const toneClass =
     tone === "emerald"
-      ? "text-emerald-200 bg-emerald-300/[0.055]"
+      ? "text-emerald-700 bg-emerald-300/[0.055]"
       : tone === "amber"
-      ? "text-amber-200 bg-amber-300/[0.055]"
+      ? "text-amber-700 bg-amber-300/[0.055]"
       : tone === "red"
-      ? "text-red-200 bg-red-300/[0.055]"
-      : "text-cyan-100 bg-cyan-300/[0.055]";
+      ? "text-red-700 bg-red-300/[0.055]"
+      : "text-primary bg-primary/5";
 
   return (
-    <div className={`min-w-0 rounded-xl border border-white/8 ${toneClass} p-3`}>
+    <div className={`min-w-0 rounded-xl border border-border ${toneClass} p-3`}>
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 flex-none" strokeWidth={1.6} />
-        <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-white/42">
+        <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
           {label}
         </p>
       </div>
-      <p className="mt-2 truncate font-mono-data text-base font-semibold text-white">
+      <p className="mt-2 truncate font-mono-data text-base font-semibold text-foreground">
         {value}
       </p>
-      <p className="mt-1 truncate text-xs text-white/48">{detail}</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -292,22 +292,22 @@ function FlowAction({
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-[60px] items-center justify-between gap-3 rounded-xl border border-white/8 bg-black/15 px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:border-cyan-200/18 hover:bg-cyan-300/[0.055]"
+      className="group flex min-h-[60px] items-center justify-between gap-3 rounded-xl border border-border bg-muted px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
     >
       <span className="flex min-w-0 items-center gap-3">
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] text-cyan-100">
+        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-border bg-[hsl(var(--sl-surface))] text-primary">
           <Icon className="h-4 w-4" strokeWidth={1.6} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-white">
+          <span className="block truncate text-sm font-semibold text-foreground">
             {label}
           </span>
-          <span className="mt-1 block truncate text-xs text-white/46">
+          <span className="mt-1 block truncate text-xs text-muted-foreground">
             {detail}
           </span>
         </span>
       </span>
-      <ArrowRight className="h-4 w-4 flex-none text-white/24 transition group-hover:translate-x-0.5 group-hover:text-white/70" strokeWidth={1.6} />
+      <ArrowRight className="h-4 w-4 flex-none text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" strokeWidth={1.6} />
     </button>
   );
 }
@@ -1170,21 +1170,19 @@ export default function MatchAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <section className="scorelab-board-3d relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(7,20,38,0.98)_0%,rgba(4,12,26,0.98)_58%,rgba(13,25,22,0.94)_100%)] p-4 shadow-[0_18px_70px_-46px_rgba(34,211,238,0.55)]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(125,245,238,0.08)_0_1px,transparent_1px_92px),linear-gradient(180deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_68px)] opacity-30" />
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-border bg-card p-4">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/45 to-transparent" />
-          <div className="pointer-events-none absolute bottom-0 right-0 h-32 w-2/3 bg-[linear-gradient(135deg,transparent_0%,rgba(16,185,129,0.08)_55%,rgba(34,211,238,0.12)_100%)]" />
 
           <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/14 bg-cyan-300/[0.055] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/64">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                 <Sparkles className="h-3 w-3 text-primary" strokeWidth={1.7} />
                 Match Analysis
               </div>
-              <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight tracking-normal text-white sm:text-[1.85rem] lg:text-[2.2rem]">
+              <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight tracking-normal text-foreground sm:text-[1.85rem] lg:text-[2.2rem]">
                 Build a clear match read.
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Choose the competition, add the team sample and compare your model with the market.
               </p>
 
@@ -1211,21 +1209,21 @@ export default function MatchAnalysis() {
             </div>
 
             <div className="grid gap-2.5">
-              <div className="rounded-xl border border-white/8 bg-black/18 p-3">
+              <div className="rounded-xl border border-border bg-muted p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/38">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                       Readiness
                     </p>
-                    <p className="mt-1 font-mono-data text-2xl font-semibold text-white">
+                    <p className="mt-1 font-mono-data text-2xl font-semibold text-foreground">
                       {Math.round(setupProgress.pct)}%
                     </p>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-200/14 bg-cyan-300/[0.055] text-cyan-100">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/30 bg-primary/5 text-primary">
                     <Gauge className="h-5 w-5" strokeWidth={1.5} />
                   </div>
                 </div>
-                <Progress value={setupProgress.pct} className="mt-3 h-1.5 bg-white/5" />
+                <Progress value={setupProgress.pct} className="mt-3 h-1.5 bg-[hsl(var(--sl-surface))]" />
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <StepChip label="League" active={setupProgress.leagueReady} />
                   <StepChip label="Teams" active={setupProgress.teamsReady} />
@@ -1259,8 +1257,8 @@ export default function MatchAnalysis() {
         </section>
 
         <div className="space-y-6">
-          <div className="scorelab-stage-3d scorelab-board-3d rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-            <div className="scorelab-depth-grid pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
+          <div className="rounded-3xl border border-border bg-card p-6">
+            <div className="pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-35" />
             <div className="space-y-6">
               <div className="space-y-6">
                 <SectionCard title="League Setup">
@@ -1312,7 +1310,7 @@ export default function MatchAnalysis() {
                         value={selectedLeaguePreset.country}
                         hint={selectedLeaguePreset.tier}
                       />
-                      <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                      <div className="rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border p-4">
                         <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           <Database className="h-3.5 w-3.5" strokeWidth={1.7} />
                           Data Source
@@ -1331,7 +1329,7 @@ export default function MatchAnalysis() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-4">
+                    <div className="rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold text-foreground">
@@ -1344,7 +1342,7 @@ export default function MatchAnalysis() {
                         <button
                           type="button"
                           onClick={() => setShowLeagueAdvanced((prev) => !prev)}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-white/60 transition hover:bg-white/[0.08]"
+                          className="inline-flex items-center gap-2 rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                         >
                           {showLeagueAdvanced ? "Hide Advanced" : "Show Advanced"}
                           <ChevronDown
@@ -1404,16 +1402,16 @@ export default function MatchAnalysis() {
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <SectionCard title="Home Team">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-2.5">
+                    <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border px-4 py-2.5">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
                           Home Side
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           Use home-only performance and recent home form.
                         </p>
                       </div>
-                      <Target className="h-4 w-4 text-emerald-300" strokeWidth={1.7} />
+                      <Target className="h-4 w-4 text-emerald-700" strokeWidth={1.7} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
@@ -1469,16 +1467,16 @@ export default function MatchAnalysis() {
 
                 <SectionCard title="Away Team">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-1 ring-white/5 px-4 py-2.5">
+                    <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border px-4 py-2.5">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
                           Away Side
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           Use away-only performance and recent away form.
                         </p>
                       </div>
-                      <ShieldCheck className="h-4 w-4 text-sky-300" strokeWidth={1.7} />
+                      <ShieldCheck className="h-4 w-4 text-sky-700" strokeWidth={1.7} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
@@ -1615,7 +1613,7 @@ export default function MatchAnalysis() {
                       <button
                         type="button"
                         onClick={() => setShowComboOdds((open) => !open)}
-                        className="mb-3 flex w-full items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left transition-colors hover:bg-white/[0.05]"
+                        className="mb-3 flex w-full items-center justify-between rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--sl-surface))]"
                       >
                         <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                           Dupla hipótese e combinados
@@ -1696,23 +1694,23 @@ export default function MatchAnalysis() {
                     </div>
                   </SectionCard>
 
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                  <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4">
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                           Ready To Analyze
                         </p>
-                        <p className="mt-1 text-sm text-white">
+                        <p className="mt-1 text-sm text-foreground">
                           {setupProgress.completed >= 4
                             ? "The setup looks strong enough to run."
                             : "Finish the core inputs for a more trustworthy output."}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-semibold text-white">
+                        <p className="text-lg font-semibold text-foreground">
                           {Math.round(setupProgress.pct)}%
                         </p>
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           Complete
                         </p>
                       </div>
@@ -1734,7 +1732,7 @@ export default function MatchAnalysis() {
               </div>
 
               {errorMessage && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-700">
                   {errorMessage}
                 </div>
               )}
@@ -1770,7 +1768,7 @@ export default function MatchAnalysis() {
                     </motion.p>
                     <Progress
                       value={loadingProgress}
-                      className="mb-2 h-1.5 bg-white/5"
+                      className="mb-2 h-1.5 bg-[hsl(var(--sl-surface))]"
                     />
                     <p className="text-xs text-muted-foreground">
                       {Math.round(loadingProgress)}% completo
@@ -1811,12 +1809,12 @@ export default function MatchAnalysis() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.08 }}
-                      className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                      className="rounded-3xl border border-border bg-card p-4"
                     >
-                      <p className="text-xs uppercase tracking-wider text-white/45">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
                         {s.label}
                       </p>
-                      <p className="mt-1 text-2xl font-bold font-mono-data text-white">
+                      <p className="mt-1 text-2xl font-bold font-mono-data text-foreground">
                         {s.value}
                       </p>
                     </motion.div>
@@ -1827,7 +1825,7 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="overflow-hidden rounded-3xl border border-primary/20 bg-[linear-gradient(180deg,rgba(20,83,45,0.22)_0%,rgba(8,18,40,0.98)_100%)] shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                  className="overflow-hidden rounded-3xl border border-primary/20 bg-card"
                 >
                   <button
                     onClick={() => setWhyExpanded(!whyExpanded)}
@@ -1856,31 +1854,31 @@ export default function MatchAnalysis() {
                       >
                         <div className="space-y-3 px-5 pb-5">
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
-                              <p className="text-xs text-white/45">
+                            <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                              <p className="text-xs text-muted-foreground">
                                 Expected Goals
                               </p>
-                              <p className="text-lg font-bold font-mono-data text-white">
+                              <p className="text-lg font-bold font-mono-data text-foreground">
                                 {summary.totalXg.toFixed(2)}
                               </p>
-                              <p className="text-xs text-white/45">
+                              <p className="text-xs text-muted-foreground">
                                 Home {summary.homeXg.toFixed(2)} + Away{" "}
                                 {summary.awayXg.toFixed(2)}
                               </p>
                             </div>
-                            <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
-                              <p className="text-xs text-white/45">
+                            <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                              <p className="text-xs text-muted-foreground">
                                 Probability Advantage
                               </p>
                               <p className="text-lg font-bold font-mono-data text-primary">
                                 {bestBet ? `${bestBet.valueBet.toFixed(1)}%` : "--"}
                               </p>
-                              <p className="text-xs text-white/45">
+                              <p className="text-xs text-muted-foreground">
                                 Model vs Market
                               </p>
                             </div>
                           </div>
-                          <p className="text-sm leading-relaxed text-white/65">
+                          <p className="text-sm leading-relaxed text-muted-foreground">
                             {whyThisBetText ||
                               "Run an analysis to understand the strongest opportunity."}
                           </p>
@@ -1894,14 +1892,14 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35 }}
-                  className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                  className="rounded-3xl border border-border bg-card p-5"
                 >
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/45">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Betting Recommendation
                   </h3>
                   {bestBet ? (
                     <div className="space-y-3">
-                      <p className="text-sm leading-relaxed text-white/65">
+                      <p className="text-sm leading-relaxed text-muted-foreground">
                         <span className="font-semibold text-primary">
                           {bestBet.market}
                         </span>{" "}
@@ -1922,18 +1920,18 @@ export default function MatchAnalysis() {
                       </p>
 
                       {bestBetStakeRecommendation && (
-                        <div className="rounded-xl border border-white/8 bg-white/[0.04] p-3">
-                          <p className="mb-1 text-xs uppercase tracking-wider text-white/45">
+                        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                          <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
                             Recommended Stake
                           </p>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-lg font-bold font-mono-data text-white">
+                              <p className="text-lg font-bold font-mono-data text-foreground">
                                 {formatCurrency(
                                   bestBetStakeRecommendation.recommendedAmount
                                 )}
                               </p>
-                              <p className="text-xs text-white/45">
+                              <p className="text-xs text-muted-foreground">
                                 {bestBetStakeRecommendation.recommendedPct.toFixed(
                                   2
                                 )}
@@ -1947,7 +1945,7 @@ export default function MatchAnalysis() {
                             )}
                           </div>
                           {bestBetStakeRecommendation.reason && (
-                            <p className="mt-2 text-xs text-white/45">
+                            <p className="mt-2 text-xs text-muted-foreground">
                               {bestBetStakeRecommendation.reason}
                             </p>
                           )}
@@ -1955,15 +1953,15 @@ export default function MatchAnalysis() {
                       )}
 
                       {bettingRecommendations.length > 0 && (
-                        <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                          <p className="mb-3 text-xs uppercase tracking-wider text-white/45">
+                        <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                          <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
                             Recommendation Queue
                           </p>
                           <div className="space-y-2">
                             {bettingRecommendations.map(({ result, stakeRecommendation }) => (
                               <div
                                 key={result.market}
-                                className="flex flex-col gap-2 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                                className="flex flex-col gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                               >
                                 <div className="min-w-0">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -1972,26 +1970,26 @@ export default function MatchAnalysis() {
                                     </p>
                                     {result.tier ? <TierBadge tier={result.tier} /> : null}
                                   </div>
-                                  <p className="mt-1 text-xs text-white/45">
+                                  <p className="mt-1 text-xs text-muted-foreground">
                                     Edge floor{" "}
-                                    <span className="font-mono-data text-white/70">
+                                    <span className="font-mono-data text-foreground">
                                       {(result.edgeLowerBound ?? result.valueBet).toFixed(1)}%
                                     </span>{" "}
                                     · Model{" "}
-                                    <span className="font-mono-data text-white/70">
+                                    <span className="font-mono-data text-foreground">
                                       {result.modelProb.toFixed(1)}%
                                     </span>{" "}
                                     · Odds{" "}
-                                    <span className="font-mono-data text-white/70">
+                                    <span className="font-mono-data text-foreground">
                                       {result.odds.toFixed(2)}
                                     </span>
                                   </p>
                                 </div>
                                 <div className="text-left sm:text-right">
-                                  <p className="font-mono-data text-sm font-semibold text-white">
+                                  <p className="font-mono-data text-sm font-semibold text-foreground">
                                     {formatCurrency(stakeRecommendation.recommendedAmount)}
                                   </p>
-                                  <p className="text-xs text-white/45">
+                                  <p className="text-xs text-muted-foreground">
                                     {stakeRecommendation.recommendedPct.toFixed(2)}%
                                   </p>
                                 </div>
@@ -2002,7 +2000,7 @@ export default function MatchAnalysis() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-white/60">
+                    <p className="text-sm text-muted-foreground">
                       No recommendation available.
                     </p>
                   )}
@@ -2013,11 +2011,11 @@ export default function MatchAnalysis() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.38 }}
-                    className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                    className="rounded-3xl border border-border bg-card p-5"
                   >
                     <div className="mb-3 flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-amber-300" />
-                      <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
+                      <Lightbulb className="h-4 w-4 text-amber-700" />
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                         Historical Signals
                       </h3>
                     </div>
@@ -2026,18 +2024,18 @@ export default function MatchAnalysis() {
                       {historicalSignals.map((signal) => (
                         <div
                           key={signal.label}
-                          className="rounded-xl border border-white/8 bg-white/[0.04] p-3"
+                          className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3"
                         >
-                          <p className="text-xs uppercase tracking-wider text-white/45">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
                             {signal.label}
                           </p>
                           <p
                             className={`mt-1 text-sm leading-relaxed ${
                               signal.tone === "positive"
-                                ? "text-emerald-300"
+                                ? "text-emerald-700"
                                 : signal.tone === "negative"
-                                ? "text-red-300"
-                                : "text-white/70"
+                                ? "text-red-700"
+                                : "text-foreground"
                             }`}
                           >
                             {signal.detail}
@@ -2053,64 +2051,64 @@ export default function MatchAnalysis() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.39 }}
-                    className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                    className="rounded-3xl border border-border bg-card p-5"
                   >
                     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                           Similar Match Memory
                         </p>
-                        <h3 className="mt-1 text-lg font-semibold text-white">
+                        <h3 className="mt-1 text-lg font-semibold text-foreground">
                           {similarMatchMemory.verdict}
                         </h3>
                       </div>
                       <span
                         className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
                           similarMatchMemory.tone === "positive"
-                            ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200"
+                            ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-700"
                             : similarMatchMemory.tone === "negative"
-                            ? "border-red-300/20 bg-red-300/[0.08] text-red-200"
-                            : "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"
+                            ? "border-red-300/20 bg-red-300/[0.08] text-red-700"
+                            : "border-primary/30 bg-primary/5 text-primary"
                         }`}
                       >
                         Real Audits Only
                       </span>
                     </div>
 
-                    <p className="text-sm leading-relaxed text-white/65">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
                       {similarMatchMemory.summary}
                     </p>
 
                     <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                      <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                           Samples
                         </p>
-                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-foreground">
                           {similarMatchMemory.samples}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                      <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                           Actual
                         </p>
-                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-foreground">
                           {similarMatchMemory.hitRate.toFixed(1)}%
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                      <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                           Expected
                         </p>
-                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-foreground">
                           {similarMatchMemory.expectedHitRate.toFixed(1)}%
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                      <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                           Avg Similarity
                         </p>
-                        <p className="mt-1 font-mono-data text-lg font-semibold text-white">
+                        <p className="mt-1 font-mono-data text-lg font-semibold text-foreground">
                           {similarMatchMemory.avgSimilarity.toFixed(0)}
                         </p>
                       </div>
@@ -2121,23 +2119,23 @@ export default function MatchAnalysis() {
                         {similarMatchMemory.examples.map((example) => (
                           <div
                             key={`${example.match}-${example.market}-${example.similarity}`}
-                            className="rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2"
+                            className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-white">
+                              <p className="text-sm font-medium text-foreground">
                                 {example.match}
                               </p>
                               <span
                                 className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
                                   example.outcome === "green"
-                                    ? "bg-emerald-300/[0.09] text-emerald-200"
-                                    : "bg-red-300/[0.09] text-red-200"
+                                    ? "bg-emerald-300/[0.09] text-emerald-700"
+                                    : "bg-red-300/[0.09] text-red-700"
                                 }`}
                               >
                                 {example.outcome}
                               </span>
                             </div>
-                            <p className="mt-1 text-xs text-white/45">
+                            <p className="mt-1 text-xs text-muted-foreground">
                               {example.league} · Odds {example.odds.toFixed(2)} · Model{" "}
                               {example.modelProb.toFixed(1)}% · Similarity{" "}
                               {example.similarity.toFixed(0)}
@@ -2153,9 +2151,9 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                  className="rounded-3xl border border-border bg-card p-5"
                 >
-                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white/45">
+                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Model vs Market Probability
                   </h3>
                   <ResponsiveContainer width="100%" height={chartHeight}>
@@ -2211,17 +2209,17 @@ export default function MatchAnalysis() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.45 }}
-                  className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                  className="overflow-hidden rounded-3xl border border-border bg-card"
                 >
                   <div className="p-5 pb-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/45">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Detailed Results
                     </h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-t border-white/5">
+                        <tr className="border-t border-border">
                           {[
                             "Market",
                             "Odds",
@@ -2238,7 +2236,7 @@ export default function MatchAnalysis() {
                           ].map((h) => (
                             <th
                               key={h}
-                              className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-white/45"
+                              className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
                             >
                               {h}
                             </th>
@@ -2259,7 +2257,7 @@ export default function MatchAnalysis() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.5 + i * 0.05 }}
-                              className={`border-t border-white/5 transition-all duration-200 hover:bg-white/[0.03] ${
+                              className={`border-t border-border transition-all duration-200 hover:bg-[hsl(var(--sl-surface))] ${
                                 bestBet && r.market === bestBet.market
                                   ? "bg-primary/[0.03]"
                                   : ""
@@ -2268,19 +2266,19 @@ export default function MatchAnalysis() {
                               <td className="px-4 py-3 font-medium text-foreground">
                                 {r.market}
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-white/65">
+                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
                                 {r.odds.toFixed(2)}
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
                                 {r.modelProb.toFixed(1)}%
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-white/65">
+                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
                                 {r.impliedProb.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3">
                                 <ValueBadge value={r.valueBet} />
                               </td>
-                              <td className="px-4 py-3 font-mono-data text-white/65">
+                              <td className="px-4 py-3 font-mono-data text-muted-foreground">
                                 {r.kelly.toFixed(1)}%
                               </td>
                               <td className="px-4 py-3 font-mono-data text-foreground">
@@ -2302,7 +2300,7 @@ export default function MatchAnalysis() {
                                       stakeRecommendation.recommendedAmount
                                     )}
                                   </p>
-                                  <p className="text-xs text-white/45">
+                                  <p className="text-xs text-muted-foreground">
                                     {stakeRecommendation.recommendedPct.toFixed(2)}%
                                   </p>
                                   {stakeRecommendation.capped && (
@@ -2328,7 +2326,7 @@ export default function MatchAnalysis() {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="rounded-3xl border border-primary/20 bg-[linear-gradient(180deg,rgba(20,83,45,0.22)_0%,rgba(8,18,40,0.98)_100%)] p-5 ring-1 ring-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                    className="rounded-3xl border border-primary/20 bg-card p-5 ring-1 ring-primary/20"
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
@@ -2336,10 +2334,10 @@ export default function MatchAnalysis() {
                         Strongest Value Opportunity
                       </h3>
                     </div>
-                    <p className="text-lg font-bold text-white">
+                    <p className="text-lg font-bold text-foreground">
                       {bestBet.market}
                     </p>
-                    <p className="mt-1 text-sm text-white/65">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Edge:{" "}
                       <span className="font-mono-data font-bold text-primary">
                         {bestBet.valueBet.toFixed(1)}%
@@ -2362,7 +2360,7 @@ export default function MatchAnalysis() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-8 text-center shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                className="rounded-3xl border border-border bg-card p-8 text-center"
               >
                 <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                   <Target className="h-5 w-5 text-primary" strokeWidth={1.5} />

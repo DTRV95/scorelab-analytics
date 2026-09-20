@@ -155,11 +155,11 @@ function formatCurrency(value: number) {
 }
 
 function getTrueEdgeVerdictClass(verdict: TrueEdgeVerdict) {
-  if (verdict === "Trusted") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-100";
-  if (verdict === "Promising") return "border-cyan-300/25 bg-cyan-300/10 text-cyan-100";
-  if (verdict === "Avoid") return "border-red-300/25 bg-red-300/10 text-red-100";
-  if (verdict === "Watch") return "border-amber-300/25 bg-amber-300/10 text-amber-100";
-  return "border-white/10 bg-white/[0.04] text-white/58";
+  if (verdict === "Trusted") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-700";
+  if (verdict === "Promising") return "border-primary/30 bg-primary/10 text-primary";
+  if (verdict === "Avoid") return "border-red-300/25 bg-red-300/10 text-red-700";
+  if (verdict === "Watch") return "border-amber-300/25 bg-amber-300/10 text-amber-700";
+  return "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground";
 }
 
 function getLocalDateKey(dateInput: string | null | undefined) {
@@ -223,17 +223,17 @@ function SectionCard({
   return (
     <motion.section
       variants={fadeUp}
-      className={`scorelab-stage-3d scorelab-board-3d scorelab-analytics-panel relative overflow-hidden rounded-[26px] border border-white/8 ${className}`}
+      className={`relative overflow-hidden rounded-[26px] border border-border ${className}`}
     >
-      <div className="relative z-10 flex items-start justify-between gap-4 border-b border-white/5 px-4 py-3.5">
+      <div className="relative z-10 flex items-start justify-between gap-4 border-b border-border px-4 py-3.5">
         <div>
-          <h2 className="text-sm font-semibold text-white md:text-[15px]">{title}</h2>
+          <h2 className="text-sm font-semibold text-foreground md:text-[15px]">{title}</h2>
           {description ? (
-            <p className="mt-1 text-xs leading-6 text-white/58 md:text-[13px]">{description}</p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground md:text-[13px]">{description}</p>
           ) : null}
         </div>
         {badge ? (
-          <span className="scorelab-analytics-badge rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
+          <span className="sl-pill sl-pill-muted px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
             {badge}
           </span>
         ) : null}
@@ -253,7 +253,7 @@ function FocusMetric({
   detail: string;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object rounded-xl border border-white/8 p-3.5">
+    <div className="rounded-xl border border-border p-3.5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
@@ -282,25 +282,24 @@ function CompactStatCard({
         <motion.div
           whileHover={{ y: -1 }}
           transition={{ type: "spring", stiffness: 360, damping: 26 }}
-          className="scorelab-board-3d scorelab-tilt-3d scorelab-metric-object relative overflow-hidden rounded-[20px] border border-white/8 px-4 py-3.5"
+          className="relative overflow-hidden rounded-[20px] border border-border px-4 py-3.5"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.08),transparent_20%)] opacity-80" />
           <div className="relative">
-            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-white/38">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
               {label}
             </p>
-            <div className="mt-2 h-1 w-8 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.88),rgba(34,197,94,0.82))]" />
-            <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-white md:text-[1.46rem]">
+            <div className="mt-2 h-1 w-8 rounded-full bg-primary" />
+            <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-foreground md:text-[1.46rem]">
               {value}
             </p>
             {change ? (
               <p
                 className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
                   changeType === "positive"
-                    ? "text-emerald-400"
+                    ? "text-emerald-700"
                     : changeType === "negative"
                     ? "text-red-400"
-                    : "text-white/42"
+                    : "text-muted-foreground"
                 }`}
               >
                 {change}
@@ -340,7 +339,7 @@ function SegmentBarCard({
             margin={{ top: 8, right: 4, left: 8, bottom: 0 }}
           >
             <CartesianGrid
-              stroke="rgba(255,255,255,0.06)"
+              stroke="hsl(var(--border))"
               horizontal
               vertical={false}
               strokeDasharray="3 3"
@@ -350,7 +349,7 @@ function SegmentBarCard({
               axisLine={false}
               tickLine={false}
               tickMargin={10}
-              tick={{ fill: "rgba(255,255,255,0.46)", fontSize: 12 }}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
             />
             <YAxis
               type="category"
@@ -358,7 +357,7 @@ function SegmentBarCard({
               width={90}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "rgba(255,255,255,0.58)", fontSize: 12 }}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
             />
             <Tooltip content={<ToolTipCard valueLabel={title} suffix={suffix} />} />
             <Bar dataKey={valueKey} radius={[0, 10, 10, 0]} maxBarSize={26}>
@@ -613,7 +612,7 @@ export default function BankrollTools() {
                 value={initialBankrollInput}
                 onChange={(e) => setInitialBankrollInput(e.target.value)}
                 placeholder="Enter bankroll"
-                className="h-11 w-full rounded-lg border border-white/10 bg-input px-4 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="h-11 w-full rounded-lg border border-border bg-input px-4 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="flex items-end gap-3">
@@ -729,7 +728,7 @@ export default function BankrollTools() {
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Strongest Zone
                 </p>
@@ -744,7 +743,7 @@ export default function BankrollTools() {
                     : "Once you have enough settled bets, this section will become more informative."}
                 </p>
               </div>
-              <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Confidence Check
                 </p>
@@ -765,7 +764,7 @@ export default function BankrollTools() {
                     ? "border-emerald-300/18 bg-emerald-300/[0.06]"
                     : trueEdgeValidation.strongestWarning
                     ? "border-red-300/18 bg-red-300/[0.06]"
-                    : "border-white/8 bg-white/[0.02]"
+                    : "border-border bg-[hsl(var(--sl-surface))]"
                 }`}
               >
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -827,7 +826,7 @@ export default function BankrollTools() {
               {performanceData.map((item) => (
                 <div
                   key={item.name}
-                  className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
+                  className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3"
                 >
                   <p className="text-muted-foreground">{item.name}</p>
                   <p className="mt-1 font-mono-data text-foreground">{item.value}</p>
@@ -849,7 +848,7 @@ export default function BankrollTools() {
                 margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
               >
                 <CartesianGrid
-                  stroke="rgba(255,255,255,0.06)"
+                  stroke="hsl(var(--border))"
                   vertical={false}
                   strokeDasharray="3 3"
                 />
@@ -858,13 +857,13 @@ export default function BankrollTools() {
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.56)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickMargin={10}
-                  tick={{ fill: "rgba(255,255,255,0.46)", fontSize: 12 }}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
                 <Tooltip content={<ToolTipCard valueLabel="Bankroll" suffix="" />} />
                 <Area
@@ -898,7 +897,7 @@ export default function BankrollTools() {
                   margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="hsl(var(--border))"
                     vertical={false}
                     strokeDasharray="3 3"
                   />
@@ -907,13 +906,13 @@ export default function BankrollTools() {
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.56)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.46)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <Tooltip content={<ToolTipCard valueLabel="P/L" suffix="" />} />
                   <Bar dataKey="profitLoss" radius={[10, 10, 0, 0]} maxBarSize={42}>
@@ -945,7 +944,7 @@ export default function BankrollTools() {
                   margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="hsl(var(--border))"
                     vertical={false}
                     strokeDasharray="3 3"
                   />
@@ -954,13 +953,13 @@ export default function BankrollTools() {
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.56)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
-                    tick={{ fill: "rgba(255,255,255,0.46)", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                   />
                   <Tooltip content={<ToolTipCard valueLabel="Drawdown" suffix="%" />} />
                   <Area
@@ -1028,39 +1027,39 @@ export default function BankrollTools() {
           title="Validation Lab"
           description="Audit the zones the system trusts, watches or rejects before they influence roadmap execution."
           badge="True Edge"
-          className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+          className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
         >
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   Trusted
                 </p>
-                <p className="mt-1 font-mono-data text-lg text-emerald-100">
+                <p className="mt-1 font-mono-data text-lg text-emerald-700">
                   {trueEdgeValidation.summary.trustedCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   Avoid
                 </p>
-                <p className="mt-1 font-mono-data text-lg text-red-100">
+                <p className="mt-1 font-mono-data text-lg text-red-700">
                   {trueEdgeValidation.summary.avoidCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   Learning
                 </p>
-                <p className="mt-1 font-mono-data text-lg text-white">
+                <p className="mt-1 font-mono-data text-lg text-foreground">
                   {trueEdgeValidation.summary.learningCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   Min Sample
                 </p>
-                <p className="mt-1 font-mono-data text-lg text-cyan-100">8</p>
+                <p className="mt-1 font-mono-data text-lg text-primary">8</p>
               </div>
             </div>
 
@@ -1072,8 +1071,8 @@ export default function BankrollTools() {
                   onClick={() => setTrueEdgeFilter(filter)}
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
                     trueEdgeFilter === filter
-                      ? "border-cyan-200/30 bg-cyan-200/12 text-cyan-50"
-                      : "border-white/10 bg-white/[0.03] text-white/48 hover:bg-white/[0.06]"
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground hover:bg-[hsl(var(--sl-surface))]"
                   }`}
                 >
                   {filter}
@@ -1083,15 +1082,15 @@ export default function BankrollTools() {
           </div>
 
           {trueEdgeRows.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
               No validation segments match this filter yet. Keep resolving bets and the lab will become more useful.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] text-sm">
-                  <thead className="border-b border-white/5">
-                    <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                  <thead className="border-b border-border">
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-4 py-3 pr-4">Segment</th>
                       <th className="px-4 py-3 pr-4">Type</th>
                       <th className="px-4 py-3 pr-4">Verdict</th>
@@ -1108,10 +1107,10 @@ export default function BankrollTools() {
                     {trueEdgeRows.map((segment) => (
                       <tr
                         key={segment.key}
-                        className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"
+                        className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
                       >
                         <td className="px-4 py-3 pr-4 font-medium">{segment.label}</td>
-                        <td className="px-4 py-3 pr-4 text-white/58">{segment.type}</td>
+                        <td className="px-4 py-3 pr-4 text-muted-foreground">{segment.type}</td>
                         <td className="px-4 py-3 pr-4">
                           <span
                             className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getTrueEdgeVerdictClass(
@@ -1131,8 +1130,8 @@ export default function BankrollTools() {
                         <td
                           className={`px-4 py-3 pr-4 font-mono-data ${
                             segment.calibrationGap >= 0
-                              ? "text-emerald-200"
-                              : "text-red-200"
+                              ? "text-emerald-700"
+                              : "text-red-700"
                           }`}
                         >
                           {segment.calibrationGap >= 0 ? "+" : ""}
@@ -1144,7 +1143,7 @@ export default function BankrollTools() {
                         <td className="px-4 py-3 pr-4 font-mono-data">
                           {segment.trueEdgeScore}/100
                         </td>
-                        <td className="px-4 py-3 pr-4 text-white/58">
+                        <td className="px-4 py-3 pr-4 text-muted-foreground">
                           {segment.verdict === "Trusted" || segment.verdict === "Promising"
                             ? "Can support clean picks"
                             : segment.verdict === "Avoid"
@@ -1167,17 +1166,17 @@ export default function BankrollTools() {
             title="Daily Performance"
             description="Operational day-by-day recap for bankroll growth and discipline."
             badge="Daily"
-            className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
           >
             {combinedDailyPerformance.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
                 No settled bets yet. Track results in History and this page will start showing real bankroll movement.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+              <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
                 {hiddenDailyRows > 0 ? (
-                  <div className="flex items-center justify-between border-b border-white/6 px-4 py-3">
-                    <p className="text-sm text-white/60">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                    <p className="text-sm text-muted-foreground">
                       Showing the last 5 days by default.
                     </p>
                     <button
@@ -1185,7 +1184,7 @@ export default function BankrollTools() {
                       onClick={() =>
                         setShowAllDailyPerformance((prev) => !prev)
                       }
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.08]"
+                      className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                     >
                       {showAllDailyPerformance
                         ? "Show Less"
@@ -1195,8 +1194,8 @@ export default function BankrollTools() {
                 ) : null}
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">
-                  <thead className="border-b border-white/5">
-                    <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                  <thead className="border-b border-border">
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-4 py-3 pr-4">Date</th>
                       <th className="px-4 py-3 pr-4">Start</th>
                       <th className="px-4 py-3 pr-4">End</th>
@@ -1207,7 +1206,7 @@ export default function BankrollTools() {
                   </thead>
                   <tbody>
                     {visibleDailyPerformance.map((item: DailyPerformanceItem) => (
-                      <tr key={item.date} className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]">
+                      <tr key={item.date} className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]">
                         <td className="px-4 py-3 pr-4 font-medium">{item.date}</td>
                         <td className="px-4 py-3 pr-4 font-mono-data">
                           {formatCurrency(item.startBankroll)}
@@ -1235,10 +1234,10 @@ export default function BankrollTools() {
             title="Model Audit"
             description="Paper performance for analysed games. It validates model behaviour without touching bankroll, ROI or real-money P/L."
             badge="Model"
-            className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
           >
             {modelAuditSummary.auditedMatches === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
                 No audited matches yet. Add final scores in Simple Bet to validate analysed markets without logging a real stake.
               </div>
             ) : (
@@ -1266,11 +1265,11 @@ export default function BankrollTools() {
                   />
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+                <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] text-sm">
-                      <thead className="border-b border-white/5">
-                        <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                      <thead className="border-b border-border">
+                        <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                           <th className="px-4 py-3 pr-4">Market</th>
                           <th className="px-4 py-3 pr-4">Samples</th>
                           <th className="px-4 py-3 pr-4">Greens</th>
@@ -1284,7 +1283,7 @@ export default function BankrollTools() {
                         {modelAuditSummary.marketPerformance.slice(0, 8).map((item) => (
                           <tr
                             key={item.market}
-                            className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"
+                            className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
                           >
                             <td className="px-4 py-3 pr-4 font-medium">{item.market}</td>
                             <td className="px-4 py-3 pr-4 font-mono-data">{item.samples}</td>
@@ -1313,18 +1312,18 @@ export default function BankrollTools() {
             title="Market Performance"
             description="The quickest way to see which markets deserve more trust and which ones should be challenged."
             badge="Markets"
-            className="overflow-hidden rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] ring-0"
+            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
           >
             {marketPerformance.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
                 No tracked bets yet. Once you log results, market-level performance will appear here.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
+              <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
-                  <thead className="border-b border-white/5">
-                    <tr className="text-left text-xs uppercase tracking-wide text-white/45">
+                  <thead className="border-b border-border">
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-4 py-3 pr-4">Market</th>
                       <th className="px-4 py-3 pr-4">Bets</th>
                       <th className="px-4 py-3 pr-4">Greens</th>
@@ -1337,7 +1336,7 @@ export default function BankrollTools() {
                     {marketPerformanceRows.map((item) => (
                       <tr
                         key={item.market}
-                        className="border-t border-white/5 text-white transition-colors hover:bg-white/[0.03]"
+                        className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
                       >
                         <td className="px-4 py-3 pr-4 font-medium">{item.market}</td>
                         <td className="px-4 py-3 pr-4 font-mono-data">{item.bets}</td>

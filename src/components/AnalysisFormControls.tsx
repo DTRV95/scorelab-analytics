@@ -12,9 +12,9 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <div className="scorelab-stage-3d scorelab-board-3d scorelab-analytics-panel relative overflow-hidden rounded-[28px] border border-white/8 p-5">
-      <div className="relative z-10 mb-5 flex items-center justify-between gap-3 border-b border-white/6 pb-3">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/58">
+    <div className="relative overflow-hidden rounded-[28px] border border-border p-5">
+      <div className="relative z-10 mb-5 flex items-center justify-between gap-3 border-b border-border pb-3">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
           {title}
         </h3>
         <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_18px_var(--scorelab-accent-b)]" />
@@ -39,7 +39,7 @@ export function FormField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
         {label}
       </label>
       <input
@@ -47,10 +47,10 @@ export function FormField({
         step={type === "number" ? "any" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
+        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
       {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {description}
         </p>
       ) : null}
@@ -73,13 +73,13 @@ export function SelectField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-white/56">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-white focus:outline-none"
+        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-foreground focus:outline-none"
       >
         {options.map((option) => (
           <option
@@ -92,7 +92,7 @@ export function SelectField({
         ))}
       </select>
       {description ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-white/45">
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {description}
         </p>
       ) : null}

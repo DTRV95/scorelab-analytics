@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 export type HudTone = "cyan" | "emerald" | "amber" | "red";
 
 const toneClasses: Record<HudTone, string> = {
-  cyan: "border-cyan-200/18 bg-cyan-200/[0.055] text-cyan-100",
-  emerald: "border-emerald-300/18 bg-emerald-300/[0.055] text-emerald-100",
-  amber: "border-amber-300/18 bg-amber-300/[0.055] text-amber-100",
-  red: "border-red-300/18 bg-red-300/[0.055] text-red-100",
+  cyan: "border-primary/30 bg-primary/5 text-primary",
+  emerald: "border-emerald-300/18 bg-emerald-300/[0.055] text-emerald-700",
+  amber: "border-amber-300/18 bg-amber-300/[0.055] text-amber-700",
+  red: "border-red-300/18 bg-red-300/[0.055] text-red-700",
 };
 
 const dotClasses: Record<HudTone, string> = {
-  cyan: "bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.72)]",
+  cyan: "bg-primary/10 shadow-[0_0_14px_rgba(103,232,249,0.72)]",
   emerald: "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.72)]",
   amber: "bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,0.72)]",
   red: "bg-red-300 shadow-[0_0_14px_rgba(252,165,165,0.72)]",
@@ -63,7 +63,7 @@ export function HudSignalLine({
       : "from-transparent via-cyan-300/45 to-transparent";
 
   return (
-    <div className={cn("relative h-px overflow-hidden bg-white/[0.055]", className)}>
+    <div className={cn("relative h-px overflow-hidden bg-[hsl(var(--sl-surface))]", className)}>
       <div className={cn("scorelab-hud-scan absolute inset-y-0 w-1/2 bg-gradient-to-r", color)} />
     </div>
   );
@@ -87,12 +87,12 @@ export function HudMetricOrb({
         toneClasses[tone]
       )}
     >
-      <div className="pointer-events-none absolute -right-6 -top-8 h-16 w-16 rounded-full bg-white/[0.055] blur-xl" />
+      <div className="pointer-events-none absolute -right-6 -top-8 h-16 w-16 rounded-full bg-[hsl(var(--sl-surface))] blur-xl" />
       <div className="relative flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-[0.58]">
         {icon}
         <span>{label}</span>
       </div>
-      <p className="relative mt-1 font-mono-data text-sm font-semibold text-white">
+      <p className="relative mt-1 font-mono-data text-sm font-semibold text-foreground">
         {value}
       </p>
     </div>
@@ -109,10 +109,10 @@ export function HudStateIcon({ state }: { state: "online" | "scanning" | "execut
 export function HudCornerFrame({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-3 rounded-[22px]", className)}>
-      <div className="absolute left-0 top-0 h-5 w-5 border-l border-t border-cyan-100/18" />
-      <div className="absolute right-0 top-0 h-5 w-5 border-r border-t border-cyan-100/18" />
-      <div className="absolute bottom-0 left-0 h-5 w-5 border-b border-l border-cyan-100/18" />
-      <div className="absolute bottom-0 right-0 h-5 w-5 border-b border-r border-cyan-100/18" />
+      <div className="absolute left-0 top-0 h-5 w-5 border-l border-t border-primary/30" />
+      <div className="absolute right-0 top-0 h-5 w-5 border-r border-t border-primary/30" />
+      <div className="absolute bottom-0 left-0 h-5 w-5 border-b border-l border-primary/30" />
+      <div className="absolute bottom-0 right-0 h-5 w-5 border-b border-r border-primary/30" />
     </div>
   );
 }

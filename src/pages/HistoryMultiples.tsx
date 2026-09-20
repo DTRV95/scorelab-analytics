@@ -17,7 +17,7 @@ import {
 import type { BetStatus } from "@/types/analysis";
 
 const darkSelectClass =
-  "h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
+  "h-11 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30";
 
 const darkSelectStyle = {
   backgroundColor: "#0f172a",
@@ -49,23 +49,21 @@ function PremiumCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-stage-3d scorelab-board-3d relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+      className="relative overflow-hidden rounded-[28px] border border-border bg-card p-5"
     >
-      <div className="scorelab-depth-grid pointer-events-none absolute inset-x-8 bottom-0 h-24 opacity-25" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_top_left,rgba(34,197,94,0.06),transparent_25%)]" />
       <div className="relative mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/42">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Multiples Bet
           </p>
-          <h2 className="mt-2 text-base font-semibold text-white md:text-lg">{title}</h2>
+          <h2 className="mt-2 text-base font-semibold text-foreground md:text-lg">{title}</h2>
           {description ? (
-            <p className="mt-1 text-sm leading-6 text-white/58">{description}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
           ) : null}
         </div>
 
         {badge ? (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
+          <div className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1 text-xs text-muted-foreground">
             {badge}
           </div>
         ) : null}
@@ -84,12 +82,12 @@ function MetricBlock({
   value: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.025)_100%)] px-3.5 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-      <div className="mb-2 h-1.5 w-10 rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.9)_0%,rgba(34,197,94,0.8)_100%)]" />
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3">
+      <div className="mb-2 h-1.5 w-10 rounded-full bg-primary" />
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <div className="mt-1.5 text-base font-semibold text-white">{value}</div>
+      <div className="mt-1.5 text-base font-semibold text-foreground">{value}</div>
     </div>
   );
 }
@@ -102,11 +100,11 @@ function InlineStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="scorelab-board-3d scorelab-tilt-3d rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/38">
+    <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <div className="mt-1 text-sm font-medium text-white">{value}</div>
+      <div className="mt-1 text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }
@@ -120,12 +118,12 @@ function ActiveFilterPill({
 }) {
   const toneClasses =
     tone === "emerald"
-      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-700"
       : tone === "amber"
-      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
+      ? "border-amber-400/20 bg-amber-400/10 text-amber-700"
       : tone === "cyan"
-      ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-200"
-      : "border-white/10 bg-white/[0.04] text-white/65";
+      ? "border-primary/30 bg-primary/10 text-primary"
+      : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground";
 
   return (
     <span
@@ -261,17 +259,16 @@ export default function HistoryMultiples() {
       >
         <motion.div
           variants={fadeUp}
-          className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,18,40,0.96)_0%,rgba(4,11,28,0.98)_100%)] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.32)]"
+          className="relative overflow-hidden rounded-[32px] border border-border bg-card p-5"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.1),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_32%)]" />
           <div className="relative max-w-3xl">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">
+            <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Multiples Bet Workspace
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
               Multiples Bet
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
               Build, review and track multiples separately from single bets so the workflow stays cleaner and easier to read.
             </p>
           </div>
@@ -313,8 +310,8 @@ export default function HistoryMultiples() {
                 onClick={() => setShowPlacedOnly((prev) => !prev)}
                 className={`rounded-full border px-3 py-1.5 text-xs transition ${
                   showPlacedOnly
-                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                    ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-700"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
                 }`}
               >
                 Placed Only
@@ -361,19 +358,19 @@ export default function HistoryMultiples() {
             badge="Builder"
           >
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Layers3 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-medium text-white">Current Legs</p>
+                    <p className="text-sm font-medium text-foreground">Current Legs</p>
                   </div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
+                  <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                     {multipleDraft.length} selected
                   </span>
                 </div>
 
                 {multipleDraft.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-white/55">
+                  <div className="rounded-2xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
                     Add picks from the Simple Bet page to start building a multiple.
                   </div>
                 ) : (
@@ -381,18 +378,18 @@ export default function HistoryMultiples() {
                     {multipleDraft.map((leg) => (
                       <div
                         key={`${leg.analysisId}-${leg.market}`}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3"
+                        className="flex items-start justify-between gap-3 rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-3"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-white">{leg.match}</p>
-                          <p className="mt-1 text-xs text-white/55">
+                          <p className="text-sm font-medium text-foreground">{leg.match}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {leg.market} · {leg.odds.toFixed(2)} · {leg.confidence.toFixed(1)}/10
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveMultipleLeg(leg.analysisId, leg.market)}
-                          className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/15"
+                          className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-700 transition hover:bg-red-500/15"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -421,32 +418,32 @@ export default function HistoryMultiples() {
                 />
               </div>
 
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3.5">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     Correlation
                   </p>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/55">
+                  <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {multipleMetrics.correlationLevel} · {multipleMetrics.correlationScore}
                   </span>
                 </div>
                 {multipleMetrics.correlationReasons.length > 0 ? (
                   <div className="mt-2 space-y-1.5">
                     {multipleMetrics.correlationReasons.map((reason) => (
-                      <p key={reason} className="text-xs leading-5 text-white/55">
+                      <p key={reason} className="text-xs leading-5 text-muted-foreground">
                         {reason}
                       </p>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs leading-5 text-white/55">
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     No same-game correlation warning detected.
                   </p>
                 )}
               </div>
 
-              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
-                <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/42">
+              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-4">
+                <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Stake (Optional)
                 </label>
                 <input
@@ -457,9 +454,9 @@ export default function HistoryMultiples() {
                   placeholder={multipleMetrics.recommendedStakeAmount
                     ? multipleMetrics.recommendedStakeAmount.toFixed(2)
                     : "0.00"}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
-                <p className="mt-2 text-xs leading-5 text-white/50">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   If you enter a stake here, the multiple is saved as already placed and tracking starts immediately.
                 </p>
               </div>
@@ -469,7 +466,7 @@ export default function HistoryMultiples() {
                   type="button"
                   onClick={handleSaveMultiple}
                   disabled={multipleDraft.length < 2}
-                  className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Save Multiple
                 </button>
@@ -479,7 +476,7 @@ export default function HistoryMultiples() {
                     clearMultipleDraft();
                     refreshMultiples();
                   }}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white/70 transition hover:bg-white/[0.08]"
+                  className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-2.5 text-sm text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                 >
                   Clear Builder
                 </button>
@@ -494,13 +491,13 @@ export default function HistoryMultiples() {
               badge="Tracking"
             >
               {savedMultiples.length === 0 ? (
-                <p className="text-sm text-white/55">
+                <p className="text-sm text-muted-foreground">
                   No saved multiples yet. Build one from the Simple Bet view.
                 </p>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                    <p className="text-sm text-white/60">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-4 py-3">
+                    <p className="text-sm text-muted-foreground">
                       {showResolvedMultiples
                         ? "Showing all multiples."
                         : hiddenResolvedMultiplesCount > 0
@@ -510,37 +507,37 @@ export default function HistoryMultiples() {
                     <button
                       type="button"
                       onClick={() => setShowResolvedMultiples((prev) => !prev)}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/70 transition hover:bg-white/[0.08]"
+                      className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
                     >
                       {showResolvedMultiples ? "Hide Resolved" : "Show All"}
                     </button>
                   </div>
 
                   {visibleSavedMultiples.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-white/55">
+                    <div className="rounded-2xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
                       No open multiples right now.
                     </div>
                   ) : (
                     visibleSavedMultiples.map((multiple) => (
                       <div
                         key={multiple.id}
-                        className="scorelab-board-3d scorelab-tilt-3d overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_100%)] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
+                        className="overflow-hidden rounded-[26px] border border-border bg-card p-4"
                       >
                         <div className="flex flex-col gap-4">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
+                                <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                                   {multiple.legs.length} legs
                                 </span>
-                                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-200">
+                                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-primary">
                                   {multiple.correlationLevel} correlation
                                 </span>
-                                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
+                                <span className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                                   {new Date(multiple.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
-                              <p className="mt-3 text-sm leading-6 text-white/62">
+                              <p className="mt-3 text-sm leading-6 text-muted-foreground">
                                 {multiple.legs.map((leg) => `${leg.homeTeam} vs ${leg.awayTeam}`).join(" · ")}
                               </p>
                             </div>
@@ -556,14 +553,14 @@ export default function HistoryMultiples() {
                             {multiple.legs.map((leg) => (
                               <div
                                 key={`${leg.analysisId}-${leg.market}`}
-                                className="rounded-2xl border border-white/8 bg-white/[0.03] px-3.5 py-3"
+                                className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3"
                               >
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-white">
+                                    <p className="text-sm font-medium text-foreground">
                                       {leg.homeTeam} vs {leg.awayTeam}
                                     </p>
-                                    <p className="mt-1 text-xs text-white/48">
+                                    <p className="mt-1 text-xs text-muted-foreground">
                                       {leg.market}
                                     </p>
                                   </div>
@@ -585,13 +582,13 @@ export default function HistoryMultiples() {
                                           className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
                                             leg.resultStatus === status
                                               ? status === "green"
-                                                ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                                                ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-700"
                                                 : status === "red"
-                                                ? "border-red-400/30 bg-red-400/15 text-red-200"
+                                                ? "border-red-400/30 bg-red-400/15 text-red-700"
                                                 : status === "void"
-                                                ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
-                                                : "border-cyan-400/30 bg-cyan-400/15 text-cyan-200"
-                                              : "border-white/10 bg-white/[0.03] text-white/52 hover:bg-white/[0.06]"
+                                                ? "border-amber-300/30 bg-amber-300/10 text-amber-700"
+                                                : "border-primary/30 bg-primary/10 text-primary"
+                                              : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground hover:bg-[hsl(var(--sl-surface))]"
                                           }`}
                                         >
                                           {status}
@@ -605,8 +602,8 @@ export default function HistoryMultiples() {
                           </div>
 
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                              <label className="flex items-center gap-3 text-sm text-white">
+                            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                              <label className="flex items-center gap-3 text-sm text-foreground">
                                 <input
                                   type="checkbox"
                                   checked={multiple.tracking.betPlaced}
@@ -623,14 +620,14 @@ export default function HistoryMultiples() {
                                         : null,
                                     })
                                   }
-                                  className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                  className="h-4 w-4 rounded border-border bg-transparent"
                                 />
                                 Placed
                               </label>
                             </div>
 
-                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                 Stake Used
                               </label>
                               <input
@@ -643,36 +640,36 @@ export default function HistoryMultiples() {
                                     multiple.tracking.oddUsed ?? Number(multiple.combinedOdds.toFixed(2))
                                   )
                                 }
-                                className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                className="h-11 w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                               />
                             </div>
 
-                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                 Result Status
                               </label>
-                              <div className="flex h-11 items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-4">
-                                <span className="text-sm text-white">
+                              <div className="flex h-11 items-center justify-between rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-4">
+                                <span className="text-sm text-foreground">
                                   {multiple.tracking.resultStatus.charAt(0).toUpperCase() +
                                     multiple.tracking.resultStatus.slice(1)}
                                 </span>
-                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                   Auto
                                 </span>
                               </div>
-                              <p className="mt-2 text-xs leading-5 text-white/42">
+                              <p className="mt-2 text-xs leading-5 text-muted-foreground">
                                 This status is now derived automatically from the leg statuses above.
                               </p>
                             </div>
 
-                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5">
-                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-3.5">
+                              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                 Delete
                               </label>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMultiple(multiple.id)}
-                                className="h-11 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
+                                className="h-11 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-medium text-red-700 transition hover:bg-red-500/15"
                               >
                                 Delete
                               </button>
@@ -694,13 +691,13 @@ export default function HistoryMultiples() {
           badge="Workflow"
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-white/62">
-              Add legs from the Simple Bet page using <span className="text-white">Add To Multiple</span>.
+            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4 text-sm leading-6 text-muted-foreground">
+              Add legs from the Simple Bet page using <span className="text-foreground">Add To Multiple</span>.
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-white/62">
+            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4 text-sm leading-6 text-muted-foreground">
               Come here to review correlation, save the combo and manage the tracking.
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-white/62">
+            <div className="rounded-2xl border border-border bg-[hsl(var(--sl-surface))] p-4 text-sm leading-6 text-muted-foreground">
               Bankroll and analytics stay linked because singles and multiples still use the same storage.
             </div>
           </div>
