@@ -19,7 +19,6 @@ import { LeagueCalibration } from "@/components/LeagueCalibration";
 import {
   ProbabilityBreakdown,
   MARKET_LABELS,
-  sampleTone,
   type ProbabilityResult,
 } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
@@ -303,7 +302,9 @@ function BoardMatchRow({
       {/* One number per row on purpose. An earlier version also showed a
           1/X/2 strip, which left two different percentages competing for the
           same glance — the strongest outcome and the strongest market are
-          rarely the same line. The full set is one tap away. */}
+          rarely the same line. The full set is one tap away, and so is how
+          much history backs it: the sample badge used to sit here too, a
+          second verdict on a line that only has room for one. */}
       <button
         type="button"
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
@@ -324,7 +325,7 @@ function BoardMatchRow({
           </p>
         </div>
 
-        <div className="max-w-[45%] flex-none text-right">
+        <div className="max-w-[52%] flex-none text-right">
           <p className="sl-meta text-[11px] leading-snug">
             {MARKET_LABELS[match.headline_market] ?? match.headline_market}
           </p>
@@ -332,15 +333,6 @@ function BoardMatchRow({
             {match.headline_pct.toFixed(1)}%
           </p>
         </div>
-
-        <span
-          className={`flex-none rounded-full px-2 py-1 text-[10px] font-semibold ring-1 ${sampleTone(
-            match.amostra_label
-          )}`}
-          title="Quanto histórico sustenta esta previsão"
-        >
-          {match.amostra_label}
-        </span>
       </button>
 
       <AnimatePresence initial={false}>
