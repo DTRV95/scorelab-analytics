@@ -75,7 +75,7 @@ export function TopBar() {
           </Link>
 
           <Link
-            to="/analysis"
+            to="/probability"
             className="sl-btn-cta inline-flex h-9 flex-none items-center gap-1.5 px-3 text-[13px] sm:px-4"
           >
             <Sparkles className="h-4 w-4" strokeWidth={2} />
