@@ -23,6 +23,8 @@ import {
 } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { buildBetFromBoard, edgeFor, suggestStake } from "@/lib/betFromBoard";
+import { calculateNextBankrollBefore, saveAnalysis } from "@/lib/analysisStorage";
 import { fetchMatchPrefill } from "@/lib/matchPrefill";
 import {
   DEFAULT_LEAGUE_KEY,
@@ -101,6 +103,151 @@ function kickoffTime(kickoff: string | null) {
   return timeLabel(date);
 }
 
+/**
+ * Turns a forecast into a tracked bet without leaving the board: pick the
+ * market, type the price your book is offering, done. The edge updates as you
+ * type so you can see whether the price is worth taking before committing.
+ */
+function PlaceBetForm({ match }: { match: BoardMatch }) {
+  // Same bankroll reading the manual analysis flow stakes against, so a bet
+  // placed here and one placed there start from the same number.
+  const bankroll = useMemo(() => calculateNextBankrollBefore(), []);
+
+  const [market, setMarket] = useState(match.headline_market);
+  const [odds, setOdds] = useState("");
+  const [stake, setStake] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const modelProb =
+    match.mercados.find((m) => m.mercado === market)?.probabilidade_pct ?? 0;
+  const oddsValue = Number(odds.replace(",", "."));
+  const hasOdds = Number.isFinite(oddsValue) && oddsValue > 1;
+  const edge = hasOdds ? edgeFor(modelProb, oddsValue) : null;
+  const suggested = hasOdds ? suggestStake(modelProb, oddsValue, bankroll) : 0;
+  const stakeValue = Number(stake.replace(",", "."));
+  const hasStake = Number.isFinite(stakeValue) && stakeValue > 0;
+
+  const place = () => {
+    if (!hasOdds || !hasStake) return;
+    saveAnalysis(
+      buildBetFromBoard({
+        match,
+        market,
+        odds: oddsValue,
+        stake: stakeValue,
+        bankroll,
+      })
+    );
+    setSaved(true);
+  };
+
+  if (saved) {
+    return (
+      <div className="rounded-xl border border-[hsl(var(--sl-green))]/30 bg-[hsl(var(--sl-green))]/5 p-3.5">
+        <p className="text-sm font-semibold text-[hsl(var(--sl-green))]">
+          Aposta registada.
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Fica em "Apostas" como pendente. O resultado final é obtido pela API
+          e a aposta é fechada como green ou red sem teres de fazer nada.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3.5">
+      <p className="text-[13px] font-semibold text-foreground">
+        Registar aposta neste jogo
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        Escolhe o mercado e mete a odd da tua casa. O resultado é fechado
+        automaticamente quando o jogo acabar.
+      </p>
+
+      <div className="mt-3 space-y-2">
+        <select
+          value={market}
+          onChange={(e) => setMarket(e.target.value)}
+          style={{ colorScheme: "light" }}
+          className="h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          {match.mercados.map((m) => (
+            <option key={m.mercado} value={m.mercado}>
+              {(MARKET_LABELS[m.mercado] ?? m.mercado) +
+                ` — ${m.probabilidade_pct.toFixed(1)}%`}
+            </option>
+          ))}
+        </select>
+
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="sl-meta text-[11px]">Odd</span>
+            <input
+              inputMode="decimal"
+              value={odds}
+              onChange={(e) => setOdds(e.target.value)}
+              placeholder="1.85"
+              className="mt-1 h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 font-mono-data text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+          <label className="block">
+            <span className="sl-meta text-[11px]">Stake (€)</span>
+            <input
+              inputMode="decimal"
+              value={stake}
+              onChange={(e) => setStake(e.target.value)}
+              placeholder={suggested > 0 ? suggested.toFixed(2) : "10"}
+              className="mt-1 h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 font-mono-data text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+        </div>
+
+        {edge !== null && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+            <span className="sl-meta text-[11px]">
+              Modelo {modelProb.toFixed(1)}% vs odd {(100 / oddsValue).toFixed(1)}%
+            </span>
+            <span
+              className={`font-mono-data text-sm font-bold ${
+                edge > 0 ? "text-[hsl(var(--sl-green))]" : "text-destructive"
+              }`}
+            >
+              {edge > 0 ? "+" : ""}
+              {edge.toFixed(1)}%
+            </span>
+          </div>
+        )}
+
+        {edge !== null && edge <= 0 && (
+          <p className="text-xs leading-relaxed text-destructive">
+            A esta odd o mercado está a pagar menos do que o modelo acha justo.
+            Podes registar na mesma, mas sem valor a teu favor.
+          </p>
+        )}
+
+        {suggested > 0 && (
+          <button
+            type="button"
+            onClick={() => setStake(suggested.toFixed(2))}
+            className="text-[12px] font-semibold text-primary"
+          >
+            Usar stake sugerida ({suggested.toFixed(2)} €)
+          </button>
+        )}
+
+        <Button
+          className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
+          disabled={!hasOdds || !hasStake}
+          onClick={place}
+        >
+          Registar aposta
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BoardMatchRow({
   match,
   isExpanded,
@@ -171,11 +318,13 @@ function BoardMatchRow({
             <div className="space-y-4 border-t border-border bg-[hsl(var(--sl-surface))] px-3.5 py-4 sm:px-4">
               <ProbabilityBreakdown data={match} />
 
+              <PlaceBetForm match={match} />
+
               <div className="rounded-xl border border-border bg-card p-3.5">
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Tens as odds do teu bookmaker para este jogo? Continua para a
-                  Análise de Valor para veres o edge, a classificação do mercado
-                  e a stake sugerida.
+                  Queres a análise completa antes de decidir? Continua para a
+                  Análise de Valor para veres a classificação do mercado, o
+                  risco e a stake sugerida com todo o detalhe.
                 </p>
                 <Button
                   className="sl-btn-primary mt-3 h-10 w-full gap-2 text-xs"
