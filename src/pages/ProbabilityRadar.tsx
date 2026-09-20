@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   ChevronDown,
+  ChevronRight,
   Info,
   ListFilter,
   Loader2,
@@ -100,12 +101,6 @@ function kickoffTime(kickoff: string | null) {
   return timeLabel(date);
 }
 
-const OUTCOME_SLOTS = [
-  { key: "Casa", label: "1" },
-  { key: "Empate", label: "X" },
-  { key: "Fora", label: "2" },
-];
-
 function BoardMatchRow({
   match,
   isExpanded,
@@ -119,85 +114,50 @@ function BoardMatchRow({
   onContinue: () => void;
   continuing: boolean;
 }) {
-  const byMarket = new Map(match.mercados.map((m) => [m.mercado, m]));
-  // Same three slots a sportsbook puts under every fixture — we just print
-  // the model's probability where a book would print its price.
-  const outcomes = OUTCOME_SLOTS.map((slot) => ({
-    ...slot,
-    pct: byMarket.get(slot.key)?.probabilidade_pct ?? null,
-  }));
-  const topOutcomePct = Math.max(...outcomes.map((o) => o.pct ?? 0));
-
   return (
     <article className="sl-card sl-card-interactive overflow-hidden">
-      <div className="p-3.5 sm:p-4">
-        {/* Phone stacks like a sportsbook app; wider screens put the three
-            outcomes beside the fixture so they stop stretching across the row. */}
-        <div className="sm:flex sm:items-center sm:gap-5">
-          <div className="min-w-0 sm:flex-1">
-            <div className="flex items-center justify-between gap-3 sm:justify-start">
-              <p className="sl-meta font-medium">{kickoffTime(match.kickoff)}</p>
-              <span
-                className={`flex-none rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${sampleTone(
-                  match.amostra_label
-                )}`}
-                title="Quanto histórico sustenta esta previsão"
-              >
-                {match.amostra_label}
-              </span>
-            </div>
+      {/* One number per row on purpose. An earlier version also showed a
+          1/X/2 strip, which left two different percentages competing for the
+          same glance — the strongest outcome and the strongest market are
+          rarely the same line. The full set is one tap away. */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        onClick={onToggle}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 flex-none text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+        )}
 
-            <div className="mt-2 space-y-1">
-              <p className="truncate text-[15px] font-semibold leading-tight text-foreground">
-                {match.home_name}
-              </p>
-              <p className="truncate text-[15px] font-semibold leading-tight text-foreground">
-                {match.away_name}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-0 sm:w-[360px] sm:flex-none">
-            {outcomes.map((outcome) => (
-              <div
-                key={outcome.key}
-                className="sl-outcome"
-                data-active={outcome.pct !== null && outcome.pct === topOutcomePct}
-              >
-                <span className="sl-outcome-label">{outcome.label}</span>
-                <span className="sl-outcome-value">
-                  {outcome.pct === null ? "—" : `${outcome.pct.toFixed(1)}%`}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug text-foreground">
+            {match.home_name} vs {match.away_name}
+          </p>
+          <p className="sl-meta truncate text-[11px]">
+            {kickoffTime(match.kickoff)}
+          </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggle}
-          className="sl-divider mt-3 flex w-full items-center justify-between gap-3 pt-3 text-left"
+        <div className="max-w-[45%] flex-none text-right">
+          <p className="sl-meta text-[11px] leading-snug">
+            {MARKET_LABELS[match.headline_market] ?? match.headline_market}
+          </p>
+          <p className="font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
+            {match.headline_pct.toFixed(1)}%
+          </p>
+        </div>
+
+        <span
+          className={`flex-none rounded-full px-2 py-1 text-[10px] font-semibold ring-1 ${sampleTone(
+            match.amostra_label
+          )}`}
+          title="Quanto histórico sustenta esta previsão"
         >
-          <span className="min-w-0">
-            <span className="sl-meta block text-[11px] uppercase tracking-wide">
-              Mercado mais provável
-            </span>
-            <span className="block truncate text-[13px] font-semibold text-foreground">
-              {MARKET_LABELS[match.headline_market] ?? match.headline_market}{" "}
-              <span className="text-[hsl(var(--sl-green))]">
-                {match.headline_pct.toFixed(1)}%
-              </span>
-            </span>
-          </span>
-          <span className="flex flex-none items-center gap-1 text-[12px] font-semibold text-primary">
-            {isExpanded ? "Fechar" : "Ver mercados"}
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-              strokeWidth={2.2}
-            />
-          </span>
-        </button>
-      </div>
+          {match.amostra_label}
+        </span>
+      </button>
 
       <AnimatePresence initial={false}>
         {isExpanded && (
