@@ -12,12 +12,9 @@ import {
   ChevronLeft,
   ChevronDown,
   Radar,
-  BrainCircuit,
   Percent,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { isOwnerEmail } from "@/lib/ownerAccess";
+import { useState } from "react";
 
 const navGroups = [
   {
@@ -34,7 +31,6 @@ const navGroups = [
       { title: "Probability", url: "/probability", icon: Percent },
       { title: "Match Analysis", url: "/analysis", icon: Target },
       { title: "Value Radar", url: "/radar", icon: Radar },
-      { title: "Model Lab", url: "/model-lab", icon: BrainCircuit },
     ],
   },
   {
@@ -54,18 +50,6 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { user } = useAuth();
-  const isOwner = isOwnerEmail(user?.email);
-  const visibleNavGroups = useMemo(
-    () =>
-      navGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((item) => item.title !== "Model Lab" || isOwner),
-        }))
-        .filter((group) => group.items.length > 0),
-    [isOwner]
-  );
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Overview: true,
@@ -103,7 +87,7 @@ export function AppSidebar() {
 
         <nav className="relative flex-1 overflow-y-auto p-3">
           <div className="space-y-4">
-            {visibleNavGroups.map((group) => (
+            {navGroups.map((group) => (
               <div key={group.title} className="space-y-1">
                 {!collapsed && (
                   <button

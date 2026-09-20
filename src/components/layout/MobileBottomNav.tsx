@@ -1,13 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, BrainCircuit, Clock, Percent, Radar, Target, Wallet } from "lucide-react";
+import { BarChart3, Clock, Percent, Target, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { isOwnerEmail } from "@/lib/ownerAccess";
 
 // Five destinations, the most a thumb row can hold before the labels start
 // truncating. Roadmap and Value Radar live one level in (Dashboard links to
 // them) rather than competing for a slot here.
-const baseMobileItems = [
+const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },
   { title: "Analisar", url: "/analysis", icon: Target },
@@ -15,23 +13,12 @@ const baseMobileItems = [
   { title: "Banca", url: "/bankroll", icon: Wallet },
 ];
 
-const modelLabItem = { title: "Lab", url: "/model-lab", icon: BrainCircuit };
-
-const GRID_COLS_CLASS: Record<number, string> = {
-  5: "grid-cols-5",
-  6: "grid-cols-6",
-};
-
 export function MobileBottomNav() {
   const location = useLocation();
-  const { user } = useAuth();
-  const mobileItems = isOwnerEmail(user?.email)
-    ? [...baseMobileItems, modelLabItem]
-    : baseMobileItems;
 
   return (
     <nav className="sl-bottomnav fixed inset-x-0 bottom-0 z-50 px-2 pb-[max(env(safe-area-inset-bottom),0.4rem)] pt-1.5 lg:hidden">
-      <div className={cn("mx-auto grid max-w-lg gap-1", GRID_COLS_CLASS[mobileItems.length])}>
+      <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
         {mobileItems.map((item) => {
           const isActive =
             location.pathname === item.url ||

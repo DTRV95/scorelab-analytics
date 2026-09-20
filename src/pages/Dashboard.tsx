@@ -14,7 +14,6 @@ import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Activity,
   ArrowRight,
-  BrainCircuit,
   CheckCircle2,
   ChevronDown,
   Crosshair,
@@ -53,8 +52,6 @@ import {
   type LeagueIntelligenceRow,
 } from "@/lib/leagueIntelligence";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
-import { useAuth } from "@/contexts/AuthContext";
-import { isOwnerEmail } from "@/lib/ownerAccess";
 
 const stagger = {
   hidden: {},
@@ -605,8 +602,6 @@ const DASHBOARD_SECTIONS: SectionDef[] = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isOwner = isOwnerEmail(user?.email);
   const { analyses, multiples, financialSnapshot, dataVersion } = useScoreLabData();
   const bankrollStats = financialSnapshot.stats;
 
@@ -836,7 +831,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className={`grid grid-cols-1 gap-3 ${isOwner ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <DecisionAction
               label="Analyze Match"
               detail="Run a fresh market read through the model."
@@ -850,15 +845,6 @@ export default function Dashboard() {
               onClick={() => navigate("/radar")}
               tone="emerald"
             />
-            {isOwner ? (
-              <DecisionAction
-                label="Model Lab"
-                detail="Inspect trust, drift and similar-match memory."
-                icon={BrainCircuit}
-                onClick={() => navigate("/model-lab")}
-                tone="amber"
-              />
-            ) : null}
           </div>
         </motion.section>
 

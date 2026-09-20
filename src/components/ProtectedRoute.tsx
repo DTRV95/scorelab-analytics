@@ -21,9 +21,9 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// Internal-only pages (e.g. Model Lab's calibration internals) that should
-// keep running and collecting data for everyone, but only render their UI
-// for the account that owns this deployment.
+// Unlisted pages (e.g. Model Lab's calibration internals). Nothing in the app
+// navigates here; the route stays reachable by URL for the account that owns
+// this deployment, and redirects everyone else.
 export function OwnerRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
