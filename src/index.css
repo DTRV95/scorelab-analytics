@@ -1156,15 +1156,14 @@
       flex-wrap: wrap;
     }
 
-    .scorelab-mobile-overview.scorelab-route-dashboard > div > :nth-child(n + 10),
-    .scorelab-mobile-overview.scorelab-route-bankroll > div > :nth-child(n + 5),
-    .scorelab-mobile-overview.scorelab-route-roadmap > div > :nth-child(n + 5),
-    .scorelab-mobile-overview.scorelab-route-radar > div > :nth-child(n + 5),
-    .scorelab-mobile-overview.scorelab-route-model-lab > div > :nth-child(n + 5),
-    .scorelab-mobile-overview.scorelab-route-history > div > :nth-child(n + 5),
-    .scorelab-mobile-overview.scorelab-route-history-multiples > div > :nth-child(n + 5) {
-      display: none !important;
-    }
+    /* There used to be a rule here that hid every section past the fourth on
+       phones, per route. It did not compact those pages, it amputated them:
+       Simple Bet lost the list of bets, Value Radar lost every opportunity,
+       Bankroll lost seven of its eleven panels — with nothing on screen to
+       say anything was missing. The rest of this block is what actually makes
+       these pages fit a phone: smaller type, single-column grids, shorter
+       charts. Sections a user should be able to put away belong behind a
+       control they can see, like the dashboard's customizer. */
 
     .scorelab-mobile-overview :where(.scorelab-depth-grid, .scorelab-arena-pitch-glow, .scorelab-board-3d .scorelab-depth-grid) {
       display: none !important;
