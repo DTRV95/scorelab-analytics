@@ -30,3 +30,6 @@ backend/*.db
 backend/__pycache__/
 backend/venv/
 __pycache__/
+
+# TypeScript incremental build info
+*.tsbuildinfo
