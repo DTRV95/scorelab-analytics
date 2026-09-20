@@ -240,6 +240,31 @@ def _base_market_masks(max_goals: int = MAX_GOALS) -> Dict[str, np.ndarray]:
     }
 
 
+def settle_markets(home_goals: int, away_goals: int) -> Dict[str, bool]:
+    """Did each market land, given the final score?
+
+    This reads the very masks the simulation sums over, and derives the rest
+    exactly as the forecast does, so a market cannot mean one thing when it is
+    predicted and another when it is scored. Scoring a forecast against the
+    result is only worth anything if both sides agree on what was forecast.
+
+    The mask grid is stretched to the actual score when a freak result lands
+    outside it: clamping 12-11 down to the grid would turn a home win into a
+    draw and settle four markets the wrong way.
+    """
+    home = max(int(home_goals), 0)
+    away = max(int(away_goals), 0)
+    masks = _base_market_masks(max(MAX_GOALS, home, away))
+
+    settled = {name: bool(mask[home, away]) for name, mask in masks.items()}
+    settled["Menos de 2.5 Golos"] = not settled["Mais de 2.5 Golos"]
+    settled["Menos de 3.5 Golos"] = not settled["Mais de 3.5 Golos"]
+    settled["BTTS No"] = not settled["Ambas Marcam"]
+    settled["1X"] = settled["Casa"] or settled["Empate"]
+    settled["2X"] = settled["Fora"] or settled["Empate"]
+    return settled
+
+
 def _score_matrices_vector(lambda_home: np.ndarray, lambda_away: np.ndarray, rho: float, max_goals: int = MAX_GOALS) -> np.ndarray:
     goals = np.arange(max_goals + 1)
     factorials = np.array([math.factorial(g) for g in goals], dtype=float)
@@ -320,9 +345,20 @@ def _apply_goal_pressure_vector(
     return probs
 
 
-def estimate_market_distributions(lambda_home: float, lambda_away: float, data) -> Dict[str, Tuple[float, float, float]]:
-    """Simulate the match BOOTSTRAP_ITERATIONS times and derive every market's
-    mean probability and 5%-95% interval from the same set of simulations."""
+def estimate_market_distributions(
+    lambda_home: float,
+    lambda_away: float,
+    data,
+    iterations: int = BOOTSTRAP_ITERATIONS,
+) -> Dict[str, Tuple[float, float, float]]:
+    """Simulate the match `iterations` times and derive every market's mean
+    probability and 5%-95% interval from the same set of simulations.
+
+    Scoring a whole season passes a smaller count: the intervals get rougher,
+    but the means are what calibration is measured on and their noise averages
+    out over hundreds of matches, where a full-precision run each would cost
+    minutes instead of seconds.
+    """
     home_sample = effective_sample(data.jogos_casa, data.jogos_casa_rec)
     away_sample = effective_sample(data.jogos_fora, data.jogos_fora_rec)
     joint_sample = (home_sample + away_sample) / 2
@@ -332,10 +368,10 @@ def estimate_market_distributions(lambda_home: float, lambda_away: float, data) 
     sigma_away = clamp(0.30 / math.sqrt(joint_sample), 0.03, 0.16)
 
     perturbed_home = np.clip(
-        np.random.normal(lambda_home, sigma_home, BOOTSTRAP_ITERATIONS), 0.05, 4.5
+        np.random.normal(lambda_home, sigma_home, iterations), 0.05, 4.5
     )
     perturbed_away = np.clip(
-        np.random.normal(lambda_away, sigma_away, BOOTSTRAP_ITERATIONS), 0.05, 4.0
+        np.random.normal(lambda_away, sigma_away, iterations), 0.05, 4.0
     )
 
     matrices = _score_matrices_vector(perturbed_home, perturbed_away, context.rho)
@@ -523,13 +559,17 @@ def analyze_market(market_name: str, odd: float, fair_prob: float, model_prob: f
     }
 
 
-def forecast(data) -> Tuple[float, float, Dict[str, Tuple[float, float, float]]]:
+def forecast(
+    data, iterations: int = BOOTSTRAP_ITERATIONS
+) -> Tuple[float, float, Dict[str, Tuple[float, float, float]]]:
     """The odds-free half of an analysis: expected goals and the market
     probability distributions derived purely from team form and the league
     context. Both the priced analysis and the probability-only view build on
     exactly this, so a fix here can never leave the two disagreeing."""
     lambda_home, lambda_away = estimate_lambdas(data)
-    distributions = estimate_market_distributions(lambda_home, lambda_away, data)
+    distributions = estimate_market_distributions(
+        lambda_home, lambda_away, data, iterations
+    )
     return lambda_home, lambda_away, distributions
 
 
@@ -577,14 +617,14 @@ def pick_headline_market(mercados: List[Dict[str, Any]]) -> Dict[str, Any]:
     return max(mercados, key=lambda m: m["probabilidade_pct"])
 
 
-def probabilidades_jogo(data) -> Dict[str, Any]:
+def probabilidades_jogo(data, iterations: int = BOOTSTRAP_ITERATIONS) -> Dict[str, Any]:
     """What the model thinks will happen — nothing about whether to bet on it.
 
     No odds go in, so nothing here can be an edge, a stake or a decision:
     those only mean something once a real price is on the table. This is
     meant to be read first, before ever looking at a bookmaker's odds.
     """
-    lambda_home, lambda_away, distributions = forecast(data)
+    lambda_home, lambda_away, distributions = forecast(data, iterations)
     sample_pct, sample_label = sample_confidence(data)
 
     mercados = []

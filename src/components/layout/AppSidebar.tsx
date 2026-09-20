@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Radar,
+  Gauge,
   Percent,
 } from "lucide-react";
 import { useState } from "react";
@@ -31,6 +32,7 @@ const navGroups = [
       { title: "Probability", url: "/probability", icon: Percent },
       { title: "Match Analysis", url: "/analysis", icon: Target },
       { title: "Value Radar", url: "/radar", icon: Radar },
+      { title: "Acerto do Modelo", url: "/accuracy", icon: Gauge },
     ],
   },
   {

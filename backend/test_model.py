@@ -8,12 +8,14 @@ numbers.
 """
 
 from schemas import AnalyzeRequest
+import model
 from model import (
     analisar_jogo,
     estimate_lambdas,
     pair_shift,
     pick_headline_market,
     probabilidades_jogo,
+    settle_markets,
 )
 
 LEAGUE_HOME = 1.49
@@ -296,6 +298,60 @@ def test_headline_market_is_the_strongest_real_signal():
     assert headline["probabilidade_pct"] == max(
         m["probabilidade_pct"] for m in mercados
     )
+
+
+def test_settlement_reads_a_home_win():
+    settled = settle_markets(2, 0)
+
+    assert settled["Casa"] is True
+    assert settled["Empate"] is False
+    assert settled["Fora"] is False
+    assert settled["1X"] is True
+    assert settled["2X"] is False
+    assert settled["Ambas Marcam"] is False
+    assert settled["BTTS No"] is True
+    assert settled["Menos de 2.5 Golos"] is True
+    assert settled["Mais de 2.5 Golos"] is False
+
+
+def test_settlement_needs_both_halves_of_a_combo():
+    # 0-1: under 3.5 landed, but the 1X half did not.
+    assert settle_markets(0, 1)["1X e Menos de 3.5 Golos"] is False
+    assert settle_markets(0, 1)["2X e Menos de 3.5 Golos"] is True
+    # 3-2: the 1X half landed, but five goals is over the line.
+    assert settle_markets(3, 2)["1X e Menos de 3.5 Golos"] is False
+    assert settle_markets(3, 2)["1X e Mais de 1.5 Golos"] is True
+
+
+def test_settlement_covers_every_market_the_model_forecasts():
+    settled = settle_markets(1, 1)
+
+    for market_name, _group in model.PROBABILITY_MARKETS:
+        assert market_name in settled, market_name
+
+
+def test_settlement_survives_a_score_off_the_grid():
+    """A freak result must not be folded back onto the simulation grid: 12-11
+    clamped to 10-10 would turn a home win into a draw."""
+    settled = settle_markets(model.MAX_GOALS + 2, model.MAX_GOALS + 1)
+
+    assert settled["Casa"] is True
+    assert settled["Empate"] is False
+    assert settled["Mais de 3.5 Golos"] is True
+
+
+def test_a_cheaper_simulation_lands_on_the_same_forecast():
+    """Scoring a season runs fewer iterations per match. The means it reports
+    have to be the same forecast, only rougher, or the measurement would be of
+    a different model than the one the board shows."""
+    data = average_match(9)
+
+    full = probabilidades_jogo(data)
+    cheap = probabilidades_jogo(data, iterations=2_000)
+
+    full_by_market = {m["mercado"]: m["probabilidade_pct"] for m in full["mercados"]}
+    for market in cheap["mercados"]:
+        assert abs(market["probabilidade_pct"] - full_by_market[market["mercado"]]) < 3.0
 
 
 if __name__ == "__main__":

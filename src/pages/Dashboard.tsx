@@ -831,7 +831,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <DecisionAction
               label="Analyze Match"
               detail="Run a fresh market read through the model."
@@ -844,6 +844,13 @@ export default function Dashboard() {
               icon={Zap}
               onClick={() => navigate("/radar")}
               tone="emerald"
+            />
+            <DecisionAction
+              label="Acerto do Modelo"
+              detail="O que o modelo disse, contra o que aconteceu."
+              icon={Gauge}
+              onClick={() => navigate("/accuracy")}
+              tone="amber"
             />
           </div>
         </motion.section>
