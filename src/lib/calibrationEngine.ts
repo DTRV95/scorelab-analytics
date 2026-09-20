@@ -67,7 +67,10 @@ function roundTo(value: number, decimals = 2) {
   return Number(value.toFixed(decimals));
 }
 
-function getKellyPct(modelProb: number, odds: number): number {
+/** Quarter Kelly, as a percentage of bankroll — the staking convention the
+ *  whole app is calibrated around. Exported so anything creating a bet uses
+ *  this one formula rather than its own. */
+export function getKellyPct(modelProb: number, odds: number): number {
   if (odds <= 1) return 0;
 
   const probability = modelProb / 100;
