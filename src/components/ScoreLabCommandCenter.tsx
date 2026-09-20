@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  BrainCircuit,
   Clock,
   Command as CommandIcon,
   Flag,
@@ -34,8 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { getMarketPerformance } from "@/lib/analysisStorage";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
-import { useAuth } from "@/contexts/AuthContext";
-import { isOwnerEmail } from "@/lib/ownerAccess";
 
 export const OPEN_COMMAND_CENTER_EVENT = "scorelab:open-command-center";
 
@@ -51,7 +48,6 @@ const pages = [
   { title: "Probability", detail: "See a match's odds-free forecast", url: "/probability", icon: Percent },
   { title: "Match Analysis", detail: "Analyze a new game", url: "/analysis", icon: Target },
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
-  { title: "Model Lab", detail: "Audit calibration truth", url: "/model-lab", icon: BrainCircuit },
   { title: "Simple Bet", detail: "Track single bets", url: "/history", icon: Clock },
   { title: "Multiples Bet", detail: "Build and monitor multiples", url: "/history-multiples", icon: Layers3 },
   { title: "Bankroll Tools", detail: "Financial truth center", url: "/bankroll", icon: Wallet },
@@ -62,12 +58,6 @@ const pages = [
 export function ScoreLabCommandCenter() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
-  const isOwner = isOwnerEmail(user?.email);
-  const visiblePages = useMemo(
-    () => pages.filter((page) => page.title !== "Model Lab" || isOwner),
-    [isOwner]
-  );
   const {
     analyses,
     multiples,
@@ -208,7 +198,7 @@ export function ScoreLabCommandCenter() {
             <CommandSeparator className="my-2 bg-primary/10" />
 
             <CommandGroup heading="Navigation">
-              {visiblePages.map((page) => (
+              {pages.map((page) => (
                 <CommandItem
                   key={page.url}
                   value={`${page.title} ${page.detail}`}
