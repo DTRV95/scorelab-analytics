@@ -1,14 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Clock, Percent, Target, Wallet } from "lucide-react";
+import { BarChart3, Clock, Layers3, Percent, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Five destinations, the most a thumb row can hold before the labels start
-// truncating. Roadmap and Value Radar live one level in (Dashboard links to
-// them) rather than competing for a slot here.
+// truncating. Roadmap, Value Radar and the model's track record live one level
+// in (Dashboard links to them) rather than competing for a slot here.
+//
+// Multiples holds a slot because a multiple placed from the betslip was
+// otherwise unreachable on a phone: the sidebar that links to it is desktop
+// only, and "Apostas" only lists singles.
 const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },
-  { title: "Analisar", url: "/analysis", icon: Target },
+  { title: "Múltiplas", url: "/history-multiples", icon: Layers3 },
   { title: "Apostas", url: "/history", icon: Clock },
   { title: "Banca", url: "/bankroll", icon: Wallet },
 ];

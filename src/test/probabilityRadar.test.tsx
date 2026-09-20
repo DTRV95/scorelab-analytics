@@ -151,7 +151,7 @@ describe("ProbabilityRadar board", () => {
     // Appears twice now: the row header and the full breakdown below it.
     expect(screen.getAllByText("Vitória Casa").length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("button", { name: /continuar para análise de valor/i })
+      screen.getByRole("button", { name: /análise avançada/i })
     ).toBeInTheDocument();
   });
 

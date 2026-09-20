@@ -833,10 +833,10 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <DecisionAction
-              label="Analyze Match"
-              detail="Run a fresh market read through the model."
+              label="Analisar jogos"
+              detail="O que o modelo espera de cada jogo, sem odds."
               icon={Crosshair}
-              onClick={() => navigate("/analysis")}
+              onClick={() => navigate("/probability")}
             />
             <DecisionAction
               label="Value Radar"

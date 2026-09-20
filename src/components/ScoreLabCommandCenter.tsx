@@ -47,7 +47,6 @@ const formatCurrency = (value: number) =>
 const pages = [
   { title: "Dashboard", detail: "System overview", url: "/dashboard", icon: BarChart3 },
   { title: "Probability", detail: "See a match's odds-free forecast", url: "/probability", icon: Percent },
-  { title: "Match Analysis", detail: "Analyze a new game", url: "/analysis", icon: Target },
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
   { title: "Acerto do Modelo", detail: "Measure forecasts against results", url: "/accuracy", icon: Gauge },
   { title: "Simple Bet", detail: "Track single bets", url: "/history", icon: Clock },
@@ -220,14 +219,14 @@ export function ScoreLabCommandCenter() {
 
             <CommandGroup heading="Smart Actions">
               <CommandItem
-                value="new analysis analyze match"
-                onSelect={() => runCommand("/analysis")}
+                value="new analysis analyze match probabilities"
+                onSelect={() => runCommand("/probability")}
                 className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
               >
                 <Sparkles className="mr-3 h-4 w-4 text-emerald-700/75" strokeWidth={1.7} />
                 <div>
-                  <p className="text-sm font-medium">Start new analysis</p>
-                  <p className="text-xs text-muted-foreground">Open the model input flow.</p>
+                  <p className="text-sm font-medium">Analyse a match</p>
+                  <p className="text-xs text-muted-foreground">Open the probability board.</p>
                 </div>
                 <CommandShortcut>NEW</CommandShortcut>
               </CommandItem>
