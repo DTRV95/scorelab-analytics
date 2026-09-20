@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -131,6 +131,29 @@ def data_calibration(request: Request):
 
     try:
         return football_data.calibration()
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/data/model-accuracy")
+@limiter.limit("10/minute")
+def data_model_accuracy(request: Request, league: str, season: Optional[int] = None):
+    """How the model did against the results, one competition at a time.
+
+    Every played fixture is forecast again from the league as it stood before
+    its own kickoff and scored against the final result, so the numbers say
+    what the model would have called, not what it can see in hindsight.
+
+    One competition per call on purpose: a season is a simulation per fixture,
+    which is seconds of work, and the answer is cached for as long as the
+    season itself is. Asking for all eight at once would be one slow request
+    that times out instead of eight quick ones that do not.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.model_accuracy(league, season)
     except football_data.ProviderUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

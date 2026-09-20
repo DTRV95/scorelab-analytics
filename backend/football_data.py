@@ -258,8 +258,24 @@ def results_for_fixtures(
     return results
 
 
+def _played_before(match: Dict[str, Any], before: Optional[str]) -> bool:
+    """Was this match already played by `before` (an ISO-8601 UTC kickoff)?
+
+    The provider's dates are all the same fixed-width UTC format, so comparing
+    them as strings orders them correctly. `before` is what keeps a scored
+    forecast honest: rebuilding what the model knew on the morning of a match
+    must not see the match itself, nor anything played after it.
+    """
+    if not before:
+        return True
+    return (match.get("utcDate") or "") < before
+
+
 def _team_side_record(
-    matches: List[Dict[str, Any]], team_id: int, side: str
+    matches: List[Dict[str, Any]],
+    team_id: int,
+    side: str,
+    before: Optional[str] = None,
 ) -> Dict[str, int]:
     """Season and recent goal record for a team, restricted to home or away games."""
     key = "homeTeam" if side == "home" else "awayTeam"
@@ -267,6 +283,8 @@ def _team_side_record(
     played = []
     for match in matches:
         if not _is_finished(match):
+            continue
+        if not _played_before(match, before):
             continue
         if (match.get(key) or {}).get("id") != team_id:
             continue
@@ -297,13 +315,17 @@ def _team_side_record(
     }
 
 
-def league_goal_averages(matches: List[Dict[str, Any]]) -> Dict[str, float]:
+def league_goal_averages(
+    matches: List[Dict[str, Any]], before: Optional[str] = None
+) -> Dict[str, float]:
     played = 0
     home_goals = 0
     away_goals = 0
 
     for match in matches:
         if not _is_finished(match):
+            continue
+        if not _played_before(match, before):
             continue
         home, away = _full_time_goals(match)
         if home is None or away is None:
@@ -437,6 +459,22 @@ def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
     if not target:
         raise ProviderUnavailable("Jogo não encontrado nesta competição.")
 
+    return _prefill_for_match(matches, target, league_key)
+
+
+def _prefill_for_match(
+    matches: List[Dict[str, Any]],
+    target: Dict[str, Any],
+    league_key: str,
+    before: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Model inputs for one fixture.
+
+    `before` cuts the history off at a moment in time. Scoring past forecasts
+    passes the fixture's own kickoff, which is the difference between measuring
+    the model and flattering it with results it could not have had.
+    """
+    fixture_id = target.get("id")
     home_team = target.get("homeTeam") or {}
     away_team = target.get("awayTeam") or {}
     home_id = home_team.get("id")
@@ -444,8 +482,8 @@ def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
     if not home_id or not away_id:
         raise ProviderUnavailable("Jogo sem equipas identificadas.")
 
-    home = _team_side_record(matches, home_id, "home")
-    away = _team_side_record(matches, away_id, "away")
+    home = _team_side_record(matches, home_id, "home", before)
+    away = _team_side_record(matches, away_id, "away", before)
 
     if home["games"] == 0 and away["games"] == 0:
         raise ProviderUnavailable(
@@ -476,8 +514,195 @@ def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
         "source": {"provider": "football-data.org", "league": league_key},
     }
 
-    averages = league_goal_averages(matches)
+    averages = league_goal_averages(matches, before)
     if averages:
         payload["league_averages"] = averages
 
+    return payload
+
+
+# Scoring a season costs one simulation per fixture, so it runs at reduced
+# precision: see estimate_market_distributions for why that is safe here.
+ACCURACY_ITERATIONS = 2_000
+ACCURACY_TTL = 6 * 60 * 60
+CALIBRATION_BUCKET_PCT = 10
+
+
+def _bucket_label(probability_pct: float) -> str:
+    floor = min(
+        int(probability_pct // CALIBRATION_BUCKET_PCT) * CALIBRATION_BUCKET_PCT, 90
+    )
+    return f"{floor}-{floor + CALIBRATION_BUCKET_PCT}%"
+
+
+def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, Any]:
+    """How the model actually did, measured on every match already played.
+
+    Each fixture is forecast again from the league as it stood before its own
+    kickoff, then scored against the final result. That is the only honest way
+    to answer "is this thing right?": a forecast built from a season that
+    already contains the match would be marking its own homework.
+
+    What comes back is not a verdict but the evidence for one — per market and
+    per confidence band, how often the model said something would happen
+    against how often it did, plus the Brier score, which punishes being
+    confident and wrong far more than being unsure and wrong.
+    """
+    from model import pick_headline_market, probabilidades_jogo, settle_markets
+    from schemas import ProbabilityRequest
+
+    cache_key = f"accuracy:{league_key}:{season or 'current'}"
+    cached = _cache_get(cache_key, ACCURACY_TTL)
+    if cached is not None:
+        return cached
+
+    matches = get_season_matches(league_key, season)
+    played = [
+        match
+        for match in matches
+        if _is_finished(match) and None not in _full_time_goals(match)
+    ]
+    played.sort(key=lambda match: match.get("utcDate") or "")
+
+    markets: Dict[str, Dict[str, float]] = {}
+    buckets: Dict[str, Dict[str, float]] = {}
+    headline_predictions = 0
+    headline_hits = 0
+    headline_prob_sum = 0.0
+    scored = 0
+    skipped = 0
+
+    for match in played:
+        kickoff = match.get("utcDate")
+        home_goals, away_goals = _full_time_goals(match)
+
+        try:
+            prefill = _prefill_for_match(matches, match, league_key, before=kickoff)
+            averages = prefill.get("league_averages") or {}
+            data = ProbabilityRequest(
+                equipa_casa=prefill["equipa_casa"],
+                equipa_fora=prefill["equipa_fora"],
+                liga=league_key,
+                jogos_casa=prefill["jogos_casa"],
+                golos_marcados_casa=prefill["golos_marcados_casa"],
+                golos_sofridos_casa=prefill["golos_sofridos_casa"],
+                jogos_casa_rec=prefill["jogos_casa_rec"],
+                golos_marcados_casa_rec=prefill["golos_marcados_casa_rec"],
+                golos_sofridos_casa_rec=prefill["golos_sofridos_casa_rec"],
+                jogos_fora=prefill["jogos_fora"],
+                golos_marcados_fora=prefill["golos_marcados_fora"],
+                golos_sofridos_fora=prefill["golos_sofridos_fora"],
+                jogos_fora_rec=prefill["jogos_fora_rec"],
+                golos_marcados_fora_rec=prefill["golos_marcados_fora_rec"],
+                golos_sofridos_fora_rec=prefill["golos_sofridos_fora_rec"],
+                **(
+                    {
+                        "league_home_goals_avg": averages["league_home_goals_avg"],
+                        "league_away_goals_avg": averages["league_away_goals_avg"],
+                    }
+                    if averages
+                    else {}
+                ),
+            )
+            forecast = probabilidades_jogo(data, iterations=ACCURACY_ITERATIONS)
+        except ProviderUnavailable:
+            # Early-season fixtures have no history to forecast from. They are
+            # not failures, they are simply not scoreable.
+            skipped += 1
+            continue
+        except Exception:
+            skipped += 1
+            continue
+
+        outcomes = settle_markets(home_goals, away_goals)
+        scored += 1
+
+        for entry in forecast["mercados"]:
+            name = entry["mercado"]
+            landed = outcomes.get(name)
+            if landed is None:
+                continue
+
+            probability = entry["probabilidade_pct"] / 100
+            row = markets.setdefault(
+                name,
+                {"market": name, "grupo": entry["grupo"], "samples": 0, "hits": 0,
+                 "prob_sum": 0.0, "brier_sum": 0.0},
+            )
+            row["samples"] += 1
+            row["hits"] += 1 if landed else 0
+            row["prob_sum"] += probability
+            row["brier_sum"] += (probability - (1.0 if landed else 0.0)) ** 2
+
+            bucket = _bucket_label(entry["probabilidade_pct"])
+            band = buckets.setdefault(
+                bucket, {"bucket": bucket, "samples": 0, "hits": 0, "prob_sum": 0.0}
+            )
+            band["samples"] += 1
+            band["hits"] += 1 if landed else 0
+            band["prob_sum"] += probability
+
+        headline = pick_headline_market(forecast["mercados"])
+        if outcomes.get(headline["mercado"]) is not None:
+            headline_predictions += 1
+            headline_prob_sum += headline["probabilidade_pct"] / 100
+            headline_hits += 1 if outcomes[headline["mercado"]] else 0
+
+    def rate(hits: float, samples: float) -> float:
+        return round(hits / samples * 100, 1) if samples else 0.0
+
+    market_rows = [
+        {
+            "market": row["market"],
+            "grupo": row["grupo"],
+            "samples": int(row["samples"]),
+            "predicted_pct": rate(row["prob_sum"], row["samples"]),
+            "actual_pct": rate(row["hits"], row["samples"]),
+            "gap_pp": round(
+                rate(row["hits"], row["samples"]) - rate(row["prob_sum"], row["samples"]),
+                1,
+            ),
+            "brier": round(row["brier_sum"] / row["samples"], 4) if row["samples"] else 0.0,
+        }
+        for row in markets.values()
+    ]
+    market_rows.sort(key=lambda row: row["market"])
+
+    bucket_rows = [
+        {
+            "bucket": band["bucket"],
+            "samples": int(band["samples"]),
+            "predicted_pct": rate(band["prob_sum"], band["samples"]),
+            "actual_pct": rate(band["hits"], band["samples"]),
+            "gap_pp": round(
+                rate(band["hits"], band["samples"]) - rate(band["prob_sum"], band["samples"]),
+                1,
+            ),
+        }
+        for band in buckets.values()
+    ]
+    bucket_rows.sort(key=lambda row: int(row["bucket"].split("-")[0]))
+
+    total_samples = sum(row["samples"] for row in market_rows)
+    total_brier = sum(
+        row["brier"] * row["samples"] for row in market_rows
+    )
+
+    payload = {
+        "league": league_key,
+        "season": season,
+        "fixtures_scored": scored,
+        "fixtures_skipped": skipped,
+        "predictions": total_samples,
+        "brier": round(total_brier / total_samples, 4) if total_samples else 0.0,
+        "headline": {
+            "predictions": headline_predictions,
+            "predicted_pct": rate(headline_prob_sum, headline_predictions),
+            "actual_pct": rate(headline_hits, headline_predictions),
+        },
+        "markets": market_rows,
+        "calibration": bucket_rows,
+    }
+
+    _cache_put(cache_key, payload)
     return payload

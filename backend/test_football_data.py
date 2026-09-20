@@ -167,6 +167,106 @@ def test_board_carries_the_full_breakdown_per_match():
     assert {"Casa", "Empate", "Fora", "Ambas Marcam"} <= market_names
 
 
+def build_scoreable_season(matchdays=14):
+    """A league where the home side always wins 2-0.
+
+    A model given this history should come to expect home wins, so scoring it
+    against the same history has an answer known in advance: "Casa" should be
+    both predicted often and right often, and "Fora" neither.
+    """
+    season = []
+    for day in range(matchdays):
+        date = f"2026-{3 + day // 4:02d}-{1 + (day % 4) * 7:02d}T18:00:00Z"
+        season.append(
+            team_match(len(season) + 1, 1, 2, "Home FC", "Away FC", home=2, away=0, kickoff=date)
+        )
+        season.append(
+            team_match(len(season) + 1, 3, 4, "Casa SC", "Fora SC", home=2, away=0, kickoff=date)
+        )
+    return season
+
+
+def test_accuracy_scores_played_fixtures_against_their_result():
+    with_season(build_scoreable_season())
+
+    report = football_data.model_accuracy("Liga Portugal")
+
+    assert report["fixtures_scored"] > 0
+    assert report["predictions"] > report["fixtures_scored"]
+    # Nothing is scoreable before there is any history to forecast from.
+    assert report["fixtures_skipped"] >= 1
+
+    by_market = {row["market"]: row for row in report["markets"]}
+    assert by_market["Casa"]["actual_pct"] == 100.0
+    assert by_market["Fora"]["actual_pct"] == 0.0
+    assert by_market["Casa"]["predicted_pct"] > by_market["Fora"]["predicted_pct"]
+
+
+def test_accuracy_forecasts_each_fixture_without_seeing_it():
+    """The first scoreable fixture must be forecast from one earlier matchday,
+    not from the whole season. If the cutoff leaked, the model would arrive at
+    every fixture already knowing how the league turns out."""
+    season = build_scoreable_season()
+    seen = []
+    original = football_data._prefill_for_match
+
+    def spy(matches, target, league_key, before=None):
+        payload = original(matches, target, league_key, before)
+        seen.append((target["utcDate"], before, payload["jogos_casa"]))
+        return payload
+
+    football_data._prefill_for_match = spy
+    try:
+        with_season(season)
+        football_data.model_accuracy("Liga Portugal")
+    finally:
+        football_data._prefill_for_match = original
+
+    assert seen, "no fixture was forecast"
+    for kickoff, before, home_games in seen:
+        assert before == kickoff
+        # 14 matchdays in the season; a fixture can only know the ones before it.
+        assert home_games < 14
+
+    # The history grows as the season goes on, instead of being the full season
+    # every time.
+    assert seen[0][2] < seen[-1][2]
+
+
+def test_accuracy_buckets_predictions_by_confidence():
+    with_season(build_scoreable_season())
+
+    report = football_data.model_accuracy("Liga Portugal")
+
+    assert report["calibration"], "no calibration bands"
+    for band in report["calibration"]:
+        low, high = band["bucket"].rstrip("%").split("-")
+        assert int(low) <= band["predicted_pct"] <= int(high)
+    assert 0 <= report["brier"] <= 1
+    assert report["headline"]["predictions"] > 0
+
+
+def test_accuracy_is_cached_per_league_and_season():
+    with_season(build_scoreable_season())
+
+    first = football_data.model_accuracy("Liga Portugal")
+
+    original = football_data._prefill_for_match
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("recomputed a season that was already scored")
+
+    # A second call must be served from the cache, not pay for the whole
+    # season again: a league costs one simulation per fixture.
+    football_data._prefill_for_match = refuse
+    try:
+        second = football_data.model_accuracy("Liga Portugal")
+    finally:
+        football_data._prefill_for_match = original
+
+    assert second is first
+
+
 if __name__ == "__main__":
     checks = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for check in checks:
