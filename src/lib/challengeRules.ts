@@ -266,6 +266,8 @@ export interface BetCheckInput {
   day: number;
   betsPlacedToday: number;
   lossStreak: number;
+  /** Days already placed and not yet decided. */
+  openBets?: number;
 }
 
 /**
@@ -279,6 +281,20 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
   const { odds, stake, bankroll, day, betsPlacedToday, lossStreak } = input;
   const violations: Violation[] = [];
   const planned = plannedStake(rules, bankroll, day);
+
+  // The bankroll cannot tell you which day you are on while an earlier one is
+  // still undecided, so a second bet on top of an open one is staking money the
+  // ladder has already spent.
+  if ((input.openBets ?? 0) > 0) {
+    violations.push({
+      code: "open-day",
+      severity: "breach",
+      message:
+        (input.openBets ?? 0) === 1
+          ? "Tens um dia por fechar. Fecha-o antes de abrir outro, ou a escada perde a conta."
+          : `Tens ${input.openBets} dias por fechar. Fecha-os antes de abrir outro.`,
+    });
+  }
 
   if (rules.lossStreakPause !== null && lossStreak >= rules.lossStreakPause) {
     violations.push({

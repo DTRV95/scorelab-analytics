@@ -24,9 +24,14 @@ import {
   rungForBankroll,
   type ChallengeRules,
 } from "@/lib/challengeRules";
+import { nextMove } from "@/lib/challengeGuidance";
 import { planSchedule } from "@/lib/challengeSchedule";
+import { NextMoveCard } from "@/components/NextMoveCard";
 import { PlanPlayers } from "@/components/PlanPlayers";
-import { CreateChallenge, ChallengeSettings } from "@/components/ChallengeSettings";
+import {
+  CreateChallenge,
+  ChallengeSettings,
+} from "@/components/ChallengeSettings";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import {
   acceptInvite,
@@ -58,7 +63,10 @@ import {
 
 const BOARD_DAYS = 7;
 
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.05 } },
+};
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
@@ -94,7 +102,7 @@ function PlayerCard({
 }) {
   const ladder = useMemo(
     () => buildLadder(rules, startingBankroll),
-    [rules, startingBankroll]
+    [rules, startingBankroll],
   );
   const planned = ladder[Math.min(standing.day, rules.days) - 1];
   const rung = rungForBankroll(standing.bankroll, ladder);
@@ -161,7 +169,8 @@ function PlayerCard({
           { label: "Perdidas", value: String(standing.reds) },
           {
             label: "Em aberto",
-            value: standing.openStake > 0 ? eur.format(standing.openStake) : "—",
+            value:
+              standing.openStake > 0 ? eur.format(standing.openStake) : "—",
           },
         ].map((item) => (
           <div key={item.label}>
@@ -175,11 +184,12 @@ function PlayerCard({
         ))}
       </div>
 
-      {rules.lossStreakPause !== null && standing.lossStreak >= rules.lossStreakPause && (
-        <p className="px-4 pb-3 text-[11px] leading-relaxed text-destructive">
-          {standing.lossStreak} perdas seguidas. O desafio manda parar um dia.
-        </p>
-      )}
+      {rules.lossStreakPause !== null &&
+        standing.lossStreak >= rules.lossStreakPause && (
+          <p className="px-4 pb-3 text-[11px] leading-relaxed text-destructive">
+            {standing.lossStreak} perdas seguidas. O desafio manda parar um dia.
+          </p>
+        )}
     </div>
   );
 }
@@ -222,7 +232,7 @@ export default function Challenges() {
         setPlanId((current) =>
           current && mine.some((item) => item.id === current)
             ? current
-            : mine[0]?.id ?? null
+            : (mine[0]?.id ?? null),
         );
         if (mine.length === 0) setLoading(false);
       })
@@ -291,20 +301,23 @@ export default function Challenges() {
 
   const plan = useMemo(
     () => plans.find((item) => item.id === planId) ?? null,
-    [plans, planId]
+    [plans, planId],
   );
   const ownsPlan = plan?.created_by === user?.id;
   const rules = useMemo(
     () => parseRules(plan?.rules, plan?.days),
-    [plan?.rules, plan?.days]
+    [plan?.rules, plan?.days],
   );
 
   const standings = useMemo(
-    () => members.map((member) => buildStanding(member, bets)),
-    [members, bets]
+    () => members.map((member) => buildStanding(member, rules, bets)),
+    [members, bets, rules],
   );
   const me = standings.find((standing) => standing.userId === user?.id) ?? null;
-  const combined = standings.reduce((sum, standing) => sum + standing.bankroll, 0);
+  const combined = standings.reduce(
+    (sum, standing) => sum + standing.bankroll,
+    0,
+  );
 
   const usedFixtures = useMemo(
     () =>
@@ -312,16 +325,16 @@ export default function Challenges() {
         (me?.bets ?? []).flatMap((bet) =>
           bet.legs
             .map((leg) => leg.fixtureId)
-            .filter((id): id is number => id !== null)
-        )
+            .filter((id): id is number => id !== null),
+        ),
       ),
-    [me]
+    [me],
   );
 
   /** My bets still open, newest first — the ones waiting to be closed. */
   const openBets = useMemo(
     () => (me?.bets ?? []).filter((bet) => bet.status === "pending").reverse(),
-    [me]
+    [me],
   );
 
   // Open days close from the final scores without anyone pressing anything.
@@ -335,7 +348,10 @@ export default function Challenges() {
 
     fetchFixtureResults(refs)
       .then(async ({ results }) => {
-        const scores = new Map<number, { homeGoals: number; awayGoals: number }>();
+        const scores = new Map<
+          number,
+          { homeGoals: number; awayGoals: number }
+        >();
         refs.forEach((ref) => {
           const score = finalScore(results, ref.id);
           if (score) scores.set(ref.id, score);
@@ -350,7 +366,9 @@ export default function Challenges() {
         if (settled.length === 0 || cancelled) return;
 
         await Promise.all(
-          settled.map((entry) => updatePlanBet(plan.id, entry.bet.id, entry.payload!))
+          settled.map((entry) =>
+            updatePlanBet(plan.id, entry.bet.id, entry.payload!),
+          ),
         );
         if (!cancelled) setToken((value) => value + 1);
       })
@@ -365,9 +383,11 @@ export default function Challenges() {
     async (invitedPlanId: string, accept: boolean) => {
       setAnswering(true);
       try {
-        await (accept ? acceptInvite(invitedPlanId) : declineInvite(invitedPlanId));
+        await (accept
+          ? acceptInvite(invitedPlanId)
+          : declineInvite(invitedPlanId));
         setPendingInvites((previous) =>
-          previous.filter((invite) => invite.plan_id !== invitedPlanId)
+          previous.filter((invite) => invite.plan_id !== invitedPlanId),
         );
         setToken((value) => value + 1);
       } catch {
@@ -376,7 +396,7 @@ export default function Challenges() {
         setAnswering(false);
       }
     },
-    []
+    [],
   );
 
   const place = useCallback(
@@ -401,7 +421,7 @@ export default function Challenges() {
         setSaving(false);
       }
     },
-    [plan, me, user]
+    [plan, me, user],
   );
 
   const closeBet = useCallback(
@@ -413,8 +433,10 @@ export default function Challenges() {
         await updatePlanBet(plan.id, bet.id, payload);
         setBets((previous) =>
           previous.map((entry) =>
-            entry.id === bet.id ? { ...payload, id: bet.id, userId: bet.userId } : entry
-          )
+            entry.id === bet.id
+              ? { ...payload, id: bet.id, userId: bet.userId }
+              : entry,
+          ),
         );
       } catch {
         setError("Não foi possível fechar a aposta.");
@@ -422,7 +444,7 @@ export default function Challenges() {
         setClosing(null);
       }
     },
-    [plan]
+    [plan],
   );
 
   if (loading) {
@@ -455,7 +477,11 @@ export default function Challenges() {
               disabled={answering}
               onClick={() => respond(invite.plan_id, true)}
             >
-              {answering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Aceitar"}
+              {answering ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Aceitar"
+              )}
             </Button>
             <button
               type="button"
@@ -492,16 +518,31 @@ export default function Challenges() {
     );
   }
 
-  const schedule = planSchedule(plan.start_date, me?.bets.length ?? 0, rules.days);
+  const schedule = planSchedule(
+    plan.start_date,
+    me?.bets.length ?? 0,
+    rules.days,
+  );
   const ladder = buildLadder(rules, Number(plan.starting_bankroll));
+  const move = me
+    ? nextMove({ rules, standing: me, schedule, target: Number(plan.target) })
+    : null;
   const chance = chanceOfCompleting(rules, me?.day ?? 1);
   const loss = me ? costOfOneLoss(rules, me.bankroll, me.day, ladder) : null;
   const progress = Math.min(100, (combined / Number(plan.target)) * 100);
 
   return (
     <AppLayout>
-      <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-3">
-        <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={stagger}
+        className="space-y-3"
+      >
+        <motion.div
+          variants={fadeUp}
+          className="flex items-start justify-between gap-3"
+        >
           <div className="min-w-0">
             <h1 className="sl-section-title text-[15px]">{plan.name}</h1>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -510,12 +551,12 @@ export default function Challenges() {
                     schedule.daysUntilStart === 1 ? "dia" : "dias"
                   }. ${describeRules(rules)}.`
                 : schedule.state === "finished"
-                ? `Os ${rules.days} dias já passaram.`
-                : schedule.state === "running"
-                ? `Dia ${schedule.calendarDay} de ${rules.days} no calendário · ${describeRules(
-                    rules
-                  )}.`
-                : `${describeRules(rules)}.`}
+                  ? `Os ${rules.days} dias já passaram.`
+                  : schedule.state === "running"
+                    ? `Dia ${schedule.calendarDay} de ${rules.days} no calendário · ${describeRules(
+                        rules,
+                      )}.`
+                    : `${describeRules(rules)}.`}
             </p>
             {schedule.behindBy > 0 && (
               <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
@@ -536,7 +577,9 @@ export default function Challenges() {
           </Button>
         </motion.div>
 
-        {inviteBanner && <motion.div variants={fadeUp}>{inviteBanner}</motion.div>}
+        {inviteBanner && (
+          <motion.div variants={fadeUp}>{inviteBanner}</motion.div>
+        )}
 
         {plans.length > 1 && (
           <motion.div variants={fadeUp} className="flex flex-wrap gap-1.5">
@@ -557,49 +600,11 @@ export default function Challenges() {
           </motion.div>
         )}
 
-        <motion.section variants={fadeUp} className="sl-card px-4 py-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                {standings.length > 1 ? "Banca somada" : "Banca"}
-              </p>
-              <p className="mt-1 font-mono-data text-2xl font-bold text-foreground">
-                {eur.format(combined)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                Objetivo
-              </p>
-              <p className="mt-1 font-mono-data text-sm font-bold text-foreground">
-                {eur.format(Number(plan.target))}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${Math.max(progress, 0.4)}%` }}
-            />
-          </div>
-          <p className="sl-meta mt-1.5 text-[11px]">
-            {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do caminho ·
-            faltam {eur.format(Math.max(0, Number(plan.target) - combined))}
-          </p>
-        </motion.section>
-
-        <motion.div variants={fadeUp} className="grid gap-2 md:grid-cols-2">
-          {standings.map((standing) => (
-            <PlayerCard
-              key={standing.userId}
-              standing={standing}
-              isMe={standing.userId === user?.id}
-              rules={rules}
-              startingBankroll={Number(plan.starting_bankroll)}
-            />
-          ))}
-        </motion.div>
+        {move && (
+          <motion.div variants={fadeUp}>
+            <NextMoveCard move={move} />
+          </motion.div>
+        )}
 
         {openBets.length > 0 && (
           <motion.section variants={fadeUp} className="sl-card overflow-hidden">
@@ -643,8 +648,8 @@ export default function Challenges() {
                             {leg.status === "green"
                               ? "✓ "
                               : leg.status === "red"
-                              ? "✗ "
-                              : "· "}
+                                ? "✗ "
+                                : "· "}
                             {leg.match} ·{" "}
                             {MARKET_LABELS[leg.market] ?? leg.market} @{" "}
                             {leg.odds.toFixed(2)}
@@ -680,6 +685,50 @@ export default function Challenges() {
           </motion.section>
         )}
 
+        <motion.section variants={fadeUp} className="sl-card px-4 py-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+                {standings.length > 1 ? "Banca somada" : "Banca"}
+              </p>
+              <p className="mt-1 font-mono-data text-2xl font-bold text-foreground">
+                {eur.format(combined)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+                Objetivo
+              </p>
+              <p className="mt-1 font-mono-data text-sm font-bold text-foreground">
+                {eur.format(Number(plan.target))}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${Math.max(progress, 0.4)}%` }}
+            />
+          </div>
+          <p className="sl-meta mt-1.5 text-[11px]">
+            {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do caminho
+            · faltam {eur.format(Math.max(0, Number(plan.target) - combined))}
+          </p>
+        </motion.section>
+
+        <motion.div variants={fadeUp} className="grid gap-2 md:grid-cols-2">
+          {standings.map((standing) => (
+            <PlayerCard
+              key={standing.userId}
+              standing={standing}
+              isMe={standing.userId === user?.id}
+              rules={rules}
+              startingBankroll={Number(plan.starting_bankroll)}
+            />
+          ))}
+        </motion.div>
+
         {me && (
           <motion.div variants={fadeUp}>
             <BetComposer
@@ -689,6 +738,8 @@ export default function Challenges() {
               bankroll={me.bankroll}
               betsToday={betsPlacedToday(me)}
               lossStreak={me.lossStreak}
+              openBets={me.openBets}
+              targetOdds={move?.targetOdds ?? 0}
               usedFixtures={usedFixtures}
               saving={saving}
               onPlace={place}
@@ -729,42 +780,46 @@ export default function Challenges() {
                   {standing.name}
                 </p>
                 <div className="mt-2 space-y-1.5">
-                  {[...standing.bets].reverse().slice(0, 8).map((bet) => (
-                    <div
-                      key={bet.id}
-                      className="flex items-center gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-foreground">
-                          {bet.legs.length === 1
-                            ? bet.legs[0].match
-                            : `${bet.legs[0]?.match ?? "—"} + ${bet.legs.length - 1}`}
-                        </p>
-                        <p className="sl-meta truncate text-[11px]">
-                          Dia {bet.day} ·{" "}
-                          {bet.legs.length === 1
-                            ? MARKET_LABELS[bet.legs[0].market] ?? bet.legs[0].market
-                            : `${bet.legs.length} jogos`}{" "}
-                          @ {bet.odds.toFixed(2)}
-                        </p>
-                      </div>
-                      <span
-                        className={`sl-pill flex-none ${
-                          bet.status === "green"
-                            ? "sl-pill-win"
-                            : bet.status === "red"
-                            ? "sl-pill-loss"
-                            : "sl-pill-open"
-                        }`}
+                  {[...standing.bets]
+                    .reverse()
+                    .slice(0, 8)
+                    .map((bet) => (
+                      <div
+                        key={bet.id}
+                        className="flex items-center gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
                       >
-                        {bet.status === "green"
-                          ? `+${bet.profitLoss.toFixed(2)}`
-                          : bet.status === "red"
-                          ? bet.profitLoss.toFixed(2)
-                          : "aberta"}
-                      </span>
-                    </div>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-foreground">
+                            {bet.legs.length === 1
+                              ? bet.legs[0].match
+                              : `${bet.legs[0]?.match ?? "—"} + ${bet.legs.length - 1}`}
+                          </p>
+                          <p className="sl-meta truncate text-[11px]">
+                            Dia {bet.day} ·{" "}
+                            {bet.legs.length === 1
+                              ? (MARKET_LABELS[bet.legs[0].market] ??
+                                bet.legs[0].market)
+                              : `${bet.legs.length} jogos`}{" "}
+                            @ {bet.odds.toFixed(2)}
+                          </p>
+                        </div>
+                        <span
+                          className={`sl-pill flex-none ${
+                            bet.status === "green"
+                              ? "sl-pill-win"
+                              : bet.status === "red"
+                                ? "sl-pill-loss"
+                                : "sl-pill-open"
+                          }`}
+                        >
+                          {bet.status === "green"
+                            ? `+${bet.profitLoss.toFixed(2)}`
+                            : bet.status === "red"
+                              ? bet.profitLoss.toFixed(2)
+                              : "aberta"}
+                        </span>
+                      </div>
+                    ))}
                   {standing.bets.length === 0 && (
                     <p className="sl-meta text-[11px]">Ainda não apostou.</p>
                   )}
@@ -785,12 +840,13 @@ export default function Challenges() {
           </div>
           <div className="space-y-2 p-4">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Cada degrau só conta se a aposta entrar, por isso o desafio inteiro
-              é uma sequência de vitórias seguidas, não uma média.
+              Cada degrau só conta se a aposta entrar, por isso o desafio
+              inteiro é uma sequência de vitórias seguidas, não uma média.
             </p>
             <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
               <span className="sl-meta min-w-0 flex-1 text-[11px]">
-                Chance de {me ? `chegar do dia ${me.day} ao fim` : "fazer a escada toda"}
+                Chance de{" "}
+                {me ? `chegar do dia ${me.day} ao fim` : "fazer a escada toda"}
               </span>
               <span className="font-mono-data flex-none text-sm font-bold text-foreground">
                 {chance < 0.0001
@@ -800,7 +856,9 @@ export default function Challenges() {
             </div>
             {loss && (
               <div className="rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="sl-meta text-[11px]">Uma derrota hoje deixa-te em</p>
+                <p className="sl-meta text-[11px]">
+                  Uma derrota hoje deixa-te em
+                </p>
                 <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
                   {eur.format(loss.bankrollAfter)}
                   <span className="sl-meta font-normal">
@@ -822,7 +880,9 @@ export default function Challenges() {
               <Trophy className="h-4 w-4 text-primary" />A escada
             </h2>
             <span className="sl-meta text-[11px]">
-              {me ? `estás no degrau ${rungForBankroll(me.bankroll, ladder)}` : ""}
+              {me
+                ? `estás no degrau ${rungForBankroll(me.bankroll, ladder)}`
+                : ""}
             </span>
           </div>
           <div className="max-h-[320px] divide-y divide-border overflow-y-auto">

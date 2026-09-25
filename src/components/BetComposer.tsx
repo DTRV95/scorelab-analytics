@@ -128,6 +128,8 @@ export function BetComposer({
   bankroll,
   betsToday,
   lossStreak,
+  openBets,
+  targetOdds,
   usedFixtures,
   saving,
   onPlace,
@@ -138,6 +140,9 @@ export function BetComposer({
   bankroll: number;
   betsToday: number;
   lossStreak: number;
+  openBets: number;
+  /** The odd the ladder pencils in for today, to aim the slip at. */
+  targetOdds: number;
   usedFixtures: Set<number>;
   saving: boolean;
   onPlace: (legs: PlanLeg[], odds: number, stake: number) => void;
@@ -199,6 +204,7 @@ export function BetComposer({
         day,
         betsPlacedToday: betsToday,
         lossStreak,
+        openBets,
       })
     : [];
 
@@ -287,9 +293,7 @@ export function BetComposer({
           <p className="sl-meta truncate text-[11px]">
             {(stakePctForDay(rules, day) * 100).toFixed(0)}% da banca ={" "}
             {eur.format(suggested)}
-            {rules.oddsMin !== null && rules.oddsMax !== null
-              ? ` · odd ${rules.oddsMin.toFixed(2)}–${rules.oddsMax.toFixed(2)}`
-              : ""}
+            {targetOdds > 1 ? ` · odd a apontar ${targetOdds.toFixed(2)}` : ""}
           </p>
         </div>
       </div>
@@ -545,9 +549,16 @@ export function BetComposer({
                   : `${legs.length} jogos multiplicados`}
               </p>
             </div>
-            <span className="font-mono-data flex-none text-2xl font-bold text-foreground">
-              {priced && combined > 1 ? combined.toFixed(2) : "—"}
-            </span>
+            <div className="flex-none text-right">
+              <span className="font-mono-data text-2xl font-bold text-foreground">
+                {priced && combined > 1 ? combined.toFixed(2) : "—"}
+              </span>
+              {targetOdds > 1 && (
+                <p className="sl-meta text-[10px]">
+                  a apontar {targetOdds.toFixed(2)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

@@ -244,12 +244,22 @@ describe("a challenge's standings", () => {
     expect(screen.getByText("20,00 €")).toBeInTheDocument();
   });
 
-  it("puts each player on their own day", async () => {
+  it("puts each player on the day their money reaches", async () => {
     renderPage();
 
-    // David has two bets placed, his brother one.
-    expect(await screen.findByText("Dia 3")).toBeInTheDocument();
-    expect(screen.getByText("Dia 2")).toBeInTheDocument();
+    // David won €5 onto €10: €15 is where day 2 opens. His open bet has not
+    // moved anything, so it has not moved his day either. His brother lost his
+    // first day and is back under the opening rung.
+    expect((await screen.findAllByText("Dia 2")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Dia 1")).toBeInTheDocument();
+  });
+
+  it("says what to do next, with the stake and the odd already worked out", async () => {
+    renderPage();
+
+    // The open day comes first: nothing else can be decided until it closes.
+    expect(await screen.findByText("O que fazer agora")).toBeInTheDocument();
+    expect(screen.getByText(/Fecha o dia que está aberto/)).toBeInTheDocument();
   });
 
   it("says out loud what the ladder actually requires", async () => {
@@ -337,12 +347,12 @@ describe("building the day's bet", () => {
     fireEvent.change(screen.getByLabelText("Odd de Equipa 11 vs Rival"), {
       target: { value: "1.85" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 3/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
 
     expect(savePlanBet).toHaveBeenCalledTimes(1);
     const [, userId, payload] = savePlanBet.mock.calls[0];
     expect(userId).toBe("david");
-    expect(payload).toMatchObject({ stake: 7.5, odds: 1.85, day: 3, status: "pending" });
+    expect(payload).toMatchObject({ stake: 7.5, odds: 1.85, day: 2, status: "pending" });
     expect((payload as { legs: { fixtureId: number | null }[] }).legs[0].fixtureId).toBe(111);
   });
 
@@ -353,7 +363,7 @@ describe("building the day's bet", () => {
       target: { value: "1.85" },
     });
     fireEvent.change(screen.getByLabelText("Valor a apostar"), { target: { value: "5" } });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 3/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
 
     const [, , payload] = savePlanBet.mock.calls[0];
     expect(payload).toMatchObject({ stake: 5 });

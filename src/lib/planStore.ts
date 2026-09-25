@@ -1,4 +1,9 @@
 import { supabase } from "@/lib/supabaseClient";
+import {
+  buildLadder,
+  rungForBankroll,
+  type ChallengeRules,
+} from "@/lib/challengeRules";
 import { isGreenMarket } from "@/lib/modelAudit";
 import type { BetStatus } from "@/types/analysis";
 
@@ -325,11 +330,21 @@ export interface PlayerStanding {
   settled: number;
   greens: number;
   reds: number;
-  /** Losses since the last win — what the plan's pause rule counts. */
+  /** Losses since the last win — what the challenge's pause rule counts. */
   lossStreak: number;
-  /** The day this player is on: one per bet already placed, plus the next. */
+  /**
+   * The day this player is on, read off the ladder by how much money they have.
+   *
+   * Not a count of bets placed: a lost day does not move anyone forward, it
+   * moves them back down, and a day number that only ever grows would keep
+   * asking for a bigger stake off a smaller bankroll.
+   */
   day: number;
+  /** Days still open, which is what has to be closed before the next one. */
+  openBets: number;
   openStake: number;
+  /** The last day that was decided, for saying what just happened. */
+  lastSettled: PlanBet | null;
 }
 
 /**
@@ -342,6 +357,7 @@ export interface PlayerStanding {
  */
 export function buildStanding(
   member: PlanMember,
+  rules: ChallengeRules,
   bets: PlanBet[]
 ): PlayerStanding {
   const mine = bets
@@ -353,33 +369,45 @@ export function buildStanding(
   let reds = 0;
   let lossStreak = 0;
   let openStake = 0;
+  let openBets = 0;
+  let lastSettled: PlanBet | null = null;
 
   mine.forEach((bet) => {
     if (bet.status === "green") {
       bankroll += bet.profitLoss;
       greens += 1;
       lossStreak = 0;
+      lastSettled = bet;
     } else if (bet.status === "red") {
       bankroll += bet.profitLoss;
       reds += 1;
       lossStreak += 1;
+      lastSettled = bet;
     } else if (bet.status === "pending") {
       openStake += bet.stake;
+      openBets += 1;
     }
   });
+
+  const rounded = Number(bankroll.toFixed(2));
+  const ladder = buildLadder(rules, Number(member.starting_bankroll));
 
   return {
     userId: member.user_id,
     name: member.display_name,
-    bankroll: Number(bankroll.toFixed(2)),
+    bankroll: rounded,
     startingBankroll: Number(member.starting_bankroll),
     bets: mine,
     settled: greens + reds,
     greens,
     reds,
     lossStreak,
-    day: mine.length + 1,
+    // The rung the money reaches is the day to play: €15 on a ladder whose
+    // second rung opens at €15 means day two is the one in front of you.
+    day: Math.max(1, rungForBankroll(rounded, ladder)),
+    openBets,
     openStake: Number(openStake.toFixed(2)),
+    lastSettled,
   };
 }
 
