@@ -153,6 +153,16 @@ function toLimit(value: unknown): number | null {
  * band instead of a division by zero.
  */
 export function parseRules(raw: unknown, days?: number): ChallengeRules {
+  // A challenge with nothing stored predates the rules column, and every
+  // challenge that old is a Plano Milhão — the app had nothing else. Falling
+  // back to a generic percentage would quietly replace the document's table
+  // with a ladder nobody agreed to, which is exactly what happened.
+  if (!hasStoredRules(raw)) {
+    return days && days !== MILLION_PLAN_RULES.days
+      ? { ...MILLION_PLAN_RULES, days, fixedLadder: null }
+      : MILLION_PLAN_RULES;
+  }
+
   const source = (raw ?? {}) as Partial<ChallengeRules>;
 
   const bands = Array.isArray(source.stakeBands)

@@ -3,6 +3,7 @@ import {
   CHALLENGE_TEMPLATES,
   MILLION_PLAN_RULES,
   buildLadder,
+  ladderFor,
   checkBet,
   describeRules,
   parseRules,
@@ -84,12 +85,27 @@ describe("what a challenge objects to", () => {
 });
 
 describe("rules as they come back from the database", () => {
-  it("fills in a challenge saved before rules existed", () => {
+  it("reads a challenge saved before rules existed as the Plano Milhão", () => {
+    // Every challenge that predates the rules column is one: the app had
+    // nothing else. Falling back to a generic percentage replaced the
+    // document's table with a ladder nobody agreed to.
+    const rules = parseRules({}, 38);
+
+    expect(rules.days).toBe(38);
+    expect(rules.fixedLadder).toBe("milhao");
+    expect(rules.stakeBands.map((band) => band.pct)).toEqual([0.5, 0.4, 0.3]);
+    expect(rules.oddsMin).toBe(1.75);
+    expect(ladderFor(rules, 10)[2]).toMatchObject({ stake: 10.69, odds: 1.9 });
+  });
+
+  it("keeps the document's table off a challenge of a different length", () => {
+    // The transcribed table is 38 rows long and means nothing at any other
+    // length, so a 20-day challenge gets a generated ladder instead.
     const rules = parseRules({}, 20);
 
     expect(rules.days).toBe(20);
-    expect(rules.stakeBands).toHaveLength(1);
-    expect(rules.oddsMin).toBeNull();
+    expect(rules.fixedLadder).toBeNull();
+    expect(ladderFor(rules, 10)).toHaveLength(20);
   });
 
   it("survives junk instead of rendering NaN on the page", () => {
