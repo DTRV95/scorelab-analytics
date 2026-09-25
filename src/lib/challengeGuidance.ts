@@ -1,18 +1,14 @@
 /**
  * What to do next, said in one place.
  *
- * The rules are all on the page somewhere — the ladder, the percentage, the
- * odds band, the pause after three losses — but reading a table is not the
- * same as being told "today you stake €12.50 at 1.95". This works that out
- * from what actually happened, so the answer and the money can never disagree.
+ * The table is the instruction: it says which day you are on, how much to put
+ * down and at what price. What it cannot say is how the bet went, so the real
+ * bankroll is tracked beside it and the two are shown together rather than one
+ * being quietly recalculated into the other.
  */
 
-import {
-  plannedOddsForDay,
-  plannedStake,
-  stakePctForDay,
-  type ChallengeRules,
-} from "@/lib/challengeRules";
+import type { ChallengeRules, Rung } from "@/lib/challengeRules";
+import { isShort, stakeForDay } from "@/lib/challengeRules";
 import type { PlanSchedule } from "@/lib/challengeSchedule";
 import type { PlayerStanding } from "@/lib/planStore";
 
@@ -27,12 +23,18 @@ export type MoveState =
 
 export interface NextMove {
   state: MoveState;
-  /** The day the ladder says is in front of this player. */
+  /** The day of the table this player is on. */
   day: number;
-  /** What to stake today, from the rules and the money that is really there. */
+  /** What to stake today: the table's figure, or everything left if less. */
   stake: number;
-  /** The odd the ladder pencils in for this day. */
+  /** The odd the table pencils in for this day. */
   targetOdds: number;
+  /** What the table says the bankroll should be at the start of this day. */
+  tableBankroll: number;
+  /** Real money minus the table's figure: the cushion, or the hole. */
+  versusTable: number;
+  /** True when the bankroll cannot cover what the table asks for. */
+  short: boolean;
   /** What just happened, or null before anything has been decided. */
   last: string | null;
   /** The instruction itself, short enough to be read at a glance. */
@@ -50,31 +52,26 @@ const eur = new Intl.NumberFormat("pt-PT", {
 });
 
 /**
- * What the last decided day did to this player's position.
+ * What the last decided day did to this player's place in the table.
  *
- * The day comes off the ladder, so a win can move someone two rungs and a loss
- * can drop them several. Saying which day they were on and which they are on
- * now is the difference between a number changing and a person understanding
- * why it changed.
+ * A day won is a step up, a day lost is a step back. Saying which day they
+ * were on and which they are on now is the difference between a number
+ * changing and a person understanding why it changed.
  */
 function lastLine(standing: PlayerStanding, day: number): string | null {
   const bet = standing.lastSettled;
   if (!bet) return null;
 
   if (bet.status === "green") {
-    const moved =
-      day > bet.day
-        ? ` Avanças para o dia ${day}.`
-        : ` Ficas no dia ${day}: a banca ainda não chegou ao degrau seguinte.`;
-    return `Ganhaste o dia ${bet.day}, +${eur.format(bet.profitLoss)}.${moved}`;
+    return `Ganhaste o dia ${bet.day}, +${eur.format(
+      bet.profitLoss
+    )}. Avanças para o dia ${day}.`;
   }
 
   if (bet.status === "red") {
-    const moved =
-      day < bet.day
-        ? ` Recuas para o dia ${day}.`
-        : ` Continuas no dia ${day}.`;
-    return `Perdeste o dia ${bet.day}, ${eur.format(bet.profitLoss)}.${moved}`;
+    return `Perdeste o dia ${bet.day}, ${eur.format(bet.profitLoss)}.${
+      day < bet.day ? ` Recuas para o dia ${day}.` : " Já estavas no primeiro dia."
+    }`;
   }
 
   return null;
@@ -82,22 +79,34 @@ function lastLine(standing: PlayerStanding, day: number): string | null {
 
 export function nextMove({
   rules,
+  ladder,
   standing,
   schedule,
   target,
 }: {
   rules: ChallengeRules;
+  ladder: Rung[];
   standing: PlayerStanding;
   schedule: PlanSchedule;
   target: number;
 }): NextMove {
-  const day = Math.min(standing.day, rules.days);
-  const stake = plannedStake(rules, standing.bankroll, day);
-  const targetOdds = plannedOddsForDay(rules, day);
+  const day = Math.min(Math.max(standing.day, 1), ladder.length);
+  const row = ladder[day - 1];
+  const stake = stakeForDay(ladder, day, standing.bankroll);
+  const targetOdds = row?.odds ?? 0;
+  const tableBankroll = row?.bankrollStart ?? 0;
   const last = lastLine(standing, standing.day);
-  const pct = (stakePctForDay(rules, day) * 100).toFixed(0);
+  const short = isShort(ladder, day, standing.bankroll);
 
-  const base = { day, stake, targetOdds, last };
+  const base = {
+    day,
+    stake,
+    targetOdds,
+    tableBankroll,
+    versusTable: Number((standing.bankroll - tableBankroll).toFixed(2)),
+    short,
+    last,
+  };
 
   if (standing.bankroll <= 0) {
     return {
@@ -105,8 +114,7 @@ export function nextMove({
       state: "broke",
       blocked: true,
       action: "A banca acabou",
-      detail:
-        "Não há nada para apostar. Para continuar, o desafio tem de recomeçar com uma banca nova.",
+      detail: "Não há nada para apostar. Para continuar, o quadro tem de recomeçar.",
     };
   }
 
@@ -141,9 +149,7 @@ export function nextMove({
       action: `Começa daqui a ${schedule.daysUntilStart} ${
         schedule.daysUntilStart === 1 ? "dia" : "dias"
       }`,
-      detail: `No primeiro dia serão ${eur.format(stake)} a uma odd de ${targetOdds.toFixed(
-        2
-      )}.`,
+      detail: `No dia 1 serão ${eur.format(stake)} a uma odd de ${targetOdds.toFixed(2)}.`,
     };
   }
 
@@ -153,7 +159,7 @@ export function nextMove({
       state: "finished",
       blocked: true,
       action: "O desafio chegou ao fim",
-      detail: `Ficaste no dia ${standing.day} de ${rules.days}, com ${eur.format(
+      detail: `Ficaste no dia ${day} de ${rules.days}, com ${eur.format(
         standing.bankroll
       )}.`,
     };
@@ -165,7 +171,7 @@ export function nextMove({
       state: "paused",
       blocked: true,
       action: "Hoje não se aposta",
-      detail: `${standing.lossStreak} perdas seguidas: o desafio manda parar um dia. Quando voltares são ${eur.format(
+      detail: `${standing.lossStreak} perdas seguidas: o quadro manda parar um dia. Quando voltares são ${eur.format(
         stake
       )} a uma odd de ${targetOdds.toFixed(2)}.`,
     };
@@ -173,16 +179,22 @@ export function nextMove({
 
   const band =
     rules.oddsMin !== null && rules.oddsMax !== null
-      ? ` A odd combinada tem de ficar entre ${rules.oddsMin.toFixed(
+      ? ` A odd que meteres tem de ficar entre ${rules.oddsMin.toFixed(
           2
         )} e ${rules.oddsMax.toFixed(2)}.`
       : "";
+
+  const detail = short
+    ? `Dia ${day}: o quadro pede ${eur.format(
+        row?.stake ?? 0
+      )} e só tens ${eur.format(standing.bankroll)}. Vai tudo.${band}`
+    : `Dia ${day} do quadro, que parte de ${eur.format(tableBankroll)}.${band}`;
 
   return {
     ...base,
     state: "play",
     blocked: false,
     action: `Aposta ${eur.format(stake)} a uma odd de ${targetOdds.toFixed(2)}`,
-    detail: `Dia ${day}: ${pct}% da banca de ${eur.format(standing.bankroll)}.${band}`,
+    detail,
   };
 }

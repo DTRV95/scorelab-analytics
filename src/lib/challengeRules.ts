@@ -1,3 +1,5 @@
+import { MILLION_PLAN_TABLE } from "@/lib/millionPlanTable";
+
 /**
  * The rules a challenge runs by.
  *
@@ -32,6 +34,12 @@ export interface ChallengeRules {
    * into a cycle cannot be written as one repeating list.
    */
   oddsPlan: { first: number; cycle: number[] };
+  /**
+   * Names a table written down somewhere else, used instead of generating the
+   * ladder. The Plano Milhão has one: its rows were built in a spreadsheet that
+   * carried unrounded values between them, so recomputing them drifts.
+   */
+  fixedLadder?: string | null;
 }
 
 /** The document's plan: €10 to a million in 38 days, one bet a day. */
@@ -47,6 +55,7 @@ export const MILLION_PLAN_RULES: ChallengeRules = {
   onePerDay: true,
   lossStreakPause: 3,
   oddsPlan: { first: 2, cycle: [1.85, 1.9, 1.95, 1.75, 1.8] },
+  fixedLadder: "milhao",
 };
 
 export interface ChallengeTemplate {
@@ -176,6 +185,10 @@ export function parseRules(raw: unknown, days?: number): ChallengeRules {
       first: toNumber(source.oddsPlan?.first, cycle[0] ?? 1.9),
       cycle: cycle.length > 0 ? cycle : [1.9],
     },
+    fixedLadder:
+      typeof source.fixedLadder === "string" && source.fixedLadder in FIXED_LADDERS
+        ? source.fixedLadder
+        : null,
   };
 }
 
@@ -215,6 +228,48 @@ export interface Rung {
   stake: number;
   profit: number;
   bankrollEnd: number;
+}
+
+/**
+ * Tables written down elsewhere, keyed by the name a challenge stores.
+ *
+ * Kept out of the stored rules on purpose: a challenge carries the name, the
+ * app carries the rows. Putting 38 rows in every row of the database would
+ * also mean fixing a transcription error in one place and not the others.
+ */
+export const FIXED_LADDERS: Record<string, Rung[]> = {
+  milhao: MILLION_PLAN_TABLE,
+};
+
+/**
+ * The ladder a challenge actually runs on.
+ *
+ * A written table wins over anything generated: it is what the people playing
+ * have in front of them.
+ */
+export function ladderFor(rules: ChallengeRules, start: number): Rung[] {
+  const fixed = rules.fixedLadder ? FIXED_LADDERS[rules.fixedLadder] : null;
+  return fixed ?? buildLadder(rules, start);
+}
+
+/**
+ * What the ladder says to stake on a day, and what can actually be staked.
+ *
+ * The row is the instruction, whatever the bankroll happens to be: winning at
+ * a better price than the table pencilled in leaves money over, and that
+ * surplus is a cushion, not a bigger bet. The one thing that can override the
+ * row is not having the money — then it is everything that is left.
+ */
+export function stakeForDay(ladder: Rung[], day: number, bankroll: number): number {
+  const row = ladder[Math.min(Math.max(day, 1), ladder.length) - 1];
+  if (!row) return 0;
+  return Number(Math.min(row.stake, Math.max(bankroll, 0)).toFixed(2));
+}
+
+/** True when the bankroll cannot cover what the ladder asks for today. */
+export function isShort(ladder: Rung[], day: number, bankroll: number): boolean {
+  const row = ladder[Math.min(Math.max(day, 1), ladder.length) - 1];
+  return Boolean(row && bankroll < row.stake - 0.005);
 }
 
 export function buildLadder(rules: ChallengeRules, start: number): Rung[] {
@@ -268,6 +323,8 @@ export interface BetCheckInput {
   lossStreak: number;
   /** Days already placed and not yet decided. */
   openBets?: number;
+  /** What the table asks for today. Falls back to the percentage rule. */
+  plannedStake?: number;
 }
 
 /**
@@ -280,7 +337,7 @@ export interface BetCheckInput {
 export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation[] {
   const { odds, stake, bankroll, day, betsPlacedToday, lossStreak } = input;
   const violations: Violation[] = [];
-  const planned = plannedStake(rules, bankroll, day);
+  const planned = input.plannedStake ?? plannedStake(rules, bankroll, day);
 
   // The bankroll cannot tell you which day you are on while an earlier one is
   // still undecided, so a second bet on top of an open one is staking money the
@@ -336,17 +393,17 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
     violations.push({
       code: "stake-over",
       severity: "breach",
-      message: `Acima do desafio: hoje são ${planned.toFixed(2)} € (${(
-        stakePctForDay(rules, day) * 100
-      ).toFixed(0)}% da banca), não ${stake.toFixed(2)} €.`,
+      message: `Acima do quadro: o dia ${day} são ${planned.toFixed(
+        2
+      )} €, não ${stake.toFixed(2)} €.`,
     });
   } else if (stake > 0 && stake < planned - 0.01) {
     violations.push({
       code: "stake-under",
       severity: "note",
-      message: `Abaixo do desafio: hoje seriam ${planned.toFixed(
+      message: `Abaixo do quadro: o dia ${day} pede ${planned.toFixed(
         2
-      )} €. Ficas mais atrás na escada, mas arriscas menos.`,
+      )} €. Arriscas menos, mas o quadro deixa de bater certo.`,
     });
   }
 
@@ -360,32 +417,24 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
  * and the odds multiply. This is the number a bankroll tool exists to show: the
  * table looks like a schedule, and it is really a parlay.
  */
-export function chanceOfCompleting(
-  rules: ChallengeRules,
-  fromDay: number,
-  toDay = rules.days
-): number {
+export function chanceOfCompleting(ladder: Rung[], fromDay: number): number {
   let chance = 1;
-  for (let day = Math.max(1, fromDay); day <= toDay; day += 1) {
-    chance *= 1 / plannedOddsForDay(rules, day);
+  for (let day = Math.max(1, fromDay); day <= ladder.length; day += 1) {
+    const odds = ladder[day - 1]?.odds ?? 1;
+    if (odds > 1) chance *= 1 / odds;
   }
   return chance;
 }
 
-/** How far down the ladder a single lost day puts you. */
-export function costOfOneLoss(
-  rules: ChallengeRules,
-  bankroll: number,
-  day: number,
-  ladder: Rung[]
-) {
-  const stake = plannedStake(rules, bankroll, day);
+/** What a single lost day costs, and which day it sends you back to. */
+export function costOfOneLoss(ladder: Rung[], bankroll: number, day: number) {
+  const stake = stakeForDay(ladder, day, bankroll);
   const after = round(Math.max(0, bankroll - stake));
   return {
     stake,
     bankrollAfter: after,
-    rungBefore: rungForBankroll(bankroll, ladder),
-    rungAfter: rungForBankroll(after, ladder),
+    dayBefore: day,
+    dayAfter: Math.max(1, day - 1),
   };
 }
 

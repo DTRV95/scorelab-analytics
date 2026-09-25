@@ -1,9 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import {
-  buildLadder,
-  rungForBankroll,
-  type ChallengeRules,
-} from "@/lib/challengeRules";
+import type { ChallengeRules } from "@/lib/challengeRules";
 import { isGreenMarket } from "@/lib/modelAudit";
 import type { BetStatus } from "@/types/analysis";
 
@@ -333,11 +329,12 @@ export interface PlayerStanding {
   /** Losses since the last win — what the challenge's pause rule counts. */
   lossStreak: number;
   /**
-   * The day this player is on, read off the ladder by how much money they have.
+   * The day this player is on: one step up the table for every day won, one
+   * step back down for every day lost.
    *
-   * Not a count of bets placed: a lost day does not move anyone forward, it
-   * moves them back down, and a day number that only ever grows would keep
-   * asking for a bigger stake off a smaller bankroll.
+   * Not a count of bets placed. A lost day does not move anyone forward, and a
+   * number that only ever grows would keep asking for a bigger stake off a
+   * smaller bankroll.
    */
   day: number;
   /** Days still open, which is what has to be closed before the next one. */
@@ -390,7 +387,6 @@ export function buildStanding(
   });
 
   const rounded = Number(bankroll.toFixed(2));
-  const ladder = buildLadder(rules, Number(member.starting_bankroll));
 
   return {
     userId: member.user_id,
@@ -402,9 +398,9 @@ export function buildStanding(
     greens,
     reds,
     lossStreak,
-    // The rung the money reaches is the day to play: €15 on a ladder whose
-    // second rung opens at €15 means day two is the one in front of you.
-    day: Math.max(1, rungForBankroll(rounded, ladder)),
+    // Win and you climb a step, lose and you go back one, never past the ends
+    // of the table.
+    day: Math.min(Math.max(1, 1 + greens - reds), rules.days),
     openBets,
     openStake: Number(openStake.toFixed(2)),
     lastSettled,

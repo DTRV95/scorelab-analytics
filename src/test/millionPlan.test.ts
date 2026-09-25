@@ -68,14 +68,14 @@ describe("where the bankroll actually is", () => {
   });
 
   it("puts a number on what one lost day costs", () => {
-    // Standing on day 6 with the ladder's own bankroll.
+    // Standing on day 6 with the table's own bankroll.
     const cost = costOfOneLoss(62.86, 6);
 
     expect(cost.stake).toBe(31.43);
     expect(cost.bankrollAfter).toBe(31.43);
-    expect(cost.rungBefore).toBe(6);
-    // Half the bankroll is two rungs back down the ladder.
-    expect(cost.rungAfter).toBe(4);
+    // A lost day is one step back, however much money it took with it.
+    expect(cost.dayBefore).toBe(6);
+    expect(cost.dayAfter).toBe(5);
   });
 });
 

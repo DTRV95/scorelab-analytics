@@ -317,7 +317,9 @@ describe("building the day's bet", () => {
     await addByHand("Torreense", "Mafra", "Casa", "1.50");
 
     // 1.30 × 1.50: two short prices making the challenge's line between them.
-    expect(screen.getByText("1.95")).toBeInTheDocument();
+    // Read from the slip, since 1.95 is also one of the table's own odds.
+    const slip = screen.getByText("Odd total").closest("div")!.parentElement!;
+    expect(within(slip).getByText("1.95")).toBeInTheDocument();
     expect(screen.getByText("2 jogos multiplicados")).toBeInTheDocument();
   });
 
