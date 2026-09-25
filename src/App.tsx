@@ -22,6 +22,7 @@ const ValueRadar = lazy(() => import("./pages/ValueRadar"));
 const ModelLab = lazy(() => import("./pages/ModelLab"));
 const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
 const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
+const MillionPlan = lazy(() => import("./pages/MillionPlan"));
 const History = lazy(() => import("./pages/History"));
 const HistoryMultiples = lazy(() => import("./pages/HistoryMultiples"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
@@ -94,6 +95,7 @@ const App = () => {
                     <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
                     <Route path="/probability" element={<ProtectedRoute><ProbabilityRadar /></ProtectedRoute>} />
                     <Route path="/radar" element={<ProtectedRoute><ValueRadar /></ProtectedRoute>} />
+                    <Route path="/plano" element={<ProtectedRoute><MillionPlan /></ProtectedRoute>} />
                     <Route path="/match/:fixtureId" element={<ProtectedRoute><MatchDeepDive /></ProtectedRoute>} />
                     <Route path="/accuracy" element={<ProtectedRoute><ModelAccuracy /></ProtectedRoute>} />
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />
