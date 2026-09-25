@@ -8,6 +8,16 @@ export interface PlanRecord {
   starting_bankroll: number;
   target: number;
   created_by: string;
+  /** The day the plan begins, as YYYY-MM-DD. Null when it was never set. */
+  start_date: string | null;
+  days: number;
+}
+
+export interface PlanTerms {
+  name: string;
+  startDate: string | null;
+  startingBankroll: number;
+  target: number;
 }
 
 export interface PlanMember {
@@ -59,7 +69,7 @@ export async function fetchPlan(): Promise<{
 
   const { data: plans, error } = await db
     .from("plans")
-    .select("id, name, starting_bankroll, target, created_by")
+    .select("id, name, starting_bankroll, target, created_by, start_date, days")
     .order("created_at", { ascending: true })
     .limit(1);
 
@@ -146,6 +156,55 @@ export async function declineInvite(planId: string): Promise<void> {
   const { error } = await client().rpc("decline_plan_invite", {
     target_plan: planId,
   });
+  if (error) throw error;
+}
+
+/** Every plan this account belongs to, oldest first. */
+export async function fetchPlans(): Promise<PlanRecord[]> {
+  const { data, error } = await client()
+    .from("plans")
+    .select("id, name, starting_bankroll, target, created_by, start_date, days")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as PlanRecord[];
+}
+
+export async function fetchPlanMembers(planId: string): Promise<PlanMember[]> {
+  const { data, error } = await client()
+    .from("plan_members")
+    .select("plan_id, user_id, display_name, starting_bankroll")
+    .eq("plan_id", planId);
+
+  if (error) throw error;
+  return (data ?? []) as PlanMember[];
+}
+
+export async function createPlan(terms: PlanTerms & { days?: number }): Promise<string> {
+  const { data, error } = await client().rpc("create_plan", {
+    plan_name: terms.name,
+    plan_start: terms.startDate,
+    plan_starting_bankroll: terms.startingBankroll,
+    plan_target: terms.target,
+    plan_days: terms.days ?? 38,
+  });
+
+  if (error) throw error;
+  return data as string;
+}
+
+export async function updatePlanTerms(
+  planId: string,
+  terms: PlanTerms
+): Promise<void> {
+  const { error } = await client().rpc("update_plan_terms", {
+    target_plan: planId,
+    plan_name: terms.name,
+    plan_start: terms.startDate,
+    plan_starting_bankroll: terms.startingBankroll,
+    plan_target: terms.target,
+  });
+
   if (error) throw error;
 }
 

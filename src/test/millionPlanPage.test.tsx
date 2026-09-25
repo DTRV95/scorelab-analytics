@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/components/layout/AppLayout", () => ({
@@ -12,17 +12,29 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 // Hoisted: vi.mock's factory runs before the module body, so the spy has to
 // exist before it.
-const { savePlanBet, invitePlayer, fetchPlanInvites, fetchMyPendingInvites, acceptInvite } =
+const {
+  savePlanBet,
+  invitePlayer,
+  fetchPlanInvites,
+  fetchMyPendingInvites,
+  acceptInvite,
+  createPlan,
+  updatePlanTerms,
+} =
   vi.hoisted(() => ({
     savePlanBet: vi.fn(async (_planId: string, userId: string, payload: unknown) => ({
       ...(payload as Record<string, unknown>),
       id: "new",
       userId,
     })),
-    invitePlayer: vi.fn(async () => "invited" as const),
+    invitePlayer: vi.fn(
+      async (): Promise<"invited" | "already_member" | "no_account"> => "invited"
+    ),
     fetchPlanInvites: vi.fn(async () => [] as unknown[]),
     fetchMyPendingInvites: vi.fn(async () => [] as unknown[]),
     acceptInvite: vi.fn(async () => undefined),
+    createPlan: vi.fn(async () => "new-plan"),
+    updatePlanTerms: vi.fn(async () => undefined),
   }));
 
 vi.mock("@/lib/planStore", async () => {
@@ -31,19 +43,21 @@ vi.mock("@/lib/planStore", async () => {
   );
   return {
     ...actual,
-    fetchPlan: vi.fn(async () => ({
-      plan: {
+    fetchPlans: vi.fn(async () => [
+      {
         id: "plan",
         name: "Plano Milhão",
         starting_bankroll: 10,
         target: 1000000,
         created_by: "david",
+        start_date: null,
+        days: 38,
       },
-      members: [
-        { plan_id: "plan", user_id: "david", display_name: "David", starting_bankroll: 10 },
-        { plan_id: "plan", user_id: "irmao", display_name: "Irmão", starting_bankroll: 10 },
-      ],
-    })),
+    ]),
+    fetchPlanMembers: vi.fn(async () => [
+      { plan_id: "plan", user_id: "david", display_name: "David", starting_bankroll: 10 },
+      { plan_id: "plan", user_id: "irmao", display_name: "Irmão", starting_bankroll: 10 },
+    ]),
     fetchPlanBets: vi.fn(async () => [
       {
         id: "b1",
@@ -87,6 +101,8 @@ vi.mock("@/lib/planStore", async () => {
     fetchPlanInvites,
     fetchMyPendingInvites,
     acceptInvite,
+    createPlan,
+    updatePlanTerms,
   };
 });
 
@@ -120,6 +136,8 @@ beforeEach(() => {
   invitePlayer.mockResolvedValue("invited");
   fetchPlanInvites.mockResolvedValue([]);
   fetchMyPendingInvites.mockResolvedValue([]);
+  createPlan.mockClear();
+  updatePlanTerms.mockClear();
   // Twelve fixtures so the shortlist has to cut it down to ten.
   writeCachedBoard({
     days: 7,
@@ -279,6 +297,48 @@ describe("Plano Milhão", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Aceitar$/ }));
     expect(acceptInvite).toHaveBeenCalledWith("outro-plano");
+  });
+
+  it("lets the owner set a start date and the other terms", async () => {
+    renderPage();
+
+    const toggle = await screen.findByRole("button", { name: /Termos do plano/ });
+    fireEvent.click(toggle);
+
+    // The create-a-plan panel further down carries the same default name, so
+    // the fields are read from inside this card rather than from the page.
+    const card = toggle.closest("section") as HTMLElement;
+    const [name, date] = [
+      card.querySelector('input[type="text"], input:not([type])'),
+      card.querySelector('input[type="date"]'),
+    ] as HTMLInputElement[];
+
+    fireEvent.change(name, { target: { value: "Plano do grupo" } });
+    fireEvent.change(date, { target: { value: "2026-10-05" } });
+    fireEvent.click(
+      within(card).getByRole("button", { name: /^Guardar$/ })
+    );
+
+    expect(updatePlanTerms).toHaveBeenCalledWith("plan", {
+      name: "Plano do grupo",
+      startDate: "2026-10-05",
+      startingBankroll: 10,
+      target: 1000000,
+    });
+  });
+
+  it("starts another plan for a different group", async () => {
+    renderPage();
+
+    const nameInputs = await screen.findAllByPlaceholderText("Plano Milhão");
+    fireEvent.change(nameInputs[nameInputs.length - 1], {
+      target: { value: "Plano dos amigos" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Criar plano$/ }));
+
+    expect(createPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Plano dos amigos", target: 1000000 })
+    );
   });
 
   it("says out loud what the ladder actually requires", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PLAN_TARGET,
+  planSchedule,
   buildLadder,
   chanceOfCompleting,
   checkBet,
@@ -136,5 +137,60 @@ describe("the arithmetic of the whole run", () => {
     // A short stretch is a different proposition from the full climb.
     expect(chanceOfCompleting(36)).toBeGreaterThan(whole);
     expect(chanceOfCompleting(38)).toBeCloseTo(1 / 1.9, 4);
+  });
+});
+
+describe("where today sits in the plan", () => {
+  const day = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  it("counts down to a plan that has not started", () => {
+    const schedule = planSchedule("2026-10-05", 0, 38, day("2026-10-01"));
+
+    expect(schedule.state).toBe("before");
+    expect(schedule.daysUntilStart).toBe(4);
+    expect(schedule.calendarDay).toBeNull();
+  });
+
+  it("calls the start date day one", () => {
+    const schedule = planSchedule("2026-10-05", 0, 38, day("2026-10-05"));
+
+    expect(schedule.state).toBe("running");
+    expect(schedule.calendarDay).toBe(1);
+    // Nothing is late on the first day.
+    expect(schedule.behindBy).toBe(0);
+  });
+
+  it("counts the days that went by without a bet", () => {
+    // Day 5, but only two bets placed: two days were skipped.
+    const schedule = planSchedule("2026-10-01", 2, 38, day("2026-10-05"));
+
+    expect(schedule.calendarDay).toBe(5);
+    expect(schedule.behindBy).toBe(2);
+  });
+
+  it("does not call someone late for today's bet before they place it", () => {
+    const schedule = planSchedule("2026-10-01", 4, 38, day("2026-10-05"));
+
+    expect(schedule.calendarDay).toBe(5);
+    expect(schedule.behindBy).toBe(0);
+  });
+
+  it("knows the last day and when the window has closed", () => {
+    const schedule = planSchedule("2026-10-01", 38, 38, day("2026-11-10"));
+
+    expect(schedule.state).toBe("finished");
+    expect(schedule.endsOn?.getDate()).toBe(7);
+    expect(schedule.endsOn?.getMonth()).toBe(10); // November
+  });
+
+  it("says nothing about the calendar when no date was set", () => {
+    const schedule = planSchedule(null, 3);
+
+    expect(schedule.state).toBe("undated");
+    expect(schedule.calendarDay).toBeNull();
+    expect(schedule.endsOn).toBeNull();
   });
 });

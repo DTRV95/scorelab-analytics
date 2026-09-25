@@ -14,6 +14,7 @@ import {
   PLAN_TARGET,
   buildLadder,
   chanceOfCompleting,
+  planSchedule,
   checkBet,
   costOfOneLoss,
   plannedStake,
@@ -21,14 +22,16 @@ import {
   stakePctForDay,
 } from "@/lib/millionPlan";
 import { PlanPlayers } from "@/components/PlanPlayers";
+import { CreatePlan, PlanSettings } from "@/components/PlanSettings";
 import {
   acceptInvite,
   betsPlacedToday,
   buildStanding,
   declineInvite,
   fetchMyPendingInvites,
-  fetchPlan,
   fetchPlanBets,
+  fetchPlanMembers,
+  fetchPlans,
   savePlanBet,
   type PendingInvite,
   type PlanBet,
@@ -154,7 +157,8 @@ export default function MillionPlan() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [plan, setPlan] = useState<PlanRecord | null>(null);
+  const [plans, setPlans] = useState<PlanRecord[]>([]);
+  const [planId, setPlanId] = useState<string | null>(null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
   const [board, setBoard] = useState<BoardMatch[]>([]);
@@ -167,35 +171,58 @@ export default function MillionPlan() {
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [answering, setAnswering] = useState(false);
 
+  // Which plans this account is in. Switching between them must not refetch
+  // this list, so it is loaded on its own.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
     // An invitation is the one thing someone can see about a plan they are not
-    // in yet, so it is fetched whether or not the plan itself loads.
+    // in yet, so it is fetched whether or not a plan loads.
     fetchMyPendingInvites()
       .then((invites) => {
         if (!cancelled) setPendingInvites(invites);
       })
       .catch(() => undefined);
 
-    (async () => {
-      const found = await fetchPlan();
-      if (!found) {
-        if (!cancelled) setError(null);
-        return;
-      }
-      const planBets = await fetchPlanBets(found.plan.id);
-      if (cancelled) return;
-      setPlan(found.plan);
-      setMembers(found.members);
-      setBets(planBets);
-    })()
+    fetchPlans()
+      .then((mine) => {
+        if (cancelled) return;
+        setPlans(mine);
+        setPlanId((current) =>
+          current && mine.some((item) => item.id === current)
+            ? current
+            : mine[0]?.id ?? null
+        );
+        if (mine.length === 0) setLoading(false);
+      })
       .catch(() => {
         if (!cancelled) {
           setError("Não foi possível abrir o plano. Tenta novamente daqui a pouco.");
+          setLoading(false);
         }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // The contents of whichever plan is being looked at.
+  useEffect(() => {
+    if (!planId) return;
+    let cancelled = false;
+    setLoading(true);
+
+    Promise.all([fetchPlanMembers(planId), fetchPlanBets(planId)])
+      .then(([planMembers, planBets]) => {
+        if (cancelled) return;
+        setMembers(planMembers);
+        setBets(planBets);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Não foi possível abrir este plano.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -204,7 +231,7 @@ export default function MillionPlan() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [planId, token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,6 +259,12 @@ export default function MillionPlan() {
       cancelled = true;
     };
   }, []);
+
+  const plan = useMemo(
+    () => plans.find((item) => item.id === planId) ?? null,
+    [plans, planId]
+  );
+  const ownsPlan = plan?.created_by === user?.id;
 
   const standings = useMemo(
     () => members.map((member) => buildStanding(member, bets)),
@@ -374,16 +407,22 @@ export default function MillionPlan() {
   if (!plan) {
     return (
       <AppLayout>
-        <div className="space-y-3 py-4">
+        <div className="space-y-3 py-2">
           {inviteBanner}
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {error ??
-              "Ainda não estás em nenhum plano. Quando alguém te convidar, o convite aparece aqui."}
-          </p>
+          <CreatePlan onCreated={() => setToken((value) => value + 1)} />
+          {error && (
+            <p className="text-center text-sm text-muted-foreground">{error}</p>
+          )}
         </div>
       </AppLayout>
     );
   }
+
+  const schedule = planSchedule(
+    plan.start_date,
+    me?.bets.length ?? 0,
+    plan.days ?? PLAN_DAYS
+  );
 
   const chance = me ? chanceOfCompleting(me.day) : chanceOfCompleting(1);
   const loss = me ? costOfOneLoss(me.bankroll, me.day, ladder) : null;
@@ -395,12 +434,26 @@ export default function MillionPlan() {
         <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="sl-section-title text-[15px]">
-              {plan?.name ?? "Plano Milhão"}
+              {plan.name}
             </h1>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {PLAN_DAYS} dias, uma aposta por dia cada um, a ganhar sempre
-              sobre o que o dia anterior deixou.
+              {schedule.state === "before"
+                ? `Começa daqui a ${schedule.daysUntilStart} ${
+                    schedule.daysUntilStart === 1 ? "dia" : "dias"
+                  }. ${plan.days ?? PLAN_DAYS} dias, uma aposta por dia cada um.`
+                : schedule.state === "finished"
+                ? `Os ${plan.days ?? PLAN_DAYS} dias do plano já passaram.`
+                : schedule.state === "running"
+                ? `Dia ${schedule.calendarDay} de ${plan.days ?? PLAN_DAYS} no calendário, uma aposta por dia cada um.`
+                : `${plan.days ?? PLAN_DAYS} dias, uma aposta por dia cada um, a ganhar sempre sobre o que o dia anterior deixou.`}
             </p>
+            {schedule.behindBy > 0 && (
+              <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
+                Passaram {schedule.behindBy}{" "}
+                {schedule.behindBy === 1 ? "dia" : "dias"} sem aposta tua. A
+                escada não anda sozinha, só fica à espera.
+              </p>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -414,6 +467,25 @@ export default function MillionPlan() {
         </motion.div>
 
         {inviteBanner && <motion.div variants={fadeUp}>{inviteBanner}</motion.div>}
+
+        {plans.length > 1 && (
+          <motion.div variants={fadeUp} className="flex flex-wrap gap-1.5">
+            {plans.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setPlanId(item.id)}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
+                  item.id === plan.id
+                    ? "bg-primary text-white"
+                    : "border border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item.name}
+              </button>
+            ))}
+          </motion.div>
+        )}
 
         <motion.section variants={fadeUp} className="sl-card px-4 py-4">
           <div className="flex items-end justify-between gap-3">
@@ -583,6 +655,15 @@ export default function MillionPlan() {
           </motion.section>
         )}
 
+        {ownsPlan && (
+          <motion.div variants={fadeUp}>
+            <PlanSettings
+              plan={plan}
+              onSaved={() => setToken((value) => value + 1)}
+            />
+          </motion.div>
+        )}
+
         <motion.div variants={fadeUp}>
           <PlanPlayers
             planId={plan.id}
@@ -691,6 +772,10 @@ export default function MillionPlan() {
             </p>
           </div>
         </motion.section>
+
+        <motion.div variants={fadeUp}>
+          <CreatePlan onCreated={() => setToken((value) => value + 1)} />
+        </motion.div>
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
