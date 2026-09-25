@@ -77,6 +77,78 @@ export async function fetchPlan(): Promise<{
   return { plan, members: (members ?? []) as PlanMember[] };
 }
 
+export type InviteOutcome =
+  | "invited"
+  | "already_member"
+  | "no_account";
+
+export interface PlanInvite {
+  invited_user_id: string;
+  email: string;
+  display_name: string;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+  invited_by_me: boolean;
+}
+
+export interface PendingInvite {
+  plan_id: string;
+  plan_name: string;
+  invited_by_name: string;
+  created_at: string;
+}
+
+/**
+ * Invites someone who already has an account, by email.
+ *
+ * The address is resolved on the server: a browser cannot read the list of
+ * accounts, and the lookup is gated on the caller already being in the plan,
+ * so this is not a way to probe which addresses are registered.
+ */
+export async function invitePlayer(
+  planId: string,
+  email: string
+): Promise<InviteOutcome> {
+  const { data, error } = await client().rpc("invite_to_plan", {
+    target_plan: planId,
+    target_email: email,
+  });
+
+  if (error) throw error;
+  return data as InviteOutcome;
+}
+
+export async function fetchPlanInvites(planId: string): Promise<PlanInvite[]> {
+  const { data, error } = await client().rpc("list_plan_invites", {
+    target_plan: planId,
+  });
+
+  if (error) throw error;
+  return (data ?? []) as PlanInvite[];
+}
+
+/** Plans this account has been asked to join and has not answered yet. */
+export async function fetchMyPendingInvites(): Promise<PendingInvite[]> {
+  const { data, error } = await client().rpc("my_pending_plan_invites");
+
+  if (error) throw error;
+  return (data ?? []) as PendingInvite[];
+}
+
+export async function acceptInvite(planId: string): Promise<void> {
+  const { error } = await client().rpc("accept_plan_invite", {
+    target_plan: planId,
+  });
+  if (error) throw error;
+}
+
+export async function declineInvite(planId: string): Promise<void> {
+  const { error } = await client().rpc("decline_plan_invite", {
+    target_plan: planId,
+  });
+  if (error) throw error;
+}
+
 export async function fetchPlanBets(planId: string): Promise<PlanBet[]> {
   const { data, error } = await client()
     .from("plan_bets")
