@@ -49,7 +49,25 @@ const TONE: Record<
  * day and the money actually there, the odd off the challenge's own plan. It
  * sits at the top because a person opening this tab has exactly one question.
  */
-export function NextMoveCard({ move }: { move: NextMove }) {
+const eur = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
+
+// The gap goes beside a figure that already carries the symbol, so it drops it.
+const euroPlain = new Intl.NumberFormat("pt-PT", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function NextMoveCard({
+  move,
+  bankroll,
+}: {
+  move: NextMove;
+  bankroll: number;
+}) {
   const tone = TONE[move.state];
   const Icon = tone.icon;
   const movedUp = move.last?.includes("Avanças");
@@ -74,6 +92,40 @@ export function NextMoveCard({ move }: { move: NextMove }) {
       </p>
 
       <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{move.detail}</p>
+
+      {/* The two numbers side by side are the whole point of tracking: the
+          table's figure never moves, and the real one does, so the gap between
+          them is the only honest measure of how it is going. */}
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+          <p className="sl-meta text-[10px] uppercase tracking-[0.12em]">
+            Tens agora
+          </p>
+          <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
+            {eur.format(bankroll)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+          <p className="sl-meta text-[10px] uppercase tracking-[0.12em]">
+            O quadro diz
+          </p>
+          <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
+            {eur.format(move.tableBankroll)}
+            {Math.abs(move.versusTable) >= 0.01 && (
+              <span
+                className={`ml-1.5 text-[11px] font-semibold ${
+                  move.versusTable > 0
+                    ? "text-[hsl(var(--sl-green))]"
+                    : "text-destructive"
+                }`}
+              >
+                {move.versusTable > 0 ? "+" : "−"}
+                {euroPlain.format(Math.abs(move.versusTable))}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
 
       {move.last && (
         <p

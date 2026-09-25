@@ -8,12 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  checkBet,
-  plannedStake,
-  stakePctForDay,
-  type ChallengeRules,
-} from "@/lib/challengeRules";
+import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
@@ -130,6 +125,7 @@ export function BetComposer({
   lossStreak,
   openBets,
   targetOdds,
+  plannedStake,
   usedFixtures,
   saving,
   onPlace,
@@ -141,8 +137,10 @@ export function BetComposer({
   betsToday: number;
   lossStreak: number;
   openBets: number;
-  /** The odd the ladder pencils in for today, to aim the slip at. */
+  /** The odd the table pencils in for today, to aim the slip at. */
   targetOdds: number;
+  /** What the table asks for today, which is what the field starts on. */
+  plannedStake: number;
   usedFixtures: Set<number>;
   saving: boolean;
   onPlace: (legs: PlanLeg[], odds: number, stake: number) => void;
@@ -161,7 +159,7 @@ export function BetComposer({
   /** The picker lives in a pop-up: the slip is what the page is for. */
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const suggested = plannedStake(rules, bankroll, day);
+  const suggested = plannedStake;
   const stake =
     stakeInput === null
       ? suggested
@@ -205,6 +203,7 @@ export function BetComposer({
         betsPlacedToday: betsToday,
         lossStreak,
         openBets,
+        plannedStake: suggested,
       })
     : [];
 
@@ -291,9 +290,8 @@ export function BetComposer({
             A aposta do dia {day}
           </h2>
           <p className="sl-meta truncate text-[11px]">
-            {(stakePctForDay(rules, day) * 100).toFixed(0)}% da banca ={" "}
-            {eur.format(suggested)}
-            {targetOdds > 1 ? ` · odd a apontar ${targetOdds.toFixed(2)}` : ""}
+            O quadro pede {eur.format(suggested)}
+            {targetOdds > 1 ? ` a uma odd de ${targetOdds.toFixed(2)}` : ""}
           </p>
         </div>
       </div>
@@ -602,7 +600,7 @@ export function BetComposer({
               onClick={() => setStakeInput(null)}
               className="sl-meta text-[11px] underline"
             >
-              Voltar ao valor do desafio ({eur.format(suggested)})
+              Voltar ao valor do quadro ({eur.format(suggested)})
             </button>
           )}
 

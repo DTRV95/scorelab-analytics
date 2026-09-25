@@ -109,11 +109,9 @@ describe("a player's standing", () => {
     expect(standing.bankroll).toBe(15);
   });
 
-  it("moves the day back down the ladder after a loss", () => {
-    // Two wins put €21.38 on the table, which is where day 3 opens. Losing
-    // day 3 takes half of it away, and €10.69 is day-1 money again — the day
-    // has to come back with it, or the next stake would be worked out from a
-    // percentage the bankroll no longer supports.
+  it("climbs a step for a day won and goes back one for a day lost", () => {
+    // Two wins put the player on day 3 of the table. Losing day 3 sends them
+    // back to day 2 — one step, not back to the start and not forward.
     const climbing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1", profitLoss: 5 }),
       bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
@@ -133,7 +131,7 @@ describe("a player's standing", () => {
     ]);
 
     expect(fell.bankroll).toBe(10.69);
-    expect(fell.day).toBe(1);
+    expect(fell.day).toBe(2);
   });
 
   it("counts the days left open and remembers the last one decided", () => {

@@ -82,12 +82,12 @@ export function checkBet(input: BetCheckInput): PlanViolation[] {
   return checkBetAgainst(MILLION_PLAN_RULES, input);
 }
 
-export function chanceOfCompleting(fromDay: number, toDay = PLAN_DAYS): number {
-  return chanceOfCompletingFor(MILLION_PLAN_RULES, fromDay, toDay);
+export function chanceOfCompleting(fromDay: number): number {
+  return chanceOfCompletingFor(buildLadder(), fromDay);
 }
 
 export function costOfOneLoss(bankroll: number, day: number, ladder = buildLadder()) {
-  return costOfOneLossFor(MILLION_PLAN_RULES, bankroll, day, ladder);
+  return costOfOneLossFor(ladder, bankroll, day);
 }
 
 /** Expected number of days a run lasts before the first loss, at these odds. */

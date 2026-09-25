@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { nextMove } from "@/lib/challengeGuidance";
-import { MILLION_PLAN_RULES, type ChallengeRules } from "@/lib/challengeRules";
+import {
+  MILLION_PLAN_RULES,
+  ladderFor,
+  type ChallengeRules,
+} from "@/lib/challengeRules";
 import { planSchedule } from "@/lib/challengeSchedule";
 import type { PlanBet, PlayerStanding } from "@/lib/planStore";
 
@@ -48,6 +52,7 @@ function move(
 ) {
   return nextMove({
     rules,
+    ladder: ladderFor(rules, 10),
     standing: standing(overrides),
     schedule,
     target: 1_000_000,
@@ -58,15 +63,16 @@ describe("telling someone what to do next", () => {
   it("names the stake and the odd, worked out from the money really there", () => {
     const result = move();
 
-    // Day 3 is a 50% day and €21.38 is on the table.
+    // Row 3 of the document: banca 21,38 €, aposta 10,69 €, odd 1,90.
     expect(result.state).toBe("play");
     expect(result.stake).toBe(10.69);
     expect(result.targetOdds).toBe(1.9);
     // The euro formatter uses a non-breaking space before the symbol, so the
     // expectations match on it loosely rather than pretending otherwise.
     expect(result.action).toMatch(/^Aposta 10,69\s€ a uma odd de 1\.90$/);
-    expect(result.detail).toMatch(/50% da banca de 21,38\s€/);
+    expect(result.detail).toMatch(/Dia 3 do quadro, que parte de 21,38\s€/);
     expect(result.blocked).toBe(false);
+    expect(result.short).toBe(false);
   });
 
   it("says a win moved the player up a day", () => {
@@ -84,21 +90,39 @@ describe("telling someone what to do next", () => {
     });
 
     expect(result.last).toMatch(/^Perdeste o dia 3, -10,69\s€\. Recuas para o dia 1\.$/);
-    // And the instruction follows the money down rather than the day count up:
-    // half of €10.69 is €5.345, which lands on the cent below.
-    expect(result.stake).toBe(5.34);
+    // Back on row 1, which asks for €5 — not half of whatever is left.
+    expect(result.stake).toBe(5);
+    expect(result.targetOdds).toBe(2);
   });
 
-  it("does not claim movement when the bankroll stayed on the same rung", () => {
-    // A win too small to reach the next rung is still a win, and saying
-    // "avanças" when nothing advanced would be a lie the ladder contradicts.
-    const result = move({
-      bankroll: 16,
-      day: 2,
-      lastSettled: settled({ day: 2, profitLoss: 1 }),
-    });
+  it("asks for the table's figure even when there is more money than that", () => {
+    // Winning at a better price than the table pencilled in leaves a cushion.
+    // The cushion is not a bigger bet: row 3 says €10.69 and means it.
+    const result = move({ bankroll: 40, day: 3 });
 
-    expect(result.last).toMatch(/Ficas no dia 2/);
+    expect(result.stake).toBe(10.69);
+    expect(result.tableBankroll).toBe(21.38);
+    expect(result.versusTable).toBe(18.62);
+    expect(result.short).toBe(false);
+  });
+
+  it("stakes everything left when the table asks for more than there is", () => {
+    const result = move({ bankroll: 6.4, day: 3 });
+
+    expect(result.stake).toBe(6.4);
+    expect(result.short).toBe(true);
+    expect(result.versusTable).toBe(-14.98);
+    expect(result.detail).toMatch(/o quadro pede 10,69\s€ e só tens 6,40\s€/);
+  });
+
+  it("follows the document's own rows rather than recomputing them", () => {
+    // Row 38 of the PDF. Recomputing from the percentages lands €432 higher,
+    // which is the whole reason the table is transcribed instead of generated.
+    const result = move({ bankroll: 793353.63, day: 38, greens: 37, reds: 0 });
+
+    expect(result.stake).toBe(238006.09);
+    expect(result.targetOdds).toBe(1.9);
+    expect(result.tableBankroll).toBe(793353.63);
   });
 
   it("holds the next day back until the open one is decided", () => {
