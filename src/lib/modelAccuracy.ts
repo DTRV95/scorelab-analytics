@@ -8,6 +8,13 @@ export interface AccuracyMarket {
   actual_pct: number;
   gap_pp: number;
   brier: number;
+  /**
+   * False when this market is the mirror of another one on the same board —
+   * "Menos de 2.5" is true exactly when "Mais de 2.5" is false, so the two
+   * rows are one finding written twice. The server decides which side counts,
+   * so the page never keeps its own copy of which market mirrors which.
+   */
+  counted?: boolean;
 }
 
 export interface AccuracyBand {
@@ -23,8 +30,20 @@ export interface LeagueAccuracy {
   season: number | null;
   fixtures_scored: number;
   fixtures_skipped: number;
+  /** Events scored: one per counted market per match, mirrors excluded. */
   predictions: number;
+  /** Distinct markets behind `predictions` — how many events each match adds. */
+  markets_counted: number;
+  /** Markets the board forecasts, mirrors included. */
+  markets_forecast: number;
   brier: number;
+  /**
+   * What the same forecasts would have scored by ignoring the match and always
+   * quoting how often that market lands. The number the Brier has to beat.
+   */
+  baseline_brier: number;
+  /** How much lower the Brier is than the baseline, as a percentage. */
+  skill_pct: number;
   headline: {
     predictions: number;
     predicted_pct: number;
@@ -94,6 +113,7 @@ export function mergeAccuracy(reports: LeagueAccuracy[]): AccuracyReport {
               4
             )
           : 0,
+        counted: rows.every((row) => row.counted !== false),
       };
     })
     .sort((a, b) => a.market.localeCompare(b.market));
@@ -116,6 +136,16 @@ export function mergeAccuracy(reports: LeagueAccuracy[]): AccuracyReport {
   const predictions = reports.reduce((sum, r) => sum + r.predictions, 0);
   const headlinePredictions = reports.reduce((sum, r) => sum + r.headline.predictions, 0);
 
+  const brier = predictions
+    ? round(reports.reduce((sum, r) => sum + r.brier * r.predictions, 0) / predictions, 4)
+    : 0;
+  const baseline = predictions
+    ? round(
+        reports.reduce((sum, r) => sum + r.baseline_brier * r.predictions, 0) / predictions,
+        4
+      )
+    : 0;
+
   return {
     league: reports.length === 1 ? reports[0].league : "Todas as ligas",
     season: reports[0]?.season ?? null,
@@ -124,12 +154,17 @@ export function mergeAccuracy(reports: LeagueAccuracy[]): AccuracyReport {
     fixtures_scored: reports.reduce((sum, r) => sum + r.fixtures_scored, 0),
     fixtures_skipped: reports.reduce((sum, r) => sum + r.fixtures_skipped, 0),
     predictions,
-    brier: predictions
-      ? round(
-          reports.reduce((sum, r) => sum + r.brier * r.predictions, 0) / predictions,
-          4
-        )
-      : 0,
+    // Both are a count of markets, not of events: every competition forecasts
+    // the same board, so the combined view scores the same markets each one
+    // did. Adding them up would claim eight leagues cover eight times as many
+    // markets, which is the opposite of what happens.
+    markets_counted: Math.max(0, ...reports.map((r) => r.markets_counted)),
+    markets_forecast: Math.max(0, ...reports.map((r) => r.markets_forecast)),
+    brier,
+    baseline_brier: baseline,
+    // Recomputed from the two merged figures rather than pooled on its own, so
+    // the percentage on screen can never disagree with the scores beside it.
+    skill_pct: baseline ? round((1 - brier / baseline) * 100) : 0,
     headline: {
       predictions: headlinePredictions,
       predicted_pct: pooled(
@@ -167,7 +202,20 @@ export async function fetchLeagueAccuracy(
 
   const response = await fetch(buildApiUrl(`/data/model-accuracy?${query}`));
   if (!response.ok) throw new Error(String(response.status));
-  return response.json();
+
+  const payload = (await response.json()) as LeagueAccuracy;
+
+  // The frontend and the backend are deployed to different services, so for a
+  // few minutes after a release one can be newer than the other. Defaulting the
+  // newer fields to zero costs a card its number for that window; leaving them
+  // undefined would put "NaN%" on screen.
+  return {
+    ...payload,
+    markets_counted: Number(payload.markets_counted) || 0,
+    markets_forecast: Number(payload.markets_forecast) || 0,
+    baseline_brier: Number(payload.baseline_brier) || 0,
+    skill_pct: Number(payload.skill_pct) || 0,
+  };
 }
 
 /**

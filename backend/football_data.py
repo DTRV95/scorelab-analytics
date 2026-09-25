@@ -527,6 +527,23 @@ ACCURACY_ITERATIONS = 2_000
 ACCURACY_TTL = 6 * 60 * 60
 CALIBRATION_BUCKET_PCT = 10
 
+# Five of the fifteen markets the board forecasts are the exact mirror of
+# another one: "Menos de 2.5" is true whenever "Mais de 2.5" is false, and a
+# probability and its complement score identically. Counting both would weigh
+# those events twice and make the calibration curve symmetric by construction
+# rather than by merit, so the totals count one side of each pair. The mirrors
+# still get their own row in the per-market table, where they are worth reading
+# on their own terms.
+MIRRORED_MARKETS = frozenset(
+    {
+        "1X",
+        "2X",
+        "Menos de 2.5 Golos",
+        "Menos de 3.5 Golos",
+        "BTTS No",
+    }
+)
+
 
 def _bucket_label(probability_pct: float) -> str:
     floor = min(
@@ -566,6 +583,9 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
 
     markets: Dict[str, Dict[str, float]] = {}
     buckets: Dict[str, Dict[str, float]] = {}
+    # Every distinct prediction, so the overall figures can be worked out over
+    # events counted once each.
+    counted: List[Tuple[str, float, bool]] = []
     headline_predictions = 0
     headline_hits = 0
     headline_prob_sum = 0.0
@@ -634,6 +654,11 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
             row["prob_sum"] += probability
             row["brier_sum"] += (probability - (1.0 if landed else 0.0)) ** 2
 
+            if name in MIRRORED_MARKETS:
+                continue
+
+            counted.append((name, probability, bool(landed)))
+
             bucket = _bucket_label(entry["probabilidade_pct"])
             band = buckets.setdefault(
                 bucket, {"bucket": bucket, "samples": 0, "hits": 0, "prob_sum": 0.0}
@@ -663,6 +688,10 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
                 1,
             ),
             "brier": round(row["brier_sum"] / row["samples"], 4) if row["samples"] else 0.0,
+            # False for the mirror of another market on the same board. The row
+            # is still worth reading; it just must not be counted a second time
+            # in a total, or listed beside the market it is the opposite of.
+            "counted": row["market"] not in MIRRORED_MARKETS,
         }
         for row in markets.values()
     ]
@@ -683,9 +712,31 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
     ]
     bucket_rows.sort(key=lambda row: int(row["bucket"].split("-")[0]))
 
-    total_samples = sum(row["samples"] for row in market_rows)
-    total_brier = sum(
-        row["brier"] * row["samples"] for row in market_rows
+    total_samples = len(counted)
+    total_brier = (
+        sum((prob - (1.0 if landed else 0.0)) ** 2 for _, prob, landed in counted)
+        / total_samples
+        if total_samples
+        else 0.0
+    )
+
+    # What the same predictions would have scored by ignoring the match
+    # entirely and always quoting how often that market lands. It is the
+    # honest thing to compare a forecast against: beating it is the whole job,
+    # and a Brier score on its own says nothing without it.
+    base_rates: Dict[str, List[bool]] = {}
+    for name, _prob, landed in counted:
+        base_rates.setdefault(name, []).append(landed)
+
+    baseline_brier = (
+        sum(
+            (sum(landed) / len(landed) - (1.0 if landed_one else 0.0)) ** 2
+            for name, landed in base_rates.items()
+            for landed_one in landed
+        )
+        / total_samples
+        if total_samples
+        else 0.0
     )
 
     payload = {
@@ -694,7 +745,15 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
         "fixtures_scored": scored,
         "fixtures_skipped": skipped,
         "predictions": total_samples,
-        "brier": round(total_brier / total_samples, 4) if total_samples else 0.0,
+        "markets_counted": len(base_rates),
+        "markets_forecast": len(market_rows),
+        "brier": round(total_brier, 4),
+        "baseline_brier": round(baseline_brier, 4),
+        # Above zero means the forecast beat simply knowing how often each
+        # market lands; at or below zero it added nothing.
+        "skill_pct": round((1 - total_brier / baseline_brier) * 100, 1)
+        if baseline_brier
+        else 0.0,
         "headline": {
             "predictions": headline_predictions,
             "predicted_pct": rate(headline_prob_sum, headline_predictions),
