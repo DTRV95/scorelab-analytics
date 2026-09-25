@@ -8,9 +8,11 @@ export interface PlanRecord {
   starting_bankroll: number;
   target: number;
   created_by: string;
-  /** The day the plan begins, as YYYY-MM-DD. Null when it was never set. */
+  /** The day the challenge begins, as YYYY-MM-DD. Null when it was never set. */
   start_date: string | null;
   days: number;
+  /** The challenge's own rules, as stored. Parsed by challengeRules.ts. */
+  rules: unknown;
 }
 
 export interface PlanTerms {
@@ -18,7 +20,12 @@ export interface PlanTerms {
   startDate: string | null;
   startingBankroll: number;
   target: number;
+  days?: number;
+  rules?: unknown;
 }
+
+const PLAN_COLUMNS =
+  "id, name, starting_bankroll, target, created_by, start_date, days, rules";
 
 export interface PlanMember {
   plan_id: string;
@@ -35,11 +42,22 @@ export interface PlanLeg {
   league: string;
   market: string;
   odds: number;
+  /**
+   * The model's chance of this leg landing, or 0 for a game typed by hand —
+   * there is no forecast for a game the app has never heard of, and inventing
+   * one would be worse than admitting it.
+   */
   modelProb: number;
-  fixtureId: number;
+  /** Null for a game added by hand: there is no fixture to follow. */
+  fixtureId: number | null;
   kickoff: string | null;
   /** Set once the final score decides this game. */
   status: BetStatus;
+}
+
+/** A game typed by hand has no fixture behind it, so no result can be fetched. */
+export function isManualLeg(leg: PlanLeg): boolean {
+  return leg.fixtureId === null;
 }
 
 /**
@@ -83,7 +101,7 @@ export async function fetchPlan(): Promise<{
 
   const { data: plans, error } = await db
     .from("plans")
-    .select("id, name, starting_bankroll, target, created_by, start_date, days")
+    .select(PLAN_COLUMNS)
     .order("created_at", { ascending: true })
     .limit(1);
 
@@ -177,7 +195,7 @@ export async function declineInvite(planId: string): Promise<void> {
 export async function fetchPlans(): Promise<PlanRecord[]> {
   const { data, error } = await client()
     .from("plans")
-    .select("id, name, starting_bankroll, target, created_by, start_date, days")
+    .select(PLAN_COLUMNS)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
@@ -194,13 +212,14 @@ export async function fetchPlanMembers(planId: string): Promise<PlanMember[]> {
   return (data ?? []) as PlanMember[];
 }
 
-export async function createPlan(terms: PlanTerms & { days?: number }): Promise<string> {
+export async function createPlan(terms: PlanTerms): Promise<string> {
   const { data, error } = await client().rpc("create_plan", {
     plan_name: terms.name,
     plan_start: terms.startDate,
     plan_starting_bankroll: terms.startingBankroll,
     plan_target: terms.target,
     plan_days: terms.days ?? 38,
+    plan_rules: terms.rules ?? {},
   });
 
   if (error) throw error;
@@ -217,8 +236,28 @@ export async function updatePlanTerms(
     plan_start: terms.startDate,
     plan_starting_bankroll: terms.startingBankroll,
     plan_target: terms.target,
+    plan_days: terms.days ?? null,
+    plan_rules: terms.rules ?? null,
   });
 
+  if (error) throw error;
+}
+
+/**
+ * Deletes a challenge and everything in it.
+ *
+ * This takes the other players' bets with it and cannot be undone, which is why
+ * the server only lets whoever created it do this, and why the page asks for
+ * the name to be typed before calling.
+ */
+export async function deletePlan(planId: string): Promise<void> {
+  const { error } = await client().rpc("delete_plan", { target_plan: planId });
+  if (error) throw error;
+}
+
+/** Leaves a challenge someone else created, taking only your own bets. */
+export async function leavePlan(planId: string): Promise<void> {
+  const { error } = await client().rpc("leave_plan", { target_plan: planId });
   if (error) throw error;
 }
 
@@ -382,15 +421,21 @@ export function combinedModelProb(legs: { modelProb: number }[]): number {
 /**
  * Settles a day's bet from the final scores of its games.
  *
- * All or nothing: one game lost loses the day. A game whose market a score
- * cannot decide leaves the whole bet open rather than being guessed at, and so
- * does a game that has not been played.
+ * All or nothing: one game lost loses the day. That is also why a bet can close
+ * before every game has been played — once one leg is down, nothing the others
+ * do can save it, and leaving it "open" would overstate what is still at stake.
+ *
+ * A game typed by hand has no result to fetch, so a bet holding one can only be
+ * closed early, by a leg that already lost. Otherwise it waits for its owner to
+ * say how it went. The same goes for a market a score cannot decide on its own:
+ * it is left alone rather than guessed at.
  */
 export function settleFromScores(
   bet: PlanBet,
   scores: Map<number, { homeGoals: number; awayGoals: number }>
 ): PlanBetPayload | null {
   const legs: PlanLeg[] = [];
+  let undecided = 0;
 
   for (const leg of bet.legs) {
     if (leg.status === "green" || leg.status === "red") {
@@ -398,18 +443,27 @@ export function settleFromScores(
       continue;
     }
 
-    const score = scores.get(leg.fixtureId);
-    if (!score) return null;
+    const score = leg.fixtureId === null ? undefined : scores.get(leg.fixtureId);
+    if (!score) {
+      legs.push(leg);
+      undecided += 1;
+      continue;
+    }
 
     const green = isGreenMarket(leg.market, score.homeGoals, score.awayGoals);
-    if (green === null) return null;
+    if (green === null) {
+      legs.push(leg);
+      undecided += 1;
+      continue;
+    }
 
     legs.push({ ...leg, status: green ? "green" : "red" });
   }
 
-  if (legs.length !== bet.legs.length) return null;
+  const lost = legs.some((leg) => leg.status === "red");
+  if (undecided > 0 && !lost) return null;
 
-  const won = legs.every((leg) => leg.status === "green");
+  const won = !lost && legs.every((leg) => leg.status === "green");
 
   return {
     ...bet,
@@ -422,6 +476,29 @@ export function settleFromScores(
   };
 }
 
+/**
+ * Closes a bet because its owner said how it went.
+ *
+ * The one place a person has to do the work themselves: nobody but them knows
+ * the result of a game the app has never seen. A single game marks that game; a
+ * day made of several marks the day as a whole, which is the only thing that
+ * matters to the bankroll anyway.
+ */
+export function settleManually(bet: PlanBet, won: boolean): PlanBetPayload {
+  return {
+    ...bet,
+    legs: bet.legs.map((leg) => ({
+      ...leg,
+      // A lost day says nothing about which game lost it, so the legs of a
+      // multiple are left as they were rather than all being blamed.
+      status: won ? "green" : bet.legs.length === 1 ? "red" : leg.status,
+    })),
+    status: won ? "green" : "red",
+    profitLoss: Number((won ? bet.stake * (bet.odds - 1) : -bet.stake).toFixed(2)),
+    settledAt: new Date().toISOString(),
+  };
+}
+
 /** Every fixture the open bets are waiting on. */
 export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }[] {
   const refs = new Map<number, { id: number; league: string }>();
@@ -430,7 +507,7 @@ export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }
     .filter((bet) => bet.status === "pending")
     .forEach((bet) =>
       bet.legs.forEach((leg) => {
-        if (leg.status === "pending") {
+        if (leg.status === "pending" && leg.fixtureId !== null) {
           refs.set(leg.fixtureId, { id: leg.fixtureId, league: leg.league });
         }
       })

@@ -50,7 +50,7 @@ const pages = [
   { title: "Probability", detail: "See a match's odds-free forecast", url: "/probability", icon: Percent },
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
   { title: "Acerto do Modelo", detail: "Measure forecasts against results", url: "/accuracy", icon: Gauge },
-  { title: "Plano Milhão", detail: "Where the two of you stand", url: "/plano", icon: Trophy },
+  { title: "Desafios", detail: "Where the two of you stand", url: "/desafios", icon: Trophy },
   { title: "Bankroll Tools", detail: "Financial truth center", url: "/bankroll", icon: Wallet },
   { title: "Roadmap", detail: "Mission control", url: "/roadmap", icon: Flag },
   { title: "Settings", detail: "Workspace controls", url: "/settings", icon: Settings },

@@ -10,8 +10,8 @@ import {
 } from "@/lib/planStore";
 
 const OUTCOME_MESSAGE: Record<InviteOutcome, string> = {
-  invited: "Convite enviado. Aparece na conta dele assim que abrir o plano.",
-  already_member: "Essa pessoa já está no plano.",
+  invited: "Convite enviado. Aparece na conta dele assim que abrir os desafios.",
+  already_member: "Essa pessoa já está neste desafio.",
   no_account: "Não há nenhuma conta registada com esse email.",
 };
 
@@ -77,7 +77,7 @@ export function PlanPlayers({
   return (
     <section className="sl-card overflow-hidden">
       <div className="border-b border-border px-4 py-3.5">
-        <h2 className="text-sm font-bold text-foreground">Quem está no plano</h2>
+        <h2 className="text-sm font-bold text-foreground">Quem está no desafio</h2>
         <p className="mt-1 text-xs leading-6 text-muted-foreground">
           Convida por email quem já tem conta no ScoreLab. Só entra depois de
           aceitar, e cada um mantém a sua banca.
@@ -96,7 +96,7 @@ export function PlanPlayers({
             <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
               {member.display_name}
             </p>
-            <span className="sl-pill sl-pill-win flex-none">No plano</span>
+            <span className="sl-pill sl-pill-win flex-none">A jogar</span>
           </div>
         ))}
 

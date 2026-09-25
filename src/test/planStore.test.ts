@@ -3,8 +3,10 @@ import {
   buildStanding,
   combineOdds,
   combinedModelProb,
+  isManualLeg,
   openFixtureRefs,
   settleFromScores,
+  settleManually,
   type PlanBet,
   type PlanMember,
 } from "@/lib/planStore";
@@ -196,5 +198,95 @@ describe("settling a day", () => {
     );
 
     expect(settled).toBeNull();
+  });
+});
+
+describe("a game the site never heard of", () => {
+  const manual = () =>
+    bet({
+      status: "pending",
+      profitLoss: 0,
+      stake: 10,
+      odds: 1.9,
+      settledAt: null,
+      legs: [leg({ fixtureId: null, status: "pending", market: "Casa" })],
+    });
+
+  it("is recognised by having no fixture behind it", () => {
+    expect(isManualLeg(leg({ fixtureId: null }))).toBe(true);
+    expect(isManualLeg(leg({ fixtureId: 1 }))).toBe(false);
+  });
+
+  it("is never asked for from the results feed", () => {
+    expect(
+      openFixtureRefs([
+        bet({
+          status: "pending",
+          legs: [leg({ fixtureId: null, status: "pending" }), leg({ fixtureId: 7, status: "pending" })],
+        }),
+      ])
+    ).toEqual([{ id: 7, league: "Liga Portugal" }]);
+  });
+
+  it("keeps the day open, because no score can decide it", () => {
+    expect(settleFromScores(manual(), scores([[1, [2, 0]]]))).toBeNull();
+  });
+
+  it("pays out when its owner says it landed", () => {
+    const settled = settleManually(manual(), true);
+
+    expect(settled.status).toBe("green");
+    expect(settled.profitLoss).toBe(9);
+    expect(settled.legs[0].status).toBe("green");
+    expect(settled.settledAt).not.toBeNull();
+  });
+
+  it("takes the stake when its owner says it did not", () => {
+    const settled = settleManually(manual(), false);
+
+    expect(settled.status).toBe("red");
+    expect(settled.profitLoss).toBe(-10);
+  });
+
+  it("does not blame a particular game for a lost day of several", () => {
+    // Nobody said which one failed, and guessing would put a false result in
+    // the history the model is judged against.
+    const settled = settleManually(
+      bet({
+        status: "pending",
+        stake: 10,
+        odds: 3,
+        legs: [leg({ fixtureId: null, status: "pending" }), leg({ fixtureId: 2, status: "pending" })],
+      }),
+      false
+    );
+
+    expect(settled.status).toBe("red");
+    expect(settled.legs.map((entry) => entry.status)).toEqual(["pending", "pending"]);
+  });
+});
+
+describe("a day that is already lost", () => {
+  it("closes as soon as one game fails, without waiting for the rest", () => {
+    // A multiple is dead the moment a leg goes down, and calling it "open"
+    // would keep money on the books that cannot come back.
+    const settled = settleFromScores(
+      bet({
+        status: "pending",
+        profitLoss: 0,
+        stake: 10,
+        odds: 4,
+        settledAt: null,
+        legs: [
+          leg({ fixtureId: 1, status: "pending", market: "Fora" }),
+          leg({ fixtureId: 9, status: "pending" }),
+        ],
+      }),
+      scores([[1, [2, 0]]])
+    );
+
+    expect(settled?.status).toBe("red");
+    expect(settled?.profitLoss).toBe(-10);
+    expect(settled?.legs.map((entry) => entry.status)).toEqual(["red", "pending"]);
   });
 });

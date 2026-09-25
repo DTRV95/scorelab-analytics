@@ -1,30 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowRight, Loader2, RefreshCw, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Flame,
+  Loader2,
+  RefreshCw,
+  Trophy,
+  X,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { BetComposer } from "@/components/BetComposer";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildApiUrl } from "@/lib/apiConfig";
 import {
-  ODDS_MAX,
-  ODDS_MIN,
-  PLAN_DAYS,
-  PLAN_TARGET,
   buildLadder,
   chanceOfCompleting,
-  planSchedule,
-  checkBet,
   costOfOneLoss,
-  plannedStake,
+  describeRules,
+  parseRules,
   rungForBankroll,
-  stakePctForDay,
-} from "@/lib/millionPlan";
+  type ChallengeRules,
+} from "@/lib/challengeRules";
+import { planSchedule } from "@/lib/challengeSchedule";
 import { PlanPlayers } from "@/components/PlanPlayers";
-import { combineOdds, openFixtureRefs, settleFromScores, updatePlanBet } from "@/lib/planStore";
+import { CreateChallenge, ChallengeSettings } from "@/components/ChallengeSettings";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
-import { CreatePlan, PlanSettings } from "@/components/PlanSettings";
 import {
   acceptInvite,
   betsPlacedToday,
@@ -34,9 +37,15 @@ import {
   fetchPlanBets,
   fetchPlanMembers,
   fetchPlans,
+  isManualLeg,
+  openFixtureRefs,
   savePlanBet,
+  settleFromScores,
+  settleManually,
+  updatePlanBet,
   type PendingInvite,
   type PlanBet,
+  type PlanLeg,
   type PlanMember,
   type PlanRecord,
   type PlayerStanding,
@@ -48,7 +57,6 @@ import {
 } from "@/lib/probabilityBoardCache";
 
 const BOARD_DAYS = 7;
-const SHORTLIST_SIZE = 10;
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 const fadeUp = {
@@ -62,53 +70,65 @@ const eur = new Intl.NumberFormat("pt-PT", {
   maximumFractionDigits: 2,
 });
 
-function kickoffTime(kickoff: string | null) {
-  if (!kickoff) return "";
-  const date = new Date(kickoff);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-PT", {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+/** Wins in a row, which is the run the whole ladder depends on. */
+function winStreak(bets: PlanBet[]): number {
+  let streak = 0;
+  for (const bet of [...bets].reverse()) {
+    if (bet.status === "green") streak += 1;
+    else if (bet.status === "red") break;
+  }
+  return streak;
 }
 
-const ladder = buildLadder();
-
-/** Where one brother stands: his money, his day, and what he has open. */
+/** Where one player stands: their money, their day, and what they have open. */
 function PlayerCard({
   standing,
   isMe,
+  rules,
+  startingBankroll,
 }: {
   standing: PlayerStanding;
   isMe: boolean;
+  rules: ChallengeRules;
+  startingBankroll: number;
 }) {
-  const planned = ladder[Math.min(standing.day, PLAN_DAYS) - 1];
+  const ladder = useMemo(
+    () => buildLadder(rules, startingBankroll),
+    [rules, startingBankroll]
+  );
+  const planned = ladder[Math.min(standing.day, rules.days) - 1];
   const rung = rungForBankroll(standing.bankroll, ladder);
   const aheadOfLadder = standing.bankroll - (planned?.bankrollStart ?? 0);
+  const streak = winStreak(standing.bets);
 
   return (
     <div
-      className={`sl-card px-4 py-3.5 ${
-        isMe ? "ring-1 ring-primary/30" : ""
-      }`}
+      className={`sl-card overflow-hidden ${isMe ? "ring-1 ring-primary/30" : ""}`}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
         <p className="text-[13px] font-semibold text-foreground">
           {standing.name}
           {isMe && <span className="sl-meta font-normal"> · tu</span>}
         </p>
-        <span className="sl-pill sl-pill-muted flex-none">Dia {standing.day}</span>
+        <div className="flex flex-none items-center gap-1.5">
+          {streak >= 2 && (
+            <span className="sl-pill sl-pill-win flex items-center gap-1">
+              <Flame className="h-3 w-3" />
+              {streak}
+            </span>
+          )}
+          <span className="sl-pill sl-pill-muted">Dia {standing.day}</span>
+        </div>
       </div>
 
-      <p className="mt-2 font-mono-data text-[1.35rem] font-bold text-foreground">
+      <p className="mt-2 px-4 font-mono-data text-[1.35rem] font-bold text-foreground">
         {eur.format(standing.bankroll)}
       </p>
 
-      <p className="sl-meta mt-1 text-[11px]">
+      <p className="sl-meta mt-1 px-4 text-[11px]">
         {rung === 0
           ? "Abaixo do primeiro degrau"
-          : `Escada no degrau ${rung} de ${PLAN_DAYS}`}
+          : `Degrau ${rung} de ${rules.days}`}
         {planned && (
           <>
             {" · "}
@@ -120,13 +140,22 @@ function PlayerCard({
               }
             >
               {aheadOfLadder >= 0 ? "+" : ""}
-              {eur.format(aheadOfLadder)} vs plano
+              {eur.format(aheadOfLadder)} vs escada
             </span>
           </>
         )}
       </p>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-2.5">
+      {/* How far up the ladder this player is, as a bar: the number alone does
+          not show that the rungs get further apart as the money grows. */}
+      <div className="mt-2.5 h-1.5 bg-[hsl(var(--sl-surface))]">
+        <div
+          className="h-full bg-primary transition-all"
+          style={{ width: `${Math.min(100, (rung / rules.days) * 100)}%` }}
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 px-4 py-2.5">
         {[
           { label: "Ganhas", value: String(standing.greens) },
           { label: "Perdidas", value: String(standing.reds) },
@@ -146,18 +175,17 @@ function PlayerCard({
         ))}
       </div>
 
-      {standing.lossStreak >= 3 && (
-        <p className="mt-2 text-[11px] leading-relaxed text-destructive">
-          {standing.lossStreak} perdas seguidas. O plano manda parar um dia.
+      {rules.lossStreakPause !== null && standing.lossStreak >= rules.lossStreakPause && (
+        <p className="px-4 pb-3 text-[11px] leading-relaxed text-destructive">
+          {standing.lossStreak} perdas seguidas. O desafio manda parar um dia.
         </p>
       )}
     </div>
   );
 }
 
-export default function MillionPlan() {
+export default function Challenges() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [plans, setPlans] = useState<PlanRecord[]>([]);
   const [planId, setPlanId] = useState<string | null>(null);
@@ -166,23 +194,21 @@ export default function MillionPlan() {
   const [board, setBoard] = useState<BoardMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // What this player has lined up for today: the games chosen, each with the
-  // odd their bookmaker is offering.
-  const [selection, setSelection] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
+  const [closing, setClosing] = useState<string | null>(null);
   const [token, setToken] = useState(0);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [answering, setAnswering] = useState(false);
 
-  // Which plans this account is in. Switching between them must not refetch
-  // this list, so it is loaded on its own.
+  // Which challenges this account is in. Switching between them must not
+  // refetch this list, so it is loaded on its own.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    // An invitation is the one thing someone can see about a plan they are not
-    // in yet, so it is fetched whether or not a plan loads.
+    // An invitation is the one thing someone can see about a challenge they are
+    // not in yet, so it is fetched whether or not a challenge loads.
     fetchMyPendingInvites()
       .then((invites) => {
         if (!cancelled) setPendingInvites(invites);
@@ -202,7 +228,7 @@ export default function MillionPlan() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Não foi possível abrir o plano. Tenta novamente daqui a pouco.");
+          setError("Não foi possível abrir os desafios. Tenta daqui a pouco.");
           setLoading(false);
         }
       });
@@ -212,7 +238,7 @@ export default function MillionPlan() {
     };
   }, [token]);
 
-  // The contents of whichever plan is being looked at.
+  // The contents of whichever challenge is being looked at.
   useEffect(() => {
     if (!planId) return;
     let cancelled = false;
@@ -225,7 +251,7 @@ export default function MillionPlan() {
         setBets(planBets);
       })
       .catch(() => {
-        if (!cancelled) setError("Não foi possível abrir este plano.");
+        if (!cancelled) setError("Não foi possível abrir este desafio.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -268,6 +294,10 @@ export default function MillionPlan() {
     [plans, planId]
   );
   const ownsPlan = plan?.created_by === user?.id;
+  const rules = useMemo(
+    () => parseRules(plan?.rules, plan?.days),
+    [plan?.rules, plan?.days]
+  );
 
   const standings = useMemo(
     () => members.map((member) => buildStanding(member, bets)),
@@ -276,58 +306,26 @@ export default function MillionPlan() {
   const me = standings.find((standing) => standing.userId === user?.id) ?? null;
   const combined = standings.reduce((sum, standing) => sum + standing.bankroll, 0);
 
-  /** The plan's shortlist: the ten strongest calls on the board, by probability. */
-  const shortlist = useMemo(
-    () =>
-      [...board]
-        .sort((a, b) => b.headline_pct - a.headline_pct)
-        .slice(0, SHORTLIST_SIZE),
-    [board]
-  );
-
-  const takenByMe = useMemo(
+  const usedFixtures = useMemo(
     () =>
       new Set(
-        (me?.bets ?? []).flatMap((bet) => bet.legs.map((leg) => leg.fixtureId))
+        (me?.bets ?? []).flatMap((bet) =>
+          bet.legs
+            .map((leg) => leg.fixtureId)
+            .filter((id): id is number => id !== null)
+        )
       ),
     [me]
   );
 
-  const myStake = me ? plannedStake(me.bankroll, me.day) : 0;
+  /** My bets still open, newest first — the ones waiting to be closed. */
+  const openBets = useMemo(
+    () => (me?.bets ?? []).filter((bet) => bet.status === "pending").reverse(),
+    [me]
+  );
 
-  /** The games picked for today, in board order, with valid prices only. */
-  const chosenLegs = useMemo(() => {
-    return shortlist
-      .filter((match) => selection[match.fixture_id] !== undefined)
-      .map((match) => {
-        const raw = (selection[match.fixture_id] ?? "").replace(",", ".");
-        const odds = Number(raw);
-        return {
-          match,
-          odds: Number.isFinite(odds) && odds > 1 ? odds : 0,
-        };
-      });
-  }, [shortlist, selection]);
-
-  const allPriced =
-    chosenLegs.length > 0 && chosenLegs.every((leg) => leg.odds > 0);
-  const combinedOdd = allPriced ? combineOdds(chosenLegs) : 0;
-  const hasOdds = combinedOdd > 1;
-  const oddsValue = combinedOdd;
-  const violations = useMemo(() => {
-    if (!me || !hasOdds) return [];
-    return checkBet({
-      odds: oddsValue,
-      stake: myStake,
-      bankroll: me.bankroll,
-      day: me.day,
-      betsPlacedToday: betsPlacedToday(me),
-      lossStreak: me.lossStreak,
-    });
-  }, [me, hasOdds, oddsValue, myStake]);
-
-  // Open days are closed from the final scores, without anyone pressing
-  // anything: the bet is all-or-nothing and the score decides it.
+  // Open days close from the final scores without anyone pressing anything.
+  // A game added by hand has no score to fetch, so those wait for their owner.
   useEffect(() => {
     if (!plan || bets.length === 0) return;
     const refs = openFixtureRefs(bets);
@@ -364,12 +362,12 @@ export default function MillionPlan() {
   }, [plan, bets]);
 
   const respond = useCallback(
-    async (planId: string, accept: boolean) => {
+    async (invitedPlanId: string, accept: boolean) => {
       setAnswering(true);
       try {
-        await (accept ? acceptInvite(planId) : declineInvite(planId));
+        await (accept ? acceptInvite(invitedPlanId) : declineInvite(invitedPlanId));
         setPendingInvites((previous) =>
-          previous.filter((invite) => invite.plan_id !== planId)
+          previous.filter((invite) => invite.plan_id !== invitedPlanId)
         );
         setToken((value) => value + 1);
       } catch {
@@ -381,45 +379,57 @@ export default function MillionPlan() {
     []
   );
 
-  const place = useCallback(async () => {
-    if (!plan || !me || !hasOdds || !user) return;
-    setSaving(true);
-    try {
-      const saved = await savePlanBet(plan.id, user.id, {
-        legs: chosenLegs.map(({ match, odds }) => ({
-          match: `${match.home_name} vs ${match.away_name}`,
-          homeTeam: match.home_name,
-          awayTeam: match.away_name,
-          league: match.league,
-          market: match.headline_market,
+  const place = useCallback(
+    async (legs: PlanLeg[], odds: number, stake: number) => {
+      if (!plan || !me || !user) return;
+      setSaving(true);
+      try {
+        const saved = await savePlanBet(plan.id, user.id, {
+          legs,
           odds,
-          modelProb: match.headline_pct,
-          fixtureId: match.fixture_id,
-          kickoff: match.kickoff,
+          stake,
+          day: me.day,
           status: "pending",
-        })),
-        odds: combinedOdd,
-        stake: myStake,
-        day: me.day,
-        status: "pending",
-        profitLoss: 0,
-        placedAt: new Date().toISOString(),
-        settledAt: null,
-      });
-      setBets((previous) => [...previous, saved]);
-      setSelection({});
-    } catch {
-      setError("A aposta não ficou guardada. Tenta outra vez.");
-    } finally {
-      setSaving(false);
-    }
-  }, [plan, me, hasOdds, user, chosenLegs, combinedOdd, myStake]);
+          profitLoss: 0,
+          placedAt: new Date().toISOString(),
+          settledAt: null,
+        });
+        setBets((previous) => [...previous, saved]);
+      } catch {
+        setError("A aposta não ficou guardada. Tenta outra vez.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [plan, me, user]
+  );
+
+  const closeBet = useCallback(
+    async (bet: PlanBet, won: boolean) => {
+      if (!plan) return;
+      setClosing(bet.id);
+      try {
+        const payload = settleManually(bet, won);
+        await updatePlanBet(plan.id, bet.id, payload);
+        setBets((previous) =>
+          previous.map((entry) =>
+            entry.id === bet.id ? { ...payload, id: bet.id, userId: bet.userId } : entry
+          )
+        );
+      } catch {
+        setError("Não foi possível fechar a aposta.");
+      } finally {
+        setClosing(null);
+      }
+    },
+    [plan]
+  );
 
   if (loading) {
     return (
       <AppLayout>
         <p className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> A abrir o plano...
+          <Loader2 className="h-4 w-4 animate-spin" /> A abrir os desafios...
         </p>
       </AppLayout>
     );
@@ -445,11 +455,7 @@ export default function MillionPlan() {
               disabled={answering}
               onClick={() => respond(invite.plan_id, true)}
             >
-              {answering ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                "Aceitar"
-              )}
+              {answering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Aceitar"}
             </Button>
             <button
               type="button"
@@ -469,8 +475,15 @@ export default function MillionPlan() {
     return (
       <AppLayout>
         <div className="space-y-3 py-2">
+          <div>
+            <h1 className="sl-section-title text-[15px]">Desafios</h1>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Um desafio é uma banca, um objetivo e as regras que aceitaste
+              cumprir. Podes jogar sozinho ou convidar alguém.
+            </p>
+          </div>
           {inviteBanner}
-          <CreatePlan onCreated={() => setToken((value) => value + 1)} />
+          <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
           {error && (
             <p className="text-center text-sm text-muted-foreground">{error}</p>
           )}
@@ -479,34 +492,30 @@ export default function MillionPlan() {
     );
   }
 
-  const schedule = planSchedule(
-    plan.start_date,
-    me?.bets.length ?? 0,
-    plan.days ?? PLAN_DAYS
-  );
-
-  const chance = me ? chanceOfCompleting(me.day) : chanceOfCompleting(1);
-  const loss = me ? costOfOneLoss(me.bankroll, me.day, ladder) : null;
-  const progress = Math.min(100, (combined / PLAN_TARGET) * 100);
+  const schedule = planSchedule(plan.start_date, me?.bets.length ?? 0, rules.days);
+  const ladder = buildLadder(rules, Number(plan.starting_bankroll));
+  const chance = chanceOfCompleting(rules, me?.day ?? 1);
+  const loss = me ? costOfOneLoss(rules, me.bankroll, me.day, ladder) : null;
+  const progress = Math.min(100, (combined / Number(plan.target)) * 100);
 
   return (
     <AppLayout>
       <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-3">
         <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="sl-section-title text-[15px]">
-              {plan.name}
-            </h1>
+            <h1 className="sl-section-title text-[15px]">{plan.name}</h1>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {schedule.state === "before"
                 ? `Começa daqui a ${schedule.daysUntilStart} ${
                     schedule.daysUntilStart === 1 ? "dia" : "dias"
-                  }. ${plan.days ?? PLAN_DAYS} dias, uma aposta por dia cada um.`
+                  }. ${describeRules(rules)}.`
                 : schedule.state === "finished"
-                ? `Os ${plan.days ?? PLAN_DAYS} dias do plano já passaram.`
+                ? `Os ${rules.days} dias já passaram.`
                 : schedule.state === "running"
-                ? `Dia ${schedule.calendarDay} de ${plan.days ?? PLAN_DAYS} no calendário, uma aposta por dia cada um.`
-                : `${plan.days ?? PLAN_DAYS} dias, uma aposta por dia cada um, a ganhar sempre sobre o que o dia anterior deixou.`}
+                ? `Dia ${schedule.calendarDay} de ${rules.days} no calendário · ${describeRules(
+                    rules
+                  )}.`
+                : `${describeRules(rules)}.`}
             </p>
             {schedule.behindBy > 0 && (
               <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
@@ -552,7 +561,7 @@ export default function MillionPlan() {
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                Banca somada
+                {standings.length > 1 ? "Banca somada" : "Banca"}
               </p>
               <p className="mt-1 font-mono-data text-2xl font-bold text-foreground">
                 {eur.format(combined)}
@@ -563,7 +572,7 @@ export default function MillionPlan() {
                 Objetivo
               </p>
               <p className="mt-1 font-mono-data text-sm font-bold text-foreground">
-                {eur.format(PLAN_TARGET)}
+                {eur.format(Number(plan.target))}
               </p>
             </div>
           </div>
@@ -576,7 +585,7 @@ export default function MillionPlan() {
           </div>
           <p className="sl-meta mt-1.5 text-[11px]">
             {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do caminho ·
-            faltam {eur.format(Math.max(0, PLAN_TARGET - combined))}
+            faltam {eur.format(Math.max(0, Number(plan.target) - combined))}
           </p>
         </motion.section>
 
@@ -586,170 +595,118 @@ export default function MillionPlan() {
               key={standing.userId}
               standing={standing}
               isMe={standing.userId === user?.id}
+              rules={rules}
+              startingBankroll={Number(plan.starting_bankroll)}
             />
           ))}
         </motion.div>
 
-        {me && (
+        {openBets.length > 0 && (
           <motion.section variants={fadeUp} className="sl-card overflow-hidden">
             <div className="border-b border-border px-4 py-3.5">
-              <h2 className="text-sm font-bold text-foreground">
-                A tua aposta do dia {me.day}
-              </h2>
+              <h2 className="text-sm font-bold text-foreground">Por fechar</h2>
               <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                O plano manda {(stakePctForDay(me.day) * 100).toFixed(0)}% da
-                banca hoje:{" "}
-                <span className="font-mono-data font-semibold text-foreground">
-                  {eur.format(myStake)}
-                </span>{" "}
-                a uma odd entre {ODDS_MIN.toFixed(2)} e {ODDS_MAX.toFixed(2)}.
+                Os jogos do quadro fecham-se sozinhos quando sai o resultado. Um
+                jogo que meteste à mão só tu sabes como acabou.
               </p>
             </div>
-
             <div className="divide-y divide-border">
-              {shortlist.map((match) => {
-                const taken = takenByMe.has(match.fixture_id);
-                const chosen = selection[match.fixture_id] !== undefined;
-
+              {openBets.map((bet) => {
+                const manual = bet.legs.some(isManualLeg);
                 return (
-                  <div key={match.fixture_id} className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                  <div key={bet.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-semibold text-foreground">
-                          {match.home_name} vs {match.away_name}
+                          {bet.legs.length === 1
+                            ? bet.legs[0].match
+                            : `${bet.legs.length} jogos`}
                         </p>
                         <p className="sl-meta truncate text-[11px]">
-                          {MARKET_LABELS[match.headline_market] ??
-                            match.headline_market}{" "}
-                          · {kickoffTime(match.kickoff)}
+                          Dia {bet.day} · {eur.format(bet.stake)} @{" "}
+                          {bet.odds.toFixed(2)} · ganha{" "}
+                          {eur.format(bet.stake * (bet.odds - 1))}
                         </p>
                       </div>
-                      <span className="font-mono-data flex-none text-sm font-bold text-[hsl(var(--sl-green))]">
-                        {match.headline_pct.toFixed(1)}%
+                      <span className="sl-pill sl-pill-open flex-none">
+                        {manual ? "à espera de ti" : "à espera do resultado"}
                       </span>
+                    </div>
 
-                      {chosen ? (
-                        <input
-                          inputMode="decimal"
-                          autoFocus
-                          value={selection[match.fixture_id]}
-                          onChange={(event) =>
-                            setSelection((previous) => ({
-                              ...previous,
-                              [match.fixture_id]: event.target.value,
-                            }))
-                          }
-                          placeholder="1.85"
-                          aria-label={`Odd para ${match.home_name} vs ${match.away_name}`}
-                          className="h-9 w-[72px] flex-none rounded-lg border border-primary/40 bg-card px-2 text-center font-mono-data text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                        />
-                      ) : null}
+                    {bet.legs.length > 1 && (
+                      <div className="mt-2 space-y-1">
+                        {bet.legs.map((leg, index) => (
+                          <p
+                            key={`${bet.id}-${index}`}
+                            className="sl-meta truncate text-[11px]"
+                          >
+                            {leg.status === "green"
+                              ? "✓ "
+                              : leg.status === "red"
+                              ? "✗ "
+                              : "· "}
+                            {leg.match} ·{" "}
+                            {MARKET_LABELS[leg.market] ?? leg.market} @{" "}
+                            {leg.odds.toFixed(2)}
+                          </p>
+                        ))}
+                      </div>
+                    )}
 
+                    <div className="mt-2.5 flex gap-2">
                       <button
                         type="button"
-                        disabled={taken}
-                        onClick={() =>
-                          setSelection((previous) => {
-                            const next = { ...previous };
-                            if (chosen) delete next[match.fixture_id];
-                            else next[match.fixture_id] = "";
-                            return next;
-                          })
-                        }
-                        className={`flex-none rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-40 ${
-                          chosen
-                            ? "border-border text-muted-foreground"
-                            : "border-primary/40 text-primary"
-                        }`}
+                        disabled={closing === bet.id}
+                        onClick={() => closeBet(bet, true)}
+                        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[hsl(var(--sl-green))]/40 text-xs font-semibold text-[hsl(var(--sl-green))] disabled:opacity-40"
                       >
-                        {taken ? "Feito" : chosen ? "Tirar" : "Juntar"}
+                        <Check className="h-3.5 w-3.5" />
+                        {bet.legs.length === 1 ? "Entrou" : "Ganhei o dia"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={closing === bet.id}
+                        onClick={() => closeBet(bet, false)}
+                        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-destructive/40 text-xs font-semibold text-destructive disabled:opacity-40"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        {bet.legs.length === 1 ? "Falhou" : "Perdi o dia"}
                       </button>
                     </div>
                   </div>
                 );
               })}
-
-              {shortlist.length === 0 && (
-                <p className="px-4 py-3 text-xs text-muted-foreground">
-                  Sem jogos no quadro de probabilidades neste momento.
-                </p>
-              )}
             </div>
-
-            {chosenLegs.length > 0 && (
-              <div className="space-y-2 border-t border-border p-4">
-                <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2.5">
-                  <span className="sl-meta text-[11px]">
-                    {chosenLegs.length === 1
-                      ? "1 jogo"
-                      : `${chosenLegs.length} jogos, odds multiplicadas`}
-                  </span>
-                  <span className="font-mono-data text-lg font-bold text-foreground">
-                    {allPriced ? combinedOdd.toFixed(2) : "—"}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                  <span className="sl-meta text-[11px]">Stake do plano</span>
-                  <span className="font-mono-data text-sm font-bold text-foreground">
-                    {eur.format(myStake)}
-                  </span>
-                </div>
-
-                {hasOdds && (
-                  <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--sl-green))]/30 bg-[hsl(var(--sl-green))]/5 px-3 py-2.5">
-                    <span className="text-xs font-semibold text-foreground">
-                      Banca se entrar tudo
-                    </span>
-                    <span className="font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
-                      {eur.format(me.bankroll + myStake * (combinedOdd - 1))}
-                    </span>
-                  </div>
-                )}
-
-                {!allPriced && (
-                  <p className="sl-meta text-[11px]">
-                    Falta meter a odd de cada jogo escolhido.
-                  </p>
-                )}
-
-                {violations.map((violation) => (
-                  <p
-                    key={violation.code}
-                    className={`text-[11px] leading-relaxed ${
-                      violation.severity === "breach"
-                        ? "text-destructive"
-                        : "sl-meta"
-                    }`}
-                  >
-                    {violation.message}
-                  </p>
-                ))}
-
-                <Button
-                  className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
-                  disabled={!hasOdds || saving}
-                  onClick={place}
-                >
-                  {saving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    `Registar aposta do dia ${me.day}`
-                  )}
-                </Button>
-              </div>
-            )}
           </motion.section>
         )}
 
-        {ownsPlan && (
+        {me && (
           <motion.div variants={fadeUp}>
-            <PlanSettings
-              plan={plan}
-              onSaved={() => setToken((value) => value + 1)}
+            <BetComposer
+              board={board}
+              rules={rules}
+              day={me.day}
+              bankroll={me.bankroll}
+              betsToday={betsPlacedToday(me)}
+              lossStreak={me.lossStreak}
+              usedFixtures={usedFixtures}
+              saving={saving}
+              onPlace={place}
             />
           </motion.div>
         )}
+
+        <motion.div variants={fadeUp}>
+          <ChallengeSettings
+            plan={plan}
+            isOwner={Boolean(ownsPlan)}
+            onSaved={() => setToken((value) => value + 1)}
+            onGone={() => {
+              setPlanId(null);
+              setToken((value) => value + 1);
+            }}
+          />
+        </motion.div>
 
         <motion.div variants={fadeUp}>
           <PlanPlayers
@@ -781,15 +738,12 @@ export default function MillionPlan() {
                         <p className="truncate text-xs font-semibold text-foreground">
                           {bet.legs.length === 1
                             ? bet.legs[0].match
-                            : `${bet.legs[0]?.match ?? "—"} + ${
-                                bet.legs.length - 1
-                              }`}
+                            : `${bet.legs[0]?.match ?? "—"} + ${bet.legs.length - 1}`}
                         </p>
                         <p className="sl-meta truncate text-[11px]">
                           Dia {bet.day} ·{" "}
                           {bet.legs.length === 1
-                            ? MARKET_LABELS[bet.legs[0].market] ??
-                              bet.legs[0].market
+                            ? MARKET_LABELS[bet.legs[0].market] ?? bet.legs[0].market
                             : `${bet.legs.length} jogos`}{" "}
                           @ {bet.odds.toFixed(2)}
                         </p>
@@ -820,8 +774,8 @@ export default function MillionPlan() {
           </div>
         </motion.section>
 
-        {/* The plan reads like a schedule. It is a parlay, and a bankroll tool
-            that hides that is not doing its job. */}
+        {/* The challenge reads like a schedule. It is a parlay, and a bankroll
+            tool that hides that is not doing its job. */}
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
           <div className="border-b border-border px-4 py-3.5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
@@ -831,7 +785,7 @@ export default function MillionPlan() {
           </div>
           <div className="space-y-2 p-4">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Cada degrau só conta se a aposta entrar, por isso o plano inteiro
+              Cada degrau só conta se a aposta entrar, por isso o desafio inteiro
               é uma sequência de vitórias seguidas, não uma média.
             </p>
             <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
@@ -859,33 +813,19 @@ export default function MillionPlan() {
                 </p>
               </div>
             )}
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              O plano diz para seguir em frente sem dobrar a stake depois de uma
-              perda, e parar um dia ao fim de três seguidas. Isso protege a
-              banca, mas não devolve os degraus.
-            </p>
           </div>
         </motion.section>
-
-        <motion.div variants={fadeUp}>
-          <CreatePlan onCreated={() => setToken((value) => value + 1)} />
-        </motion.div>
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Trophy className="h-4 w-4 text-primary" />A escada
             </h2>
-            <button
-              type="button"
-              onClick={() => navigate("/probability")}
-              className="flex items-center gap-1 text-[11px] font-semibold text-primary"
-            >
-              Ver todos os jogos
-              <ArrowRight className="h-3 w-3" />
-            </button>
+            <span className="sl-meta text-[11px]">
+              {me ? `estás no degrau ${rungForBankroll(me.bankroll, ladder)}` : ""}
+            </span>
           </div>
-          <div className="max-h-[320px] overflow-y-auto divide-y divide-border">
+          <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
             {ladder.map((rung) => {
               const reached = me ? me.bankroll >= rung.bankrollStart : false;
               return (
@@ -895,7 +835,13 @@ export default function MillionPlan() {
                     reached ? "" : "opacity-60"
                   }`}
                 >
-                  <span className="font-mono-data w-8 flex-none text-xs text-muted-foreground">
+                  <span
+                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-md font-mono-data text-[11px] ${
+                      reached
+                        ? "bg-primary/15 font-bold text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {rung.day}
                   </span>
                   <span className="font-mono-data min-w-0 flex-1 text-xs text-foreground">
@@ -909,6 +855,16 @@ export default function MillionPlan() {
             })}
           </div>
         </motion.section>
+
+        <motion.div variants={fadeUp}>
+          <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
+        </motion.div>
+
+        {error && (
+          <motion.p variants={fadeUp} className="text-[11px] text-destructive">
+            {error}
+          </motion.p>
+        )}
       </motion.div>
     </AppLayout>
   );
