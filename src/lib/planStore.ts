@@ -27,22 +27,36 @@ export interface PlanMember {
   starting_bankroll: number;
 }
 
-/** A bet placed inside the plan. One per player per day, by the plan's rules. */
-export interface PlanBetPayload {
+/** One game inside a day's bet. A day can be a single game or several. */
+export interface PlanLeg {
   match: string;
   homeTeam: string;
   awayTeam: string;
   league: string;
   market: string;
   odds: number;
-  stake: number;
   modelProb: number;
+  fixtureId: number;
+  kickoff: string | null;
+  /** Set once the final score decides this game. */
+  status: BetStatus;
+}
+
+/**
+ * A day's bet. One per player per day, by the plan's rules, but a day's bet
+ * can combine several games: three games at 1.25 each is the same 1.95 the
+ * plan asks for, reached a different way.
+ */
+export interface PlanBetPayload {
+  legs: PlanLeg[];
+  /** The legs multiplied together — what the day is actually staked at. */
+  odds: number;
+  stake: number;
   day: number;
   status: BetStatus;
   profitLoss: number;
   placedAt: string;
   settledAt: string | null;
-  fixture: { id: number; league: string; kickoff: string | null } | null;
 }
 
 export interface PlanBet extends PlanBetPayload {
@@ -344,25 +358,83 @@ export function betsPlacedToday(standing: PlayerStanding): number {
 }
 
 /**
- * Settles a plan bet from a final score, the same way the rest of the app does.
+ * Multiplies the legs into the odd the day is staked at.
  *
- * Returns null when the score cannot decide the market, so it stays pending
- * and visible rather than being guessed at.
+ * One game or ten, the arithmetic is the same: every game has to land, so the
+ * prices multiply. This is what makes a handful of short prices add up to the
+ * 1.75-2.10 the plan asks for.
  */
-export function settleFromScore(
+export function combineOdds(legs: { odds: number }[]): number {
+  if (legs.length === 0) return 0;
+  return Number(
+    legs.reduce((product, leg) => product * (leg.odds || 0), 1).toFixed(2)
+  );
+}
+
+/** The model's own chance of the whole day landing, legs multiplied out. */
+export function combinedModelProb(legs: { modelProb: number }[]): number {
+  if (legs.length === 0) return 0;
+  return Number(
+    (legs.reduce((product, leg) => product * (leg.modelProb / 100), 1) * 100).toFixed(1)
+  );
+}
+
+/**
+ * Settles a day's bet from the final scores of its games.
+ *
+ * All or nothing: one game lost loses the day. A game whose market a score
+ * cannot decide leaves the whole bet open rather than being guessed at, and so
+ * does a game that has not been played.
+ */
+export function settleFromScores(
   bet: PlanBet,
-  homeGoals: number,
-  awayGoals: number
+  scores: Map<number, { homeGoals: number; awayGoals: number }>
 ): PlanBetPayload | null {
-  const green = isGreenMarket(bet.market, homeGoals, awayGoals);
-  if (green === null) return null;
+  const legs: PlanLeg[] = [];
+
+  for (const leg of bet.legs) {
+    if (leg.status === "green" || leg.status === "red") {
+      legs.push(leg);
+      continue;
+    }
+
+    const score = scores.get(leg.fixtureId);
+    if (!score) return null;
+
+    const green = isGreenMarket(leg.market, score.homeGoals, score.awayGoals);
+    if (green === null) return null;
+
+    legs.push({ ...leg, status: green ? "green" : "red" });
+  }
+
+  if (legs.length !== bet.legs.length) return null;
+
+  const won = legs.every((leg) => leg.status === "green");
 
   return {
     ...bet,
-    status: green ? "green" : "red",
+    legs,
+    status: won ? "green" : "red",
     profitLoss: Number(
-      (green ? bet.stake * (bet.odds - 1) : -bet.stake).toFixed(2)
+      (won ? bet.stake * (bet.odds - 1) : -bet.stake).toFixed(2)
     ),
     settledAt: new Date().toISOString(),
   };
+}
+
+/** Every fixture the open bets are waiting on. */
+export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }[] {
+  const refs = new Map<number, { id: number; league: string }>();
+
+  bets
+    .filter((bet) => bet.status === "pending")
+    .forEach((bet) =>
+      bet.legs.forEach((leg) => {
+        if (leg.status === "pending") {
+          refs.set(leg.fixtureId, { id: leg.fixtureId, league: leg.league });
+        }
+      })
+    );
+
+  return [...refs.values()];
 }

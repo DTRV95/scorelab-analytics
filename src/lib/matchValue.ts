@@ -1,5 +1,4 @@
 import { getKellyPct } from "@/lib/calibrationEngine";
-import { edgeFor } from "@/lib/betFromBoard";
 import type { AccuracyMarket } from "@/lib/modelAccuracy";
 
 export interface MarketForecast {
@@ -29,6 +28,12 @@ export interface ValueRow {
 
 function round(value: number, decimals = 2) {
   return Number(value.toFixed(decimals));
+}
+
+/** Edge: how much more likely the model thinks this is than the price says. */
+export function edgeFor(modelProb: number, odds: number): number {
+  if (odds <= 1) return 0;
+  return round(modelProb - 100 / odds);
 }
 
 export function fairOdds(probabilityPct: number): number {

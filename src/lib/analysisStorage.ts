@@ -11,22 +11,12 @@ import type { BetStatus, TrackedAnalysisBet, TrackedBet } from "@/types/analysis
 
 const ANALYSES_KEY = "scorelab_analyses";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
-const MULTIPLES_KEY = "scorelab_multiples";
 export const ANALYSES_UPDATED_EVENT = "scorelab:analyses-updated";
 
 let analysesCacheRaw: string | null = null;
 let analysesCacheValue: SavedAnalysis[] | null = null;
 let bankrollSettingsCacheRaw: string | null = null;
 let bankrollSettingsCacheValue: BankrollSettings | null = null;
-
-interface StoredMultipleForBankroll {
-  tracking: {
-    betPlaced: boolean;
-    stakeUsed: number | null;
-    resultStatus: "pending" | "green" | "red" | "void";
-    profitLoss: number;
-  };
-}
 
 export interface AnalysisTrackingEntry {
   analysisId: string;
@@ -219,16 +209,6 @@ function normalizeSavedAnalysis(analysis: SavedAnalysis): SavedAnalysis {
         )
       : [],
   };
-}
-
-function getSavedMultiplesForBankroll(): StoredMultipleForBankroll[] {
-  try {
-    const raw = localStorage.getItem(MULTIPLES_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as StoredMultipleForBankroll[];
-  } catch {
-    return [];
-  }
 }
 
 export function getAnalyses(): SavedAnalysis[] {
@@ -667,7 +647,6 @@ export function saveBankrollSettings(settings: BankrollSettings): void {
 
 export function getBankrollStats(): BankrollStats {
   const analyses = getAnalyses();
-  const multiples = getSavedMultiplesForBankroll();
   const { initialBankroll } = getBankrollSettings();
 
   return buildFinancialSnapshot({
@@ -675,7 +654,6 @@ export function getBankrollStats(): BankrollStats {
       createdAt: entry.createdAt,
       tracking: entry.tracking,
     })),
-    multiples,
     initialBankroll,
   }).stats;
 }
@@ -780,7 +758,6 @@ export function getDailyPerformance(): DailyPerformanceItem[] {
 
   return buildFinancialSnapshot({
     analyses,
-    multiples: getSavedMultiplesForBankroll(),
     initialBankroll,
   }).dailyPerformance;
 }
@@ -973,7 +950,6 @@ export function getDrawdownSeries(): DrawdownPoint[] {
 
   return buildFinancialSnapshot({
     analyses,
-    multiples: getSavedMultiplesForBankroll(),
     initialBankroll,
   }).drawdownSeries;
 }

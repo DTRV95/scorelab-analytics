@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { PlaceBetForm } from "@/components/PlaceBetForm";
 import {
   ProbabilityBreakdown,
   MARKET_LABELS,
@@ -526,7 +525,6 @@ export default function MatchDeepDive() {
         </motion.section>
 
         <motion.div variants={fadeUp}>
-          <PlaceBetForm match={match} />
         </motion.div>
       </motion.div>
     </AppLayout>

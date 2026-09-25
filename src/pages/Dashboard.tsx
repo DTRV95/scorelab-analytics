@@ -5,7 +5,6 @@ import {
   useSectionLayout,
   type SectionDef,
 } from "@/components/LayoutCustomizer";
-import { MatchResultsPanel } from "@/components/MatchResultsPanel";
 import { ValueBadge, DecisionBadge, TierBadge } from "@/components/ValueBadge";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { PulseOnChange } from "@/components/MotionIntelligence";
@@ -38,9 +37,6 @@ import {
 } from "recharts";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getMultipleMarketPerformance,
-} from "@/lib/multipleStorage";
 import { getAdvancedPerformanceBreakdown } from "@/lib/performanceAnalytics";
 import type { SavedAnalysis, AnalysisResult } from "@/types/analysis";
 import type { MarketPerformance } from "@/lib/portofolioEngine";
@@ -287,149 +283,6 @@ function getLeagueStatusTone(status: LeaguePerformanceRow["intelligenceStatus"])
   return getLeagueIntelligenceTone(status);
 }
 
-function mergeMarketPerformanceRows(
-  singles: MarketPerformance[],
-  multiples: ReturnType<typeof getMultipleMarketPerformance>
-): MarketPerformance[] {
-  const merged = new Map<
-    string,
-    {
-      market: string;
-      marketGroup: string;
-      bets: number;
-      wins: number;
-      losses: number;
-      voids: number;
-      avgOddsWeighted: number;
-      avgConfidenceWeighted: number;
-      avgEdgeWeighted: number;
-      avgEdgeLowerBoundWeighted: number;
-      avgRobustnessWeighted: number;
-      totalStake: number;
-      profitLoss: number;
-    }
-  >();
-
-  const upsert = (
-    market: string,
-    marketGroup: string,
-    bets: number,
-    wins: number,
-    losses: number,
-    voids: number,
-    avgOdds: number,
-    avgConfidence: number,
-    avgEdge: number,
-    avgEdgeLowerBound: number,
-    avgRobustness: number,
-    totalStake: number,
-    profitLoss: number
-  ) => {
-    const current = merged.get(market) || {
-      market,
-      marketGroup,
-      bets: 0,
-      wins: 0,
-      losses: 0,
-      voids: 0,
-      avgOddsWeighted: 0,
-      avgConfidenceWeighted: 0,
-      avgEdgeWeighted: 0,
-      avgEdgeLowerBoundWeighted: 0,
-      avgRobustnessWeighted: 0,
-      totalStake: 0,
-      profitLoss: 0,
-    };
-
-    current.bets += bets;
-    current.wins += wins;
-    current.losses += losses;
-    current.voids += voids;
-    current.avgOddsWeighted += avgOdds * bets;
-    current.avgConfidenceWeighted += avgConfidence * bets;
-    current.avgEdgeWeighted += avgEdge * bets;
-    current.avgEdgeLowerBoundWeighted += avgEdgeLowerBound * bets;
-    current.avgRobustnessWeighted += avgRobustness * bets;
-    current.totalStake += totalStake;
-    current.profitLoss += profitLoss;
-
-    merged.set(market, current);
-  };
-
-  singles.forEach((row) => {
-    upsert(
-      row.market,
-      row.marketGroup,
-      row.bets,
-      row.wins,
-      row.losses,
-      row.voids,
-      row.avgOdds,
-      row.avgConfidence,
-      row.avgEdge,
-      row.avgEdgeLowerBound,
-      row.avgRobustness,
-      row.totalStake,
-      row.profitLoss
-    );
-  });
-
-  multiples.forEach((row) => {
-    upsert(
-      row.market,
-      row.marketGroup,
-      row.bets,
-      row.greens,
-      row.reds,
-      row.voids,
-      row.avgOdds,
-      row.avgConfidence,
-      row.avgEdge,
-      0,
-      0,
-      row.totalStake,
-      row.profitLoss
-    );
-  });
-
-  return Array.from(merged.values())
-    .map((row) => ({
-      market: row.market,
-      marketGroup: row.marketGroup,
-      bets: row.bets,
-      wins: row.wins,
-      losses: row.losses,
-      voids: row.voids,
-      hitRate:
-        row.wins + row.losses > 0
-          ? Number(((row.wins / (row.wins + row.losses)) * 100).toFixed(1))
-          : 0,
-      avgOdds:
-        row.bets > 0 ? Number((row.avgOddsWeighted / row.bets).toFixed(2)) : 0,
-      avgConfidence:
-        row.bets > 0
-          ? Number((row.avgConfidenceWeighted / row.bets).toFixed(2))
-          : 0,
-      avgEdge:
-        row.bets > 0 ? Number((row.avgEdgeWeighted / row.bets).toFixed(2)) : 0,
-      avgEdgeLowerBound:
-        row.bets > 0
-          ? Number((row.avgEdgeLowerBoundWeighted / row.bets).toFixed(2))
-          : 0,
-      avgRobustness:
-        row.bets > 0
-          ? Number((row.avgRobustnessWeighted / row.bets).toFixed(2))
-          : 0,
-      totalStake: Number(row.totalStake.toFixed(2)),
-      profitLoss: Number(row.profitLoss.toFixed(2)),
-      roi:
-        row.totalStake > 0
-          ? Number(((row.profitLoss / row.totalStake) * 100).toFixed(1))
-          : 0,
-    }))
-    .sort((a, b) => b.hitRate - a.hitRate);
-}
-
 function isSameDay(dateA: Date, dateB: Date) {
   return (
     dateA.getDate() === dateB.getDate() &&
@@ -602,7 +455,7 @@ const DASHBOARD_SECTIONS: SectionDef[] = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { analyses, multiples, financialSnapshot, dataVersion } = useScoreLabData();
+  const { analyses, financialSnapshot, dataVersion } = useScoreLabData();
   const bankrollStats = financialSnapshot.stats;
 
   const dashboardData = useMemo(() => {
@@ -675,7 +528,7 @@ export default function Dashboard() {
         ? "Moderate"
         : "High";
 
-    const performance = getAdvancedPerformanceBreakdown(validAnalyses, multiples);
+    const performance = getAdvancedPerformanceBreakdown(validAnalyses);
     const autoInsights = getDashboardAutoInsights();
     
 
@@ -691,32 +544,10 @@ export default function Dashboard() {
       performance,
       autoInsights,
     };
-  }, [analyses, multiples, bankrollStats.currentBankroll, financialSnapshot]);
+  }, [analyses, bankrollStats.currentBankroll, financialSnapshot]);
 
   const topValueToday = dashboardData.topValueTodayEntry;
   const calibrationModel = useMemo(() => buildCalibrationModel(analyses), [analyses]);
-
-  const openAnalysisInSimpleBet = (analysis: SavedAnalysis, result: AnalysisResult) => {
-    const calibration = calibrateOpportunity(
-      {
-        league: analysis.league || "Unspecified",
-        market: result.market,
-        odds: result.odds,
-        confidence: result.confidence,
-        modelProb: result.modelProb,
-      },
-      calibrationModel
-    );
-    const params = new URLSearchParams({
-      analysisId: analysis.id,
-      prepareBet: "1",
-      market: result.market,
-      stake: String(Number((result.stake * calibration.stakeMultiplier).toFixed(2))),
-      odd: String(Number(result.odds.toFixed(2))),
-    });
-
-    navigate(`/history?${params.toString()}`);
-  };
 
   const oddsBucketChartData: ChartRow[] =
     dashboardData.performance?.oddsBucketPerformance?.map((item) => ({
@@ -743,22 +574,8 @@ export default function Dashboard() {
       ...item,
     })) ?? [];
 
-  const multipleMarketPerformance = useMemo(
-    () => {
-      void dataVersion;
-      return getMultipleMarketPerformance({ excludeDuplicateSingles: true });
-    },
-    [dataVersion]
-  );
-
-  const marketPerformanceRows = useMemo(
-    () =>
-      mergeMarketPerformanceRows(
-        dashboardData.performance?.marketPerformance ?? [],
-        multipleMarketPerformance
-      ),
-    [dashboardData.performance?.marketPerformance, multipleMarketPerformance]
-  );
+  const marketPerformanceRows =
+    dashboardData.performance?.marketPerformance ?? [];
 
   const leadingMarket = marketPerformanceRows[0] ?? null;
 
@@ -854,12 +671,6 @@ export default function Dashboard() {
             />
           </div>
         </motion.section>
-
-        {/* Outside the customizer on purpose: keeping the history truthful is
-            not a panel the user should be able to hide. */}
-        <motion.div variants={fadeUp}>
-          <MatchResultsPanel analyses={analyses} />
-        </motion.div>
 
         <LayoutSection id="quick" layout={layout}>
 
@@ -1022,16 +833,6 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    openAnalysisInSimpleBet(topValueToday.analysis, topValueToday.bestBet)
-                  }
-                  className="sl-btn-primary inline-flex h-11 w-full items-center justify-center px-4 text-[11px] uppercase tracking-[0.14em]"
-                >
-                  Open In Simple Bet
-                </button>
               </div>
             </motion.div>
           ) : (

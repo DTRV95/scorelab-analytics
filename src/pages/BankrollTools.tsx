@@ -1,13 +1,6 @@
 ﻿import { AppLayout } from "@/components/layout/AppLayout";
 import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
 import {
-  getBetTypePerformance,
-  getMultipleMarketPerformance,
-  getMultipleCorrelationPerformance,
-  getMultipleLegCountPerformance,
-  getMultiplePerformanceSummary,
-} from "@/lib/multipleStorage";
-import {
   type DailyPerformanceItem,
   saveBankrollSettings,
   getMarketPerformance,
@@ -57,87 +50,6 @@ const fadeUp = {
 };
 
 type ChartRow = Record<string, string | number | null | undefined>;
-
-function mergeSimpleAndMultipleMarketPerformance(
-  singles: ReturnType<typeof getMarketPerformance>,
-  multiples: ReturnType<typeof getMultipleMarketPerformance>
-) {
-  const merged = new Map<
-    string,
-    {
-      market: string;
-      bets: number;
-      greens: number;
-      reds: number;
-      voids: number;
-      pending: number;
-      profitLoss: number;
-    }
-  >();
-
-  const upsert = (
-    market: string,
-    bets: number,
-    greens: number,
-    reds: number,
-    voids: number,
-    pending: number,
-    profitLoss: number
-  ) => {
-    const current = merged.get(market) || {
-      market,
-      bets: 0,
-      greens: 0,
-      reds: 0,
-      voids: 0,
-      pending: 0,
-      profitLoss: 0,
-    };
-
-    current.bets += bets;
-    current.greens += greens;
-    current.reds += reds;
-    current.voids += voids;
-    current.pending += pending;
-    current.profitLoss += profitLoss;
-
-    merged.set(market, current);
-  };
-
-  singles.forEach((item) => {
-    upsert(
-      item.market,
-      item.bets,
-      item.greens,
-      item.reds,
-      item.voids,
-      item.pending,
-      item.profitLoss
-    );
-  });
-
-  multiples.forEach((item) => {
-    upsert(
-      item.market,
-      item.bets,
-      item.greens,
-      item.reds,
-      item.voids,
-      item.pending,
-      item.profitLoss
-    );
-  });
-
-  return Array.from(merged.values()).map((item) => {
-    const settled = item.greens + item.reds;
-
-    return {
-      ...item,
-      profitLoss: Number(item.profitLoss.toFixed(2)),
-      hitRate: settled > 0 ? Number(((item.greens / settled) * 100).toFixed(1)) : 0,
-    };
-  });
-}
 
 const resultColors: Record<string, string> = {
   Greens: "rgba(34,197,94,0.95)",
@@ -399,10 +311,7 @@ export default function BankrollTools() {
   const marketPerformance = useMemo(
     () => {
       void dataVersion;
-      return mergeSimpleAndMultipleMarketPerformance(
-        getMarketPerformance(analyses),
-        getMultipleMarketPerformance({ excludeDuplicateSingles: true })
-      );
+      return         getMarketPerformance(analyses);
     },
     [analyses, dataVersion]
   );
@@ -491,10 +400,6 @@ export default function BankrollTools() {
   const qualityScoreChartData: ChartRow[] = qualityScorePerformance.map((item) => ({
     ...item,
   }));
-  const betTypePerformance = getBetTypePerformance();
-  const multipleLegCountPerformance = getMultipleLegCountPerformance();
-  const multipleCorrelationPerformance = getMultipleCorrelationPerformance();
-  const multipleSummary = getMultiplePerformanceSummary();
   const strongestMarket = useMemo(
     () =>
       [...marketPerformance].sort((a, b) => {
@@ -670,24 +575,6 @@ export default function BankrollTools() {
               change="If every open position wins"
               changeType={openPotentialProfit > 0 ? "positive" : "neutral"}
             />
-            <CompactStatCard
-              label="Multiple P/L"
-              value={formatCurrency(multipleSummary.profitLoss)}
-              change={`${multipleSummary.roi.toFixed(2)}% return on multiple stake`}
-              changeType={multipleSummary.profitLoss >= 0 ? "positive" : "negative"}
-            />
-          <CompactStatCard
-            label="Multiple Hit Rate"
-            value={`${multipleSummary.hitRate.toFixed(2)}%`}
-            change={`${multipleSummary.settledMultiples} settled`}
-            changeType="neutral"
-          />
-          <CompactStatCard
-            label="Multiple Stake"
-            value={formatCurrency(multipleSummary.totalStake)}
-            change="Tracked separately from singles"
-            changeType="neutral"
-          />
         </motion.div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
@@ -1003,24 +890,6 @@ export default function BankrollTools() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <SegmentBarCard
-            title="Singles vs Multiples"
-            description="Direct comparison between simple bets and combined slips."
-            data={betTypePerformance}
-            yKey="type"
-          />
-          <SegmentBarCard
-            title="Multiple ROI by Legs"
-            description="See whether shorter or longer combos are treating the bankroll better."
-            data={multipleLegCountPerformance}
-            yKey="bucket"
-          />
-          <SegmentBarCard
-            title="Multiple ROI by Correlation"
-            description="Validate whether same-game correlation is helping or hurting your multiples."
-            data={multipleCorrelationPerformance}
-            yKey="bucket"
-          />
         </div>
 
         <SectionCard
@@ -1238,7 +1107,7 @@ export default function BankrollTools() {
           >
             {modelAuditSummary.auditedMatches === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
-                No audited matches yet. Add final scores in Simple Bet to validate analysed markets without logging a real stake.
+                Ainda não há jogos auditados. O acerto do modelo contra os resultados reais está em "Acerto do Modelo".
               </div>
             ) : (
               <div className="space-y-4">

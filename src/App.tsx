@@ -23,8 +23,6 @@ const ModelLab = lazy(() => import("./pages/ModelLab"));
 const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
 const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
 const MillionPlan = lazy(() => import("./pages/MillionPlan"));
-const History = lazy(() => import("./pages/History"));
-const HistoryMultiples = lazy(() => import("./pages/HistoryMultiples"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
 const RoadmapPlanner = lazy(() => import("./pages/RoadmapPlanner"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -99,8 +97,6 @@ const App = () => {
                     <Route path="/match/:fixtureId" element={<ProtectedRoute><MatchDeepDive /></ProtectedRoute>} />
                     <Route path="/accuracy" element={<ProtectedRoute><ModelAccuracy /></ProtectedRoute>} />
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />
-                    <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-                    <Route path="/history-multiples" element={<ProtectedRoute><HistoryMultiples /></ProtectedRoute>} />
                     <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
                     <Route path="/roadmap" element={<ProtectedRoute><RoadmapPlanner /></ProtectedRoute>} />
                     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

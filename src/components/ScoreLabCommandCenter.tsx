@@ -51,8 +51,6 @@ const pages = [
   { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
   { title: "Acerto do Modelo", detail: "Measure forecasts against results", url: "/accuracy", icon: Gauge },
   { title: "Plano Milhão", detail: "Where the two of you stand", url: "/plano", icon: Trophy },
-  { title: "Simple Bet", detail: "Track single bets", url: "/history", icon: Clock },
-  { title: "Multiples Bet", detail: "Build and monitor multiples", url: "/history-multiples", icon: Layers3 },
   { title: "Bankroll Tools", detail: "Financial truth center", url: "/bankroll", icon: Wallet },
   { title: "Roadmap", detail: "Mission control", url: "/roadmap", icon: Flag },
   { title: "Settings", detail: "Workspace controls", url: "/settings", icon: Settings },
@@ -63,7 +61,6 @@ export function ScoreLabCommandCenter() {
   const [open, setOpen] = useState(false);
   const {
     analyses,
-    multiples,
     financialSnapshot,
     radarOpportunities,
   } = useScoreLabData();
@@ -100,9 +97,6 @@ export function ScoreLabCommandCenter() {
     const pendingSingles = analyses.filter(
       (analysis) => analysis.tracking.betPlaced && analysis.tracking.resultStatus === "pending"
     ).length;
-    const pendingMultiples = multiples.filter(
-      (multiple) => multiple.tracking.betPlaced && multiple.tracking.resultStatus === "pending"
-    ).length;
     const bestMarket = markets
       .filter((market) => market.bets > 0)
       .sort((a, b) => b.roi - a.roi)[0];
@@ -112,11 +106,11 @@ export function ScoreLabCommandCenter() {
       roi: stats.roi,
       hitRate: stats.hitRate,
       openExposure: financialSnapshot.openExposure,
-      pending: pendingSingles + pendingMultiples,
+      pending: pendingSingles,
       bestMarket,
       radar,
     };
-  }, [analyses, financialSnapshot, multiples, radarOpportunities]);
+  }, [analyses, financialSnapshot, radarOpportunities]);
 
   const runCommand = (url: string) => {
     setOpen(false);

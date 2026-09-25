@@ -801,7 +801,7 @@ export default function ModelLab() {
         {rows.length === 0 ? (
           <PremiumCard
             title="No Audit Data Yet"
-            description="Go to Simple Bet, open analysed matches, insert final scores, and this page will become the calibration lab."
+            description="As apostas do Plano Milhão fecham-se sozinhas pelos resultados da API, e é isso que enche esta página."
             badge="Empty"
           >
             <p className="text-sm leading-6 text-muted-foreground">
