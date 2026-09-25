@@ -1,17 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Clock, Layers3, Percent, Wallet } from "lucide-react";
+import { BarChart3, Clock, Layers3, Percent, Trophy, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Five destinations, the most a thumb row can hold before the labels start
-// truncating. Roadmap, Value Radar and the model's track record live one level
-// in (Dashboard links to them) rather than competing for a slot here.
-//
-// Multiples holds a slot because a multiple placed from the betslip was
-// otherwise unreachable on a phone: the sidebar that links to it is desktop
-// only, and "Apostas" only lists singles.
+// Six destinations. Five is the comfortable maximum before labels truncate,
+// but a phone has no sidebar, and both the plan and the multiples are
+// otherwise unreachable from one: the plan is the screen these two open every
+// day, and a multiple placed from the betslip would have nowhere to be read.
+// Roadmap, Value Radar and the model's track record stay one level in, reached
+// from the Dashboard.
 const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },
+  { title: "Plano", url: "/plano", icon: Trophy },
   { title: "Múltiplas", url: "/history-multiples", icon: Layers3 },
   { title: "Apostas", url: "/history", icon: Clock },
   { title: "Banca", url: "/bankroll", icon: Wallet },
@@ -22,7 +22,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="sl-bottomnav fixed inset-x-0 bottom-0 z-50 px-2 pb-[max(env(safe-area-inset-bottom),0.4rem)] pt-1.5 lg:hidden">
-      <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+      <div className="mx-auto grid max-w-lg grid-cols-6 gap-1">
         {mobileItems.map((item) => {
           const isActive =
             location.pathname === item.url ||

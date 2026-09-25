@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Radar,
   Gauge,
+  Trophy,
   Percent,
 } from "lucide-react";
 import { useState } from "react";
@@ -33,6 +34,10 @@ const navGroups = [
       { title: "Value Radar", url: "/radar", icon: Radar },
       { title: "Acerto do Modelo", url: "/accuracy", icon: Gauge },
     ],
+  },
+  {
+    title: "Plano",
+    items: [{ title: "Plano Milhão", url: "/plano", icon: Trophy }],
   },
   {
     title: "Tracking",
