@@ -12,13 +12,18 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 // Hoisted: vi.mock's factory runs before the module body, so the spy has to
 // exist before it.
-const { savePlanBet } = vi.hoisted(() => ({
-  savePlanBet: vi.fn(async (_planId: string, userId: string, payload: unknown) => ({
-    ...(payload as Record<string, unknown>),
-    id: "new",
-    userId,
-  })),
-}));
+const { savePlanBet, invitePlayer, fetchPlanInvites, fetchMyPendingInvites, acceptInvite } =
+  vi.hoisted(() => ({
+    savePlanBet: vi.fn(async (_planId: string, userId: string, payload: unknown) => ({
+      ...(payload as Record<string, unknown>),
+      id: "new",
+      userId,
+    })),
+    invitePlayer: vi.fn(async () => "invited" as const),
+    fetchPlanInvites: vi.fn(async () => [] as unknown[]),
+    fetchMyPendingInvites: vi.fn(async () => [] as unknown[]),
+    acceptInvite: vi.fn(async () => undefined),
+  }));
 
 vi.mock("@/lib/planStore", async () => {
   const actual = await vi.importActual<typeof import("@/lib/planStore")>(
@@ -78,6 +83,10 @@ vi.mock("@/lib/planStore", async () => {
       },
     ]),
     savePlanBet,
+    invitePlayer,
+    fetchPlanInvites,
+    fetchMyPendingInvites,
+    acceptInvite,
   };
 });
 
@@ -107,6 +116,10 @@ function boardMatch(id: number, home: string, pct: number) {
 beforeEach(() => {
   localStorage.clear();
   savePlanBet.mockClear();
+  invitePlayer.mockClear();
+  invitePlayer.mockResolvedValue("invited");
+  fetchPlanInvites.mockResolvedValue([]);
+  fetchMyPendingInvites.mockResolvedValue([]);
   // Twelve fixtures so the shortlist has to cut it down to ten.
   writeCachedBoard({
     days: 7,
@@ -136,9 +149,9 @@ describe("Plano Milhão", () => {
     renderPage();
 
     // David won day 1: €10 + €5. His brother lost his: €10 - €5.
-    // Each name appears twice: the standing card and the picks column.
-    expect((await screen.findAllByText("David")).length).toBe(2);
-    expect(screen.getAllByText("Irmão").length).toBe(2);
+    // Each name appears three times: standing card, players panel, picks column.
+    expect((await screen.findAllByText("David")).length).toBe(3);
+    expect(screen.getAllByText("Irmão").length).toBe(3);
     expect(screen.getAllByText("15,00 €").length).toBeGreaterThan(0);
     expect(screen.getAllByText("5,00 €").length).toBeGreaterThan(0);
     // 15 + 5 combined.
@@ -203,6 +216,69 @@ describe("Plano Milhão", () => {
       day: 2,
       status: "pending",
     });
+  });
+
+  it("invites someone by email and reports what happened", async () => {
+    renderPage();
+
+    fireEvent.change(
+      await screen.findByPlaceholderText("irmao@exemplo.com"),
+      { target: { value: " agenciacristina@hotmail.com " } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Convidar$/ }));
+
+    expect(invitePlayer).toHaveBeenCalledWith("plan", "agenciacristina@hotmail.com");
+    expect(await screen.findByText(/Convite enviado/)).toBeInTheDocument();
+  });
+
+  it("says so when the email has no account behind it", async () => {
+    invitePlayer.mockResolvedValue("no_account");
+    renderPage();
+
+    fireEvent.change(await screen.findByPlaceholderText("irmao@exemplo.com"), {
+      target: { value: "ninguem@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Convidar$/ }));
+
+    expect(
+      await screen.findByText(/Não há nenhuma conta registada com esse email/)
+    ).toBeInTheDocument();
+  });
+
+  it("shows someone who was invited as waiting, not as a player", async () => {
+    fetchPlanInvites.mockResolvedValue([
+      {
+        invited_user_id: "irmao2",
+        email: "outro@exemplo.com",
+        display_name: "Outro",
+        status: "pending",
+        created_at: "2026-09-25T10:00:00.000Z",
+        invited_by_me: true,
+      },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText("outro@exemplo.com")).toBeInTheDocument();
+    expect(screen.getByText("À espera")).toBeInTheDocument();
+  });
+
+  it("offers an invitation to accept or refuse", async () => {
+    fetchMyPendingInvites.mockResolvedValue([
+      {
+        plan_id: "outro-plano",
+        plan_name: "Plano Milhão",
+        invited_by_name: "David",
+        created_at: "2026-09-25T10:00:00.000Z",
+      },
+    ]);
+    renderPage();
+
+    expect(
+      await screen.findByText(/David convidou-te para o Plano Milhão/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Aceitar$/ }));
+    expect(acceptInvite).toHaveBeenCalledWith("outro-plano");
   });
 
   it("says out loud what the ladder actually requires", async () => {

@@ -20,12 +20,17 @@ import {
   rungForBankroll,
   stakePctForDay,
 } from "@/lib/millionPlan";
+import { PlanPlayers } from "@/components/PlanPlayers";
 import {
+  acceptInvite,
   betsPlacedToday,
   buildStanding,
+  declineInvite,
+  fetchMyPendingInvites,
   fetchPlan,
   fetchPlanBets,
   savePlanBet,
+  type PendingInvite,
   type PlanBet,
   type PlanMember,
   type PlanRecord,
@@ -159,16 +164,26 @@ export default function MillionPlan() {
   const [odds, setOdds] = useState("");
   const [saving, setSaving] = useState(false);
   const [token, setToken] = useState(0);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [answering, setAnswering] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
+    // An invitation is the one thing someone can see about a plan they are not
+    // in yet, so it is fetched whether or not the plan itself loads.
+    fetchMyPendingInvites()
+      .then((invites) => {
+        if (!cancelled) setPendingInvites(invites);
+      })
+      .catch(() => undefined);
+
     (async () => {
       const found = await fetchPlan();
       if (!found) {
-        if (!cancelled) setError("Ainda não há nenhum plano criado nesta conta.");
+        if (!cancelled) setError(null);
         return;
       }
       const planBets = await fetchPlanBets(found.plan.id);
@@ -254,6 +269,24 @@ export default function MillionPlan() {
     });
   }, [me, picking, hasOdds, oddsValue, myStake]);
 
+  const respond = useCallback(
+    async (planId: string, accept: boolean) => {
+      setAnswering(true);
+      try {
+        await (accept ? acceptInvite(planId) : declineInvite(planId));
+        setPendingInvites((previous) =>
+          previous.filter((invite) => invite.plan_id !== planId)
+        );
+        setToken((value) => value + 1);
+      } catch {
+        setError("Não foi possível responder ao convite.");
+      } finally {
+        setAnswering(false);
+      }
+    },
+    []
+  );
+
   const place = useCallback(async () => {
     if (!plan || !me || !picking || !hasOdds || !user) return;
     setSaving(true);
@@ -298,10 +331,56 @@ export default function MillionPlan() {
     );
   }
 
-  if (error && !plan) {
+  const inviteBanner = pendingInvites.length > 0 && (
+    <div className="space-y-2">
+      {pendingInvites.map((invite) => (
+        <div
+          key={invite.plan_id}
+          className="sl-card border-primary/30 p-4 ring-1 ring-primary/20"
+        >
+          <p className="text-sm font-semibold text-foreground">
+            {invite.invited_by_name} convidou-te para o {invite.plan_name}.
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Se aceitares, passam a ver as apostas um do outro e cada um segue
+            com a sua banca.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              className="sl-btn-primary h-10 flex-1 text-xs"
+              disabled={answering}
+              onClick={() => respond(invite.plan_id, true)}
+            >
+              {answering ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Aceitar"
+              )}
+            </Button>
+            <button
+              type="button"
+              disabled={answering}
+              onClick={() => respond(invite.plan_id, false)}
+              className="h-10 flex-none rounded-lg border border-border px-4 text-xs font-semibold text-muted-foreground"
+            >
+              Recusar
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (!plan) {
     return (
       <AppLayout>
-        <p className="py-12 text-center text-sm text-muted-foreground">{error}</p>
+        <div className="space-y-3 py-4">
+          {inviteBanner}
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {error ??
+              "Ainda não estás em nenhum plano. Quando alguém te convidar, o convite aparece aqui."}
+          </p>
+        </div>
       </AppLayout>
     );
   }
@@ -333,6 +412,8 @@ export default function MillionPlan() {
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </motion.div>
+
+        {inviteBanner && <motion.div variants={fadeUp}>{inviteBanner}</motion.div>}
 
         <motion.section variants={fadeUp} className="sl-card px-4 py-4">
           <div className="flex items-end justify-between gap-3">
@@ -501,6 +582,14 @@ export default function MillionPlan() {
             </div>
           </motion.section>
         )}
+
+        <motion.div variants={fadeUp}>
+          <PlanPlayers
+            planId={plan.id}
+            members={members}
+            onChanged={() => setToken((value) => value + 1)}
+          />
+        </motion.div>
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
           <div className="border-b border-border px-4 py-3.5">
