@@ -233,6 +233,89 @@ def test_accuracy_forecasts_each_fixture_without_seeing_it():
     assert seen[0][2] < seen[-1][2]
 
 
+def test_accuracy_counts_each_event_once():
+    """Five of the fifteen markets are the mirror of another one. Counting both
+    sides weighs those events twice and makes the calibration curve symmetric
+    by construction, so the totals cover one side of each pair only."""
+    with_season(build_scoreable_season())
+
+    report = football_data.model_accuracy("Liga Portugal")
+
+    assert report["markets_forecast"] == 15
+    assert report["markets_counted"] == 10
+    assert report["predictions"] == report["fixtures_scored"] * 10
+
+    # The mirrors keep their own row: they are worth reading on their own.
+    rows = {row["market"] for row in report["markets"]}
+    assert "Menos de 3.5 Golos" in rows
+    assert "Mais de 3.5 Golos" in rows
+
+    # Each row says whether it is one of the counted ten, so a page listing
+    # them does not have to keep its own copy of which markets mirror which.
+    flags = {row["market"]: row["counted"] for row in report["markets"]}
+    assert flags["Mais de 3.5 Golos"] is True
+    assert flags["Menos de 3.5 Golos"] is False
+    assert sum(flags.values()) == report["markets_counted"]
+
+    counted = sum(band["samples"] for band in report["calibration"])
+    assert counted == report["predictions"]
+
+
+def build_varied_season(matchdays=16):
+    """A league with mixed results, so no market lands every single time.
+
+    build_scoreable_season is deliberately degenerate — the home side always
+    wins 2-0 — which makes every base rate 0 or 1 and the baseline perfect.
+    Measuring skill needs a league where the answer is not already known.
+    """
+    season = []
+    results = [(2, 0), (1, 1), (0, 2), (3, 1), (0, 0), (1, 2)]
+    for day in range(matchdays):
+        date = f"2026-{3 + day // 4:02d}-{1 + (day % 4) * 7:02d}T18:00:00Z"
+        for pair, (home_id, away_id) in enumerate([(1, 2), (3, 4)]):
+            home, away = results[(day + pair) % len(results)]
+            season.append(
+                team_match(
+                    len(season) + 1, home_id, away_id,
+                    f"T{home_id}", f"T{away_id}",
+                    home=home, away=away, kickoff=date,
+                )
+            )
+    return season
+
+
+def test_accuracy_compares_the_forecast_to_knowing_nothing():
+    """A Brier score alone says nothing. The comparison that means something is
+    against always quoting how often a market lands, ignoring the match."""
+    with_season(build_varied_season())
+
+    report = football_data.model_accuracy("Liga Portugal")
+
+    assert report["baseline_brier"] > 0, "a varied league has real base rates"
+    assert 0 <= report["brier"] <= 1
+
+    # The forecast is simulated, so the exact score moves a little between
+    # runs; what has to hold is that the skill figure says the same thing the
+    # two scores do.
+    expected = (1 - report["brier"] / report["baseline_brier"]) * 100
+    assert abs(report["skill_pct"] - expected) < 0.5
+    if report["brier"] < report["baseline_brier"]:
+        assert report["skill_pct"] > 0
+    else:
+        assert report["skill_pct"] <= 0
+
+
+def test_accuracy_claims_no_skill_when_the_answer_was_never_in_doubt():
+    """Where a market lands every time, knowing the base rate is already
+    perfect, and the model cannot claim credit for matching it."""
+    with_season(build_scoreable_season())
+
+    report = football_data.model_accuracy("Liga Portugal")
+
+    assert report["baseline_brier"] == 0
+    assert report["skill_pct"] == 0
+
+
 def test_accuracy_buckets_predictions_by_confidence():
     with_season(build_scoreable_season())
 

@@ -11,8 +11,12 @@ function league(overrides: Partial<LeagueAccuracy> = {}): LeagueAccuracy {
     season: null,
     fixtures_scored: 100,
     fixtures_skipped: 10,
-    predictions: 1500,
+    predictions: 1000,
+    markets_counted: 10,
+    markets_forecast: 15,
     brier: 0.2,
+    baseline_brier: 0.25,
+    skill_pct: 20,
     headline: { predictions: 100, predicted_pct: 70, actual_pct: 65 },
     markets: [
       {
@@ -117,6 +121,37 @@ describe("merging competitions", () => {
       "40-50%",
       "80-90%",
     ]);
+  });
+
+  it("scores the combined view against the same baseline, weighted by predictions", () => {
+    const merged = mergeAccuracy([
+      league({ league: "A", predictions: 3000, brier: 0.18, baseline_brier: 0.2 }),
+      league({ league: "B", predictions: 1000, brier: 0.26, baseline_brier: 0.2 }),
+    ]);
+
+    // (0.18 × 3000 + 0.26 × 1000) / 4000
+    expect(merged.brier).toBeCloseTo(0.2, 4);
+    expect(merged.baseline_brier).toBeCloseTo(0.2, 4);
+    // Matching the baseline is no skill at all, whatever each league claimed.
+    expect(merged.skill_pct).toBe(0);
+  });
+
+  it("never lets the skill figure disagree with the scores beside it", () => {
+    const merged = mergeAccuracy([
+      league({ predictions: 1000, brier: 0.15, baseline_brier: 0.25, skill_pct: 99 }),
+    ]);
+
+    expect(merged.skill_pct).toBe(40);
+  });
+
+  it("counts the markets a league forecasts, rather than adding them up", () => {
+    // Eight competitions forecast the same board. The combined view scores the
+    // same markets each one did; it does not score eighty.
+    const merged = mergeAccuracy([league({ league: "A" }), league({ league: "B" })]);
+
+    expect(merged.markets_counted).toBe(10);
+    expect(merged.markets_forecast).toBe(15);
+    expect(merged.predictions).toBe(2000);
   });
 
   it("names the combined view rather than claiming one league's name", () => {
