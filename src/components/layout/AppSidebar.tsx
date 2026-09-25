@@ -3,8 +3,6 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Target,
-  Clock,
-  Layers3,
   Wallet,
   Flag,
   Settings,
@@ -38,13 +36,6 @@ const navGroups = [
   {
     title: "Plano",
     items: [{ title: "Plano Milhão", url: "/plano", icon: Trophy }],
-  },
-  {
-    title: "Tracking",
-    items: [
-      { title: "Simple Bet", url: "/history", icon: Clock },
-      { title: "Multiples Bet", url: "/history-multiples", icon: Layers3 },
-    ],
   },
   {
     title: "System",

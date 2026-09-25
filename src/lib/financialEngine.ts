@@ -105,17 +105,13 @@ function resolvePotentialOdds(item: FinancialSourceItem) {
 
 export function buildFinancialSnapshot({
   analyses,
-  multiples,
   initialBankroll,
 }: {
   analyses: FinancialSourceItem[];
-  multiples: FinancialSourceItem[];
   initialBankroll: number;
 }): FinancialSnapshot {
   const safeInitialBankroll = Number.isFinite(initialBankroll) ? initialBankroll : 0;
-  const placedSingles = analyses.filter((item) => item.tracking.betPlaced);
-  const placedMultiples = multiples.filter((item) => item.tracking.betPlaced);
-  const placedItems = [...placedSingles, ...placedMultiples];
+  const placedItems = analyses.filter((item) => item.tracking.betPlaced);
 
   const totalProfitLoss = placedItems.reduce(
     (sum, item) => sum + (item.tracking.profitLoss || 0),

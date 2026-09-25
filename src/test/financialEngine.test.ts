@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildFinancialSnapshot } from "@/lib/financialEngine";
 
 describe("financialEngine", () => {
-  it("computes bankroll stats from settled and pending singles and multiples", () => {
+  it("computes bankroll stats from settled and pending bets", () => {
     const snapshot = buildFinancialSnapshot({
       initialBankroll: 100,
       analyses: [
@@ -28,8 +28,6 @@ describe("financialEngine", () => {
             profitLoss: 0,
           },
         },
-      ],
-      multiples: [
         {
           createdAt: "2026-04-20T14:00:00.000Z",
           combinedOdds: 3.2,
@@ -84,8 +82,6 @@ describe("financialEngine", () => {
             profitLoss: 10,
           },
         },
-      ],
-      multiples: [
         {
           createdAt: "2026-04-19T12:00:00.000Z",
           combinedOdds: 2.5,
@@ -128,7 +124,6 @@ describe("financialEngine", () => {
           },
         },
       ],
-      multiples: [],
     });
 
     expect(snapshot.dailyPerformance).toHaveLength(1);
@@ -139,11 +134,10 @@ describe("financialEngine", () => {
     });
   });
 
-  it("uses combined odds as pending potential profit fallback", () => {
+  it("uses the combined odd of a multi-game bet as the potential profit fallback", () => {
     const snapshot = buildFinancialSnapshot({
       initialBankroll: 40,
-      analyses: [],
-      multiples: [
+      analyses: [
         {
           createdAt: "2026-04-21T09:00:00.000Z",
           combinedOdds: 2.5,

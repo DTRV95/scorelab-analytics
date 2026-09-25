@@ -28,17 +28,6 @@ export interface DailyProfitPoint {
   bets: number;
 }
 
-interface MultiplePerformanceInput {
-  createdAt: string;
-  tracking: {
-    betPlaced: boolean;
-    stakeUsed: number | null;
-    resultStatus: string;
-    placedAt?: string | null;
-    profitLoss: number;
-  };
-}
-
 export interface AdvancedPerformanceBreakdown {
   summary: PerformanceSummary;
   dailyProfitTrend: DailyProfitPoint[];
@@ -65,25 +54,16 @@ function isValidTrackedBet(analysis: SavedAnalysis): boolean {
 
 export function getPerformanceSummary(
   analyses: SavedAnalysis[],
-  multiples: MultiplePerformanceInput[] = []
 ): PerformanceSummary {
   const trackedEntries = getAllAnalysisTrackingEntries(analyses).filter(
     (entry) =>
       entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
-  );
-  const settledMultiples = multiples.filter(
-    (multiple) =>
-      multiple.tracking.betPlaced && isSettledResult(multiple.tracking.resultStatus)
   );
 
   const snapshot = buildFinancialSnapshot({
     analyses: trackedEntries.map((entry) => ({
       createdAt: entry.createdAt,
       tracking: entry.tracking,
-    })),
-    multiples: settledMultiples.map((multiple) => ({
-      createdAt: multiple.createdAt,
-      tracking: multiple.tracking,
     })),
     initialBankroll: 0,
   });
@@ -102,14 +82,9 @@ export function getPerformanceSummary(
 
 export function getDailyProfitTrend(
   analyses: SavedAnalysis[],
-  multiples: MultiplePerformanceInput[] = []
 ): DailyProfitPoint[] {
   const settled = getAllAnalysisTrackingEntries(analyses).filter(
     (entry) => entry.tracking.betPlaced && isSettledResult(entry.tracking.resultStatus)
-  );
-  const settledMultiples = multiples.filter(
-    (multiple) =>
-      multiple.tracking.betPlaced && isSettledResult(multiple.tracking.resultStatus)
   );
   const grouped = new Map<
     string,
@@ -149,9 +124,6 @@ export function getDailyProfitTrend(
   };
 
   settled.forEach((entry) => addPoint({ createdAt: entry.createdAt, tracking: entry.tracking }));
-  settledMultiples.forEach((multiple) =>
-    addPoint({ createdAt: multiple.createdAt, tracking: multiple.tracking })
-  );
 
   return Array.from(grouped.entries())
     .map(([date, row]) => ({
@@ -171,14 +143,12 @@ export function getDailyProfitTrend(
 
 export function getAdvancedPerformanceBreakdown(
   analyses: SavedAnalysis[],
-  multiples: MultiplePerformanceInput[] = []
 ): AdvancedPerformanceBreakdown {
   const safeAnalyses = Array.isArray(analyses) ? analyses : [];
-  const safeMultiples = Array.isArray(multiples) ? multiples : [];
 
   return {
-    summary: getPerformanceSummary(safeAnalyses, safeMultiples),
-    dailyProfitTrend: getDailyProfitTrend(safeAnalyses, safeMultiples),
+    summary: getPerformanceSummary(safeAnalyses),
+    dailyProfitTrend: getDailyProfitTrend(safeAnalyses),
     tierPerformance: getTierPerformance(safeAnalyses),
     oddsBucketPerformance: getOddsBucketPerformance(safeAnalyses),
     edgeBucketPerformance: getEdgeBucketPerformance(safeAnalyses),

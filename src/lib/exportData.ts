@@ -6,11 +6,6 @@ import {
 import { buildCalibrationModel } from "@/lib/calibrationEngine";
 import { buildLearningDataset, getLearningDatasetSummary } from "@/lib/learningDataset";
 import { getModelAuditSummary } from "@/lib/modelAudit";
-import {
-  getMultipleDraft,
-  getMultiplePerformanceSummary,
-  getSavedMultiples,
-} from "@/lib/multipleStorage";
 
 function buildTimestamp() {
   const now = new Date();
@@ -23,11 +18,8 @@ function buildTimestamp() {
 
 export function buildScoreLabExport() {
   const analyses = getAnalyses();
-  const savedMultiples = getSavedMultiples();
   const bankrollSettings = getBankrollSettings();
   const bankrollStats = getBankrollStats();
-  const multipleDraft = getMultipleDraft();
-  const multipleSummary = getMultiplePerformanceSummary();
   const modelAuditSummary = getModelAuditSummary(analyses);
   const learningDataset = buildLearningDataset(analyses);
   const learningSummary = getLearningDatasetSummary(analyses);
@@ -41,7 +33,6 @@ export function buildScoreLabExport() {
       includes: [
         "bankroll",
         "analyses",
-        "multiples",
         "modelAudit",
         "modelLab",
         "learningDataset",
@@ -50,11 +41,8 @@ export function buildScoreLabExport() {
     },
     bankrollSettings,
     bankrollStats,
-    multipleSummary,
     counts: {
       analyses: analyses.length,
-      savedMultiples: savedMultiples.length,
-      draftLegs: multipleDraft.length,
       auditedMatches: modelAuditSummary.auditedMatches,
       auditedMarkets: modelAuditSummary.auditedMarkets,
       learningRows: learningDataset.length,
@@ -76,8 +64,6 @@ export function buildScoreLabExport() {
       },
     },
     analyses,
-    savedMultiples,
-    multipleDraft,
   };
 }
 

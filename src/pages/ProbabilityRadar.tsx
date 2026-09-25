@@ -22,16 +22,7 @@ import {
   type ProbabilityResult,
 } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
-import { PlaceBetForm } from "@/components/PlaceBetForm";
 import { buildApiUrl } from "@/lib/apiConfig";
-import {
-  buildBetFromBoard,
-  buildLegFromBoard,
-  edgeFor,
-  suggestStake,
-} from "@/lib/betFromBoard";
-import { calculateNextBankrollBefore, saveAnalysis } from "@/lib/analysisStorage";
-import { addLegToMultipleDraft } from "@/lib/multipleStorage";
 import {
   DEFAULT_LEAGUE_KEY,
   LEAGUE_PRESETS,
@@ -169,8 +160,6 @@ function BoardMatchRow({
           >
             <div className="space-y-4 border-t border-border bg-[hsl(var(--sl-surface))] px-3.5 py-4 sm:px-4">
               <ProbabilityBreakdown data={match} />
-
-              <PlaceBetForm match={match} />
 
               <div className="rounded-xl border border-border bg-card p-3.5">
                 <p className="text-xs leading-relaxed text-muted-foreground">

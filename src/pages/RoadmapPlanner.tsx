@@ -23,11 +23,6 @@ import {
   getBankrollStats,
 } from "@/lib/analysisStorage";
 import {
-  MULTIPLES_UPDATED_EVENT,
-  getMultiplePerformanceSummary,
-  getSavedMultiples,
-} from "@/lib/multipleStorage";
-import {
   DEFAULT_ROADMAP_SETTINGS,
   createRoadmapMissionId,
   deleteRoadmapMission,
@@ -907,7 +902,6 @@ export default function RoadmapPlanner() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(() => getBankrollStats());
   const [analyses, setAnalyses] = useState(() => getAnalyses());
-  const [multiples, setMultiples] = useState(() => getSavedMultiples());
   const [settings, setSettings] = useState<RoadmapSettings>(() => getRoadmapSettings());
   const [dayMemories, setDayMemories] = useState(() => getRoadmapDayMemories());
   const [missionHistory, setMissionHistory] = useState<RoadmapMissionRecord[]>(() =>
@@ -933,18 +927,15 @@ export default function RoadmapPlanner() {
     const refresh = () => {
       setStats(getBankrollStats());
       setAnalyses(getAnalyses());
-      setMultiples(getSavedMultiples());
       setDayMemories(getRoadmapDayMemories());
       setSettings(getRoadmapSettings());
       setMissionHistory(getRoadmapMissions());
     };
 
     window.addEventListener(ANALYSES_UPDATED_EVENT, refresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, refresh);
     window.addEventListener(PERSISTENCE_HYDRATED_EVENT, refresh);
     return () => {
       window.removeEventListener(ANALYSES_UPDATED_EVENT, refresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, refresh);
       window.removeEventListener(PERSISTENCE_HYDRATED_EVENT, refresh);
     };
   }, []);
@@ -975,7 +966,6 @@ export default function RoadmapPlanner() {
         createdAt: entry.createdAt,
         tracking: entry.tracking,
       })),
-      multiples,
       initialBankroll: financialStartingBankroll,
     });
     const dailyPerformanceMap = new Map(
@@ -1005,16 +995,12 @@ export default function RoadmapPlanner() {
           entry.tracking.betPlaced &&
           getDateKeyInTimezone(entry.createdAt) === date
       );
-      const dayCreatedMultiples = multiples.filter(
-        (multiple) =>
-          multiple.tracking.betPlaced &&
-          getDateKeyInTimezone(multiple.createdAt) === date
-      );
       const dayPerformance = dailyPerformanceMap.get(date) || null;
 
-      const actualStake =
-        dayCreatedAnalyses.reduce((acc, entry) => acc + (entry.tracking.stakeUsed || 0), 0) +
-        dayCreatedMultiples.reduce((acc, multiple) => acc + (multiple.tracking.stakeUsed || 0), 0);
+      const actualStake = dayCreatedAnalyses.reduce(
+        (acc, entry) => acc + (entry.tracking.stakeUsed || 0),
+        0
+      );
 
       const actualProfit =
         dayPerformance
@@ -1028,10 +1014,10 @@ export default function RoadmapPlanner() {
         date,
         actualStake,
         actualProfit,
-        tickets: dayCreatedAnalyses.length + dayCreatedMultiples.length,
-        activeTickets:
-          dayCreatedAnalyses.filter((entry) => entry.tracking.resultStatus === "pending").length +
-          dayCreatedMultiples.filter((multiple) => multiple.tracking.resultStatus === "pending").length,
+        tickets: dayCreatedAnalyses.length,
+        activeTickets: dayCreatedAnalyses.filter(
+          (entry) => entry.tracking.resultStatus === "pending"
+        ).length,
         settledBets: dayPerformance?.settledBets || 0,
       };
     });
@@ -1103,7 +1089,6 @@ export default function RoadmapPlanner() {
       targetRealism
     );
     const bestZone = getBestPerformingZone();
-    const multipleSummary = getMultiplePerformanceSummary();
     const favoredMarket =
       bestZone.bestMarket && bestZone.bestMarket.roi > 0 ? bestZone.bestMarket : null;
     const favoredEdgeZone =
@@ -1114,24 +1099,6 @@ export default function RoadmapPlanner() {
       bestZone.bestConfidenceBucket && bestZone.bestConfidenceBucket.roi > 0
         ? bestZone.bestConfidenceBucket
         : null;
-    const multipleStance =
-      multipleSummary.settledMultiples >= 3
-        ? multipleSummary.roi > 0
-          ? {
-              label: "Multiples Supportive",
-              tone: "positive" as const,
-              detail: `${formatPct(multipleSummary.roi)} ROI across ${multipleSummary.settledMultiples} settled multiples.`,
-            }
-          : {
-              label: "Multiples Dragging",
-              tone: "negative" as const,
-              detail: `${formatPct(multipleSummary.roi)} ROI across ${multipleSummary.settledMultiples} settled multiples.`,
-            }
-        : {
-            label: "Multiples Under Sample",
-            tone: "neutral" as const,
-            detail: `${multipleSummary.settledMultiples} settled multiples tracked so far.`,
-          };
     const missionIntelligenceSummary = favoredMarket
       ? `${favoredMarket.market} is the strongest settled market, so today's mission should lean there when the board allows it.`
       : "There is not enough settled market data yet to lean into one clear profile.";
@@ -1205,11 +1172,6 @@ export default function RoadmapPlanner() {
         : null,
       favoredEdgeZone
         ? `Prefer setups landing in edge bucket ${favoredEdgeZone.bucket}; that zone is validating best in settled results.`
-        : null,
-      multipleSummary.settledMultiples >= 3 && multipleSummary.roi < 0
-        ? "Keep the roadmap single-led for now; multiples are still dragging the execution profile."
-        : multipleSummary.settledMultiples >= 3 && multipleSummary.roi > 0
-        ? "Multiples can assist selectively, but only after the single-led mission is already clean."
         : null,
     ].filter(Boolean) as string[];
 
@@ -1375,10 +1337,9 @@ export default function RoadmapPlanner() {
     const tomorrowTargetProfit = tomorrowMission.plannedProfit;
     const suggestedExtraDays =
       targetRealism === "Unrealistic" ? Math.ceil(requiredReturnOnStakePct / 6) : 0;
-    const settledForSimulation = [
-      ...trackedAnalysisEntries.map((entry) => ({ tracking: entry.tracking })),
-      ...multiples.map((multiple) => ({ tracking: multiple.tracking })),
-    ].filter(
+    const settledForSimulation = trackedAnalysisEntries
+      .map((entry) => ({ tracking: entry.tracking }))
+      .filter(
       (entry) =>
         entry.tracking.resultStatus === "green" ||
         entry.tracking.resultStatus === "red"
@@ -1442,7 +1403,6 @@ export default function RoadmapPlanner() {
       favoredMarket,
       favoredEdgeZone,
       favoredConfidenceZone,
-      multipleStance,
       missionTone,
       targetRealism,
       missionStatus,
@@ -1471,7 +1431,7 @@ export default function RoadmapPlanner() {
       dailyLog: logWithTargets,
       path,
     };
-  }, [analyses, dayMemories, effectiveStartedAt, multiples, parsedInputs, settings.startingBankroll, stats]);
+  }, [analyses, dayMemories, effectiveStartedAt, parsedInputs, settings.startingBankroll, stats]);
 
   useEffect(() => {
     syncRoadmapDayMemories(roadmap.dailyLog);

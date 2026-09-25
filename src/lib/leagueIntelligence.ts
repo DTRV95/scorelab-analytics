@@ -2,7 +2,6 @@ import {
   getAllAnalysisTrackingEntries,
   getAnalyses,
 } from "@/lib/analysisStorage";
-import { getSavedMultiples } from "@/lib/multipleStorage";
 import type { SavedAnalysis } from "@/types/analysis";
 
 export type LeagueIntelligenceStatus =
@@ -112,7 +111,6 @@ export function getLeagueIntelligenceTone(status: LeagueIntelligenceStatus) {
 export function buildLeagueIntelligenceRows(
   analyses: SavedAnalysis[] = getAnalyses()
 ): LeagueIntelligenceRow[] {
-  const savedMultiples = getSavedMultiples();
   const analysisMap = new Map(analyses.map((analysis) => [analysis.id, analysis]));
   const leagueMap = new Map<
     string,
@@ -190,55 +188,6 @@ export function buildLeagueIntelligenceRows(
       row.marketMap.set(market, currentMarket);
     });
 
-  savedMultiples
-    .filter(
-      (multiple) =>
-        multiple.tracking.betPlaced &&
-        (multiple.tracking.resultStatus === "green" ||
-          multiple.tracking.resultStatus === "red" ||
-          multiple.tracking.resultStatus === "void")
-    )
-    .forEach((multiple) => {
-      const resolvedLegs = multiple.legs.filter(
-        (leg) =>
-          leg.resultStatus === "green" ||
-          leg.resultStatus === "red" ||
-          leg.resultStatus === "void"
-      );
-
-      if (!resolvedLegs.length) return;
-
-      const allocatedStake = (multiple.tracking.stakeUsed || 0) / resolvedLegs.length;
-      const allocatedProfitLoss =
-        (multiple.tracking.profitLoss || 0) / resolvedLegs.length;
-
-      resolvedLegs.forEach((leg) => {
-        const sourceAnalysis = analysisMap.get(leg.analysisId);
-        const league = sourceAnalysis?.league?.trim() || "Unspecified";
-        const row = ensureLeague(league);
-        const market = leg.market;
-
-        row.bets += 1;
-        row.totalStake += allocatedStake;
-        row.profitLoss += allocatedProfitLoss;
-        row.confidenceSum += leg.confidence || 0;
-        row.edgeSum += leg.valueBet || 0;
-
-        if (leg.resultStatus === "green") row.wins += 1;
-        if (leg.resultStatus === "red") row.losses += 1;
-        if (leg.resultStatus === "void") row.voids += 1;
-
-        const currentMarket = row.marketMap.get(market) || {
-          bets: 0,
-          totalStake: 0,
-          profitLoss: 0,
-        };
-        currentMarket.bets += 1;
-        currentMarket.totalStake += allocatedStake;
-        currentMarket.profitLoss += allocatedProfitLoss;
-        row.marketMap.set(market, currentMarket);
-      });
-    });
 
   return Array.from(leagueMap.entries())
     .map(([league, row]) => {

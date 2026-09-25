@@ -12,9 +12,6 @@ import {
 import {
   ANALYSES_UPDATED_EVENT,
 } from "@/lib/analysisStorage";
-import {
-  MULTIPLES_UPDATED_EVENT,
-} from "@/lib/multipleStorage";
 
 export function ScoreLabDataProvider({ children }: { children: ReactNode }) {
   const [coreData, setCoreData] = useState(loadCoreScoreLabData);
@@ -41,14 +38,12 @@ export function ScoreLabDataProvider({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener(ANALYSES_UPDATED_EVENT, scheduleRefresh);
-    window.addEventListener(MULTIPLES_UPDATED_EVENT, scheduleRefresh);
     window.addEventListener("scorelab:persistence-hydrated", scheduleRefresh);
     window.addEventListener("storage", scheduleRefresh);
     window.addEventListener("focus", scheduleRefresh);
 
     return () => {
       window.removeEventListener(ANALYSES_UPDATED_EVENT, scheduleRefresh);
-      window.removeEventListener(MULTIPLES_UPDATED_EVENT, scheduleRefresh);
       window.removeEventListener("scorelab:persistence-hydrated", scheduleRefresh);
       window.removeEventListener("storage", scheduleRefresh);
       window.removeEventListener("focus", scheduleRefresh);

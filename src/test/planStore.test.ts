@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStanding,
-  settleFromScore,
+  combineOdds,
+  combinedModelProb,
+  openFixtureRefs,
+  settleFromScores,
   type PlanBet,
   type PlanMember,
 } from "@/lib/planStore";
@@ -13,27 +16,40 @@ const member: PlanMember = {
   starting_bankroll: 10,
 };
 
-function bet(overrides: Partial<PlanBet> = {}): PlanBet {
+function leg(overrides: Partial<PlanBet["legs"][number]> = {}) {
   return {
-    id: "b1",
-    userId: "u1",
     match: "FC Porto vs SL Benfica",
     homeTeam: "FC Porto",
     awayTeam: "SL Benfica",
     league: "Liga Portugal",
     market: "Casa",
     odds: 2,
-    stake: 5,
     modelProb: 60,
+    fixtureId: 1,
+    kickoff: null,
+    status: "pending" as const,
+    ...overrides,
+  };
+}
+
+function bet(overrides: Partial<PlanBet> = {}): PlanBet {
+  return {
+    id: "b1",
+    userId: "u1",
+    legs: [leg()],
+    odds: 2,
+    stake: 5,
     day: 1,
     status: "green",
     profitLoss: 5,
     placedAt: "2026-09-21T10:00:00.000Z",
     settledAt: "2026-09-21T20:00:00.000Z",
-    fixture: { id: 1, league: "Liga Portugal", kickoff: null },
     ...overrides,
   };
 }
+
+const scores = (entries: [number, [number, number]][]) =>
+  new Map(entries.map(([id, [h, a]]) => [id, { homeGoals: h, awayGoals: a }]));
 
 describe("a player's standing", () => {
   it("builds the bankroll from the results, so it cannot drift", () => {
@@ -99,27 +115,84 @@ describe("a player's standing", () => {
   });
 });
 
-describe("settling a plan bet", () => {
-  it("pays out a winning market", () => {
-    const settled = settleFromScore(bet({ status: "pending", profitLoss: 0 }), 2, 0);
-
-    expect(settled?.status).toBe("green");
-    expect(settled?.profitLoss).toBe(5);
-    expect(settled?.settledAt).not.toBeNull();
+describe("a day made of several games", () => {
+  it("multiplies the prices, so short odds add up to the plan's line", () => {
+    // Three games at 1.25 is the 1.95 the plan asks for, reached another way.
+    expect(combineOdds([{ odds: 1.25 }, { odds: 1.25 }, { odds: 1.25 }])).toBe(1.95);
+    expect(combineOdds([{ odds: 1.85 }])).toBe(1.85);
+    expect(combineOdds([])).toBe(0);
   });
 
-  it("takes the stake on a losing one", () => {
-    const settled = settleFromScore(bet({ status: "pending", profitLoss: 0 }), 0, 1);
+  it("multiplies the model's own chances the same way", () => {
+    expect(combinedModelProb([{ modelProb: 50 }, { modelProb: 50 }])).toBe(25);
+  });
+
+  it("lists every fixture the open days are waiting on, once each", () => {
+    const open = bet({
+      id: "open",
+      status: "pending",
+      legs: [leg({ fixtureId: 1 }), leg({ fixtureId: 2, league: "Liga Portugal" })],
+    });
+    const done = bet({ id: "done", legs: [leg({ fixtureId: 3 })] });
+
+    expect(openFixtureRefs([open, done])).toEqual([
+      { id: 1, league: "Liga Portugal" },
+      { id: 2, league: "Liga Portugal" },
+    ]);
+  });
+});
+
+describe("settling a day", () => {
+  it("pays out when every game lands", () => {
+    const settled = settleFromScores(
+      bet({
+        status: "pending",
+        profitLoss: 0,
+        odds: 4,
+        legs: [leg({ fixtureId: 1 }), leg({ fixtureId: 2, market: "Fora" })],
+      }),
+      scores([
+        [1, [2, 0]],
+        [2, [0, 1]],
+      ])
+    );
+
+    expect(settled?.status).toBe("green");
+    expect(settled?.profitLoss).toBe(15);
+    expect(settled?.legs.every((entry) => entry.status === "green")).toBe(true);
+  });
+
+  it("loses the day on one failed game", () => {
+    const settled = settleFromScores(
+      bet({
+        status: "pending",
+        profitLoss: 0,
+        legs: [leg({ fixtureId: 1 }), leg({ fixtureId: 2 })],
+      }),
+      scores([
+        [1, [2, 0]],
+        [2, [0, 1]],
+      ])
+    );
 
     expect(settled?.status).toBe("red");
     expect(settled?.profitLoss).toBe(-5);
+    expect(settled?.legs.map((entry) => entry.status)).toEqual(["green", "red"]);
+  });
+
+  it("waits for a game that has not been played", () => {
+    const settled = settleFromScores(
+      bet({ status: "pending", legs: [leg({ fixtureId: 1 }), leg({ fixtureId: 9 })] }),
+      scores([[1, [2, 0]]])
+    );
+
+    expect(settled).toBeNull();
   });
 
   it("leaves a market a score cannot decide alone", () => {
-    const settled = settleFromScore(
-      bet({ status: "pending", market: "Handicap Asiático +1.5" }),
-      2,
-      0
+    const settled = settleFromScores(
+      bet({ status: "pending", legs: [leg({ market: "Handicap Asiático +1.5" })] }),
+      scores([[1, [2, 0]]])
     );
 
     expect(settled).toBeNull();

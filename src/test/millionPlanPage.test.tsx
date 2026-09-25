@@ -62,38 +62,52 @@ vi.mock("@/lib/planStore", async () => {
       {
         id: "b1",
         userId: "david",
-        match: "FC Porto vs SL Benfica",
-        homeTeam: "FC Porto",
-        awayTeam: "SL Benfica",
-        league: "Liga Portugal",
-        market: "Casa",
+        legs: [
+          {
+            match: "FC Porto vs SL Benfica",
+            homeTeam: "FC Porto",
+            awayTeam: "SL Benfica",
+            league: "Liga Portugal",
+            market: "Casa",
+            odds: 2,
+            modelProb: 60,
+            fixtureId: 1,
+            kickoff: null,
+            status: "green" as const,
+          },
+        ],
         odds: 2,
         stake: 5,
-        modelProb: 60,
         day: 1,
         status: "green" as const,
         profitLoss: 5,
         placedAt: "2026-09-21T10:00:00.000Z",
         settledAt: "2026-09-21T20:00:00.000Z",
-        fixture: { id: 1, league: "Liga Portugal", kickoff: null },
       },
       {
         id: "b2",
         userId: "irmao",
-        match: "Sporting CP vs Arouca",
-        homeTeam: "Sporting CP",
-        awayTeam: "Arouca",
-        league: "Liga Portugal",
-        market: "Casa",
+        legs: [
+          {
+            match: "Sporting CP vs Arouca",
+            homeTeam: "Sporting CP",
+            awayTeam: "Arouca",
+            league: "Liga Portugal",
+            market: "Casa",
+            odds: 1.8,
+            modelProb: 71,
+            fixtureId: 2,
+            kickoff: null,
+            status: "red" as const,
+          },
+        ],
         odds: 1.8,
         stake: 5,
-        modelProb: 71,
         day: 1,
         status: "red" as const,
         profitLoss: -5,
         placedAt: "2026-09-21T10:00:00.000Z",
         settledAt: "2026-09-21T20:00:00.000Z",
-        fixture: { id: 2, league: "Liga Portugal", kickoff: null },
       },
     ]),
     savePlanBet,
@@ -186,7 +200,7 @@ describe("Plano Milhão", () => {
   it("offers the ten strongest calls, best first", async () => {
     renderPage();
 
-    const rows = await screen.findAllByRole("button", { name: /^Escolher$/ });
+    const rows = await screen.findAllByRole("button", { name: /^Juntar$/ });
     expect(rows).toHaveLength(10);
     // The board had twelve; the weakest two are left out.
     expect(screen.getByText(/Equipa 11 vs Rival/)).toBeInTheDocument();
@@ -206,7 +220,7 @@ describe("Plano Milhão", () => {
   it("warns when the odd falls outside what the plan allows", async () => {
     renderPage();
 
-    fireEvent.click((await screen.findAllByRole("button", { name: /^Escolher$/ }))[0]);
+    fireEvent.click((await screen.findAllByRole("button", { name: /^Juntar$/ }))[0]);
     fireEvent.change(screen.getByPlaceholderText("1.85"), {
       target: { value: "3.40" },
     });
@@ -219,7 +233,7 @@ describe("Plano Milhão", () => {
   it("registers the day's bet with the plan's stake", async () => {
     renderPage();
 
-    fireEvent.click((await screen.findAllByRole("button", { name: /^Escolher$/ }))[0]);
+    fireEvent.click((await screen.findAllByRole("button", { name: /^Juntar$/ }))[0]);
     fireEvent.change(screen.getByPlaceholderText("1.85"), {
       target: { value: "1.85" },
     });
@@ -297,6 +311,27 @@ describe("Plano Milhão", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Aceitar$/ }));
     expect(acceptInvite).toHaveBeenCalledWith("outro-plano");
+  });
+
+  it("combines several games into one day's bet", async () => {
+    renderPage();
+
+    const join = await screen.findAllByRole("button", { name: /^Juntar$/ });
+    fireEvent.click(join[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Juntar$/ })[0]);
+
+    const oddInputs = screen.getAllByPlaceholderText("1.85");
+    fireEvent.change(oddInputs[0], { target: { value: "1.30" } });
+    fireEvent.change(oddInputs[1], { target: { value: "1.50" } });
+
+    // 1.30 x 1.50: two short prices making the plan's line between them.
+    expect(await screen.findByText("1.95")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Registar aposta do dia 2/ }));
+
+    const [, , payload] = savePlanBet.mock.calls[0];
+    expect(payload).toMatchObject({ odds: 1.95, stake: 7.5, day: 2 });
+    expect((payload as { legs: unknown[] }).legs).toHaveLength(2);
   });
 
   it("lets the owner set a start date and the other terms", async () => {

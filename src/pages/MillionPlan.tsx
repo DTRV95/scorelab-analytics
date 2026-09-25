@@ -22,6 +22,8 @@ import {
   stakePctForDay,
 } from "@/lib/millionPlan";
 import { PlanPlayers } from "@/components/PlanPlayers";
+import { combineOdds, openFixtureRefs, settleFromScores, updatePlanBet } from "@/lib/planStore";
+import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import { CreatePlan, PlanSettings } from "@/components/PlanSettings";
 import {
   acceptInvite,
@@ -164,8 +166,9 @@ export default function MillionPlan() {
   const [board, setBoard] = useState<BoardMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [picking, setPicking] = useState<BoardMatch | null>(null);
-  const [odds, setOdds] = useState("");
+  // What this player has lined up for today: the games chosen, each with the
+  // odd their bookmaker is offering.
+  const [selection, setSelection] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
   const [token, setToken] = useState(0);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
@@ -283,15 +286,36 @@ export default function MillionPlan() {
   );
 
   const takenByMe = useMemo(
-    () => new Set(me?.bets.map((bet) => bet.fixture?.id).filter(Boolean)),
+    () =>
+      new Set(
+        (me?.bets ?? []).flatMap((bet) => bet.legs.map((leg) => leg.fixtureId))
+      ),
     [me]
   );
 
-  const oddsValue = Number(odds.replace(",", "."));
-  const hasOdds = Number.isFinite(oddsValue) && oddsValue > 1;
   const myStake = me ? plannedStake(me.bankroll, me.day) : 0;
+
+  /** The games picked for today, in board order, with valid prices only. */
+  const chosenLegs = useMemo(() => {
+    return shortlist
+      .filter((match) => selection[match.fixture_id] !== undefined)
+      .map((match) => {
+        const raw = (selection[match.fixture_id] ?? "").replace(",", ".");
+        const odds = Number(raw);
+        return {
+          match,
+          odds: Number.isFinite(odds) && odds > 1 ? odds : 0,
+        };
+      });
+  }, [shortlist, selection]);
+
+  const allPriced =
+    chosenLegs.length > 0 && chosenLegs.every((leg) => leg.odds > 0);
+  const combinedOdd = allPriced ? combineOdds(chosenLegs) : 0;
+  const hasOdds = combinedOdd > 1;
+  const oddsValue = combinedOdd;
   const violations = useMemo(() => {
-    if (!me || !picking || !hasOdds) return [];
+    if (!me || !hasOdds) return [];
     return checkBet({
       odds: oddsValue,
       stake: myStake,
@@ -300,7 +324,44 @@ export default function MillionPlan() {
       betsPlacedToday: betsPlacedToday(me),
       lossStreak: me.lossStreak,
     });
-  }, [me, picking, hasOdds, oddsValue, myStake]);
+  }, [me, hasOdds, oddsValue, myStake]);
+
+  // Open days are closed from the final scores, without anyone pressing
+  // anything: the bet is all-or-nothing and the score decides it.
+  useEffect(() => {
+    if (!plan || bets.length === 0) return;
+    const refs = openFixtureRefs(bets);
+    if (refs.length === 0) return;
+
+    let cancelled = false;
+
+    fetchFixtureResults(refs)
+      .then(async ({ results }) => {
+        const scores = new Map<number, { homeGoals: number; awayGoals: number }>();
+        refs.forEach((ref) => {
+          const score = finalScore(results, ref.id);
+          if (score) scores.set(ref.id, score);
+        });
+        if (scores.size === 0 || cancelled) return;
+
+        const settled = bets
+          .filter((bet) => bet.status === "pending")
+          .map((bet) => ({ bet, payload: settleFromScores(bet, scores) }))
+          .filter((entry) => entry.payload !== null);
+
+        if (settled.length === 0 || cancelled) return;
+
+        await Promise.all(
+          settled.map((entry) => updatePlanBet(plan.id, entry.bet.id, entry.payload!))
+        );
+        if (!cancelled) setToken((value) => value + 1);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [plan, bets]);
 
   const respond = useCallback(
     async (planId: string, accept: boolean) => {
@@ -321,38 +382,38 @@ export default function MillionPlan() {
   );
 
   const place = useCallback(async () => {
-    if (!plan || !me || !picking || !hasOdds || !user) return;
+    if (!plan || !me || !hasOdds || !user) return;
     setSaving(true);
     try {
       const saved = await savePlanBet(plan.id, user.id, {
-        match: `${picking.home_name} vs ${picking.away_name}`,
-        homeTeam: picking.home_name,
-        awayTeam: picking.away_name,
-        league: picking.league,
-        market: picking.headline_market,
-        odds: oddsValue,
+        legs: chosenLegs.map(({ match, odds }) => ({
+          match: `${match.home_name} vs ${match.away_name}`,
+          homeTeam: match.home_name,
+          awayTeam: match.away_name,
+          league: match.league,
+          market: match.headline_market,
+          odds,
+          modelProb: match.headline_pct,
+          fixtureId: match.fixture_id,
+          kickoff: match.kickoff,
+          status: "pending",
+        })),
+        odds: combinedOdd,
         stake: myStake,
-        modelProb: picking.headline_pct,
         day: me.day,
         status: "pending",
         profitLoss: 0,
         placedAt: new Date().toISOString(),
         settledAt: null,
-        fixture: {
-          id: picking.fixture_id,
-          league: picking.league,
-          kickoff: picking.kickoff,
-        },
       });
       setBets((previous) => [...previous, saved]);
-      setPicking(null);
-      setOdds("");
+      setSelection({});
     } catch {
       setError("A aposta não ficou guardada. Tenta outra vez.");
     } finally {
       setSaving(false);
     }
-  }, [plan, me, picking, hasOdds, user, oddsValue, myStake]);
+  }, [plan, me, hasOdds, user, chosenLegs, combinedOdd, myStake]);
 
   if (loading) {
     return (
@@ -548,7 +609,7 @@ export default function MillionPlan() {
             <div className="divide-y divide-border">
               {shortlist.map((match) => {
                 const taken = takenByMe.has(match.fixture_id);
-                const isPicking = picking?.fixture_id === match.fixture_id;
+                const chosen = selection[match.fixture_id] !== undefined;
 
                 return (
                   <div key={match.fixture_id} className="px-4 py-3">
@@ -566,82 +627,44 @@ export default function MillionPlan() {
                       <span className="font-mono-data flex-none text-sm font-bold text-[hsl(var(--sl-green))]">
                         {match.headline_pct.toFixed(1)}%
                       </span>
+
+                      {chosen ? (
+                        <input
+                          inputMode="decimal"
+                          autoFocus
+                          value={selection[match.fixture_id]}
+                          onChange={(event) =>
+                            setSelection((previous) => ({
+                              ...previous,
+                              [match.fixture_id]: event.target.value,
+                            }))
+                          }
+                          placeholder="1.85"
+                          aria-label={`Odd para ${match.home_name} vs ${match.away_name}`}
+                          className="h-9 w-[72px] flex-none rounded-lg border border-primary/40 bg-card px-2 text-center font-mono-data text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                      ) : null}
+
                       <button
                         type="button"
                         disabled={taken}
-                        onClick={() => {
-                          setPicking(isPicking ? null : match);
-                          setOdds("");
-                        }}
-                        className="flex-none rounded-lg border border-primary/40 px-2.5 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-40"
+                        onClick={() =>
+                          setSelection((previous) => {
+                            const next = { ...previous };
+                            if (chosen) delete next[match.fixture_id];
+                            else next[match.fixture_id] = "";
+                            return next;
+                          })
+                        }
+                        className={`flex-none rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-40 ${
+                          chosen
+                            ? "border-border text-muted-foreground"
+                            : "border-primary/40 text-primary"
+                        }`}
                       >
-                        {taken ? "Escolhido" : isPicking ? "Fechar" : "Escolher"}
+                        {taken ? "Feito" : chosen ? "Tirar" : "Juntar"}
                       </button>
                     </div>
-
-                    {isPicking && (
-                      <div className="mt-3 space-y-2 rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3">
-                        <label className="block">
-                          <span className="sl-meta text-[11px]">
-                            Odd da tua casa
-                          </span>
-                          <input
-                            inputMode="decimal"
-                            value={odds}
-                            onChange={(event) => setOdds(event.target.value)}
-                            placeholder="1.85"
-                            className="mt-1 h-10 w-full rounded-lg border border-border bg-card px-3 font-mono-data text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          />
-                        </label>
-
-                        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-                          <span className="sl-meta text-[11px]">
-                            Stake do plano
-                          </span>
-                          <span className="font-mono-data text-sm font-bold text-foreground">
-                            {eur.format(myStake)}
-                          </span>
-                        </div>
-
-                        {hasOdds && (
-                          <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--sl-green))]/30 bg-[hsl(var(--sl-green))]/5 px-3 py-2">
-                            <span className="text-xs font-semibold text-foreground">
-                              Banca se entrar
-                            </span>
-                            <span className="font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
-                              {eur.format(
-                                me.bankroll + myStake * (oddsValue - 1)
-                              )}
-                            </span>
-                          </div>
-                        )}
-
-                        {violations.map((violation) => (
-                          <p
-                            key={violation.code}
-                            className={`text-[11px] leading-relaxed ${
-                              violation.severity === "breach"
-                                ? "text-destructive"
-                                : "sl-meta"
-                            }`}
-                          >
-                            {violation.message}
-                          </p>
-                        ))}
-
-                        <Button
-                          className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
-                          disabled={!hasOdds || saving}
-                          onClick={place}
-                        >
-                          {saving ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            `Registar aposta do dia ${me.day}`
-                          )}
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -652,6 +675,70 @@ export default function MillionPlan() {
                 </p>
               )}
             </div>
+
+            {chosenLegs.length > 0 && (
+              <div className="space-y-2 border-t border-border p-4">
+                <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2.5">
+                  <span className="sl-meta text-[11px]">
+                    {chosenLegs.length === 1
+                      ? "1 jogo"
+                      : `${chosenLegs.length} jogos, odds multiplicadas`}
+                  </span>
+                  <span className="font-mono-data text-lg font-bold text-foreground">
+                    {allPriced ? combinedOdd.toFixed(2) : "—"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
+                  <span className="sl-meta text-[11px]">Stake do plano</span>
+                  <span className="font-mono-data text-sm font-bold text-foreground">
+                    {eur.format(myStake)}
+                  </span>
+                </div>
+
+                {hasOdds && (
+                  <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--sl-green))]/30 bg-[hsl(var(--sl-green))]/5 px-3 py-2.5">
+                    <span className="text-xs font-semibold text-foreground">
+                      Banca se entrar tudo
+                    </span>
+                    <span className="font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
+                      {eur.format(me.bankroll + myStake * (combinedOdd - 1))}
+                    </span>
+                  </div>
+                )}
+
+                {!allPriced && (
+                  <p className="sl-meta text-[11px]">
+                    Falta meter a odd de cada jogo escolhido.
+                  </p>
+                )}
+
+                {violations.map((violation) => (
+                  <p
+                    key={violation.code}
+                    className={`text-[11px] leading-relaxed ${
+                      violation.severity === "breach"
+                        ? "text-destructive"
+                        : "sl-meta"
+                    }`}
+                  >
+                    {violation.message}
+                  </p>
+                ))}
+
+                <Button
+                  className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
+                  disabled={!hasOdds || saving}
+                  onClick={place}
+                >
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    `Registar aposta do dia ${me.day}`
+                  )}
+                </Button>
+              </div>
+            )}
           </motion.section>
         )}
 
@@ -692,12 +779,19 @@ export default function MillionPlan() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-foreground">
-                          {bet.match}
+                          {bet.legs.length === 1
+                            ? bet.legs[0].match
+                            : `${bet.legs[0]?.match ?? "—"} + ${
+                                bet.legs.length - 1
+                              }`}
                         </p>
                         <p className="sl-meta truncate text-[11px]">
                           Dia {bet.day} ·{" "}
-                          {MARKET_LABELS[bet.market] ?? bet.market} @{" "}
-                          {bet.odds.toFixed(2)}
+                          {bet.legs.length === 1
+                            ? MARKET_LABELS[bet.legs[0].market] ??
+                              bet.legs[0].market
+                            : `${bet.legs.length} jogos`}{" "}
+                          @ {bet.odds.toFixed(2)}
                         </p>
                       </div>
                       <span

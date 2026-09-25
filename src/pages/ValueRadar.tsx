@@ -303,18 +303,6 @@ export default function ValueRadar() {
   const selectedPoint =
     filteredPoints.find((point) => point.id === selectedPointId) || filteredPoints[0] || null;
 
-  const openPointInSimpleBet = (point: RadarPoint) => {
-    const params = new URLSearchParams({
-      analysisId: point.id,
-      prepareBet: "1",
-      market: point.market,
-      stake: String(Number(point.stake.toFixed(2))),
-      odd: String(Number(point.odds.toFixed(2))),
-    });
-
-    navigate(`/history?${params.toString()}`);
-  };
-
   const summary = useMemo(() => {
     const total = filteredPoints.length;
     const bets = filteredPoints.filter((p) => p.decision === "Bet").length;
@@ -587,18 +575,6 @@ export default function ValueRadar() {
                       <td className="py-3 pr-4">
                         {point.tier ? <TierBadge tier={point.tier} /> : "-"}
                       </td>
-                      <td className="py-3 pr-4">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openPointInSimpleBet(point);
-                          }}
-                          className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-400/15"
-                        >
-                          Simple Bet
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -814,13 +790,6 @@ export default function ValueRadar() {
                   {selectedPoint.tier && <TierBadge tier={selectedPoint.tier} />}
                   <DecisionBadge decision={selectedPoint.decision} />
                   <ValueBadge value={selectedPoint.edge} />
-                  <button
-                    type="button"
-                    onClick={() => openPointInSimpleBet(selectedPoint)}
-                    className="h-9 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-400/15"
-                  >
-                    Open In Simple Bet
-                  </button>
                 </div>
               </div>
 
