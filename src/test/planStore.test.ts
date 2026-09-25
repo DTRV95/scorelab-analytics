@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
 import {
   buildStanding,
   combineOdds,
@@ -55,7 +56,7 @@ const scores = (entries: [number, [number, number]][]) =>
 
 describe("a player's standing", () => {
   it("builds the bankroll from the results, so it cannot drift", () => {
-    const standing = buildStanding(member, [
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1", profitLoss: 5 }),
       bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
     ]);
@@ -66,7 +67,7 @@ describe("a player's standing", () => {
   });
 
   it("leaves a pending bet out of the bankroll but shows what is at risk", () => {
-    const standing = buildStanding(member, [
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1", profitLoss: 5 }),
       bet({
         id: "b2",
@@ -87,7 +88,7 @@ describe("a player's standing", () => {
     const red = (id: string, placedAt: string) =>
       bet({ id, status: "red", profitLoss: -5, placedAt });
 
-    const broken = buildStanding(member, [
+    const broken = buildStanding(member, MILLION_PLAN_RULES, [
       red("b1", "2026-09-21T10:00:00.000Z"),
       bet({ id: "b2", placedAt: "2026-09-22T10:00:00.000Z" }),
       red("b3", "2026-09-23T10:00:00.000Z"),
@@ -99,7 +100,7 @@ describe("a player's standing", () => {
   });
 
   it("only counts the bets belonging to that player", () => {
-    const standing = buildStanding(member, [
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1" }),
       bet({ id: "b2", userId: "u2", profitLoss: 999 }),
     ]);
@@ -108,8 +109,53 @@ describe("a player's standing", () => {
     expect(standing.bankroll).toBe(15);
   });
 
+  it("moves the day back down the ladder after a loss", () => {
+    // Two wins put €21.38 on the table, which is where day 3 opens. Losing
+    // day 3 takes half of it away, and €10.69 is day-1 money again — the day
+    // has to come back with it, or the next stake would be worked out from a
+    // percentage the bankroll no longer supports.
+    const climbing = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", profitLoss: 5 }),
+      bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
+    ]);
+    expect(climbing.day).toBe(3);
+
+    const fell = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", profitLoss: 5 }),
+      bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
+      bet({
+        id: "b3",
+        status: "red",
+        stake: 10.69,
+        profitLoss: -10.69,
+        placedAt: "2026-09-23T10:00:00.000Z",
+      }),
+    ]);
+
+    expect(fell.bankroll).toBe(10.69);
+    expect(fell.day).toBe(1);
+  });
+
+  it("counts the days left open and remembers the last one decided", () => {
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", profitLoss: 5 }),
+      bet({
+        id: "b2",
+        status: "pending",
+        profitLoss: 0,
+        settledAt: null,
+        placedAt: "2026-09-22T10:00:00.000Z",
+      }),
+    ]);
+
+    expect(standing.openBets).toBe(1);
+    expect(standing.lastSettled?.id).toBe("b1");
+    // The open day has not moved the money, so it has not moved the day either.
+    expect(standing.day).toBe(2);
+  });
+
   it("starts a player who has not bet yet at the plan's opening stake", () => {
-    const standing = buildStanding(member, []);
+    const standing = buildStanding(member, MILLION_PLAN_RULES, []);
 
     expect(standing.bankroll).toBe(10);
     expect(standing.day).toBe(1);
