@@ -34,8 +34,8 @@ const navGroups = [
     ],
   },
   {
-    title: "Plano",
-    items: [{ title: "Plano Milhão", url: "/plano", icon: Trophy }],
+    title: "Desafios",
+    items: [{ title: "Os meus desafios", url: "/desafios", icon: Trophy }],
   },
   {
     title: "System",

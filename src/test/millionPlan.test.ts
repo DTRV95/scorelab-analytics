@@ -109,8 +109,11 @@ describe("what the plan objects to", () => {
   });
 
   it("holds the odds inside the range the plan set", () => {
-    expect(checkBet({ ...base, odds: 2.6 })[0].code).toBe("odds-range");
-    expect(checkBet({ ...base, odds: 1.5 })[0].code).toBe("odds-range");
+    // Told apart on purpose: an odd that is too short and one that is too long
+    // are opposite mistakes, and combining several games only ever causes the
+    // second one.
+    expect(checkBet({ ...base, odds: 2.6 })[0].code).toBe("odds-high");
+    expect(checkBet({ ...base, odds: 1.5 })[0].code).toBe("odds-low");
     expect(checkBet({ ...base, odds: 2.05 })).toEqual([]);
   });
 

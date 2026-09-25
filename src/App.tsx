@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +22,7 @@ const ValueRadar = lazy(() => import("./pages/ValueRadar"));
 const ModelLab = lazy(() => import("./pages/ModelLab"));
 const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
 const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
-const MillionPlan = lazy(() => import("./pages/MillionPlan"));
+const Challenges = lazy(() => import("./pages/Challenges"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
 const RoadmapPlanner = lazy(() => import("./pages/RoadmapPlanner"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -93,7 +93,9 @@ const App = () => {
                     <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
                     <Route path="/probability" element={<ProtectedRoute><ProbabilityRadar /></ProtectedRoute>} />
                     <Route path="/radar" element={<ProtectedRoute><ValueRadar /></ProtectedRoute>} />
-                    <Route path="/plano" element={<ProtectedRoute><MillionPlan /></ProtectedRoute>} />
+                    <Route path="/desafios" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
+                    {/* The tab was "Plano" before it held more than one challenge. */}
+                    <Route path="/plano" element={<Navigate to="/desafios" replace />} />
                     <Route path="/match/:fixtureId" element={<ProtectedRoute><MatchDeepDive /></ProtectedRoute>} />
                     <Route path="/accuracy" element={<ProtectedRoute><ModelAccuracy /></ProtectedRoute>} />
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />

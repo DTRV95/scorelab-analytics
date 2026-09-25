@@ -8,34 +8,45 @@
  * it from those rules rather than transcribing 38 rows means the ladder and
  * the rules can never drift apart, and the ladder still lands on the same
  * figures the brothers wrote down (day 38 ends just over €1,007,000).
+ *
+ * The plan is now one challenge among several, so the machinery lives in
+ * challengeRules.ts and this file is the document's own settings fed into it.
+ * Everything here is the same plan it always was, read through the general
+ * engine instead of hard-coded a second time.
  */
+
+import {
+  MILLION_PLAN_RULES,
+  buildLadder as buildLadderFor,
+  chanceOfCompleting as chanceOfCompletingFor,
+  checkBet as checkBetAgainst,
+  costOfOneLoss as costOfOneLossFor,
+  plannedOddsForDay as plannedOddsFor,
+  plannedStake as plannedStakeFor,
+  rungForBankroll as rungForBankrollIn,
+  stakePctForDay as stakePctFor,
+  type BetCheckInput,
+  type Rung,
+  type Violation,
+  type ViolationSeverity,
+} from "@/lib/challengeRules";
+import { planSchedule as schedule } from "@/lib/challengeSchedule";
+
+export { MILLION_PLAN_RULES };
+export type { BetCheckInput, ViolationSeverity };
+export type PlanRung = Rung;
+export type PlanViolation = Violation;
 
 export const PLAN_START = 10;
 export const PLAN_TARGET = 1_000_000;
-export const PLAN_DAYS = 38;
+export const PLAN_DAYS = MILLION_PLAN_RULES.days;
 
 /** The document's safe range for a single bet. */
-export const ODDS_MIN = 1.75;
-export const ODDS_MAX = 2.1;
+export const ODDS_MIN = MILLION_PLAN_RULES.oddsMin!;
+export const ODDS_MAX = MILLION_PLAN_RULES.oddsMax!;
 
 /** Losses in a row after which the plan says to stop for the day. */
-export const LOSS_STREAK_PAUSE = 3;
-
-const ODDS_CYCLE = [1.85, 1.9, 1.95, 1.75, 1.8];
-
-export interface PlanRung {
-  day: number;
-  stakePct: number;
-  odds: number;
-  bankrollStart: number;
-  stake: number;
-  profit: number;
-  bankrollEnd: number;
-}
-
-function round(value: number, decimals = 2) {
-  return Number(value.toFixed(decimals));
-}
+export const LOSS_STREAK_PAUSE = MILLION_PLAN_RULES.lossStreakPause!;
 
 /**
  * What share of the bankroll the plan stakes on a given day.
@@ -46,257 +57,54 @@ function round(value: number, decimals = 2) {
  * is actually built on.
  */
 export function stakePctForDay(day: number): number {
-  if (day <= 15) return 0.5;
-  if (day <= 29) return 0.4;
-  return 0.3;
+  return stakePctFor(MILLION_PLAN_RULES, day);
 }
 
 /** The odd the plan pencils in for a day. Day one is the only even-money one. */
 export function plannedOddsForDay(day: number): number {
-  if (day <= 1) return 2;
-  return ODDS_CYCLE[(day - 2) % ODDS_CYCLE.length];
+  return plannedOddsFor(MILLION_PLAN_RULES, day);
 }
 
 export function buildLadder(start = PLAN_START, days = PLAN_DAYS): PlanRung[] {
-  const ladder: PlanRung[] = [];
-  let bankroll = start;
-
-  for (let day = 1; day <= days; day += 1) {
-    const stakePct = stakePctForDay(day);
-    const odds = plannedOddsForDay(day);
-    const stake = round(bankroll * stakePct);
-    const profit = round(stake * (odds - 1));
-    const bankrollEnd = round(bankroll + profit);
-
-    ladder.push({ day, stakePct, odds, bankrollStart: bankroll, stake, profit, bankrollEnd });
-    bankroll = bankrollEnd;
-  }
-
-  return ladder;
+  return buildLadderFor({ ...MILLION_PLAN_RULES, days }, start);
 }
 
 /** The stake the plan calls for, as a share of what is actually in the bankroll. */
 export function plannedStake(bankroll: number, day: number): number {
-  if (bankroll <= 0) return 0;
-  return round(bankroll * stakePctForDay(day));
+  return plannedStakeFor(MILLION_PLAN_RULES, bankroll, day);
 }
 
-/**
- * Which rung the bankroll has actually reached.
- *
- * This is deliberately not the same as the day count. Losing a day does not
- * send you back in time, it sends you back down the ladder, and the gap
- * between the two is the honest answer to "where are we?".
- */
 export function rungForBankroll(bankroll: number, ladder = buildLadder()): number {
-  if (bankroll < ladder[0].bankrollStart) return 0;
-  let rung = 0;
-  ladder.forEach((step) => {
-    if (bankroll >= step.bankrollStart) rung = step.day;
-  });
-  return rung;
+  return rungForBankrollIn(bankroll, ladder);
 }
 
-export type ViolationSeverity = "breach" | "note";
-
-export interface PlanViolation {
-  code: string;
-  severity: ViolationSeverity;
-  message: string;
+export function checkBet(input: BetCheckInput): PlanViolation[] {
+  return checkBetAgainst(MILLION_PLAN_RULES, input);
 }
 
-export interface BetCheckInput {
-  odds: number;
-  stake: number;
-  bankroll: number;
-  day: number;
-  betsPlacedToday: number;
-  lossStreak: number;
-}
-
-/**
- * Everything about a proposed bet that the plan would object to.
- *
- * A breach is the plan being broken as written; a note is the plan being
- * followed cautiously. Both are shown, neither blocks the bet — the document
- * is a set of rules the two of them agreed to keep, not something the app gets
- * to enforce over their heads.
- */
-export function checkBet({
-  odds,
-  stake,
-  bankroll,
-  day,
-  betsPlacedToday,
-  lossStreak,
-}: BetCheckInput): PlanViolation[] {
-  const violations: PlanViolation[] = [];
-  const planned = plannedStake(bankroll, day);
-
-  if (lossStreak >= LOSS_STREAK_PAUSE) {
-    violations.push({
-      code: "loss-streak",
-      severity: "breach",
-      message: `${lossStreak} perdas seguidas. O plano manda parar um dia e reavaliar antes da próxima aposta.`,
-    });
-  }
-
-  if (betsPlacedToday > 0) {
-    violations.push({
-      code: "daily-limit",
-      severity: "breach",
-      message: "O plano é uma aposta por dia. Já há uma registada hoje.",
-    });
-  }
-
-  if (odds > 0 && (odds < ODDS_MIN || odds > ODDS_MAX)) {
-    violations.push({
-      code: "odds-range",
-      severity: "breach",
-      message: `O plano só aceita odds entre ${ODDS_MIN.toFixed(2)} e ${ODDS_MAX.toFixed(
-        2
-      )}. Esta está a ${odds.toFixed(2)}.`,
-    });
-  }
-
-  if (stake > planned + 0.01) {
-    violations.push({
-      code: "stake-over",
-      severity: "breach",
-      message: `Acima do plano: hoje são ${planned.toFixed(2)} € (${(
-        stakePctForDay(day) * 100
-      ).toFixed(0)}% da banca), não ${stake.toFixed(2)} €.`,
-    });
-  } else if (stake > 0 && stake < planned - 0.01) {
-    violations.push({
-      code: "stake-under",
-      severity: "note",
-      message: `Abaixo do plano: hoje seriam ${planned.toFixed(
-        2
-      )} €. Ficas mais atrás na escada, mas arriscas menos.`,
-    });
-  }
-
-  return violations;
-}
-
-/**
- * The chance of the ladder actually being climbed to the end.
- *
- * Every rung needs the bet to land, so the whole plan is one long run of wins
- * and the odds multiply. This is the number a bankroll tool exists to show:
- * the table looks like a schedule, and it is really a parlay.
- */
 export function chanceOfCompleting(fromDay: number, toDay = PLAN_DAYS): number {
-  let chance = 1;
-  for (let day = Math.max(1, fromDay); day <= toDay; day += 1) {
-    chance *= 1 / plannedOddsForDay(day);
-  }
-  return chance;
+  return chanceOfCompletingFor(MILLION_PLAN_RULES, fromDay, toDay);
 }
 
-/** How far down the ladder a single lost day puts you. */
 export function costOfOneLoss(bankroll: number, day: number, ladder = buildLadder()) {
-  const stake = plannedStake(bankroll, day);
-  const after = round(Math.max(0, bankroll - stake));
-  return {
-    stake,
-    bankrollAfter: after,
-    rungBefore: rungForBankroll(bankroll, ladder),
-    rungAfter: rungForBankroll(after, ladder),
-  };
+  return costOfOneLossFor(MILLION_PLAN_RULES, bankroll, day, ladder);
 }
 
 /** Expected number of days a run lasts before the first loss, at these odds. */
 export function expectedDaysBeforeALoss(fromDay: number): number {
   const winChance = 1 / plannedOddsForDay(fromDay);
   if (winChance >= 1) return Infinity;
-  return round(1 / (1 - winChance), 1);
+  return Number((1 / (1 - winChance)).toFixed(1));
 }
 
-export type ScheduleState = "before" | "running" | "finished" | "undated";
+export type { PlanSchedule, ScheduleState } from "@/lib/challengeSchedule";
 
-export interface PlanSchedule {
-  state: ScheduleState;
-  /** Which day of the plan today is, by the calendar. Null until it starts. */
-  calendarDay: number | null;
-  /** Days until the first day, when it has not started. */
-  daysUntilStart: number;
-  /** The date the last day falls on. */
-  endsOn: Date | null;
-  /** Calendar days ahead of (positive) or behind (negative) the bets placed. */
-  behindBy: number;
-}
-
-function atMidnight(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
-
-function daysBetween(from: Date, to: Date): number {
-  return Math.round(
-    (atMidnight(to).getTime() - atMidnight(from).getTime()) / 86_400_000
-  );
-}
-
-/**
- * Where today sits in a plan that has a start date.
- *
- * The ladder day and the calendar day are not the same thing and should not be
- * forced together: the ladder moves when a bet is placed, the calendar moves
- * on its own. Keeping both is what lets the plan say "day 5, and you have made
- * three bets" instead of quietly pretending nobody missed a day.
- */
+/** Where today sits in the plan, over the document's 38 days by default. */
 export function planSchedule(
   startDate: string | null,
   betsPlaced: number,
   days = PLAN_DAYS,
   today = new Date()
-): PlanSchedule {
-  if (!startDate) {
-    return {
-      state: "undated",
-      calendarDay: null,
-      daysUntilStart: 0,
-      endsOn: null,
-      behindBy: 0,
-    };
-  }
-
-  // A date column comes back as YYYY-MM-DD; parsing it as local midnight keeps
-  // "day 1" on the day the person picked, whatever their timezone.
-  const [year, month, day] = startDate.split("-").map(Number);
-  const start = new Date(year, (month ?? 1) - 1, day ?? 1);
-  const elapsed = daysBetween(start, today);
-  const endsOn = new Date(start);
-  endsOn.setDate(endsOn.getDate() + days - 1);
-
-  if (elapsed < 0) {
-    return {
-      state: "before",
-      calendarDay: null,
-      daysUntilStart: -elapsed,
-      endsOn,
-      behindBy: 0,
-    };
-  }
-
-  const calendarDay = elapsed + 1;
-
-  if (calendarDay > days) {
-    return {
-      state: "finished",
-      calendarDay: days,
-      daysUntilStart: 0,
-      endsOn,
-      behindBy: Math.max(0, days - betsPlaced),
-    };
-  }
-
-  return {
-    state: "running",
-    calendarDay,
-    daysUntilStart: 0,
-    endsOn,
-    behindBy: calendarDay - 1 - betsPlaced,
-  };
+) {
+  return schedule(startDate, betsPlaced, days, today);
 }
