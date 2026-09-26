@@ -26,7 +26,7 @@ import {
   rungForBankroll,
   type ChallengeRules,
 } from "@/lib/challengeRules";
-import { nextMove } from "@/lib/challengeGuidance";
+import { nextMove, sinceStart } from "@/lib/challengeGuidance";
 import { planSchedule } from "@/lib/challengeSchedule";
 import { NextMoveCard } from "@/components/NextMoveCard";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
@@ -606,7 +606,10 @@ export default function Challenges() {
     : ladder.slice(Math.max(0, day - 3), day + 5);
   const chance = chanceOfCompleting(ladder, me?.day ?? 1);
   const loss = me ? costOfOneLoss(ladder, me.bankroll, me.day) : null;
-  const progress = Math.min(100, (combined / Number(plan.target)) * 100);
+  const startedWith = standings.reduce(
+    (sum, standing) => sum + standing.startingBankroll,
+    0,
+  );
 
   return (
     <AppLayout>
@@ -812,7 +815,17 @@ export default function Challenges() {
           </div>
           <p className="sl-meta mt-1.5 text-[11px]">
             Dia {day} de {rules.days} ·{" "}
-            {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do dinheiro
+            <span
+              className={
+                combined > startedWith + 0.005
+                  ? "font-semibold text-[hsl(var(--sl-green))]"
+                  : combined < startedWith - 0.005
+                    ? "font-semibold text-destructive"
+                    : ""
+              }
+            >
+              {sinceStart(combined, startedWith)}
+            </span>
             {standings.length > 1 ? "" : ` · ${eur.format(combined)} na banca`}
           </p>
         </motion.section>
