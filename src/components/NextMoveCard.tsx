@@ -1,4 +1,13 @@
-import { ArrowDown, ArrowRight, ArrowUp, Clock, Flag, PauseCircle } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Clock,
+  Flag,
+  PauseCircle,
+  Plus,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { NextMove } from "@/lib/challengeGuidance";
 
 const TONE: Record<
@@ -64,9 +73,15 @@ const euroPlain = new Intl.NumberFormat("pt-PT", {
 export function NextMoveCard({
   move,
   bankroll,
+  onStart,
+  onClose,
 }: {
   move: NextMove;
   bankroll: number;
+  /** Starts the day's bet from here, so nobody has to scroll to find it. */
+  onStart: () => void;
+  /** Jumps to the day waiting to be closed. */
+  onClose: () => void;
 }) {
   const tone = TONE[move.state];
   const Icon = tone.icon;
@@ -126,6 +141,29 @@ export function NextMoveCard({
           </p>
         </div>
       </div>
+
+      {/* The instruction and the button that carries it out, together. On a
+          phone the rest of the page is below the fold, and an instruction you
+          have to go looking for is half an instruction. */}
+      {move.state === "play" && (
+        <Button
+          className="sl-btn-primary mt-3 h-11 w-full text-sm"
+          onClick={onStart}
+        >
+          <Plus className="mr-1.5 h-4 w-4" />
+          Inserir os jogos do dia {move.day}
+        </Button>
+      )}
+
+      {move.state === "close-first" && (
+        <Button
+          variant="outline"
+          className="mt-3 h-11 w-full border-amber-500/40 text-sm font-semibold text-amber-700"
+          onClick={onClose}
+        >
+          Ver o dia por fechar
+        </Button>
+      )}
 
       {move.last && (
         <p

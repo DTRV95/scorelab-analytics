@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   Check,
+  ChevronRight,
   Flame,
   Loader2,
   RefreshCw,
@@ -12,6 +13,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { BetComposer } from "@/components/BetComposer";
+import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -206,6 +208,9 @@ export default function Challenges() {
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
   const [board, setBoard] = useState<BoardMatch[]>([]);
+  // Competitions the provider did not answer for. Hidden until now, which is
+  // how a whole league could go missing without anyone being told.
+  const [unavailable, setUnavailable] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -214,6 +219,14 @@ export default function Challenges() {
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [answering, setAnswering] = useState(false);
   const currentRow = useRef<HTMLDivElement | null>(null);
+  const openDays = useRef<HTMLDivElement | null>(null);
+  // Bumped to open the picker from the card at the top of the page.
+  const [pickSignal, setPickSignal] = useState(0);
+  const [wholeTable, setWholeTable] = useState(false);
+  // Which bet is open in full, and whose it is.
+  const [openBet, setOpenBet] = useState<{ bet: PlanBet; player: string } | null>(
+    null,
+  );
 
   // Which challenges this account is in. Switching between them must not
   // refetch this list, so it is loaded on its own.
@@ -282,6 +295,7 @@ export default function Challenges() {
     const cached = readCachedBoard(BOARD_DAYS);
     if (cached) {
       setBoard(cached.matches);
+      setUnavailable(cached.unavailable ?? []);
       return;
     }
 
@@ -290,6 +304,7 @@ export default function Challenges() {
       .then((data) => {
         if (cancelled || !data) return;
         setBoard(data.matches ?? []);
+        setUnavailable(data.unavailable ?? []);
         writeCachedBoard({
           days: BOARD_DAYS,
           matches: data.matches ?? [],
@@ -587,6 +602,11 @@ export default function Challenges() {
         target: Number(plan.target),
       })
     : null;
+  // Two days behind for context, five ahead for what is coming.
+  const day = me?.day ?? 1;
+  const visibleLadder = wholeTable
+    ? ladder
+    : ladder.slice(Math.max(0, day - 3), day + 5);
   const chance = chanceOfCompleting(ladder, me?.day ?? 1);
   const loss = me ? costOfOneLoss(ladder, me.bankroll, me.day) : null;
   const progress = Math.min(100, (combined / Number(plan.target)) * 100);
@@ -662,12 +682,26 @@ export default function Challenges() {
 
         {move && (
           <motion.div variants={fadeUp}>
-            <NextMoveCard move={move} bankroll={me?.bankroll ?? 0} />
+            <NextMoveCard
+              move={move}
+              bankroll={me?.bankroll ?? 0}
+              onStart={() => setPickSignal((value) => value + 1)}
+              onClose={() =>
+                openDays.current?.scrollIntoView?.({
+                  behavior: "smooth",
+                  block: "center",
+                })
+              }
+            />
           </motion.div>
         )}
 
         {openBets.length > 0 && (
-          <motion.section variants={fadeUp} className="sl-card overflow-hidden">
+          <motion.section
+            ref={openDays}
+            variants={fadeUp}
+            className="sl-card overflow-hidden"
+          >
             <div className="border-b border-border px-4 py-3.5">
               <h2 className="text-sm font-bold text-foreground">Por fechar</h2>
               <p className="mt-1 text-xs leading-6 text-muted-foreground">
@@ -749,31 +783,43 @@ export default function Challenges() {
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                {standings.length > 1 ? "Banca somada" : "Banca"}
+                {standings.length > 1 ? "Banca somada" : "A caminho de"}
               </p>
+              {/* Solo, the money is already the headline of the card above and
+                  of the player card below; repeating it a third time is what
+                  makes a phone screen feel like a wall. What is missing there
+                  is the distance left to go, so that is what this says. */}
               <p className="mt-1 font-mono-data text-2xl font-bold text-foreground">
-                {eur.format(combined)}
+                {standings.length > 1
+                  ? eur.format(combined)
+                  : eur.format(Number(plan.target))}
               </p>
             </div>
             <div className="text-right">
               <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                Objetivo
+                {standings.length > 1 ? "Objetivo" : "Faltam"}
               </p>
               <p className="mt-1 font-mono-data text-sm font-bold text-foreground">
-                {eur.format(Number(plan.target))}
+                {standings.length > 1
+                  ? eur.format(Number(plan.target))
+                  : eur.format(Math.max(0, Number(plan.target) - combined))}
               </p>
             </div>
           </div>
 
+          {/* The bar tracks the days, not the money: a ladder that multiplies
+              leaves the bankroll at 0.002% of a million for thirty of the
+              thirty-eight days, and a bar that never moves says nothing. */}
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
             <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${Math.max(progress, 0.4)}%` }}
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.max((day / rules.days) * 100, 2)}%` }}
             />
           </div>
           <p className="sl-meta mt-1.5 text-[11px]">
-            {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do caminho
-            · faltam {eur.format(Math.max(0, Number(plan.target) - combined))}
+            Dia {day} de {rules.days} ·{" "}
+            {progress < 0.1 ? "menos de 0,1" : progress.toFixed(1)}% do dinheiro
+            {standings.length > 1 ? "" : ` · ${eur.format(combined)} na banca`}
           </p>
         </motion.section>
 
@@ -801,6 +847,9 @@ export default function Challenges() {
               openBets={me.openBets}
               targetOdds={move?.targetOdds ?? 0}
               plannedStake={move?.stake ?? 0}
+              unavailable={unavailable}
+              openSignal={pickSignal}
+              entryElsewhere={move?.state === "play"}
               usedFixtures={usedFixtures}
               saving={saving}
               onPlace={place}
@@ -850,9 +899,14 @@ export default function Challenges() {
                       .reverse()
                       .slice(0, 8)
                       .map((bet) => (
-                        <div
+                        <button
                           key={bet.id}
-                          className="flex items-center gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2"
+                          type="button"
+                          onClick={() =>
+                            setOpenBet({ bet, player: standing.name })
+                          }
+                          aria-label={`Ver a aposta do dia ${bet.day} de ${standing.name}`}
+                          className="flex w-full items-center gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2 text-left transition hover:border-primary/40"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-semibold text-foreground">
@@ -884,7 +938,8 @@ export default function Challenges() {
                                 ? bet.profitLoss.toFixed(2)
                                 : "aberta"}
                           </span>
-                        </div>
+                          <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+                        </button>
                       ))}
                     {standing.bets.length === 0 && (
                       <p className="sl-meta text-[11px]">Ainda não apostou.</p>
@@ -971,8 +1026,17 @@ export default function Challenges() {
             </span>
           </div>
 
-          <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
-            {ladder.map((rung) => {
+          {/* A window around today by default. Thirty-eight rows on a phone is
+              a scroll inside a scroll, and the rows that matter are the one
+              being played and the few on either side of it. */}
+          <div
+            className={
+              wholeTable
+                ? "max-h-[320px] divide-y divide-border overflow-y-auto"
+                : "divide-y divide-border"
+            }
+          >
+            {visibleLadder.map((rung) => {
               const today = me?.day === rung.day;
               const done = me ? rung.day < me.day : false;
               return (
@@ -1014,11 +1078,36 @@ export default function Challenges() {
               );
             })}
           </div>
+
+          {ladder.length > visibleLadder.length && (
+            <button
+              type="button"
+              onClick={() => setWholeTable(true)}
+              className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+            >
+              Ver o quadro todo ({ladder.length} dias)
+            </button>
+          )}
+          {wholeTable && (
+            <button
+              type="button"
+              onClick={() => setWholeTable(false)}
+              className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-muted-foreground"
+            >
+              Mostrar só à volta do dia de hoje
+            </button>
+          )}
         </motion.section>
 
         <motion.div variants={fadeUp}>
           <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
         </motion.div>
+
+        <BetDetailDialog
+          bet={openBet?.bet ?? null}
+          player={openBet?.player ?? ""}
+          onClose={() => setOpenBet(null)}
+        />
 
         {error && (
           <motion.p variants={fadeUp} className="text-[11px] text-destructive">
