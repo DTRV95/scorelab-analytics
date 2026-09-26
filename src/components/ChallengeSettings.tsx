@@ -55,10 +55,15 @@ function draftFromTemplate(index: number): Draft {
     target: String(template.target),
     days: String(template.rules.days),
     bands: template.rules.stakeBands,
-    oddsMin: template.rules.oddsMin === null ? "" : String(template.rules.oddsMin),
-    oddsMax: template.rules.oddsMax === null ? "" : String(template.rules.oddsMax),
+    oddsMin:
+      template.rules.oddsMin === null ? "" : String(template.rules.oddsMin),
+    oddsMax:
+      template.rules.oddsMax === null ? "" : String(template.rules.oddsMax),
     onePerDay: template.rules.onePerDay,
-    pause: template.rules.lossStreakPause === null ? "" : String(template.rules.lossStreakPause),
+    pause:
+      template.rules.lossStreakPause === null
+        ? ""
+        : String(template.rules.lossStreakPause),
     oddsPlan: template.rules.oddsPlan,
   };
 }
@@ -148,7 +153,9 @@ function Fields({
         <input
           type="date"
           value={draft.startDate}
-          onChange={(event) => onChange({ ...draft, startDate: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...draft, startDate: event.target.value })
+          }
           style={{ colorScheme: "light" }}
           className={`${field} font-mono-data`}
         />
@@ -172,7 +179,9 @@ function Fields({
           <input
             inputMode="decimal"
             value={draft.target}
-            onChange={(event) => onChange({ ...draft, target: event.target.value })}
+            onChange={(event) =>
+              onChange({ ...draft, target: event.target.value })
+            }
             placeholder="1000000"
             className={`${field} font-mono-data`}
           />
@@ -190,7 +199,9 @@ function Fields({
             <input
               inputMode="numeric"
               value={draft.days}
-              onChange={(event) => onChange({ ...draft, days: event.target.value })}
+              onChange={(event) =>
+                onChange({ ...draft, days: event.target.value })
+              }
               className={`${field} font-mono-data`}
             />
           </label>
@@ -207,7 +218,10 @@ function Fields({
                     bands: [
                       {
                         untilDay: null,
-                        pct: Math.min(1, Math.max(0.01, num(event.target.value) / 100 || 0.1)),
+                        pct: Math.min(
+                          1,
+                          Math.max(0.01, num(event.target.value) / 100 || 0.1),
+                        ),
                       },
                     ],
                   })
@@ -218,9 +232,13 @@ function Fields({
           ) : (
             <div>
               <span className="sl-meta text-[11px]">% da banca por dia</span>
-              <div className={`${field} flex items-center justify-between gap-2`}>
+              <div
+                className={`${field} flex items-center justify-between gap-2`}
+              >
                 <span className="font-mono-data text-[13px] text-foreground">
-                  {draft.bands.map((band) => `${Math.round(band.pct * 100)}%`).join(" → ")}
+                  {draft.bands
+                    .map((band) => `${Math.round(band.pct * 100)}%`)
+                    .join(" → ")}
                 </span>
                 <button
                   type="button"
@@ -241,8 +259,8 @@ function Fields({
 
         {!single && (
           <p className="sl-meta mt-1 text-[10px] leading-relaxed">
-            A percentagem desce ao longo do desafio, como no Plano Milhão. Carrega
-            em &ldquo;fixar&rdquo; para usares a mesma todos os dias.
+            A percentagem desce ao longo do desafio, como no Plano Milhão.
+            Carrega em &ldquo;fixar&rdquo; para usares a mesma todos os dias.
           </p>
         )}
 
@@ -252,7 +270,9 @@ function Fields({
             <input
               inputMode="decimal"
               value={draft.oddsMin}
-              onChange={(event) => onChange({ ...draft, oddsMin: event.target.value })}
+              onChange={(event) =>
+                onChange({ ...draft, oddsMin: event.target.value })
+              }
               placeholder="sem limite"
               className={`${field} font-mono-data`}
             />
@@ -262,7 +282,9 @@ function Fields({
             <input
               inputMode="decimal"
               value={draft.oddsMax}
-              onChange={(event) => onChange({ ...draft, oddsMax: event.target.value })}
+              onChange={(event) =>
+                onChange({ ...draft, oddsMax: event.target.value })
+              }
               placeholder="sem limite"
               className={`${field} font-mono-data`}
             />
@@ -275,7 +297,9 @@ function Fields({
             <input
               inputMode="numeric"
               value={draft.pause}
-              onChange={(event) => onChange({ ...draft, pause: event.target.value })}
+              onChange={(event) =>
+                onChange({ ...draft, pause: event.target.value })
+              }
               placeholder="nunca"
               className={`${field} font-mono-data`}
             />
@@ -289,7 +313,9 @@ function Fields({
               }
               className="h-4 w-4 flex-none accent-[hsl(var(--primary))]"
             />
-            <span className="text-[12px] text-foreground">Uma aposta por dia</span>
+            <span className="text-[12px] text-foreground">
+              Uma aposta por dia
+            </span>
           </label>
         </div>
       </div>
@@ -386,7 +412,11 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
           disabled={!valid || saving}
           onClick={submit}
         >
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Criar desafio"}
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            "Criar desafio"
+          )}
         </Button>
         <button
           type="button"
@@ -431,7 +461,7 @@ function DangerZone({
       setError(
         isOwner
           ? "Não foi possível apagar. Só quem criou o desafio o pode fazer."
-          : "Não foi possível sair deste desafio."
+          : "Não foi possível sair deste desafio.",
       );
     } finally {
       setWorking(false);
@@ -538,7 +568,9 @@ export function ChallengeSettings({
       setOpen(false);
       onSaved();
     } catch {
-      setError("Não foi possível guardar. Só quem criou o desafio pode mudá-lo.");
+      setError(
+        "Não foi possível guardar. Só quem criou o desafio pode mudá-lo.",
+      );
     } finally {
       setSaving(false);
     }
@@ -568,12 +600,6 @@ export function ChallengeSettings({
         </span>
       </button>
 
-      {!open && (
-        <p className="sl-meta border-t border-border px-4 py-2 text-[11px]">
-          {describeRules(rules)}
-        </p>
-      )}
-
       {open && (
         <div className="space-y-2 border-t border-border p-4">
           {isOwner ? (
@@ -588,7 +614,11 @@ export function ChallengeSettings({
                 disabled={!valid || saving}
                 onClick={save}
               >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Guardar"}
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Guardar"
+                )}
               </Button>
               {error && <p className="text-[11px] text-destructive">{error}</p>}
             </>

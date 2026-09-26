@@ -70,7 +70,7 @@ describe("telling someone what to do next", () => {
     // The euro formatter uses a non-breaking space before the symbol, so the
     // expectations match on it loosely rather than pretending otherwise.
     expect(result.action).toMatch(/^Aposta 10,69\s€ a uma odd de 1\.90$/);
-    expect(result.detail).toMatch(/Dia 3 do quadro, que parte de 21,38\s€/);
+    expect(result.detail).toMatch(/^Dia 3 de 38 · odd entre 1\.75 e 2\.10$/);
     expect(result.blocked).toBe(false);
     expect(result.short).toBe(false);
   });
@@ -112,7 +112,7 @@ describe("telling someone what to do next", () => {
     expect(result.stake).toBe(6.4);
     expect(result.short).toBe(true);
     expect(result.versusTable).toBe(-14.98);
-    expect(result.detail).toMatch(/o quadro pede 10,69\s€ e só tens 6,40\s€/);
+    expect(result.detail).toMatch(/O quadro pede 10,69\s€, só tens 6,40\s€: vai tudo/);
   });
 
   it("follows the document's own rows rather than recomputing them", () => {
@@ -151,7 +151,7 @@ describe("telling someone what to do next", () => {
 
     expect(result.state).toBe("waiting-start");
     expect(result.action).toBe("Começa daqui a 6 dias");
-    expect(result.detail).toMatch(/5,00\s€ a uma odd de 2\.00/);
+    expect(result.detail).toMatch(/5,00\s€ a 2\.00/);
     expect(result.last).toBeNull();
   });
 
