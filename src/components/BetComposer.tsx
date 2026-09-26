@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Info, ListPlus, PenLine, Plus, Search, X } from "lucide-react";
+import {
+  Check,
+  Info,
+  ListPlus,
+  PenLine,
+  Plus,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
+import { freshness } from "@/lib/freshness";
 import {
   byUrgency,
   describeHealth,
@@ -131,6 +141,9 @@ export function BetComposer({
   lossStreak,
   openBets,
   unavailable,
+  boardAt,
+  boardLoading,
+  onRefreshBoard,
   openSignal,
   entryElsewhere,
   targetOdds,
@@ -148,6 +161,10 @@ export function BetComposer({
   openBets: number;
   /** Competitions the provider did not answer for on the last board fetch. */
   unavailable: string[];
+  /** When the games on screen were fetched, so their age is visible. */
+  boardAt: number | null;
+  boardLoading: boolean;
+  onRefreshBoard: () => void;
   /** Bumped from outside to open the picker, so the card at the top of the
       page can start the day's bet without anyone scrolling to find it. */
   openSignal?: number;
@@ -407,15 +424,46 @@ export function BetComposer({
           </DialogHeader>
 
           <div className="px-4 py-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Procurar equipa ou liga..."
-                className={`${field} pl-9`}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Procurar equipa ou liga..."
+                  className={`${field} pl-9`}
+                />
+              </div>
+
+              {/* A competition can go missing for a minute — the provider
+                  allows ten requests a minute and the board asks for eight.
+                  Waiting out a cache to find out whether it came back is not
+                  something anybody should have to do. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setHealth(null);
+                  setHealthError(false);
+                  onRefreshBoard();
+                }}
+                disabled={boardLoading}
+                aria-label="Procurar jogos novos"
+                title="Procurar jogos novos"
+                className="sl-tap flex h-10 w-10 flex-none items-center justify-center rounded-lg text-muted-foreground ring-1 ring-border disabled:opacity-40"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
+                />
+              </button>
             </div>
+
+            <p className="sl-meta mt-1.5 text-[11px]">
+              {boardLoading
+                ? "A procurar jogos..."
+                : `${board.length} jogos${
+                    boardAt ? ` · atualizado ${freshness(boardAt)}` : ""
+                  }`}
+            </p>
           </div>
 
           <div className="max-h-[42vh] divide-y divide-border overflow-y-auto border-y border-border">
