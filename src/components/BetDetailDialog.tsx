@@ -46,6 +46,7 @@ export function BetDetailDialog({
   mine,
   marking,
   onMarkLeg,
+  onMarkRest,
   onClose,
 }: {
   bet: PlanBet | null;
@@ -55,11 +56,14 @@ export function BetDetailDialog({
   /** Index of the leg being saved, so its buttons can wait. */
   marking: number | null;
   onMarkLeg: (bet: PlanBet, index: number, status: "green" | "red") => void;
+  /** Settles every game still open in one go, for the usual case. */
+  onMarkRest: (bet: PlanBet, status: "green" | "red") => void;
   onClose: () => void;
 }) {
   if (!bet) return null;
 
   const won = bet.status === "green";
+  const undecided = bet.legs.filter((leg) => leg.status === "pending").length;
   const lost = bet.status === "red";
   const returned = bet.stake * bet.odds;
 
@@ -171,11 +175,39 @@ export function BetDetailDialog({
           })}
         </div>
 
-        {mine && bet.legs.some((leg) => leg.status === "pending") && (
-          <p className="border-t border-border bg-amber-500/8 px-4 py-2.5 text-[11px] leading-5 text-amber-700">
-            Diz como correu cada jogo para a análise saber em que mercados
-            acertas. Sem isso ficam todos como &ldquo;por decidir&rdquo;.
-          </p>
+        {mine && undecided > 0 && (
+          <div className="space-y-2 border-t border-border bg-amber-500/8 px-4 py-3">
+            <p className="text-[11px] leading-5 text-amber-700">
+              {undecided === 1 ? "Falta 1 jogo" : `Faltam ${undecided} jogos`} por
+              dizer como correram. Sem isso, a análise não sabe em que mercados
+              acertas.
+            </p>
+
+            {/* The usual case, in one tap. A day lost with every game down is
+                far more common than one lost by a single leg, and making
+                somebody mark three games one by one is how the data stays
+                empty. */}
+            {bet.status === "red" && undecided > 1 && (
+              <button
+                type="button"
+                disabled={marking !== null}
+                onClick={() => onMarkRest(bet, "red")}
+                className="sl-tap h-9 w-full rounded-xl bg-destructive/10 text-xs font-semibold text-destructive disabled:opacity-40"
+              >
+                Falharam todos
+              </button>
+            )}
+            {bet.status === "green" && undecided > 1 && (
+              <button
+                type="button"
+                disabled={marking !== null}
+                onClick={() => onMarkRest(bet, "green")}
+                className="sl-tap h-9 w-full rounded-xl bg-[hsl(var(--sl-green))]/10 text-xs font-semibold text-[hsl(var(--sl-green))] disabled:opacity-40"
+              >
+                Entraram todos
+              </button>
+            )}
+          </div>
         )}
 
         <p className="sl-meta border-t border-border px-4 py-2.5 text-[11px]">

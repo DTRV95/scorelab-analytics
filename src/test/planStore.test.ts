@@ -7,7 +7,9 @@ import {
   isManualLeg,
   openFixtureRefs,
   setLegStatus,
+  setRemainingLegs,
   settleFromScores,
+  settleLostWith,
   settleManually,
   type PlanBet,
   type PlanMember,
@@ -391,5 +393,104 @@ describe("saying how one game inside a bet went", () => {
     expect(marked.status).toBe("red");
     expect(marked.profitLoss).toBe(-10);
     expect(marked.legs[0].status).toBe("red");
+  });
+});
+
+describe("settling every game left in one go", () => {
+  it("marks the games still open and leaves the decided ones alone", () => {
+    const settled = setRemainingLegs(
+      bet({
+        status: "red",
+        profitLoss: -5,
+        legs: [
+          leg({ fixtureId: null, status: "green" }),
+          leg({ fixtureId: null, status: "pending" }),
+          leg({ fixtureId: null, status: "pending" }),
+        ],
+      }),
+      "red"
+    );
+
+    expect(settled.legs.map((entry) => entry.status)).toEqual([
+      "green",
+      "red",
+      "red",
+    ]);
+    // The day was already closed by its owner; the money does not move again.
+    expect(settled.profitLoss).toBe(-5);
+  });
+
+  it("closes an open day when every game is settled at once", () => {
+    const settled = setRemainingLegs(
+      bet({
+        status: "pending",
+        profitLoss: 0,
+        settledAt: null,
+        stake: 10,
+        odds: 2,
+        legs: [
+          leg({ fixtureId: null, status: "pending" }),
+          leg({ fixtureId: null, status: "pending" }),
+        ],
+      }),
+      "green"
+    );
+
+    expect(settled.status).toBe("green");
+    expect(settled.profitLoss).toBe(10);
+  });
+});
+
+describe("closing a lost day by naming the games that fell", () => {
+  const day = () =>
+    bet({
+      status: "pending",
+      profitLoss: 0,
+      settledAt: null,
+      stake: 7.5,
+      odds: 2.4,
+      legs: [
+        leg({ fixtureId: null, status: "pending", market: "-4,5 Golos" }),
+        leg({ fixtureId: null, status: "pending", market: "-3,5 Golos" }),
+        leg({ fixtureId: null, status: "pending", market: "Casa" }),
+      ],
+    });
+
+  it("settles the named games as lost and the rest as landed", () => {
+    // A multiple goes down because one game fell; the others came in. Saying
+    // which failed says everything about the day.
+    const settled = settleLostWith(day(), [1]);
+
+    expect(settled.legs.map((entry) => entry.status)).toEqual([
+      "green",
+      "red",
+      "green",
+    ]);
+    expect(settled.status).toBe("red");
+    expect(settled.profitLoss).toBe(-7.5);
+  });
+
+  it("takes more than one when more than one fell", () => {
+    const settled = settleLostWith(day(), [0, 2]);
+
+    expect(settled.legs.map((entry) => entry.status)).toEqual([
+      "red",
+      "green",
+      "red",
+    ]);
+  });
+
+  it("keeps the moment a day was already closed at", () => {
+    const already = bet({
+      status: "red",
+      profitLoss: -7.5,
+      stake: 7.5,
+      settledAt: "2026-09-25T22:00:00.000Z",
+      legs: [leg({ fixtureId: null, status: "pending" })],
+    });
+
+    expect(settleLostWith(already, [0]).settledAt).toBe(
+      "2026-09-25T22:00:00.000Z"
+    );
   });
 });

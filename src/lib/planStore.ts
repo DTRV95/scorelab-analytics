@@ -561,6 +561,52 @@ export function setLegStatus(
   };
 }
 
+/**
+ * Closes a lost day from the games that failed.
+ *
+ * In a multiple the day goes down because one game fell — the others came in.
+ * So the person only has to point at the ones that failed, and everything they
+ * did not point at is settled as landed. At least one has to be named, because
+ * a day where every game landed is not a lost day.
+ */
+export function settleLostWith(
+  bet: PlanBet,
+  failed: number[]
+): PlanBetPayload {
+  const down = new Set(failed);
+
+  return {
+    ...bet,
+    legs: bet.legs.map((leg, index) => ({
+      ...leg,
+      status: down.has(index) ? "red" : "green",
+    })),
+    status: "red",
+    profitLoss: Number((-bet.stake).toFixed(2)),
+    settledAt: bet.settledAt ?? new Date().toISOString(),
+  };
+}
+
+/**
+ * Settles every game still open in one go.
+ *
+ * The usual case by a mile: a day goes down with all of it, or comes in with
+ * all of it. Making somebody mark three games one at a time is how the record
+ * stays empty and the analysis stays blind.
+ */
+export function setRemainingLegs(
+  bet: PlanBet,
+  status: BetStatus
+): PlanBetPayload {
+  let payload: PlanBetPayload = bet;
+  bet.legs.forEach((leg, index) => {
+    if (leg.status === "pending") {
+      payload = setLegStatus({ ...payload, id: bet.id, userId: bet.userId }, index, status);
+    }
+  });
+  return payload;
+}
+
 /** Every fixture the open bets are waiting on. */
 export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }[] {
   const refs = new Map<number, { id: number; league: string }>();
