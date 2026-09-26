@@ -4,8 +4,11 @@ import {
   buildStanding,
   combineOdds,
   combinedModelProb,
+  editBet,
   isManualLeg,
   openFixtureRefs,
+  reopenBet,
+  resettleBet,
   setLegStatus,
   setRemainingLegs,
   settleFromScores,
@@ -492,5 +495,127 @@ describe("closing a lost day by naming the games that fell", () => {
     expect(settleLostWith(already, [0]).settledAt).toBe(
       "2026-09-25T22:00:00.000Z"
     );
+  });
+});
+
+describe("correcting a bet that was typed wrong", () => {
+  it("prices the day again from the odds that were fixed", () => {
+    const original = bet({
+      legs: [leg({ odds: 2 }), leg({ odds: 1.5 })],
+      odds: 3,
+      stake: 10,
+      status: "pending",
+      profitLoss: 0,
+    });
+
+    const fixed = editBet(
+      original,
+      original.legs.map((entry, index) =>
+        index === 0 ? { ...entry, odds: 1.8 } : entry,
+      ),
+      10,
+    );
+
+    expect(fixed.odds).toBe(2.7);
+  });
+
+  it("recomputes what a won day paid, not just the odd on screen", () => {
+    const won = bet({ legs: [leg({ odds: 2 })], odds: 2, stake: 10, status: "green", profitLoss: 10 });
+
+    const fixed = editBet(won, [leg({ odds: 1.5 })], 10);
+
+    expect(fixed.odds).toBe(1.5);
+    expect(fixed.profitLoss).toBe(5);
+  });
+
+  it("follows the stake on a lost day down to what it really cost", () => {
+    const lost = bet({ status: "red", stake: 10, profitLoss: -10 });
+
+    expect(editBet(lost, lost.legs, 4).profitLoss).toBe(-4);
+  });
+
+  it("leaves an open day owing nothing either way", () => {
+    const open = bet({ status: "pending", profitLoss: 0 });
+
+    expect(editBet(open, open.legs, 25).profitLoss).toBe(0);
+  });
+
+  it("prices a game taken out of the slip", () => {
+    const double = bet({
+      legs: [leg({ odds: 2 }), leg({ odds: 1.5 })],
+      odds: 3,
+      stake: 10,
+      status: "pending",
+    });
+
+    expect(editBet(double, [double.legs[0]], 10).odds).toBe(2);
+  });
+});
+
+describe("a day closed the wrong way round", () => {
+  it("turns a lost day into a won one, with every game in", () => {
+    const lost = bet({
+      legs: [leg({ status: "red" }), leg({ status: "green" })],
+      odds: 4,
+      stake: 10,
+      status: "red",
+      profitLoss: -10,
+    });
+
+    const fixed = resettleBet(lost, true);
+
+    expect(fixed.status).toBe("green");
+    expect(fixed.profitLoss).toBe(30);
+    expect(fixed.legs.every((entry) => entry.status === "green")).toBe(true);
+  });
+
+  it("does not let a day flipped to lost keep the greens it was given", () => {
+    const won = bet({
+      legs: [leg({ status: "green" }), leg({ status: "green" })],
+      odds: 4,
+      stake: 10,
+      status: "green",
+      profitLoss: 30,
+    });
+
+    const fixed = resettleBet(won, false);
+
+    expect(fixed.status).toBe("red");
+    expect(fixed.profitLoss).toBe(-10);
+    // The person names which games fell, exactly as on any other lost day.
+    expect(fixed.legs.every((entry) => entry.status === "pending")).toBe(true);
+  });
+
+  it("marks the single game of a one-game day, since there is nothing to name", () => {
+    const won = bet({ status: "green", stake: 10, odds: 2, profitLoss: 10 });
+
+    expect(resettleBet(won, false).legs[0].status).toBe("red");
+  });
+
+  it("puts a day back to undecided, owing nothing", () => {
+    const won = bet({
+      legs: [leg({ status: "green" })],
+      status: "green",
+      profitLoss: 10,
+      settledAt: "2026-09-20T10:00:00.000Z",
+    });
+
+    const open = reopenBet(won);
+
+    expect(open.status).toBe("pending");
+    expect(open.profitLoss).toBe(0);
+    expect(open.settledAt).toBeNull();
+    expect(open.legs[0].status).toBe("pending");
+  });
+
+  it("takes a reopened day back off the ladder", () => {
+    const won = bet({ day: 1, status: "green" });
+    const before = buildStanding(member, MILLION_PLAN_RULES, [won]);
+    const after = buildStanding(member, MILLION_PLAN_RULES, [
+      { ...reopenBet(won), id: won.id, userId: won.userId },
+    ]);
+
+    expect(before.day).toBe(2);
+    expect(after.day).toBe(1);
   });
 });

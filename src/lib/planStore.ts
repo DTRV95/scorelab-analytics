@@ -607,6 +607,71 @@ export function setRemainingLegs(
   return payload;
 }
 
+/** What a bet is worth in money, given how its day ended. */
+function outcomeMoney(stake: number, odds: number, status: BetStatus): number {
+  if (status === "green") return Number((stake * (odds - 1)).toFixed(2));
+  if (status === "red") return -Number(stake.toFixed(2));
+  return 0;
+}
+
+/**
+ * A bet corrected after the fact.
+ *
+ * Odds get typed wrong, the wrong market gets tapped, a game goes into the
+ * wrong day's slip. Everything derived from those — the combined odd and what
+ * the day won or lost — is recomputed here rather than left holding the old
+ * arithmetic, which is the part nobody would think to go and fix by hand.
+ */
+export function editBet(
+  bet: PlanBet,
+  legs: PlanLeg[],
+  stake: number
+): PlanBetPayload {
+  const odds = combineOdds(legs);
+
+  return {
+    ...bet,
+    legs,
+    odds,
+    stake,
+    profitLoss: outcomeMoney(stake, odds, bet.status),
+  };
+}
+
+/**
+ * A day closed the wrong way round, put right.
+ *
+ * Flipping to won means every game landed, so they all go green. Flipping to
+ * lost cannot keep the greens the wrong result handed out: a lost day is named
+ * by the games that fell, so the games go back to undecided and the person
+ * says which ones, exactly as on any other lost day.
+ */
+export function resettleBet(bet: PlanBet, won: boolean): PlanBetPayload {
+  const settled = settleManually(bet, won);
+  if (won || bet.legs.length === 1) return settled;
+
+  return {
+    ...settled,
+    legs: settled.legs.map((leg) => ({ ...leg, status: "pending" as const })),
+  };
+}
+
+/**
+ * A settled day put back to undecided.
+ *
+ * For the bet that should never have been closed at all — registered on the
+ * wrong day, or settled before the games were played.
+ */
+export function reopenBet(bet: PlanBet): PlanBetPayload {
+  return {
+    ...bet,
+    legs: bet.legs.map((leg) => ({ ...leg, status: "pending" as const })),
+    status: "pending",
+    profitLoss: 0,
+    settledAt: null,
+  };
+}
+
 /** Every fixture the open bets are waiting on. */
 export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }[] {
   const refs = new Map<number, { id: number; league: string }>();

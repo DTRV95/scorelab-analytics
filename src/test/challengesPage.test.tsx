@@ -16,6 +16,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 const {
   savePlanBet,
   updatePlanBet,
+  deletePlanBet,
   invitePlayer,
   fetchPlanInvites,
   fetchMyPendingInvites,
@@ -30,6 +31,7 @@ const {
     userId,
   })),
   updatePlanBet: vi.fn(async (_planId: string, _betId: string, _payload: unknown) => undefined),
+  deletePlanBet: vi.fn(async (_planId: string, _betId: string) => undefined),
   invitePlayer: vi.fn(
     async (): Promise<"invited" | "already_member" | "no_account"> => "invited"
   ),
@@ -172,6 +174,7 @@ vi.mock("@/lib/planStore", async () => {
     ]),
     savePlanBet,
     updatePlanBet,
+    deletePlanBet,
     invitePlayer,
     fetchPlanInvites,
     fetchMyPendingInvites,
@@ -562,6 +565,94 @@ describe("reading the other player's bet", () => {
       within(dialog).getByText(/metido à mão, sem previsão do modelo/),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(/ainda aberta/)).toBeInTheDocument();
+  });
+});
+
+describe("correcting a bet that was typed wrong", () => {
+  async function openMine() {
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 2 de David/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Corrigir esta aposta/ }),
+    );
+    return dialog;
+  }
+
+  it("saves a fixed odd, and the day's money with it", async () => {
+    const dialog = await openMine();
+
+    fireEvent.change(
+      within(dialog).getByLabelText("Odd de Torreense vs Mafra"),
+      { target: { value: "2.10" } },
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Guardar correção/ }),
+    );
+
+    const [planId, betId, payload] = updatePlanBet.mock.calls[0];
+    expect(planId).toBe("plan");
+    expect(betId).toBe("b3");
+    expect(payload).toMatchObject({ odds: 2.1 });
+  });
+
+  it("saves a fixed stake", async () => {
+    const dialog = await openMine();
+
+    fireEvent.change(within(dialog).getByLabelText("Valor apostado"), {
+      target: { value: "12" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Guardar correção/ }),
+    );
+
+    const [, , payload] = updatePlanBet.mock.calls[0];
+    expect(payload).toMatchObject({ stake: 12 });
+  });
+
+  it("asks before taking a bet off both players' records", async () => {
+    const dialog = await openMine();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Apagar esta aposta/ }),
+    );
+    expect(deletePlanBet).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /Apagar mesmo/ }));
+
+    expect(deletePlanBet).toHaveBeenCalledWith("plan", "b3");
+  });
+
+  it("leaves the other player's bet alone", async () => {
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de Irmão/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).queryByRole("button", { name: /Corrigir esta aposta/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("turns a day closed the wrong way round", async () => {
+    renderPage();
+    // Day 1 is behind the fold: the list shows the last two days by default.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver todos os dias/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de David/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /Afinal perdeu/ }));
+
+    const [, betId, payload] = updatePlanBet.mock.calls[0];
+    expect(betId).toBe("b1");
+    expect(payload).toMatchObject({ status: "red", profitLoss: -5 });
   });
 });
 
