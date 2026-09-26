@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { canonicalMarket } from "@/lib/marketNames";
 import { isManualLeg, type PlanBet } from "@/lib/planStore";
 
 const eur = new Intl.NumberFormat("pt-PT", {
@@ -42,10 +43,18 @@ const LEG_TONE = {
 export function BetDetailDialog({
   bet,
   player,
+  mine,
+  marking,
+  onMarkLeg,
   onClose,
 }: {
   bet: PlanBet | null;
   player: string;
+  /** Only the person who placed it gets to say how its games went. */
+  mine: boolean;
+  /** Index of the leg being saved, so its buttons can wait. */
+  marking: number | null;
+  onMarkLeg: (bet: PlanBet, index: number, status: "green" | "red") => void;
   onClose: () => void;
 }) {
   if (!bet) return null;
@@ -102,15 +111,18 @@ export function BetDetailDialog({
           {bet.legs.map((leg, index) => {
             const Icon =
               leg.status === "green" ? Check : leg.status === "red" ? X : Clock;
+            const undecided = leg.status === "pending";
+
             return (
-              <div key={`${leg.fixtureId ?? "m"}-${index}`} className="flex items-start gap-2.5 px-4 py-3">
+              <div key={`${leg.fixtureId ?? "m"}-${index}`} className="px-4 py-3">
+                <div className="flex items-start gap-2.5">
                 <Icon className={`mt-0.5 h-3.5 w-3.5 flex-none ${LEG_TONE[leg.status]}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold text-foreground">
                     {leg.homeTeam} vs {leg.awayTeam}
                   </p>
                   <p className="sl-meta text-[11px] leading-5">
-                    {MARKET_LABELS[leg.market] ?? leg.market}
+                    {MARKET_LABELS[leg.market] ?? canonicalMarket(leg.market)}
                     {leg.league ? ` · ${leg.league}` : ""}
                   </p>
                   {isManualLeg(leg) ? (
@@ -124,13 +136,47 @@ export function BetDetailDialog({
                     </p>
                   )}
                 </div>
-                <span className="font-mono-data flex-none text-sm font-bold text-foreground">
+                <span className="sl-figure flex-none text-sm text-foreground">
                   {leg.odds.toFixed(2)}
                 </span>
+                </div>
+
+                {/* A day marked lost by hand says the day went down, not which
+                    game took it. With every game typed by hand, this is the
+                    only thing that ever fills that in. */}
+                {mine && undecided && (
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={marking === index}
+                      onClick={() => onMarkLeg(bet, index, "green")}
+                      className="sl-tap flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/40 disabled:opacity-40"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Entrou
+                    </button>
+                    <button
+                      type="button"
+                      disabled={marking === index}
+                      onClick={() => onMarkLeg(bet, index, "red")}
+                      className="sl-tap flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40 disabled:opacity-40"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Falhou
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+
+        {mine && bet.legs.some((leg) => leg.status === "pending") && (
+          <p className="border-t border-border bg-amber-500/8 px-4 py-2.5 text-[11px] leading-5 text-amber-700">
+            Diz como correu cada jogo para a análise saber em que mercados
+            acertas. Sem isso ficam todos como &ldquo;por decidir&rdquo;.
+          </p>
+        )}
 
         <p className="sl-meta border-t border-border px-4 py-2.5 text-[11px]">
           {bet.legs.length > 1

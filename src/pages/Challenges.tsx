@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import {
   openFixtureRefs,
   createPlan,
   savePlanBet,
+  setLegStatus,
   settleFromScores,
   settleManually,
   updatePlanBet,
@@ -210,6 +212,7 @@ export default function Challenges() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [closing, setClosing] = useState<string | null>(null);
+  const [marking, setMarking] = useState<number | null>(null);
   const [token, setToken] = useState(0);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [answering, setAnswering] = useState(false);
@@ -513,6 +516,32 @@ export default function Challenges() {
     [plan, me, user, rules],
   );
 
+  /** Records how one game inside a bet went, and closes the day if that decides it. */
+  const markLeg = useCallback(
+    async (bet: PlanBet, index: number, status: "green" | "red") => {
+      if (!plan?.id) return;
+      setMarking(index);
+      try {
+        const payload = setLegStatus(bet, index, status);
+        await updatePlanBet(plan.id, bet.id, payload);
+        const updated = { ...payload, id: bet.id, userId: bet.userId };
+        setBets((previous) =>
+          previous.map((entry) => (entry.id === bet.id ? updated : entry)),
+        );
+        setOpenBet((current) =>
+          current && current.bet.id === bet.id
+            ? { ...current, bet: updated }
+            : current,
+        );
+      } catch {
+        setError("Não foi possível guardar como correu esse jogo.");
+      } finally {
+        setMarking(null);
+      }
+    },
+    [plan?.id],
+  );
+
   const closeBet = useCallback(
     async (bet: PlanBet, won: boolean) => {
       if (!plan) return;
@@ -520,20 +549,24 @@ export default function Challenges() {
       try {
         const payload = settleManually(bet, won);
         await updatePlanBet(plan.id, bet.id, payload);
+        const updated = { ...payload, id: bet.id, userId: bet.userId };
         setBets((previous) =>
-          previous.map((entry) =>
-            entry.id === bet.id
-              ? { ...payload, id: bet.id, userId: bet.userId }
-              : entry,
-          ),
+          previous.map((entry) => (entry.id === bet.id ? updated : entry)),
         );
+
+        // A lost day of several games leaves every game undecided, and with
+        // games typed by hand nothing else will ever fill that in. So the bet
+        // opens right here, while the person still remembers which one fell.
+        if (!won && updated.legs.length > 1) {
+          setOpenBet({ bet: updated, player: me?.name ?? "" });
+        }
       } catch {
         setError("Não foi possível fechar a aposta.");
       } finally {
         setClosing(null);
       }
     },
-    [plan],
+    [plan, me?.name],
   );
 
   if (loading) {
@@ -742,7 +775,7 @@ export default function Challenges() {
                                 ? "✗ "
                                 : "· "}
                             {leg.match} ·{" "}
-                            {MARKET_LABELS[leg.market] ?? leg.market} @{" "}
+                            {MARKET_LABELS[leg.market] ?? canonicalMarket(leg.market)} @{" "}
                             {leg.odds.toFixed(2)}
                           </p>
                         ))}
@@ -949,7 +982,7 @@ export default function Challenges() {
                               Dia {bet.day} ·{" "}
                               {bet.legs.length === 1
                                 ? (MARKET_LABELS[bet.legs[0].market] ??
-                                  bet.legs[0].market)
+                                  canonicalMarket(bet.legs[0].market))
                                 : `${bet.legs.length} jogos`}{" "}
                               @ {bet.odds.toFixed(2)}
                             </p>
@@ -1135,6 +1168,9 @@ export default function Challenges() {
         <BetDetailDialog
           bet={openBet?.bet ?? null}
           player={openBet?.player ?? ""}
+          mine={openBet?.bet.userId === user?.id}
+          marking={marking}
+          onMarkLeg={markLeg}
           onClose={() => setOpenBet(null)}
         />
 

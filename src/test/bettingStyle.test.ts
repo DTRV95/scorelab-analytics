@@ -190,6 +190,36 @@ describe("counting what nobody decided", () => {
   });
 });
 
+describe("the same market written five ways", () => {
+  it("counts them as one", () => {
+    // Straight from the database: one brother writes "-3,5 Golos", the other
+    // "-3.5". Three separate rows is an analysis that says nothing.
+    const style = buildCombinedStyle([
+      bet({ id: "a", legs: [leg({ market: "-3,5 Golos", status: "red" })], status: "red", profitLoss: -5 }),
+      bet({ id: "b", legs: [leg({ market: "-3.5" })] }),
+      bet({ id: "c", legs: [leg({ market: "Menos de 3.5" })] }),
+    ]);
+
+    const row = style.markets.find((entry) => entry.market === "Menos de 3.5 Golos");
+    expect(row?.backed).toBe(3);
+    expect(row?.landed).toBe(2);
+    expect(row?.failed).toBe(1);
+    expect(style.markets).toHaveLength(1);
+  });
+
+  it("keeps a handicap apart from the goals line it looks like", () => {
+    const style = buildCombinedStyle([
+      bet({ id: "a", legs: [leg({ market: "-0.5" })] }),
+      bet({ id: "b", legs: [leg({ market: "Suíça +0.5" })] }),
+    ]);
+
+    expect(style.markets.map((row) => row.market).sort()).toEqual([
+      "Menos de 0.5 Golos",
+      "Suíça +0.5",
+    ]);
+  });
+});
+
 describe("both players read as one", () => {
   it("pools the bets whoever placed them", () => {
     const combined = buildCombinedStyle([

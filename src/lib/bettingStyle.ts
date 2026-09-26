@@ -7,6 +7,7 @@
  * blaming all of them — or none — would invent a result nobody reported.
  */
 
+import { canonicalMarket } from "@/lib/marketNames";
 import type { PlanBet, PlanLeg } from "@/lib/planStore";
 
 export type LegOutcome = "landed" | "failed" | "unknown";
@@ -100,7 +101,11 @@ function marketRows(bets: PlanBet[]): MarketStyle[] {
 
   bets.forEach((bet) =>
     bet.legs.forEach((leg) => {
-      const row = rows.get(leg.market) ?? {
+      // Typed by hand, the same bet arrives written five ways. Grouping on
+      // the raw text splits "-3.5" from "-3,5 Golos" and the analysis says
+      // nothing about either.
+      const market = canonicalMarket(leg.market);
+      const row = rows.get(market) ?? {
         backed: 0,
         landed: 0,
         failed: 0,
@@ -122,7 +127,7 @@ function marketRows(bets: PlanBet[]): MarketStyle[] {
       else if (outcome === "failed") row.failed += 1;
       else row.unknown += 1;
 
-      rows.set(leg.market, row);
+      rows.set(market, row);
     })
   );
 

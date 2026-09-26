@@ -523,6 +523,44 @@ export function settleManually(bet: PlanBet, won: boolean): PlanBetPayload {
   };
 }
 
+/**
+ * Records how one game inside a bet went.
+ *
+ * Marking a day lost says the day went down, not which game took it — and with
+ * every game typed by hand, nothing else ever fills that in. This is how the
+ * person who was there says it, one game at a time, on an open bet or on one
+ * already closed.
+ *
+ * On a bet still open the legs can decide it: one game down loses the day, and
+ * every game in means it is won. A bet already settled keeps the money its
+ * owner settled it with; this only records what each game did.
+ */
+export function setLegStatus(
+  bet: PlanBet,
+  index: number,
+  status: BetStatus
+): PlanBetPayload {
+  const legs = bet.legs.map((leg, position) =>
+    position === index ? { ...leg, status } : leg
+  );
+
+  if (bet.status !== "pending") return { ...bet, legs };
+
+  const lost = legs.some((leg) => leg.status === "red");
+  const won = legs.every((leg) => leg.status === "green");
+  if (!lost && !won) return { ...bet, legs };
+
+  return {
+    ...bet,
+    legs,
+    status: lost ? "red" : "green",
+    profitLoss: Number(
+      (lost ? -bet.stake : bet.stake * (bet.odds - 1)).toFixed(2)
+    ),
+    settledAt: new Date().toISOString(),
+  };
+}
+
 /** Every fixture the open bets are waiting on. */
 export function openFixtureRefs(bets: PlanBet[]): { id: number; league: string }[] {
   const refs = new Map<number, { id: number; league: string }>();

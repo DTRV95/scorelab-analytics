@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { canonicalMarket } from "@/lib/marketNames";
 import { BarLegend, StackedBar } from "@/components/StackedBar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -84,7 +85,7 @@ function headline(style: PlayerStyle): string {
   if (style.favourite) {
     parts.push(
       `O mercado mais jogado é ${
-        MARKET_LABELS[style.favourite.market] ?? style.favourite.market
+        MARKET_LABELS[style.favourite.market] ?? canonicalMarket(style.favourite.market)
       }, ${style.favourite.backed} ${
         style.favourite.backed === 1 ? "vez" : "vezes"
       }.`
@@ -94,7 +95,7 @@ function headline(style: PlayerStyle): string {
   if (style.sharpest && style.sharpest.hitPct !== null) {
     parts.push(
       `O que mais acerta é ${
-        MARKET_LABELS[style.sharpest.market] ?? style.sharpest.market
+        MARKET_LABELS[style.sharpest.market] ?? canonicalMarket(style.sharpest.market)
       }: ${style.sharpest.landed} de ${style.sharpest.landed + style.sharpest.failed}.`
     );
   } else {
@@ -259,7 +260,7 @@ export default function BettorAnalysis() {
                 <div key={row.market} className="px-4 py-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
-                      {MARKET_LABELS[row.market] ?? row.market}
+                      {MARKET_LABELS[row.market] ?? canonicalMarket(row.market)}
                     </p>
                     <p className="sl-figure flex-none text-[13px] text-foreground">
                       {row.hitPct === null ? "—" : `${row.hitPct.toFixed(0)}%`}
@@ -362,10 +363,12 @@ export default function BettorAnalysis() {
 
         {style.undecided > 0 && (
           <motion.p variants={fadeUp} className="sl-meta px-1 text-[11px] leading-5">
-            {style.undecided} jogos estão marcados como &ldquo;por decidir&rdquo;:
-            vieram de dias com vários jogos que foram dados como perdidos à mão,
-            e ninguém disse qual deles falhou. Ficam de fora das percentagens em
-            vez de serem atribuídos a palpite.
+            {style.undecided}{" "}
+            {style.undecided === 1 ? "jogo está" : "jogos estão"} por decidir:
+            ou a aposta ainda está em aberto, ou o dia foi dado como perdido sem
+            se dizer qual dos jogos falhou. Ficam de fora das percentagens em vez
+            de serem atribuídos a palpite — abre a aposta no desafio para dizeres
+            como correu cada um.
           </motion.p>
         )}
 
