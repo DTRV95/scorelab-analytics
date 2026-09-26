@@ -6,6 +6,7 @@ import {
   combinedModelProb,
   isManualLeg,
   openFixtureRefs,
+  setLegStatus,
   settleFromScores,
   settleManually,
   type PlanBet,
@@ -332,5 +333,63 @@ describe("a day that is already lost", () => {
     expect(settled?.status).toBe("red");
     expect(settled?.profitLoss).toBe(-10);
     expect(settled?.legs.map((entry) => entry.status)).toEqual(["red", "pending"]);
+  });
+});
+
+describe("saying how one game inside a bet went", () => {
+  const open = () =>
+    bet({
+      status: "pending",
+      profitLoss: 0,
+      settledAt: null,
+      stake: 10,
+      odds: 2.5,
+      legs: [
+        leg({ fixtureId: null, status: "pending", market: "-4,5 Golos" }),
+        leg({ fixtureId: null, status: "pending", market: "-3,5 Golos" }),
+      ],
+    });
+
+  it("records the game without touching the rest", () => {
+    const marked = setLegStatus(open(), 0, "green");
+
+    expect(marked.legs.map((entry) => entry.status)).toEqual(["green", "pending"]);
+    expect(marked.status).toBe("pending");
+  });
+
+  it("closes an open day as soon as one game is marked down", () => {
+    const marked = setLegStatus(open(), 1, "red");
+
+    expect(marked.status).toBe("red");
+    expect(marked.profitLoss).toBe(-10);
+    expect(marked.settledAt).not.toBeNull();
+  });
+
+  it("pays an open day out once every game is in", () => {
+    const first = setLegStatus(open(), 0, "green");
+    const marked = setLegStatus({ ...first, id: "b1", userId: "u1" }, 1, "green");
+
+    expect(marked.status).toBe("green");
+    expect(marked.profitLoss).toBe(15);
+  });
+
+  it("leaves the money alone on a day its owner already settled", () => {
+    // Filling in which game failed afterwards must not re-pay a closed day.
+    const settled = bet({
+      status: "red",
+      profitLoss: -10,
+      stake: 10,
+      odds: 2.5,
+      legs: [
+        leg({ fixtureId: null, status: "pending" }),
+        leg({ fixtureId: null, status: "pending" }),
+      ],
+    });
+
+    const marked = setLegStatus(settled, 0, "red");
+
+    expect(marked.status).toBe("red");
+    expect(marked.profitLoss).toBe(-10);
+    expect(marked.legs[0].status).toBe("red");
   });
 });
