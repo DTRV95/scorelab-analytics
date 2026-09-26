@@ -594,27 +594,28 @@ export function BetComposer({
                 {!health && !healthError && (
                   <p className="sl-meta text-[11px]">A perguntar...</p>
                 )}
-                {health && byUrgency(health.leagues).map((row) => (
-                  <div key={row.league} className="flex items-start gap-2">
-                    <span
-                      className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${
-                        !row.ok
-                          ? "bg-destructive"
-                          : row.within_days > 0
-                            ? "bg-[hsl(var(--sl-green))]"
-                            : "bg-muted-foreground/40"
-                      }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold text-foreground">
-                        {row.league}
-                      </p>
-                      <p className="sl-meta text-[10px] leading-4">
-                        {describeHealth(row)}
-                      </p>
+                {health &&
+                  byUrgency(health.leagues).map((row) => (
+                    <div key={row.league} className="flex items-start gap-2">
+                      <span
+                        className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${
+                          !row.ok
+                            ? "bg-destructive"
+                            : row.within_days > 0
+                              ? "bg-[hsl(var(--sl-green))]"
+                              : "bg-muted-foreground/40"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold text-foreground">
+                          {row.league}
+                        </p>
+                        <p className="sl-meta text-[10px] leading-4">
+                          {describeHealth(row)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

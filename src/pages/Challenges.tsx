@@ -169,26 +169,15 @@ function PlayerCard({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-2 px-4 py-2.5">
-        {[
-          { label: "Ganhas", value: String(standing.greens) },
-          { label: "Perdidas", value: String(standing.reds) },
-          {
-            label: "Em aberto",
-            value:
-              standing.openStake > 0 ? eur.format(standing.openStake) : "—",
-          },
-        ].map((item) => (
-          <div key={item.label}>
-            <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
-              {item.label}
-            </p>
-            <p className="mt-0.5 font-mono-data text-sm font-semibold text-foreground">
-              {item.value}
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* One line instead of three stacked columns: two players used to cost
+          half a phone screen in labels alone. */}
+      <p className="sl-meta px-4 py-2 text-[11px]">
+        {standing.greens} {standing.greens === 1 ? "ganha" : "ganhas"} ·{" "}
+        {standing.reds} {standing.reds === 1 ? "perdida" : "perdidas"}
+        {standing.openStake > 0
+          ? ` · ${eur.format(standing.openStake)} em aberto`
+          : ""}
+      </p>
 
       {rules.lossStreakPause !== null &&
         standing.lossStreak >= rules.lossStreakPause && (
@@ -223,10 +212,12 @@ export default function Challenges() {
   // Bumped to open the picker from the card at the top of the page.
   const [pickSignal, setPickSignal] = useState(0);
   const [wholeTable, setWholeTable] = useState(false);
+  const [allDays, setAllDays] = useState(false);
   // Which bet is open in full, and whose it is.
-  const [openBet, setOpenBet] = useState<{ bet: PlanBet; player: string } | null>(
-    null,
-  );
+  const [openBet, setOpenBet] = useState<{
+    bet: PlanBet;
+    player: string;
+  } | null>(null);
 
   // Which challenges this account is in. Switching between them must not
   // refetch this list, so it is loaded on its own.
@@ -625,24 +616,23 @@ export default function Challenges() {
         >
           <div className="min-w-0">
             <h1 className="sl-section-title text-[15px]">{plan.name}</h1>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {schedule.state === "before"
-                ? `Começa daqui a ${schedule.daysUntilStart} ${
-                    schedule.daysUntilStart === 1 ? "dia" : "dias"
-                  }. ${describeRules(rules)}.`
-                : schedule.state === "finished"
-                  ? `Os ${rules.days} dias já passaram.`
-                  : schedule.state === "running"
-                    ? `Dia ${schedule.calendarDay} de ${rules.days} no calendário · ${describeRules(
-                        rules,
-                      )}.`
-                    : `${describeRules(rules)}.`}
-            </p>
+            {/* The rules have a card of their own further down. Repeating
+                them here was a line of small print above everything else. */}
+            {schedule.state === "before" && (
+              <p className="sl-meta mt-0.5 text-[11px]">
+                Começa daqui a {schedule.daysUntilStart}{" "}
+                {schedule.daysUntilStart === 1 ? "dia" : "dias"}
+              </p>
+            )}
+            {schedule.state === "finished" && (
+              <p className="sl-meta mt-0.5 text-[11px]">
+                Os {rules.days} dias já passaram
+              </p>
+            )}
             {schedule.behindBy > 0 && (
-              <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
-                Passaram {schedule.behindBy}{" "}
-                {schedule.behindBy === 1 ? "dia" : "dias"} sem aposta tua. A
-                escada não anda sozinha, só fica à espera.
+              <p className="mt-0.5 text-[11px] text-amber-700">
+                {schedule.behindBy} {schedule.behindBy === 1 ? "dia" : "dias"}{" "}
+                sem aposta tua
               </p>
             )}
           </div>
@@ -704,10 +694,6 @@ export default function Challenges() {
           >
             <div className="border-b border-border px-4 py-3.5">
               <h2 className="text-sm font-bold text-foreground">Por fechar</h2>
-              <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                Os jogos do quadro fecham-se sozinhos quando sai o resultado. Um
-                jogo que meteste à mão só tu sabes como acabou.
-              </p>
             </div>
             <div className="divide-y divide-border">
               {openBets.map((bet) => {
@@ -897,7 +883,7 @@ export default function Challenges() {
                   <div className="mt-2 space-y-1.5">
                     {[...standing.bets]
                       .reverse()
-                      .slice(0, 8)
+                      .slice(0, allDays ? 40 : 2)
                       .map((bet) => (
                         <button
                           key={bet.id}
@@ -948,27 +934,38 @@ export default function Challenges() {
                 </div>
               ))}
             </div>
+
+            {/* Two days is what anyone looks at. The rest is history, and a
+                history that is always open turns the page into a scroll. */}
+            {standings.some((standing) => standing.bets.length > 2) && (
+              <button
+                type="button"
+                onClick={() => setAllDays((open) => !open)}
+                className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+              >
+                {allDays ? "Mostrar só os últimos 2 dias" : "Ver todos os dias"}
+              </button>
+            )}
           </motion.section>
         )}
 
-        {/* The challenge reads like a schedule. It is a parlay, and a bankroll
-            tool that hides that is not doing its job. */}
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-          <div className="border-b border-border px-4 py-3.5">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />O que a escada
-              exige
+              <Trophy className="h-4 w-4 text-primary" />A escada
             </h2>
+            <span className="sl-meta text-[11px]">
+              {me ? `estás no dia ${me.day}` : ""}
+            </span>
           </div>
-          <div className="space-y-2 p-4">
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Cada degrau só conta se a aposta entrar, por isso o desafio
-              inteiro é uma sequência de vitórias seguidas, não uma média.
-            </p>
+
+          {/* What the ladder costs, in the same card as the ladder. Two cards
+              about the same thing is one card too many on a phone — and a
+              bankroll tool that buries this is not doing its job. */}
+          <div className="space-y-2 border-b border-border p-4">
             <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
               <span className="sl-meta min-w-0 flex-1 text-[11px]">
-                Chance de{" "}
-                {me ? `chegar do dia ${me.day} ao fim` : "fazer a escada toda"}
+                Chegar do dia {me?.day ?? 1} ao fim
               </span>
               <span className="font-mono-data flex-none text-sm font-bold text-foreground">
                 {chance < 0.0001
@@ -978,9 +975,7 @@ export default function Challenges() {
             </div>
             {loss && (
               <div className="rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="sl-meta text-[11px]">
-                  Uma derrota hoje deixa-te em
-                </p>
+                <p className="sl-meta text-[11px]">Perder hoje deixa-te em</p>
                 <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
                   {eur.format(loss.bankrollAfter)}
                   <span className="sl-meta font-normal">
@@ -993,17 +988,6 @@ export default function Challenges() {
                 </p>
               </div>
             )}
-          </div>
-        </motion.section>
-
-        <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Trophy className="h-4 w-4 text-primary" />A escada
-            </h2>
-            <span className="sl-meta text-[11px]">
-              {me ? `estás no dia ${me.day}` : ""}
-            </span>
           </div>
 
           {/* The document's own columns, in its order, so the sheet on the

@@ -76,6 +76,21 @@ export function PlanPlayers({
   const pending = invites.filter((invite) => invite.status === "pending");
   const declined = invites.filter((invite) => invite.status === "declined");
 
+  // With nobody waiting on an answer, this card would only repeat the names
+  // already standing above it, so all that is left of it is the way in.
+  if (pending.length === 0 && declined.length === 0 && !inviting) {
+    return (
+      <button
+        type="button"
+        onClick={() => setInviting(true)}
+        className="sl-card flex w-full items-center justify-center gap-2 py-3 text-xs font-semibold text-primary"
+      >
+        <UserPlus className="h-3.5 w-3.5" strokeWidth={2.1} />
+        Convidar alguém
+      </button>
+    );
+  }
+
   return (
     <section className="sl-card overflow-hidden">
       <div className="border-b border-border px-4 py-3.5">

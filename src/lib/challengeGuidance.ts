@@ -64,13 +64,15 @@ function lastLine(standing: PlayerStanding, day: number): string | null {
 
   if (bet.status === "green") {
     return `Ganhaste o dia ${bet.day}, +${eur.format(
-      bet.profitLoss
+      bet.profitLoss,
     )}. Avanças para o dia ${day}.`;
   }
 
   if (bet.status === "red") {
     return `Perdeste o dia ${bet.day}, ${eur.format(bet.profitLoss)}.${
-      day < bet.day ? ` Recuas para o dia ${day}.` : " Já estavas no primeiro dia."
+      day < bet.day
+        ? ` Recuas para o dia ${day}.`
+        : " Já estavas no primeiro dia."
     }`;
   }
 
@@ -114,7 +116,7 @@ export function nextMove({
       state: "broke",
       blocked: true,
       action: "A banca acabou",
-      detail: "Não há nada para apostar. Para continuar, o quadro tem de recomeçar.",
+      detail: "Não há nada para apostar: o quadro tem de recomeçar.",
     };
   }
 
@@ -136,8 +138,8 @@ export function nextMove({
       action: "Fecha o dia que está aberto",
       detail:
         standing.openBets === 1
-          ? "Enquanto uma aposta não estiver decidida, a banca não mexe e o dia seguinte não existe ainda."
-          : `Tens ${standing.openBets} apostas por decidir. Enquanto não fecharem, o dia seguinte não existe ainda.`,
+          ? "A banca só mexe quando esta fechar."
+          : `${standing.openBets} apostas por decidir. A banca só mexe quando fecharem.`,
     };
   }
 
@@ -149,7 +151,7 @@ export function nextMove({
       action: `Começa daqui a ${schedule.daysUntilStart} ${
         schedule.daysUntilStart === 1 ? "dia" : "dias"
       }`,
-      detail: `No dia 1 serão ${eur.format(stake)} a uma odd de ${targetOdds.toFixed(2)}.`,
+      detail: `No dia 1 são ${eur.format(stake)} a ${targetOdds.toFixed(2)}.`,
     };
   }
 
@@ -159,36 +161,37 @@ export function nextMove({
       state: "finished",
       blocked: true,
       action: "O desafio chegou ao fim",
-      detail: `Ficaste no dia ${day} de ${rules.days}, com ${eur.format(
-        standing.bankroll
-      )}.`,
+      detail: `Dia ${day} de ${rules.days}, com ${eur.format(standing.bankroll)}.`,
     };
   }
 
-  if (rules.lossStreakPause !== null && standing.lossStreak >= rules.lossStreakPause) {
+  if (
+    rules.lossStreakPause !== null &&
+    standing.lossStreak >= rules.lossStreakPause
+  ) {
     return {
       ...base,
       state: "paused",
       blocked: true,
       action: "Hoje não se aposta",
-      detail: `${standing.lossStreak} perdas seguidas: o quadro manda parar um dia. Quando voltares são ${eur.format(
-        stake
-      )} a uma odd de ${targetOdds.toFixed(2)}.`,
+      detail: `${standing.lossStreak} perdas seguidas. Amanhã são ${eur.format(
+        stake,
+      )} a ${targetOdds.toFixed(2)}.`,
     };
   }
 
+  // Short on purpose: the numbers are already on the card, and a paragraph
+  // under them is what makes a phone screen look like a form.
   const band =
     rules.oddsMin !== null && rules.oddsMax !== null
-      ? ` A odd que meteres tem de ficar entre ${rules.oddsMin.toFixed(
-          2
-        )} e ${rules.oddsMax.toFixed(2)}.`
+      ? ` · odd entre ${rules.oddsMin.toFixed(2)} e ${rules.oddsMax.toFixed(2)}`
       : "";
 
   const detail = short
-    ? `Dia ${day}: o quadro pede ${eur.format(
-        row?.stake ?? 0
-      )} e só tens ${eur.format(standing.bankroll)}. Vai tudo.${band}`
-    : `Dia ${day} do quadro, que parte de ${eur.format(tableBankroll)}.${band}`;
+    ? `O quadro pede ${eur.format(row?.stake ?? 0)}, só tens ${eur.format(
+        standing.bankroll,
+      )}: vai tudo${band}`
+    : `Dia ${day} de ${rules.days}${band}`;
 
   return {
     ...base,

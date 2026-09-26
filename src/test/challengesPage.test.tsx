@@ -272,8 +272,11 @@ describe("a challenge's standings", () => {
   it("says out loud what the ladder actually requires", async () => {
     renderPage();
 
-    expect(await screen.findByText(/O que a escada exige/)).toBeInTheDocument();
-    expect(screen.getByText(/sequência de vitórias seguidas/)).toBeInTheDocument();
+    // The odds of the whole run, beside the ladder itself rather than in a
+    // card of their own: a schedule that is really a parlay has to say so.
+    expect(await screen.findByText(/Chegar do dia \d+ ao fim/)).toBeInTheDocument();
+    expect(screen.getByText(/1 em/)).toBeInTheDocument();
+    expect(screen.getByText(/Perder hoje deixa-te em/)).toBeInTheDocument();
   });
 });
 
