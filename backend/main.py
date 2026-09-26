@@ -79,6 +79,20 @@ def data_status():
     }
 
 
+@app.get("/data/leagues")
+@limiter.limit("6/minute")
+def data_leagues(request: Request, days: int = 7):
+    """Why a competition is missing from the board.
+
+    The board swallows a competition's failure on purpose, so this is the only
+    place that says what the provider actually answered for each one.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    return football_data.league_diagnostics(days=days)
+
+
 @app.get("/data/fixtures")
 @limiter.limit("20/minute")
 def data_fixtures(request: Request, league: str):

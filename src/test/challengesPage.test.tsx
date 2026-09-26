@@ -208,9 +208,16 @@ function renderPage() {
   );
 }
 
-/** Opens the pop-up the games are inserted from. */
+/**
+ * Opens the pop-up the games are inserted from.
+ *
+ * Empty, the slip has no card of its own and the way in is the button on the
+ * card at the top of the page; once a game is in, the slip has its own.
+ */
 async function openPicker() {
-  fireEvent.click(await screen.findByRole("button", { name: /Inserir (outro )?jogo/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Inserir (os jogos do dia \d+|outro jogo)/ })
+  );
 }
 
 /** Picks a board game and the market being backed, the way a person would. */
@@ -405,6 +412,39 @@ describe("closing a bet nobody else can close", () => {
   });
 });
 
+describe("reading the other player's bet", () => {
+  it("opens a bet in full from the list, whoever placed it", async () => {
+    renderPage();
+
+    // The brother's day 1, which the list can only show as one line.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de Irmão/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Dia 1 · Irmão")).toBeInTheDocument();
+    expect(within(dialog).getByText("Sporting CP vs Arouca")).toBeInTheDocument();
+    expect(within(dialog).getByText(/o modelo dava 71%/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Perdeu")).toBeInTheDocument();
+    expect(within(dialog).getByText("-5,00 €")).toBeInTheDocument();
+  });
+
+  it("says which games were typed by hand, since those carry no forecast", async () => {
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 2 de David/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Torreense vs Mafra")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/metido à mão, sem previsão do modelo/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/ainda aberta/)).toBeInTheDocument();
+  });
+});
+
 describe("managing challenges", () => {
   it("asks for the name to be typed before deleting everyone's history", async () => {
     renderPage();
@@ -460,7 +500,9 @@ describe("managing challenges", () => {
   it("invites someone by email and reports what happened", async () => {
     renderPage();
 
-    fireEvent.change(await screen.findByPlaceholderText("irmao@exemplo.com"), {
+    // The form is folded away until someone wants it: inviting happens once.
+    fireEvent.click(await screen.findByRole("button", { name: /Convidar alguém/ }));
+    fireEvent.change(screen.getByPlaceholderText("irmao@exemplo.com"), {
       target: { value: " agenciacristina@hotmail.com " },
     });
     fireEvent.click(screen.getByRole("button", { name: /^Convidar$/ }));

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Check, ListPlus, PenLine, Plus, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Info, ListPlus, PenLine, Plus, Search, X } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
+import {
+  byUrgency,
+  describeHealth,
+  fetchLeagueHealth,
+  type LeagueHealthReport,
+} from "@/lib/leagueHealth";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
@@ -124,6 +130,9 @@ export function BetComposer({
   betsToday,
   lossStreak,
   openBets,
+  unavailable,
+  openSignal,
+  entryElsewhere,
   targetOdds,
   plannedStake,
   usedFixtures,
@@ -137,6 +146,14 @@ export function BetComposer({
   betsToday: number;
   lossStreak: number;
   openBets: number;
+  /** Competitions the provider did not answer for on the last board fetch. */
+  unavailable: string[];
+  /** Bumped from outside to open the picker, so the card at the top of the
+      page can start the day's bet without anyone scrolling to find it. */
+  openSignal?: number;
+  /** True when the card at the top of the page is already offering the way in
+      and this one would only repeat it. */
+  entryElsewhere?: boolean;
   /** The odd the table pencils in for today, to aim the slip at. */
   targetOdds: number;
   /** What the table asks for today, which is what the field starts on. */
@@ -158,6 +175,13 @@ export function BetComposer({
   const [stakeInput, setStakeInput] = useState<string | null>(null);
   /** The picker lives in a pop-up: the slip is what the page is for. */
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [health, setHealth] = useState<LeagueHealthReport | null>(null);
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [healthError, setHealthError] = useState(false);
+
+  useEffect(() => {
+    if (openSignal) setPickerOpen(true);
+  }, [openSignal]);
 
   const suggested = plannedStake;
   const stake =
@@ -279,9 +303,17 @@ export function BetComposer({
     manual.away.trim().length > 0 &&
     manual.market.trim().length > 0;
 
+  // Empty, this card would repeat what the card at the top of the page already
+  // says, and put a second button beside its button. So it stays out of the way
+  // until there is a slip to show — but only while that other button exists:
+  // when the top card is saying something else, this is the only way in.
+  const slipOnly = legs.length === 0 && Boolean(entryElsewhere);
+
   return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-border bg-gradient-to-r from-primary/10 to-transparent px-4 py-3">
+    <section className={slipOnly ? "contents" : "sl-card overflow-hidden"}>
+      <div
+        className={`${slipOnly ? "hidden" : "flex"} items-center gap-2 border-b border-border bg-gradient-to-r from-primary/10 to-transparent px-4 py-3`}
+      >
         <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-primary font-mono-data text-xs font-bold text-white">
           {day}
         </span>
@@ -353,23 +385,18 @@ export function BetComposer({
         </div>
       )}
 
-      {legs.length === 0 && (
-        <p className="px-4 pt-3 text-xs leading-relaxed text-muted-foreground">
-          Escolhe um jogo do quadro ou mete um à mão. Podem ser vários: as odds
-          multiplicam-se e o valor a apostar sai do dia em que estás.
-        </p>
+      {!slipOnly && (
+        <div className="px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 py-3 text-xs font-semibold text-primary transition hover:bg-primary/5"
+          >
+            <Plus className="h-4 w-4" />
+            Inserir outro jogo
+          </button>
+        </div>
       )}
-
-      <div className="px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 py-3 text-xs font-semibold text-primary transition hover:bg-primary/5"
-        >
-          <Plus className="h-4 w-4" />
-          {legs.length === 0 ? "Inserir jogo" : "Inserir outro jogo"}
-        </button>
-      </div>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
@@ -529,6 +556,66 @@ export function BetComposer({
                 <PenLine className="h-3.5 w-3.5" />
                 Adicionar um jogo à mão
               </button>
+            )}
+
+            {/* A competition that fails is dropped from the board on purpose,
+                so one outage cannot hide the other seven. Saying nothing about
+                it is how a whole league goes missing for days. */}
+            {unavailable.length > 0 && (
+              <p className="mt-2 text-[11px] leading-relaxed text-amber-700">
+                Sem resposta da fonte de dados para: {unavailable.join(", ")}.
+                Esses jogos não estão aqui.
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setHealthOpen((open) => !open);
+                if (!health && !healthError) {
+                  fetchLeagueHealth()
+                    .then(setHealth)
+                    .catch(() => setHealthError(true));
+                }
+              }}
+              className="sl-meta mt-2 flex w-full items-center justify-center gap-1.5 text-[11px] underline"
+            >
+              <Info className="h-3 w-3" />
+              Que ligas estão a dar jogos?
+            </button>
+
+            {healthOpen && (
+              <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-[hsl(var(--sl-surface))] p-2.5">
+                {healthError && (
+                  <p className="sl-meta text-[11px]">
+                    Não foi possível perguntar à fonte de dados agora.
+                  </p>
+                )}
+                {!health && !healthError && (
+                  <p className="sl-meta text-[11px]">A perguntar...</p>
+                )}
+                {health && byUrgency(health.leagues).map((row) => (
+                  <div key={row.league} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${
+                        !row.ok
+                          ? "bg-destructive"
+                          : row.within_days > 0
+                            ? "bg-[hsl(var(--sl-green))]"
+                            : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {row.league}
+                      </p>
+                      <p className="sl-meta text-[10px] leading-4">
+                        {describeHealth(row)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </DialogContent>

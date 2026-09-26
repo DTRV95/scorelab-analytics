@@ -10,7 +10,8 @@ import {
 } from "@/lib/planStore";
 
 const OUTCOME_MESSAGE: Record<InviteOutcome, string> = {
-  invited: "Convite enviado. Aparece na conta dele assim que abrir os desafios.",
+  invited:
+    "Convite enviado. Aparece na conta dele assim que abrir os desafios.",
   already_member: "Essa pessoa já está neste desafio.",
   no_account: "Não há nenhuma conta registada com esse email.",
 };
@@ -34,6 +35,7 @@ export function PlanPlayers({
   const [invites, setInvites] = useState<PlanInvite[]>([]);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "good" | "bad";
     text: string;
@@ -77,11 +79,9 @@ export function PlanPlayers({
   return (
     <section className="sl-card overflow-hidden">
       <div className="border-b border-border px-4 py-3.5">
-        <h2 className="text-sm font-bold text-foreground">Quem está no desafio</h2>
-        <p className="mt-1 text-xs leading-6 text-muted-foreground">
-          Convida por email quem já tem conta no ScoreLab. Só entra depois de
-          aceitar, e cada um mantém a sua banca.
-        </p>
+        <h2 className="text-sm font-bold text-foreground">
+          Quem está no desafio
+        </h2>
       </div>
 
       <div className="divide-y divide-border">
@@ -133,50 +133,69 @@ export function PlanPlayers({
         ))}
       </div>
 
-      <div className="space-y-2 border-t border-border p-4">
-        <label className="block">
-          <span className="sl-meta text-[11px]">Email de quem queres juntar</span>
-          <input
-            type="email"
-            inputMode="email"
-            autoComplete="off"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") send();
-            }}
-            placeholder="irmao@exemplo.com"
-            className="mt-1 h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-
-        <Button
-          className="sl-btn-primary h-10 w-full gap-2 text-xs disabled:opacity-40"
-          disabled={!email.trim() || sending}
-          onClick={send}
+      {/* Inviting happens once and then never again, so the form does not sit
+          open taking a third of a phone screen for the rest of the challenge. */}
+      {!inviting ? (
+        <button
+          type="button"
+          onClick={() => setInviting(true)}
+          className="flex w-full items-center justify-center gap-2 border-t border-border py-3 text-xs font-semibold text-primary"
         >
-          {sending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <>
-              <UserPlus className="h-3.5 w-3.5" strokeWidth={2.1} />
-              Convidar
-            </>
-          )}
-        </Button>
-
-        {feedback && (
-          <p
-            className={`text-[11px] leading-relaxed ${
-              feedback.tone === "good"
-                ? "text-[hsl(var(--sl-green))]"
-                : "text-destructive"
-            }`}
-          >
-            {feedback.text}
+          <UserPlus className="h-3.5 w-3.5" strokeWidth={2.1} />
+          Convidar alguém
+        </button>
+      ) : (
+        <div className="space-y-2 border-t border-border p-4">
+          <p className="text-xs leading-6 text-muted-foreground">
+            Convida por email quem já tem conta no ScoreLab. Só entra depois de
+            aceitar, e cada um mantém a sua banca.
           </p>
-        )}
-      </div>
+          <label className="block">
+            <span className="sl-meta text-[11px]">
+              Email de quem queres juntar
+            </span>
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") send();
+              }}
+              placeholder="irmao@exemplo.com"
+              className="mt-1 h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+
+          <Button
+            className="sl-btn-primary h-10 w-full gap-2 text-xs disabled:opacity-40"
+            disabled={!email.trim() || sending}
+            onClick={send}
+          >
+            {sending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                <UserPlus className="h-3.5 w-3.5" strokeWidth={2.1} />
+                Convidar
+              </>
+            )}
+          </Button>
+
+          {feedback && (
+            <p
+              className={`text-[11px] leading-relaxed ${
+                feedback.tone === "good"
+                  ? "text-[hsl(var(--sl-green))]"
+                  : "text-destructive"
+              }`}
+            >
+              {feedback.text}
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }

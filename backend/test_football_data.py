@@ -3,6 +3,8 @@
 Run with `pytest` or directly: `python test_football_data.py`.
 """
 
+import time
+
 import football_data
 
 
@@ -20,6 +22,11 @@ def match(
         "awayTeam": {"id": 2, "name": "Team B", "shortName": "B"},
         "score": {"fullTime": {"home": home, "away": away}},
     }
+
+
+def _future(days):
+    """An ISO-8601 kickoff that many days from now, so tests do not rot."""
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + days * 86400))
 
 
 def with_season(matches):
@@ -117,10 +124,13 @@ def build_board_season():
         played.append(team_match(len(played) + 1, 1, 2, "Strong FC", "Weak FC", home=3, away=0))
         played.append(team_match(len(played) + 1, 3, 4, "Mid A", "Mid B", home=1, away=1))
 
+    # Relative to now, not fixed dates: the board only offers games that have
+    # not kicked off, so a season written with last week's dates would be an
+    # empty board and a test that rots.
     upcoming = [
-        team_match(9001, 1, 3, "Strong FC", "Mid A", status="SCHEDULED", kickoff="2026-09-20T18:00:00Z"),
-        team_match(9002, 4, 2, "Mid B", "Weak FC", status="SCHEDULED", kickoff="2026-09-21T18:00:00Z"),
-        team_match(9003, 90, 91, "New FC", "Newer FC", status="SCHEDULED", kickoff="2026-09-20T18:00:00Z"),
+        team_match(9001, 1, 3, "Strong FC", "Mid A", status="SCHEDULED", kickoff=_future(1)),
+        team_match(9002, 4, 2, "Mid B", "Weak FC", status="SCHEDULED", kickoff=_future(2)),
+        team_match(9003, 90, 91, "New FC", "Newer FC", status="SCHEDULED", kickoff=_future(1)),
     ]
     return played + upcoming
 
@@ -348,6 +358,90 @@ def test_accuracy_is_cached_per_league_and_season():
         football_data._prefill_for_match = original
 
     assert second is first
+
+
+def _stub_provider(per_league):
+    """Serve a fixed season per competition, and errors for the rest."""
+    original = football_data.get_season_matches
+
+    def fake(league_key, season=None):
+        value = per_league.get(league_key)
+        if isinstance(value, Exception):
+            raise value
+        if value is None:
+            return []
+        return value
+
+    football_data.get_season_matches = fake
+    return original
+
+
+def test_diagnostics_name_the_competition_the_provider_refused():
+    """A competition missing from the board has a reason, and it is knowable.
+
+    The board drops a failing competition on purpose so one outage cannot take
+    the other seven with it. That silence is what makes "there are Dutch games
+    on and I see none" impossible to answer, so the reason lives here.
+    """
+    refused = football_data.ProviderUnavailable("não está incluída no plano gratuito.")
+    original = _stub_provider(
+        {
+            "Eredivisie": [
+                team_match(1, 1, 2, "Ajax", "PSV", home=2, away=1, kickoff="2026-09-01T18:00:00Z"),
+                team_match(2, 2, 1, "PSV", "Ajax", status="SCHEDULED", kickoff=_future(2)),
+                team_match(3, 1, 2, "Ajax", "PSV", status="SCHEDULED", kickoff=_future(30)),
+            ],
+            "Serie A": refused,
+        }
+    )
+    try:
+        report = football_data.league_diagnostics(days=7)
+    finally:
+        football_data.get_season_matches = original
+
+    rows = {row["league"]: row for row in report["leagues"]}
+
+    assert rows["Serie A"]["ok"] is False
+    assert "plano gratuito" in rows["Serie A"]["error"]
+    assert report["failing"] == ["Serie A"]
+
+    # A competition that answers is reported by what it actually holds, so
+    # "answered fine, nothing this week" is told apart from "refused".
+    assert rows["Eredivisie"]["ok"] is True
+    assert rows["Eredivisie"]["matches"] == 3
+    assert rows["Eredivisie"]["finished"] == 1
+    assert rows["Eredivisie"]["upcoming"] == 2
+    assert rows["Eredivisie"]["within_days"] == 1
+    assert "Eredivisie" not in report["empty"]
+    assert "Premier League" in report["empty"]
+
+
+def test_the_board_never_offers_a_game_already_under_way():
+    """The provider's status lags the whistle, and a bet cannot be placed on a
+    game that has started."""
+    original = football_data.upcoming_fixtures
+
+    def fixtures(league_key, limit=100):
+        if league_key != "Eredivisie":
+            return []
+        return [
+            {"fixture_id": 1, "kickoff": _future(-0.1), "home_id": 1,
+             "home_name": "Ajax", "away_id": 2, "away_name": "PSV"},
+            {"fixture_id": 2, "kickoff": _future(2), "home_id": 2,
+             "home_name": "PSV", "away_id": 1, "away_name": "Ajax"},
+            {"fixture_id": 3, "kickoff": _future(30), "home_id": 1,
+             "home_name": "Ajax", "away_id": 2, "away_name": "PSV"},
+        ]
+
+    football_data.upcoming_fixtures = fixtures
+    try:
+        board = football_data.matches_for_days(7)
+    finally:
+        football_data.upcoming_fixtures = original
+
+    # Kicked off already, and beyond the window: both out. Only the game in
+    # two days is bettable.
+    assert [match["fixture_id"] for match in board["matches"]] == [2]
 
 
 if __name__ == "__main__":
