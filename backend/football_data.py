@@ -182,7 +182,8 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
     Competitions that fail are skipped instead of breaking the whole board, so a
     single unavailable league never hides the rest.
     """
-    horizon = time.time() + max(1, days) * 24 * 60 * 60
+    now = time.time()
+    horizon = now + max(1, days) * 24 * 60 * 60
     board: List[Dict[str, Any]] = []
     unavailable: List[str] = []
 
@@ -206,18 +207,96 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
             kickoff = fixture.get("kickoff")
             if not kickoff:
                 continue
-            try:
-                stamp = time.mktime(
-                    time.strptime(kickoff.replace("Z", "UTC"), "%Y-%m-%dT%H:%M:%S%Z")
-                ) - time.timezone
-            except ValueError:
+            stamp = _kickoff_stamp(kickoff)
+            if stamp is None:
                 continue
-            if stamp > horizon:
+            # A fixture whose kickoff has passed is not upcoming, whatever the
+            # provider still calls it: its status can lag the whistle by an hour
+            # or more, and a board that offers a game already under way is
+            # offering a bet nobody can place.
+            if stamp < now or stamp > horizon:
                 continue
             board.append({**fixture, "league": league_key})
 
     board.sort(key=lambda item: item.get("kickoff") or "")
     return {"matches": board, "unavailable": unavailable}
+
+
+def league_diagnostics(days: int = 7) -> Dict[str, Any]:
+    """One row per competition: does it answer, and what does it actually hold?
+
+    The board hides a failure by design — one dead competition must not take the
+    other seven down — which means a competition can go missing for days without
+    anyone being told. This is the page that says why: the provider's own error
+    for the ones that fail, and the counts for the ones that work, so "there are
+    Dutch games on and I see none" has an answer instead of a guess.
+    """
+    horizon = time.time() + max(1, days) * 24 * 60 * 60
+    now = time.time()
+
+    def probe(league_key: str) -> Dict[str, Any]:
+        row: Dict[str, Any] = {
+            "league": league_key,
+            "code": SUPPORTED_LEAGUES[league_key],
+            "ok": False,
+            "error": None,
+            "matches": 0,
+            "finished": 0,
+            "upcoming": 0,
+            "within_days": 0,
+            "next_kickoff": None,
+            "season": None,
+        }
+
+        try:
+            matches = get_season_matches(league_key)
+        except ProviderUnavailable as exc:
+            row["error"] = str(exc)
+            return row
+        except Exception as exc:  # noqa: BLE001 - reported, never raised on
+            row["error"] = f"Erro inesperado: {exc}"
+            return row
+
+        row["ok"] = True
+        row["matches"] = len(matches)
+
+        kickoffs: List[str] = []
+        for match in matches:
+            if _is_finished(match):
+                row["finished"] += 1
+                continue
+            if match.get("status") not in UPCOMING_STATUSES:
+                continue
+
+            row["upcoming"] += 1
+            kickoff = match.get("utcDate")
+            if not kickoff:
+                continue
+            stamp = _kickoff_stamp(kickoff)
+            if stamp is None:
+                continue
+            if now <= stamp <= horizon:
+                row["within_days"] += 1
+            if stamp >= now:
+                kickoffs.append(kickoff)
+
+        if kickoffs:
+            row["next_kickoff"] = min(kickoffs)
+        if matches:
+            row["season"] = ((matches[0].get("season") or {}).get("startDate") or "")[:4]
+
+        return row
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        rows = list(pool.map(probe, supported_leagues()))
+
+    return {
+        "configured": is_configured(),
+        "days": days,
+        "leagues": rows,
+        "failing": [row["league"] for row in rows if not row["ok"]],
+        "empty": [row["league"] for row in rows if row["ok"] and row["within_days"] == 0],
+    }
 
 
 def results_for_fixtures(
@@ -256,6 +335,17 @@ def results_for_fixtures(
         )
 
     return results
+
+
+def _kickoff_stamp(kickoff: str) -> Optional[float]:
+    """An ISO-8601 UTC kickoff as a Unix timestamp, or None if unparseable."""
+    try:
+        return (
+            time.mktime(time.strptime(kickoff.replace("Z", "UTC"), "%Y-%m-%dT%H:%M:%S%Z"))
+            - time.timezone
+        )
+    except (ValueError, AttributeError):
+        return None
 
 
 def _played_before(match: Dict[str, Any], before: Optional[str]) -> bool:
