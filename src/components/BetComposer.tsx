@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   Info,
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { leagueCounts } from "@/lib/boardLeagues";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
 import { freshness } from "@/lib/freshness";
 import {
@@ -27,6 +28,11 @@ import {
 } from "@/lib/leagueHealth";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
+
+// The list scrolls, so this is a guard against a pathological board rather
+// than a shortlist: with the league chips above it, anything on the board is
+// reachable in one tap even on a heavy weekend.
+const LIST_LIMIT = 60;
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -143,6 +149,7 @@ export function BetComposer({
   unavailable,
   boardAt,
   boardLoading,
+  skipped,
   onRefreshBoard,
   openSignal,
   entryElsewhere,
@@ -164,6 +171,8 @@ export function BetComposer({
   /** When the games on screen were fetched, so their age is visible. */
   boardAt: number | null;
   boardLoading: boolean;
+  /** Fixtures the board fetched and dropped for want of history to forecast. */
+  skipped: number;
   onRefreshBoard: () => void;
   /** Bumped from outside to open the picker, so the card at the top of the
       page can start the day's bet without anyone scrolling to find it. */
@@ -192,13 +201,34 @@ export function BetComposer({
   const [stakeInput, setStakeInput] = useState<string | null>(null);
   /** The picker lives in a pop-up: the slip is what the page is for. */
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** Which competition the list is narrowed to, or all of them. */
+  const [league, setLeague] = useState<string | null>(null);
   const [health, setHealth] = useState<LeagueHealthReport | null>(null);
   const [healthOpen, setHealthOpen] = useState(false);
   const [healthError, setHealthError] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
 
   useEffect(() => {
     if (openSignal) setPickerOpen(true);
   }, [openSignal]);
+
+  const askHealth = useCallback(() => {
+    setHealthLoading(true);
+    setHealthError(false);
+    fetchLeagueHealth()
+      .then(setHealth)
+      .catch(() => setHealthError(true))
+      .finally(() => setHealthLoading(false));
+  }, []);
+
+  // Asking is driven by "the panel is open and has no answer", not by the tap
+  // that opened it. Tying it to the tap meant that clearing the answer — which
+  // is exactly what the refresh button does — left the panel open on "A
+  // perguntar..." with nothing on its way, and that a failed ask was never
+  // retried for as long as the page stayed loaded.
+  useEffect(() => {
+    if (healthOpen && !health && !healthError && !healthLoading) askHealth();
+  }, [healthOpen, health, healthError, healthLoading, askHealth]);
 
   const suggested = plannedStake;
   const stake =
@@ -216,18 +246,22 @@ export function BetComposer({
     [legs],
   );
 
+  const counts = useMemo(() => leagueCounts(board), [board]);
+
   const matches = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const ranked = [...board].sort((a, b) => b.headline_pct - a.headline_pct);
-    if (!needle) return ranked.slice(0, 12);
-    return ranked
-      .filter((match) =>
-        `${match.home_name} ${match.away_name} ${match.league}`
-          .toLowerCase()
-          .includes(needle),
+    return [...board]
+      .filter((match) => !league || match.league === league)
+      .filter(
+        (match) =>
+          !needle ||
+          `${match.home_name} ${match.away_name} ${match.league}`
+            .toLowerCase()
+            .includes(needle),
       )
-      .slice(0, 20);
-  }, [board, search]);
+      .sort((a, b) => b.headline_pct - a.headline_pct)
+      .slice(0, LIST_LIMIT);
+  }, [board, league, search]);
 
   const priced = legs.every((leg) => toOdds(leg.odds) > 0);
   const combined = priced
@@ -462,8 +496,56 @@ export function BetComposer({
                 ? "A procurar jogos..."
                 : `${board.length} jogos${
                     boardAt ? ` · atualizado ${freshness(boardAt)}` : ""
+                  }${
+                    skipped > 0
+                      ? ` · ${skipped} sem histórico para prever`
+                      : ""
                   }`}
             </p>
+
+            {/* Every covered competition, zeroes included. The list below is
+                ranked by probability, so a league could be on the board and
+                never once appear on screen — from the outside, identical to
+                the provider not sending it. This says which leagues are
+                actually there, and gets to them in one tap. */}
+            <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                type="button"
+                onClick={() => setLeague(null)}
+                aria-pressed={league === null}
+                className={`sl-tap flex-none rounded-full px-3 py-1.5 text-[11px] font-semibold ${
+                  league === null
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground ring-1 ring-border"
+                }`}
+              >
+                Todas {board.length}
+              </button>
+
+              {counts.map((row) => (
+                <button
+                  key={row.league}
+                  type="button"
+                  disabled={row.count === 0}
+                  onClick={() =>
+                    setLeague((current) =>
+                      current === row.league ? null : row.league,
+                    )
+                  }
+                  aria-pressed={league === row.league}
+                  aria-label={`${row.league}, ${row.count} ${
+                    row.count === 1 ? "jogo" : "jogos"
+                  }`}
+                  className={`sl-tap flex-none rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-40 ${
+                    league === row.league
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground ring-1 ring-border"
+                  }`}
+                >
+                  {row.league} {row.count}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="max-h-[42vh] divide-y divide-border overflow-y-auto border-y border-border">
@@ -526,7 +608,9 @@ export function BetComposer({
               <p className="px-4 py-3 text-xs text-muted-foreground">
                 {search
                   ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
-                  : "Sem jogos no quadro neste momento. Adiciona à mão o que apostaste."}
+                  : league
+                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
+                    : "Sem jogos no quadro neste momento. Adiciona à mão o que apostaste."}
               </p>
             )}
           </div>
@@ -618,14 +702,7 @@ export function BetComposer({
 
             <button
               type="button"
-              onClick={() => {
-                setHealthOpen((open) => !open);
-                if (!health && !healthError) {
-                  fetchLeagueHealth()
-                    .then(setHealth)
-                    .catch(() => setHealthError(true));
-                }
-              }}
+              onClick={() => setHealthOpen((open) => !open)}
               className="sl-meta mt-2 flex w-full items-center justify-center gap-1.5 text-[11px] underline"
             >
               <Info className="h-3 w-3" />
@@ -635,11 +712,20 @@ export function BetComposer({
             {healthOpen && (
               <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-[hsl(var(--sl-surface))] p-2.5">
                 {healthError && (
-                  <p className="sl-meta text-[11px]">
-                    Não foi possível perguntar à fonte de dados agora.
-                  </p>
+                  <div className="space-y-1.5">
+                    <p className="sl-meta text-[11px]">
+                      Não foi possível perguntar à fonte de dados agora.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={askHealth}
+                      className="sl-tap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-primary ring-1 ring-border"
+                    >
+                      Tentar outra vez
+                    </button>
+                  </div>
                 )}
-                {!health && !healthError && (
+                {healthLoading && (
                   <p className="sl-meta text-[11px]">A perguntar...</p>
                 )}
                 {health &&

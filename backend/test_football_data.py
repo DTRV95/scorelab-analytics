@@ -4,6 +4,7 @@ Run with `pytest` or directly: `python test_football_data.py`.
 """
 
 import json
+import pathlib
 import time
 import urllib.error
 import urllib.request
@@ -511,6 +512,26 @@ def test_a_rate_limited_competition_is_asked_again_before_being_dropped():
 
     assert payload == {"matches": []}
     assert len(calls) == 2, "a rate limit must be retried once, not swallowed"
+
+
+def test_frontend_league_list_matches_the_backend():
+    """The picker counts games per competition from its own copy of this list.
+
+    A league missing from that copy is never counted, so it reads as "the
+    provider is not sending it" while the board has it — the exact confusion
+    the counts were added to end. Keep the two lists identical.
+    """
+    import re
+
+    source = (
+        pathlib.Path(__file__).resolve().parents[1] / "src" / "lib" / "boardLeagues.ts"
+    ).read_text(encoding="utf-8")
+
+    block = re.search(r"COVERED_LEAGUES = \[(.*?)\]", source, re.S)
+    assert block, "COVERED_LEAGUES não encontrado em src/lib/boardLeagues.ts"
+
+    frontend = set(re.findall(r'"([^"]+)"', block.group(1)))
+    assert frontend == set(football_data.SUPPORTED_LEAGUES)
 
 
 class _FakeBody:
