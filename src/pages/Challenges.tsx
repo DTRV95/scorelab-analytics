@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
+  BarChart3,
   Check,
   ChevronRight,
   Flame,
@@ -885,6 +887,28 @@ export default function Challenges() {
               members={members}
               onChanged={() => setToken((value) => value + 1)}
             />
+          </motion.div>
+        )}
+
+        {saved && (
+          <motion.div variants={fadeUp}>
+            <Link
+              to="/desafios/analise"
+              className="sl-card sl-tap flex items-center gap-3 px-4 py-3.5"
+            >
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
+                <BarChart3 className="h-4 w-4 text-primary" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-foreground">
+                  Abrir análise de apostador
+                </span>
+                <span className="sl-meta block text-[11px]">
+                  Em que mercados apostam e quais é que acertam
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+            </Link>
           </motion.div>
         )}
 

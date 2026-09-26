@@ -59,6 +59,13 @@
        switched-off panels against the cards. */
     --sl-surface: 28 40% 97.5%;
     --sl-ink: 222 47% 11%;
+    /* Chart status colours, chosen by running the palette validator rather
+       than by eye. Green against red never clears the colour-blindness
+       threshold (7.3 of 8 at best), so the bars that use them also carry a
+       texture and a printed number — the separation cannot rest on hue. */
+    --sl-chart-good: #047857;
+    --sl-chart-bad: #e11d48;
+    --sl-chart-none: #7c8698;
     /* The one gradient in the app, on the one button that commits money. */
     --sl-gradient: linear-gradient(135deg, hsl(18 100% 54%), hsl(8 92% 48%));
 

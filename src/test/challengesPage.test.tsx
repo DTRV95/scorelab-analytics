@@ -467,6 +467,15 @@ describe("managing challenges", () => {
     expect(deletePlan).toHaveBeenCalledWith("plan");
   });
 
+  it("offers the way into the bettor analysis", async () => {
+    renderPage();
+
+    const link = await screen.findByRole("link", {
+      name: /Abrir análise de apostador/,
+    });
+    expect(link).toHaveAttribute("href", "/desafios/analise");
+  });
+
   it("starts another challenge from a ready-made model", async () => {
     renderPage();
 
