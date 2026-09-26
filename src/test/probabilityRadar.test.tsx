@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/components/layout/AppLayout", () => ({
@@ -7,6 +13,10 @@ vi.mock("@/components/layout/AppLayout", () => ({
 }));
 
 import ProbabilityRadar from "@/pages/ProbabilityRadar";
+import {
+  readCachedBoard,
+  writeCachedBoard,
+} from "@/lib/probabilityBoardCache";
 
 const boardPayload = {
   matches: [
@@ -221,9 +231,65 @@ describe("ProbabilityRadar board", () => {
     await screen.findByText("Porto vs Nacional");
     const callsAfterFirstLoad = fetchMock.mock.calls.length;
 
-    fireEvent.click(screen.getByTitle(/recalcular/i));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Procurar jogos outra vez/i }),
+    );
     await screen.findByText("Porto vs Nacional");
 
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad);
+  });
+
+  it("offers a button beside the message when there is nothing to show", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/data/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ configured: true }),
+        } as Response);
+      }
+      if (url.includes("/data/probability-board")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+    await screen.findByText(/Sem jogos analisáveis/);
+    const callsAfterFirstLoad = fetchMock.mock.calls.length;
+
+    // Two: the header icon and the one next to the message. The point of this
+    // change is that the second one exists.
+    const buttons = screen.getAllByRole("button", {
+      name: /Procurar jogos outra vez/i,
+    });
+    expect(buttons.length).toBeGreaterThan(1);
+
+    fireEvent.click(buttons[buttons.length - 1]);
+
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad),
+    );
+  });
+
+  it("does not sit on an empty board for the full cache window", () => {
+    writeCachedBoard({ days: 7, matches: [], unavailable: [], skipped: 0 });
+
+    const stored = JSON.parse(
+      localStorage.getItem("scorelab_probability_board_cache") as string,
+    );
+    // Six minutes on: past the short life an incomplete board gets, well
+    // inside the two hours a full one would keep.
+    stored.fetchedAt = Date.now() - 6 * 60 * 1000;
+    localStorage.setItem(
+      "scorelab_probability_board_cache",
+      JSON.stringify(stored),
+    );
+
+    expect(readCachedBoard(7)).toBeNull();
   });
 });

@@ -183,6 +183,26 @@ function BoardMatchRow({
   );
 }
 
+/** Go and ask the provider again, now, ignoring anything already stored. */
+function SearchAgain({
+  loading,
+  onClick,
+}: {
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs sm:w-auto sm:px-5"
+      disabled={loading}
+      onClick={onClick}
+    >
+      <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+      {loading ? "A procurar jogos..." : "Procurar jogos outra vez"}
+    </Button>
+  );
+}
+
 /**
  * The odds-free half of an analysis: what the model thinks will happen,
  * before ever looking at a bookmaker's price. This never becomes a bet on
@@ -218,6 +238,9 @@ export default function ProbabilityRadar() {
   // reloadToken only advances when the user hits refresh — a plain remount
   // (navigating away and back) always leaves it at 0.
   const isManualRefresh = reloadToken > 0;
+
+  /** Ask the provider again now, whatever is stored. */
+  const searchAgain = () => setReloadToken((token) => token + 1);
 
   useEffect(() => {
     // A fresh cached board proves the backend answered recently — skip the
@@ -459,9 +482,10 @@ export default function ProbabilityRadar() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 flex-none rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Recalcular"
+            title="Procurar jogos outra vez"
+            aria-label="Procurar jogos outra vez"
             disabled={boardLoading}
-            onClick={() => setReloadToken((token) => token + 1)}
+            onClick={searchAgain}
           >
             <RefreshCw className={`h-4 w-4 ${boardLoading ? "animate-spin" : ""}`} />
           </Button>
@@ -512,6 +536,18 @@ export default function ProbabilityRadar() {
           </motion.div>
         )}
 
+        {/* Without this the page went silent when the engine did not answer:
+            no board, no message, nothing to press. */}
+        {enabled === false && (
+          <motion.div variants={fadeUp} className="sl-card px-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              O motor de dados não respondeu. Pode estar a arrancar — costuma
+              demorar até um minuto quando esteve parado.
+            </p>
+            <SearchAgain loading={boardLoading} onClick={searchAgain} />
+          </motion.div>
+        )}
+
         {enabled === true && (
           <motion.div variants={fadeUp} className="space-y-4">
             {boardLoading && board.length === 0 && (
@@ -522,16 +558,27 @@ export default function ProbabilityRadar() {
             )}
 
             {boardError && (
-              <p className="rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-2.5 text-xs font-medium text-destructive">
-                {boardError}
-              </p>
+              <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3">
+                <p className="text-xs font-medium text-destructive">
+                  {boardError}
+                </p>
+                <SearchAgain loading={boardLoading} onClick={searchAgain} />
+              </div>
             )}
 
+            {/* The button belongs here, next to the sentence that sends
+                someone looking for it. The icon up in the header is easy to
+                miss and a long way from the only place on the page that says
+                anything went wrong. */}
             {!boardLoading && !boardError && board.length === 0 && (
-              <p className="sl-card px-4 py-4 text-sm text-muted-foreground">
-                Sem jogos analisáveis nos próximos dias nas ligas com dados
-                automáticos. Tenta a análise manual em baixo.
-              </p>
+              <div className="sl-card px-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Sem jogos analisáveis nos próximos dias nas ligas com dados
+                  automáticos. Pode ser só a fonte de dados a não responder
+                  agora — procura outra vez.
+                </p>
+                <SearchAgain loading={boardLoading} onClick={searchAgain} />
+              </div>
             )}
 
             {dayGroups.length > 0 && (

@@ -31,7 +31,18 @@ const CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 // The usual reason is the provider's per-minute limit, which clears on its
 // own — and keeping the incomplete board that long is what turned a passing
 // rate limit into a league that "does not have games" for the afternoon.
+//
+// A board that came back with nothing at all gets the same short life. "No
+// games worth analysing" is never an answer worth holding on to: every
+// competition being quiet at once is rare, a bad fetch is not, and the two
+// are indistinguishable from the stored copy.
 const INCOMPLETE_TTL_MS = 5 * 60 * 1000;
+
+function isComplete(board: CachedBoard): boolean {
+  return (
+    (board.matches?.length ?? 0) > 0 && (board.unavailable?.length ?? 0) === 0
+  );
+}
 
 /**
  * The last board fetched for this many days, if it's still fresh — lets the
@@ -46,10 +57,7 @@ export function readCachedBoard(days: number): CachedBoard | null {
     const parsed = JSON.parse(raw) as CachedBoard;
     if (parsed.days !== days) return null;
 
-    const ttl =
-      parsed.unavailable && parsed.unavailable.length > 0
-        ? INCOMPLETE_TTL_MS
-        : CACHE_TTL_MS;
+    const ttl = isComplete(parsed) ? CACHE_TTL_MS : INCOMPLETE_TTL_MS;
     if (Date.now() - parsed.fetchedAt > ttl) return null;
 
     return parsed;
