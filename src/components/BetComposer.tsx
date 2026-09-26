@@ -605,13 +605,33 @@ export function BetComposer({
             })}
 
             {matches.length === 0 && (
-              <p className="px-4 py-3 text-xs text-muted-foreground">
-                {search
-                  ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
-                  : league
-                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
-                    : "Sem jogos no quadro neste momento. Adiciona à mão o que apostaste."}
-              </p>
+              <div className="px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  {search
+                    ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
+                    : league
+                      ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
+                      : "Sem jogos no quadro neste momento. Pode ser só a fonte de dados a não responder agora."}
+                </p>
+
+                {/* An empty list is the one moment the button is actually
+                    needed, and the icon beside the search box is small and
+                    easy to miss. Say it in words, here. */}
+                {!search && (
+                  <Button
+                    className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs"
+                    disabled={boardLoading}
+                    onClick={onRefreshBoard}
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
+                    />
+                    {boardLoading
+                      ? "A procurar jogos..."
+                      : "Procurar jogos outra vez"}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
