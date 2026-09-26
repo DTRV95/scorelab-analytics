@@ -212,6 +212,10 @@ export default function Challenges() {
   // how a whole league could go missing without anyone being told.
   const [unavailable, setUnavailable] = useState<string[]>([]);
   const [boardAt, setBoardAt] = useState<number | null>(null);
+  // Fixtures the board fetched and then dropped, having too little history to
+  // forecast. They leave no other trace: a competition can be answering
+  // perfectly and still put nothing on screen this way.
+  const [skipped, setSkipped] = useState(0);
   const [boardLoading, setBoardLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -311,6 +315,7 @@ export default function Challenges() {
       if (cached) {
         setBoard(cached.matches);
         setUnavailable(cached.unavailable ?? []);
+        setSkipped(cached.skipped ?? 0);
         setBoardAt(cached.fetchedAt);
         return;
       }
@@ -323,6 +328,7 @@ export default function Challenges() {
         if (!data) return;
         setBoard(data.matches ?? []);
         setUnavailable(data.unavailable ?? []);
+        setSkipped(data.skipped ?? 0);
         setBoardAt(Date.now());
         writeCachedBoard({
           days: BOARD_DAYS,
@@ -1010,6 +1016,7 @@ export default function Challenges() {
               openSignal={pickSignal}
               boardAt={boardAt}
               boardLoading={boardLoading}
+              skipped={skipped}
               onRefreshBoard={() => loadBoard(true)}
               entryElsewhere={move?.state === "play"}
               usedFixtures={usedFixtures}

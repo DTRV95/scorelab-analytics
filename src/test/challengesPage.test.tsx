@@ -185,10 +185,10 @@ vi.mock("@/lib/planStore", async () => {
 import Challenges from "@/pages/Challenges";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
-function boardMatch(id: number, home: string, pct: number) {
+function boardMatch(id: number, home: string, pct: number, league = "Liga Portugal") {
   return {
     fixture_id: id,
-    league: "Liga Portugal",
+    league,
     home_name: home,
     away_name: "Rival",
     kickoff: "2026-09-26T18:00:00Z",
@@ -353,6 +353,42 @@ describe("building the day's bet", () => {
     } finally {
       global.fetch = original;
     }
+  });
+
+  it("shows every competition on the board, not just the best-ranked games", async () => {
+    // Twelve Portuguese games score higher than the single Dutch one, which is
+    // how a whole competition used to sit on the board and never once reach
+    // the screen — indistinguishable from the provider not sending it.
+    writeCachedBoard({
+      days: 7,
+      matches: [
+        ...Array.from({ length: 12 }, (_, i) =>
+          boardMatch(100 + i, `Equipa ${i}`, 70 + i),
+        ),
+        boardMatch(300, "Ajax", 41, "Eredivisie"),
+      ],
+      unavailable: [],
+      skipped: 0,
+    });
+
+    renderPage();
+    await openPicker();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Eredivisie, 1 jogo" }),
+    );
+
+    expect(screen.getByText(/Ajax vs Rival/)).toBeInTheDocument();
+    expect(screen.queryByText(/Equipa 0 vs Rival/)).not.toBeInTheDocument();
+  });
+
+  it("says a competition has nothing rather than leaving it out", async () => {
+    renderPage();
+    await openPicker();
+
+    expect(
+      await screen.findByRole("button", { name: "Eredivisie, 0 jogos" }),
+    ).toBeDisabled();
   });
 
   it("finds a game further down the board by name", async () => {
