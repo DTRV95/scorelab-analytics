@@ -1,4 +1,6 @@
-import { Check, Clock, PenLine, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Clock, PenLine, Pencil, RotateCcw, X } from "lucide-react";
+import { BetEditor } from "@/components/BetEditor";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import {
   Dialog,
@@ -7,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { canonicalMarket } from "@/lib/marketNames";
-import { isManualLeg, type PlanBet } from "@/lib/planStore";
+import { isManualLeg, type PlanBet, type PlanLeg } from "@/lib/planStore";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -45,8 +47,13 @@ export function BetDetailDialog({
   player,
   mine,
   marking,
+  saving,
   onMarkLeg,
   onMarkRest,
+  onSaveEdits,
+  onDelete,
+  onResettle,
+  onReopen,
   onClose,
 }: {
   bet: PlanBet | null;
@@ -55,11 +62,25 @@ export function BetDetailDialog({
   mine: boolean;
   /** Index of the leg being saved, so its buttons can wait. */
   marking: number | null;
+  /** A correction is on its way to the server. */
+  saving: boolean;
   onMarkLeg: (bet: PlanBet, index: number, status: "green" | "red") => void;
   /** Settles every game still open in one go, for the usual case. */
   onMarkRest: (bet: PlanBet, status: "green" | "red") => void;
+  onSaveEdits: (bet: PlanBet, legs: PlanLeg[], stake: number) => void;
+  onDelete: (bet: PlanBet) => void;
+  /** A day closed the wrong way round. */
+  onResettle: (bet: PlanBet, won: boolean) => void;
+  /** A day that should never have been closed at all. */
+  onReopen: (bet: PlanBet) => void;
   onClose: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+
+  // A different bet opened in the same dialog starts from its own numbers,
+  // never in the middle of correcting the last one.
+  useEffect(() => setEditing(false), [bet?.id]);
+
   if (!bet) return null;
 
   const won = bet.status === "green";
@@ -111,7 +132,17 @@ export function BetDetailDialog({
           ))}
         </div>
 
-        <div className="divide-y divide-border">
+        {editing && (
+          <BetEditor
+            bet={bet}
+            saving={saving}
+            onSave={(legs, stake) => onSaveEdits(bet, legs, stake)}
+            onDelete={() => onDelete(bet)}
+            onCancel={() => setEditing(false)}
+          />
+        )}
+
+        <div className={`divide-y divide-border ${editing ? "hidden" : ""}`}>
           {bet.legs.map((leg, index) => {
             const Icon =
               leg.status === "green" ? Check : leg.status === "red" ? X : Clock;
@@ -175,7 +206,7 @@ export function BetDetailDialog({
           })}
         </div>
 
-        {mine && undecided > 0 && (
+        {mine && !editing && undecided > 0 && (
           <div className="space-y-2 border-t border-border bg-amber-500/8 px-4 py-3">
             <p className="text-[11px] leading-5 text-amber-700">
               {undecided === 1 ? "Falta 1 jogo" : `Faltam ${undecided} jogos`} por
@@ -206,6 +237,48 @@ export function BetDetailDialog({
               >
                 Entraram todos
               </button>
+            )}
+          </div>
+        )}
+
+        {/* Everything on a slip is typed on a phone, in a hurry, often after
+            the game has started. Without this the only way out of a wrong odd
+            was to live with it: nothing here could be changed once saved. */}
+        {mine && !editing && (
+          <div className="space-y-2 border-t border-border px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="sl-tap flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-foreground ring-1 ring-border"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Corrigir esta aposta
+            </button>
+
+            {bet.status !== "pending" && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => onResettle(bet, !won)}
+                  className={`sl-tap h-10 flex-1 rounded-xl text-xs font-semibold ring-1 disabled:opacity-40 ${
+                    won
+                      ? "text-destructive ring-destructive/40"
+                      : "text-[hsl(var(--sl-green))] ring-[hsl(var(--sl-green))]/40"
+                  }`}
+                >
+                  {won ? "Afinal perdeu" : "Afinal ganhou"}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => onReopen(bet)}
+                  className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-muted-foreground ring-1 ring-border disabled:opacity-40"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Pôr em aberto
+                </button>
+              </div>
             )}
           </div>
         )}

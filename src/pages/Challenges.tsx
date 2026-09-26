@@ -59,8 +59,13 @@ import {
   settleLostWith,
   settleManually,
   updatePlanBet,
+  deletePlanBet,
+  editBet,
+  resettleBet,
+  reopenBet,
   type PendingInvite,
   type PlanBet,
+  type PlanBetPayload,
   type PlanLeg,
   type PlanMember,
   type PlanRecord,
@@ -627,6 +632,87 @@ export default function Challenges() {
         setError("Não foi possível fechar a aposta.");
       } finally {
         setClosing(null);
+      }
+    },
+    [plan?.id],
+  );
+
+  /**
+   * A bet put right after it was saved.
+   *
+   * Shared by every correction — the odds, the amount, a game taken out, a
+   * day closed the wrong way round — because they all end the same way: write
+   * the new payload, and keep the list and the open dialog showing it.
+   */
+  const applyCorrection = useCallback(
+    async (bet: PlanBet, payload: PlanBetPayload, failure: string) => {
+      if (!plan?.id) return;
+      setSaving(true);
+      try {
+        await updatePlanBet(plan.id, bet.id, payload);
+        const updated = { ...payload, id: bet.id, userId: bet.userId };
+        setBets((previous) =>
+          previous.map((entry) => (entry.id === bet.id ? updated : entry)),
+        );
+        setOpenBet((current) =>
+          current && current.bet.id === bet.id
+            ? { ...current, bet: updated }
+            : current,
+        );
+        setError(null);
+      } catch {
+        setError(failure);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [plan?.id],
+  );
+
+  const saveEdits = useCallback(
+    (bet: PlanBet, legs: PlanLeg[], stake: number) =>
+      applyCorrection(
+        bet,
+        editBet(bet, legs, stake),
+        "Não foi possível guardar a correção.",
+      ),
+    [applyCorrection],
+  );
+
+  const resettle = useCallback(
+    (bet: PlanBet, won: boolean) =>
+      applyCorrection(
+        bet,
+        resettleBet(bet, won),
+        "Não foi possível trocar o resultado do dia.",
+      ),
+    [applyCorrection],
+  );
+
+  const reopen = useCallback(
+    (bet: PlanBet) =>
+      applyCorrection(
+        bet,
+        reopenBet(bet),
+        "Não foi possível voltar a pôr a aposta em aberto.",
+      ),
+    [applyCorrection],
+  );
+
+  /** Takes a bet off the record entirely, for the one registered by mistake. */
+  const removeBet = useCallback(
+    async (bet: PlanBet) => {
+      if (!plan?.id) return;
+      setSaving(true);
+      try {
+        await deletePlanBet(plan.id, bet.id);
+        setBets((previous) => previous.filter((entry) => entry.id !== bet.id));
+        setOpenBet(null);
+        setError(null);
+      } catch {
+        setError("Não foi possível apagar a aposta.");
+      } finally {
+        setSaving(false);
       }
     },
     [plan?.id],
@@ -1297,8 +1383,13 @@ export default function Challenges() {
           player={openBet?.player ?? ""}
           mine={openBet?.bet.userId === user?.id}
           marking={marking}
+          saving={saving}
           onMarkLeg={markLeg}
           onMarkRest={markRest}
+          onSaveEdits={saveEdits}
+          onDelete={removeBet}
+          onResettle={resettle}
+          onReopen={reopen}
           onClose={() => setOpenBet(null)}
         />
 
