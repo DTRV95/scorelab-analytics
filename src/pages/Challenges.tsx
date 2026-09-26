@@ -17,6 +17,7 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -53,7 +54,9 @@ import {
   createPlan,
   savePlanBet,
   setLegStatus,
+  setRemainingLegs,
   settleFromScores,
+  settleLostWith,
   settleManually,
   updatePlanBet,
   type PendingInvite,
@@ -213,6 +216,8 @@ export default function Challenges() {
   const [saving, setSaving] = useState(false);
   const [closing, setClosing] = useState<string | null>(null);
   const [marking, setMarking] = useState<number | null>(null);
+  /** The bet whose failed games are being picked. */
+  const [losing, setLosing] = useState<string | null>(null);
   const [token, setToken] = useState(0);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [answering, setAnswering] = useState(false);
@@ -403,8 +408,23 @@ export default function Challenges() {
   );
 
   /** My bets still open, newest first — the ones waiting to be closed. */
+  /**
+   * Days still waiting on their owner: the ones not yet decided, and the ones
+   * marked lost whose games nobody has named. Without the second kind, a day
+   * closed before this existed could never be filled in, and the analysis
+   * would carry "por decidir" forever.
+   */
   const openBets = useMemo(
-    () => (me?.bets ?? []).filter((bet) => bet.status === "pending").reverse(),
+    () =>
+      (me?.bets ?? [])
+        .filter(
+          (bet) =>
+            bet.status === "pending" ||
+            (bet.status === "red" &&
+              bet.legs.length > 1 &&
+              bet.legs.some((leg) => leg.status === "pending")),
+        )
+        .reverse(),
     [me],
   );
 
@@ -537,6 +557,57 @@ export default function Challenges() {
         setError("Não foi possível guardar como correu esse jogo.");
       } finally {
         setMarking(null);
+      }
+    },
+    [plan?.id],
+  );
+
+  /** Settles every game still open in one bet, for the day that went all one way. */
+  const markRest = useCallback(
+    async (bet: PlanBet, status: "green" | "red") => {
+      if (!plan?.id) return;
+      setMarking(-1);
+      try {
+        const payload = setRemainingLegs(bet, status);
+        await updatePlanBet(plan.id, bet.id, payload);
+        const updated = { ...payload, id: bet.id, userId: bet.userId };
+        setBets((previous) =>
+          previous.map((entry) => (entry.id === bet.id ? updated : entry)),
+        );
+        setOpenBet((current) =>
+          current && current.bet.id === bet.id
+            ? { ...current, bet: updated }
+            : current,
+        );
+      } catch {
+        setError("Não foi possível guardar como correram esses jogos.");
+      } finally {
+        setMarking(null);
+      }
+    },
+    [plan?.id],
+  );
+
+  /** Closes a lost day from the games the person named as failed. */
+  const loseWith = useCallback(
+    async (bet: PlanBet, failed: number[]) => {
+      if (!plan?.id) return;
+      setClosing(bet.id);
+      try {
+        const payload = settleLostWith(bet, failed);
+        await updatePlanBet(plan.id, bet.id, payload);
+        setBets((previous) =>
+          previous.map((entry) =>
+            entry.id === bet.id
+              ? { ...payload, id: bet.id, userId: bet.userId }
+              : entry,
+          ),
+        );
+        setLosing(null);
+      } catch {
+        setError("Não foi possível fechar a aposta.");
+      } finally {
+        setClosing(null);
       }
     },
     [plan?.id],
@@ -757,8 +828,16 @@ export default function Challenges() {
                           {eur.format(bet.stake * (bet.odds - 1))}
                         </p>
                       </div>
-                      <span className="sl-pill sl-pill-open flex-none">
-                        {manual ? "à espera de ti" : "à espera do resultado"}
+                      <span
+                        className={`sl-pill flex-none ${
+                          bet.status === "red" ? "sl-pill-loss" : "sl-pill-open"
+                        }`}
+                      >
+                        {bet.status === "red"
+                          ? "falta dizer quais"
+                          : manual
+                            ? "à espera de ti"
+                            : "à espera do resultado"}
                       </span>
                     </div>
 
@@ -775,33 +854,55 @@ export default function Challenges() {
                                 ? "✗ "
                                 : "· "}
                             {leg.match} ·{" "}
-                            {MARKET_LABELS[leg.market] ?? canonicalMarket(leg.market)} @{" "}
-                            {leg.odds.toFixed(2)}
+                            {MARKET_LABELS[leg.market] ??
+                              canonicalMarket(leg.market)}{" "}
+                            @ {leg.odds.toFixed(2)}
                           </p>
                         ))}
                       </div>
                     )}
 
-                    <div className="mt-2.5 flex gap-2">
+                    {losing === bet.id ? (
+                      <FailedPicker
+                        bet={bet}
+                        saving={closing === bet.id}
+                        onSave={(failed) => loseWith(bet, failed)}
+                        onCancel={() => setLosing(null)}
+                      />
+                    ) : bet.status === "red" ? (
                       <button
                         type="button"
-                        disabled={closing === bet.id}
-                        onClick={() => closeBet(bet, true)}
-                        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[hsl(var(--sl-green))]/40 text-xs font-semibold text-[hsl(var(--sl-green))] disabled:opacity-40"
+                        onClick={() => setLosing(bet.id)}
+                        className="sl-tap mt-2.5 h-10 w-full rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40"
                       >
-                        <Check className="h-3.5 w-3.5" />
-                        {bet.legs.length === 1 ? "Entrou" : "Ganhei o dia"}
+                        Dizer quais falharam
                       </button>
-                      <button
-                        type="button"
-                        disabled={closing === bet.id}
-                        onClick={() => closeBet(bet, false)}
-                        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-destructive/40 text-xs font-semibold text-destructive disabled:opacity-40"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        {bet.legs.length === 1 ? "Falhou" : "Perdi o dia"}
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="mt-2.5 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={closing === bet.id}
+                          onClick={() => closeBet(bet, true)}
+                          className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/40 disabled:opacity-40"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {bet.legs.length === 1 ? "Entrou" : "Entraram todos"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={closing === bet.id}
+                          onClick={() =>
+                            bet.legs.length === 1
+                              ? closeBet(bet, false)
+                              : setLosing(bet.id)
+                          }
+                          className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40 disabled:opacity-40"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          {bet.legs.length === 1 ? "Falhou" : "Perdi o dia"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1171,6 +1272,7 @@ export default function Challenges() {
           mine={openBet?.bet.userId === user?.id}
           marking={marking}
           onMarkLeg={markLeg}
+          onMarkRest={markRest}
           onClose={() => setOpenBet(null)}
         />
 

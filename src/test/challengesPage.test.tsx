@@ -115,6 +115,36 @@ vi.mock("@/lib/planStore", async () => {
         settledAt: "2026-09-21T20:00:00.000Z",
       },
       {
+        // A day of two games, still open: the one the picker works on.
+        id: "b4",
+        userId: "david",
+        legs: [
+          leg({
+            match: "FC Porto vs Casa Pia",
+            homeTeam: "FC Porto",
+            awayTeam: "Casa Pia",
+            odds: 1.5,
+            fixtureId: null,
+            status: "pending" as const,
+          }),
+          leg({
+            match: "Sporting CP vs Arouca",
+            homeTeam: "Sporting CP",
+            awayTeam: "Arouca",
+            odds: 1.6,
+            fixtureId: null,
+            status: "pending" as const,
+          }),
+        ],
+        odds: 2.4,
+        stake: 9,
+        day: 3,
+        status: "pending" as const,
+        profitLoss: 0,
+        placedAt: "2026-09-23T11:00:00.000Z",
+        settledAt: null,
+      },
+      {
         // A game the site never heard of: nothing can close this but David.
         id: "b3",
         userId: "david",
@@ -389,7 +419,7 @@ describe("closing a bet nobody else can close", () => {
     renderPage();
 
     expect(await screen.findByText("Por fechar")).toBeInTheDocument();
-    expect(screen.getByText("à espera de ti")).toBeInTheDocument();
+    expect(screen.getAllByText("à espera de ti").length).toBeGreaterThan(0);
   });
 
   it("pays out the day when it is marked as won", async () => {
@@ -412,6 +442,28 @@ describe("closing a bet nobody else can close", () => {
 
     const [, , payload] = updatePlanBet.mock.calls[0];
     expect(payload).toMatchObject({ status: "red", profitLoss: -7.5 });
+  });
+
+  it("asks which games fell on a day made of several, and settles the rest as landed", async () => {
+    // A multiple goes down because a game fell; the others came in. Naming the
+    // ones that failed is the whole of what is left to say.
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Perdi o dia/ }));
+    expect(screen.getByText("Quais é que falharam?")).toBeInTheDocument();
+
+    const save = screen.getByRole("button", { name: /Guardar o dia perdido/ });
+    expect(save).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /Sporting CP vs Arouca/ }));
+    fireEvent.click(save);
+
+    const [, betId, payload] = updatePlanBet.mock.calls[0];
+    expect(betId).toBe("b4");
+    expect(payload).toMatchObject({ status: "red", profitLoss: -9 });
+    expect(
+      (payload as { legs: { status: string }[] }).legs.map((leg) => leg.status),
+    ).toEqual(["green", "red"]);
   });
 });
 
