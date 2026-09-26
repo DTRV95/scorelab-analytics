@@ -131,11 +131,13 @@ function PlayerCard({
               {streak}
             </span>
           )}
-          <span className="sl-pill sl-pill-muted">Dia {standing.day}</span>
+          <span className="sl-pill sl-pill-muted sl-figure">
+            Dia {standing.day}
+          </span>
         </div>
       </div>
 
-      <p className="mt-2 px-4 font-mono-data text-[1.35rem] font-bold text-foreground">
+      <p className="sl-figure mt-1.5 px-4 text-[1.6rem] leading-8 text-foreground">
         {eur.format(standing.bankroll)}
       </p>
 
@@ -161,11 +163,13 @@ function PlayerCard({
       {/* How far up the ladder this player is, as a bar: the number alone does
           not show that the rungs get further apart as the money grows. */}
       <div className="mt-2.5 h-1.5 bg-[hsl(var(--sl-surface))]">
-        <div
-          className="h-full bg-primary transition-all"
-          style={{
+        <motion.div
+          className="h-full [background:var(--sl-gradient)]"
+          initial={{ width: 0 }}
+          animate={{
             width: `${Math.min(100, (standing.day / rules.days) * 100)}%`,
           }}
+          transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </div>
 
@@ -370,14 +374,16 @@ export default function Challenges() {
     0,
   );
 
-  // The table is 38 rows long; the day being played should not have to be
-  // hunted for.
+  // Only once the whole table is open: the window shown by default already
+  // has today in it, and scrolling the page on load threw a phone straight
+  // past the instruction at the top.
   useEffect(() => {
+    if (!wholeTable) return;
     // Optional call on purpose: not every environment the page renders in
     // implements scrolling, and a missing convenience must not take the page
     // down with it.
     currentRow.current?.scrollIntoView?.({ block: "center" });
-  }, [me?.day, loading]);
+  }, [wholeTable, me?.day]);
 
   const usedFixtures = useMemo(
     () =>
@@ -775,7 +781,7 @@ export default function Challenges() {
                   of the player card below; repeating it a third time is what
                   makes a phone screen feel like a wall. What is missing there
                   is the distance left to go, so that is what this says. */}
-              <p className="mt-1 font-mono-data text-2xl font-bold text-foreground">
+              <p className="sl-figure mt-1 text-[1.7rem] leading-8 text-foreground">
                 {standings.length > 1
                   ? eur.format(combined)
                   : eur.format(Number(plan.target))}
@@ -785,7 +791,7 @@ export default function Challenges() {
               <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
                 {standings.length > 1 ? "Objetivo" : "Faltam"}
               </p>
-              <p className="mt-1 font-mono-data text-sm font-bold text-foreground">
+              <p className="sl-figure mt-1 text-sm text-foreground">
                 {standings.length > 1
                   ? eur.format(Number(plan.target))
                   : eur.format(Math.max(0, Number(plan.target) - combined))}
@@ -797,9 +803,11 @@ export default function Challenges() {
               leaves the bankroll at 0.002% of a million for thirty of the
               thirty-eight days, and a bar that never moves says nothing. */}
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${Math.max((day / rules.days) * 100, 2)}%` }}
+            <motion.div
+              className="h-full rounded-full [background:var(--sl-gradient)]"
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max((day / rules.days) * 100, 2)}%` }}
+              transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
             />
           </div>
           <p className="sl-meta mt-1.5 text-[11px]">
@@ -892,7 +900,7 @@ export default function Challenges() {
                             setOpenBet({ bet, player: standing.name })
                           }
                           aria-label={`Ver a aposta do dia ${bet.day} de ${standing.name}`}
-                          className="flex w-full items-center gap-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2 text-left transition hover:border-primary/40"
+                          className="sl-tap flex w-full items-center gap-2.5 rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5 text-left hover:bg-muted"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-semibold text-foreground">
@@ -996,7 +1004,7 @@ export default function Challenges() {
             <span className="sl-meta w-6 flex-none text-[10px] uppercase tracking-[0.1em]">
               Dia
             </span>
-            <span className="sl-meta flex-1 text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.1em]">
               Banca
             </span>
             <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.1em]">
@@ -1029,18 +1037,18 @@ export default function Challenges() {
                   ref={today ? currentRow : undefined}
                   className={`flex items-center gap-2 px-4 py-2 ${
                     today
-                      ? "bg-primary/10 ring-1 ring-inset ring-primary/30"
+                      ? "bg-gradient-to-r from-primary/12 to-transparent"
                       : done
                         ? ""
-                        : "opacity-60"
+                        : "opacity-55"
                   }`}
                 >
                   <span
-                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-md font-mono-data text-[11px] ${
+                    className={`sl-figure flex h-6 w-6 flex-none items-center justify-center rounded-lg text-[11px] ${
                       today
-                        ? "bg-primary font-bold text-white"
+                        ? "text-white shadow-sm [background:var(--sl-gradient)]"
                         : done
-                          ? "bg-primary/15 font-bold text-primary"
+                          ? "bg-primary/12 text-primary"
                           : "text-muted-foreground"
                     }`}
                   >
