@@ -79,6 +79,20 @@ function lastLine(standing: PlayerStanding, day: number): string | null {
   return null;
 }
 
+/**
+ * How the money has moved since the challenge opened.
+ *
+ * Not a share of the target: a ladder that multiplies sits under 0.1% of a
+ * million until the last few days, so that figure reads as "nothing has
+ * happened" on a day somebody actually won. What has happened is the distance
+ * from where they started, and that moves from the first bet.
+ */
+export function sinceStart(now: number, start: number): string {
+  const gain = Number((now - start).toFixed(2));
+  if (Math.abs(gain) < 0.005) return "na banca inicial";
+  return `${gain > 0 ? "+" : "−"}${eur.format(Math.abs(gain))} desde o início`;
+}
+
 export function nextMove({
   rules,
   ladder,

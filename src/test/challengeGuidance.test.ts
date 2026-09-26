@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextMove } from "@/lib/challengeGuidance";
+import { nextMove, sinceStart } from "@/lib/challengeGuidance";
 import {
   MILLION_PLAN_RULES,
   ladderFor,
@@ -189,5 +189,19 @@ describe("telling someone what to do next", () => {
     };
 
     expect(move({}, free).detail).not.toMatch(/entre/);
+  });
+});
+
+describe("how far the money has come", () => {
+  it("counts from where the challenge started, not from the target", () => {
+    // €21.75 against a million is "menos de 0,1%" for thirty-odd days, which
+    // reads as nothing having happened on a day somebody actually won.
+    expect(sinceStart(21.75, 20)).toMatch(/^\+1,75\s€ desde o início$/);
+    expect(sinceStart(16.8, 20)).toMatch(/^−3,20\s€ desde o início$/);
+  });
+
+  it("says so plainly before anything has moved", () => {
+    expect(sinceStart(20, 20)).toBe("na banca inicial");
+    expect(sinceStart(20.001, 20)).toBe("na banca inicial");
   });
 });
