@@ -326,6 +326,35 @@ describe("building the day's bet", () => {
     expect(screen.getByText(/Mais de 1.5 Golos · modelo 78%/)).toBeInTheDocument();
   });
 
+  it("goes looking for new games when asked, without waiting for the cache", async () => {
+    // A competition can go missing for a minute: the provider allows ten
+    // requests a minute and the board asks for eight. Nobody should have to
+    // wait out a cache to find out whether it came back.
+    const fetched: string[] = [];
+    const original = global.fetch;
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      fetched.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
+      } as Response;
+    });
+
+    try {
+      renderPage();
+      await openPicker();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Procurar jogos novos/ }),
+      );
+
+      expect(
+        fetched.some((url) => url.includes("/data/probability-board")),
+      ).toBe(true);
+    } finally {
+      global.fetch = original;
+    }
+  });
+
   it("finds a game further down the board by name", async () => {
     renderPage();
     await openPicker();

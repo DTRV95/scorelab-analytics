@@ -211,6 +211,8 @@ export default function Challenges() {
   // Competitions the provider did not answer for. Hidden until now, which is
   // how a whole league could go missing without anyone being told.
   const [unavailable, setUnavailable] = useState<string[]>([]);
+  const [boardAt, setBoardAt] = useState<number | null>(null);
+  const [boardLoading, setBoardLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -295,21 +297,33 @@ export default function Challenges() {
     };
   }, [planId, token]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const cached = readCachedBoard(BOARD_DAYS);
-    if (cached) {
-      setBoard(cached.matches);
-      setUnavailable(cached.unavailable ?? []);
-      return;
+  /**
+   * The board of games, from the last fetch or from the provider.
+   *
+   * Forced, it skips the saved copy entirely. A competition can go missing for
+   * a minute — the provider allows ten requests a minute and the board asks for
+   * eight — and waiting out a cache to find out whether it came back is not
+   * something anybody should have to do.
+   */
+  const loadBoard = useCallback((force: boolean) => {
+    if (!force) {
+      const cached = readCachedBoard(BOARD_DAYS);
+      if (cached) {
+        setBoard(cached.matches);
+        setUnavailable(cached.unavailable ?? []);
+        setBoardAt(cached.fetchedAt);
+        return;
+      }
     }
 
+    setBoardLoading(true);
     fetch(buildApiUrl(`/data/probability-board?days=${BOARD_DAYS}`))
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (cancelled || !data) return;
+        if (!data) return;
         setBoard(data.matches ?? []);
         setUnavailable(data.unavailable ?? []);
+        setBoardAt(Date.now());
         writeCachedBoard({
           days: BOARD_DAYS,
           matches: data.matches ?? [],
@@ -317,12 +331,11 @@ export default function Challenges() {
           skipped: data.skipped ?? 0,
         });
       })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => undefined)
+      .finally(() => setBoardLoading(false));
   }, []);
+
+  useEffect(() => loadBoard(false), [loadBoard]);
 
   /**
    * The Plano Milhão is there before anyone creates anything.
@@ -756,7 +769,10 @@ export default function Challenges() {
             size="icon"
             className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
             title="Atualizar"
-            onClick={() => setToken((value) => value + 1)}
+            onClick={() => {
+              setToken((value) => value + 1);
+              loadBoard(true);
+            }}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
@@ -992,6 +1008,9 @@ export default function Challenges() {
               plannedStake={move?.stake ?? 0}
               unavailable={unavailable}
               openSignal={pickSignal}
+              boardAt={boardAt}
+              boardLoading={boardLoading}
+              onRefreshBoard={() => loadBoard(true)}
               entryElsewhere={move?.state === "play"}
               usedFixtures={usedFixtures}
               saving={saving}
