@@ -27,6 +27,12 @@ const CACHE_KEY = "scorelab_probability_board_cache";
 // nothing here is ever staler than what the backend would return anyway.
 const CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
+// A board that came back with a competition missing is not worth two hours.
+// The usual reason is the provider's per-minute limit, which clears on its
+// own — and keeping the incomplete board that long is what turned a passing
+// rate limit into a league that "does not have games" for the afternoon.
+const INCOMPLETE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * The last board fetched for this many days, if it's still fresh — lets the
  * page render instantly instead of recomputing 10,000 simulations per
@@ -39,7 +45,12 @@ export function readCachedBoard(days: number): CachedBoard | null {
 
     const parsed = JSON.parse(raw) as CachedBoard;
     if (parsed.days !== days) return null;
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null;
+
+    const ttl =
+      parsed.unavailable && parsed.unavailable.length > 0
+        ? INCOMPLETE_TTL_MS
+        : CACHE_TTL_MS;
+    if (Date.now() - parsed.fetchedAt > ttl) return null;
 
     return parsed;
   } catch {

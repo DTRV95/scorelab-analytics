@@ -3,7 +3,10 @@
 Run with `pytest` or directly: `python test_football_data.py`.
 """
 
+import json
 import time
+import urllib.error
+import urllib.request
 
 import football_data
 
@@ -442,6 +445,86 @@ def test_the_board_never_offers_a_game_already_under_way():
     # Kicked off already, and beyond the window: both out. Only the game in
     # two days is bettable.
     assert [match["fixture_id"] for match in board["matches"]] == [2]
+
+
+def test_a_busy_week_never_costs_a_competition_all_its_games():
+    """Cutting the board at a fixed length removes the latest kickoffs, which
+    on a busy week is one competition entirely — the one playing at the
+    weekend. That is how a league goes missing while its games are on."""
+    board = []
+    for league, (games, day) in {
+        "Championship": (12, 1.0),
+        "Premier League": (10, 2.0),
+        "La Liga": (10, 2.2),
+        "Serie A": (10, 2.4),
+        "Bundesliga": (9, 2.6),
+        "Ligue 1": (9, 2.8),
+        "Liga Portugal": (9, 3.0),
+        "Eredivisie": (9, 6.0),
+    }.items():
+        for index in range(games):
+            board.append(
+                {"league": league, "kickoff": f"2026-10-{int(day):02d}T{12 + index % 8:02d}:00:00Z"}
+            )
+    board.sort(key=lambda item: item["kickoff"])
+
+    # The old behaviour, for the record: a straight cut wipes the Dutch round.
+    straight = board[:40]
+    assert not any(item["league"] == "Eredivisie" for item in straight)
+
+    fair = football_data._fair_share(board, 40)
+
+    assert len(fair) == 40
+    leagues = {item["league"] for item in fair}
+    assert len(leagues) == 8
+    assert "Eredivisie" in leagues
+    # And it stays in kickoff order for the page that reads it.
+    assert fair == sorted(fair, key=lambda item: item["kickoff"])
+
+
+def test_a_rate_limited_competition_is_asked_again_before_being_dropped():
+    """The free plan allows ten requests a minute and the board asks for eight
+    competitions at once, so a 429 is the ordinary outcome of two people
+    opening the app together — not a broken competition."""
+    calls = []
+
+    class Response:
+        headers = {"Retry-After": "0"}
+        code = 429
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request.full_url)
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(
+                request.full_url, 429, "Too Many Requests", {"Retry-After": "0"}, None
+            )
+        return _FakeBody(json.dumps({"matches": []}).encode())
+
+    original_open, original_key = urllib.request.urlopen, football_data.get_api_key
+    urllib.request.urlopen = fake_urlopen
+    football_data.get_api_key = lambda: "key"
+    try:
+        payload = football_data._request("/competitions/DED/matches")
+    finally:
+        urllib.request.urlopen = original_open
+        football_data.get_api_key = original_key
+
+    assert payload == {"matches": []}
+    assert len(calls) == 2, "a rate limit must be retried once, not swallowed"
+
+
+class _FakeBody:
+    def __init__(self, data):
+        self._data = data
+
+    def read(self):
+        return self._data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
 
 
 if __name__ == "__main__":

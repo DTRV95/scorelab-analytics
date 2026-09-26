@@ -12,6 +12,7 @@ analyses are run against it.
 """
 
 import concurrent.futures
+import threading
 import json
 import os
 import time
@@ -86,6 +87,26 @@ def _competition_code(league_key: str) -> str:
     return code
 
 
+# One wait, not a queue: a second 429 means the minute really is spent, and
+# holding the request open any longer just moves the failure later.
+MAX_RETRY_WAIT = 12.0
+_retrying = threading.local()
+
+
+def _retry_after(exc: "urllib.error.HTTPError") -> Optional[float]:
+    """How long to wait before trying again, or None to give up now."""
+    if getattr(_retrying, "busy", False):
+        return None
+
+    header = exc.headers.get("Retry-After") if exc.headers else None
+    try:
+        wait = float(header) if header else 6.0
+    except (TypeError, ValueError):
+        wait = 6.0
+
+    return min(max(wait, 1.0), MAX_RETRY_WAIT)
+
+
 def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     api_key = get_api_key()
     if not api_key:
@@ -102,6 +123,19 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         if exc.code == 429:
+            # The free plan allows ten requests a minute and the board asks for
+            # eight competitions at once, so this is the ordinary outcome of two
+            # people opening the app together — not a broken competition. Giving
+            # up here dropped a whole league from the board for everyone, which
+            # is how a league can go missing while its games are being played.
+            wait = _retry_after(exc)
+            if wait is not None:
+                time.sleep(wait)
+                _retrying.busy = True
+                try:
+                    return _request(path, params)
+                finally:
+                    _retrying.busy = False
             raise ProviderUnavailable(
                 "Demasiados pedidos à fonte de dados. Tenta novamente daqui a um minuto."
             ) from exc
@@ -457,7 +491,38 @@ def calibration() -> Dict[str, Any]:
     }
 
 
-def probability_board(days: int = 7, limit: int = 80) -> Dict[str, Any]:
+def _fair_share(board: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    """Trim the board without letting any competition fall off it.
+
+    Cutting the sorted list at a fixed length removes the latest kickoffs,
+    which on a busy week is an entire competition — the one that plays at the
+    weekend. Taking a turn from each competition instead means a cut costs
+    every league its last game rather than costing one league all of them.
+    """
+    if len(board) <= limit:
+        return board
+
+    by_league: Dict[str, List[Dict[str, Any]]] = {}
+    for match in board:
+        by_league.setdefault(match["league"], []).append(match)
+
+    picked: List[Dict[str, Any]] = []
+    round_number = 0
+    while len(picked) < limit:
+        added = False
+        for fixtures in by_league.values():
+            if round_number < len(fixtures) and len(picked) < limit:
+                picked.append(fixtures[round_number])
+                added = True
+        if not added:
+            break
+        round_number += 1
+
+    picked.sort(key=lambda item: item["kickoff"] or "")
+    return picked
+
+
+def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
     """Every analysable fixture, forecast and ranked by its strongest signal.
 
     Reuses matches_for_days and build_prefill, so it costs nothing beyond
@@ -532,9 +597,11 @@ def probability_board(days: int = 7, limit: int = 80) -> Dict[str, Any]:
         )
 
     ranked.sort(key=lambda item: item["kickoff"] or "")
+    shown = _fair_share(ranked, limit)
 
     return {
-        "matches": ranked[:limit],
+        "matches": shown,
+        "truncated": len(ranked) - len(shown),
         "unavailable": board["unavailable"],
         "skipped": skipped,
     }

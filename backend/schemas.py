@@ -116,6 +116,10 @@ class ProbabilityBoardResponse(BaseModel):
     matches: List[ProbabilityBoardMatch]
     unavailable: List[str]
     skipped: int
+    # Fixtures inside the window that did not fit the board. Reported rather
+    # than dropped in silence: a missing game and a game that lost are not the
+    # same thing to somebody deciding what to bet.
+    truncated: int = 0
 
 
 class MarketResult(BaseModel):
