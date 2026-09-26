@@ -619,3 +619,63 @@ describe("a day closed the wrong way round", () => {
     expect(after.day).toBe(1);
   });
 });
+
+describe("walking the ladder", () => {
+  const day = (overrides: Partial<PlanBet>, index: number) =>
+    bet({
+      id: `l${index}`,
+      placedAt: `2026-09-${String(20 + index).padStart(2, "0")}T10:00:00.000Z`,
+      ...overrides,
+    });
+
+  it("climbs a day for every day won", () => {
+    const bets = [day({ status: "green" }, 1), day({ status: "green" }, 2)];
+
+    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(3);
+  });
+
+  it("goes back a day for a day lost", () => {
+    const bets = [
+      day({ status: "green" }, 1),
+      day({ status: "green" }, 2),
+      day({ status: "red" }, 3),
+    ];
+
+    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
+  });
+
+  it("stays on day 1 after losing it: there is no day 0 to fall into", () => {
+    expect(
+      buildStanding(member, MILLION_PLAN_RULES, [day({ status: "red" }, 1)]).day,
+    ).toBe(1);
+  });
+
+  it("moves to day 2 after winning day 1, even having lost it before", () => {
+    // The real sequence that stalled: day 1 lost, day 1 won the next evening.
+    // Counting one win and one loss and subtracting left the ladder on day 1,
+    // because the loss that could go nowhere was still in the total.
+    const bets = [day({ status: "red" }, 1), day({ status: "green" }, 2)];
+
+    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
+  });
+
+  it("does not bank wins past the end of the table", () => {
+    const rules = { ...MILLION_PLAN_RULES, days: 3 };
+    const bets = [
+      day({ status: "green" }, 1),
+      day({ status: "green" }, 2),
+      day({ status: "green" }, 3),
+      day({ status: "red" }, 4),
+    ];
+
+    // Three wins reach the last day and stop there, so the loss costs a day
+    // rather than being absorbed by a win that had nowhere to go.
+    expect(buildStanding(member, rules, bets).day).toBe(2);
+  });
+
+  it("leaves an open day where it is", () => {
+    const bets = [day({ status: "green" }, 1), day({ status: "pending" }, 2)];
+
+    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
+  });
+});

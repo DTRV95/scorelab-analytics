@@ -369,17 +369,27 @@ export function buildStanding(
   let openBets = 0;
   let lastSettled: PlanBet | null = null;
 
+  // The ladder is walked a day at a time, in the order the days were played,
+  // because the ends of the table are walls and not corrections applied at
+  // the finish. Counting the wins and the losses and subtracting once lets a
+  // loss taken at day 1 — which can go nowhere, there is no day 0 — sit in the
+  // total and quietly swallow the next win, leaving somebody who has just won
+  // day 1 still on day 1.
+  let day = 1;
+
   mine.forEach((bet) => {
     if (bet.status === "green") {
       bankroll += bet.profitLoss;
       greens += 1;
       lossStreak = 0;
       lastSettled = bet;
+      day = Math.min(day + 1, rules.days);
     } else if (bet.status === "red") {
       bankroll += bet.profitLoss;
       reds += 1;
       lossStreak += 1;
       lastSettled = bet;
+      day = Math.max(day - 1, 1);
     } else if (bet.status === "pending") {
       openStake += bet.stake;
       openBets += 1;
@@ -400,7 +410,7 @@ export function buildStanding(
     lossStreak,
     // Win and you climb a step, lose and you go back one, never past the ends
     // of the table.
-    day: Math.min(Math.max(1, 1 + greens - reds), rules.days),
+    day,
     openBets,
     openStake: Number(openStake.toFixed(2)),
     lastSettled,
