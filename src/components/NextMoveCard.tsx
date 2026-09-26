@@ -15,37 +15,37 @@ const TONE: Record<
   { ring: string; chip: string; icon: typeof ArrowRight }
 > = {
   play: {
-    ring: "border-primary/40 bg-gradient-to-br from-primary/10 to-transparent",
-    chip: "bg-primary text-white",
+    ring: "bg-gradient-to-br from-[hsl(22_100%_97%)] via-card to-card ring-primary/25",
+    chip: "text-white [background:var(--sl-gradient)]",
     icon: ArrowRight,
   },
   "close-first": {
-    ring: "border-amber-500/40 bg-amber-500/5",
+    ring: "bg-gradient-to-br from-amber-50 via-card to-card ring-amber-500/25",
     chip: "bg-amber-500 text-white",
     icon: Clock,
   },
   paused: {
-    ring: "border-destructive/40 bg-destructive/5",
+    ring: "bg-gradient-to-br from-red-50 via-card to-card ring-destructive/25",
     chip: "bg-destructive text-white",
     icon: PauseCircle,
   },
   "waiting-start": {
-    ring: "border-border bg-[hsl(var(--sl-surface))]",
+    ring: "bg-card ring-border",
     chip: "bg-muted text-muted-foreground",
     icon: Clock,
   },
   finished: {
-    ring: "border-border bg-[hsl(var(--sl-surface))]",
+    ring: "bg-card ring-border",
     chip: "bg-muted text-muted-foreground",
     icon: Flag,
   },
   "target-hit": {
-    ring: "border-[hsl(var(--sl-green))]/40 bg-[hsl(var(--sl-green))]/5",
+    ring: "bg-gradient-to-br from-emerald-50 via-card to-card ring-[hsl(var(--sl-green))]/30",
     chip: "bg-[hsl(var(--sl-green))] text-white",
     icon: Flag,
   },
   broke: {
-    ring: "border-destructive/40 bg-destructive/5",
+    ring: "bg-gradient-to-br from-red-50 via-card to-card ring-destructive/25",
     chip: "bg-destructive text-white",
     icon: Flag,
   },
@@ -89,42 +89,44 @@ export function NextMoveCard({
   const movedDown = move.last?.includes("Recuas");
 
   return (
-    <section className={`rounded-xl border px-4 py-3.5 ${tone.ring}`}>
+    <section
+      className={`sl-card overflow-hidden px-4 py-4 ring-1 ${tone.ring}`}
+    >
       <div className="flex items-center justify-between gap-2">
-        <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           O que fazer agora
         </p>
         <span
-          className={`flex-none rounded-full px-2.5 py-1 font-mono-data text-[11px] font-bold ${tone.chip}`}
+          className={`sl-figure flex-none rounded-full px-3 py-1 text-[11px] ${tone.chip}`}
         >
           Dia {move.day}
         </span>
       </div>
 
-      <p className="mt-2 flex items-start gap-2 text-[15px] font-bold leading-6 text-foreground">
-        <Icon className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
+      <p className="mt-2.5 flex items-start gap-2 text-[17px] font-bold leading-6 tracking-[-0.02em] text-foreground">
+        <Icon className="mt-1 h-4 w-4 flex-none text-primary" />
         {move.action}
       </p>
 
-      <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{move.detail}</p>
+      <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{move.detail}</p>
 
       {/* The two numbers side by side are the whole point of tracking: the
           table's figure never moves, and the real one does, so the gap between
           them is the only honest measure of how it is going. */}
-      <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.12em]">
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             Tens agora
           </p>
-          <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
+          <p className="sl-figure mt-0.5 text-[17px] text-foreground">
             {eur.format(bankroll)}
           </p>
         </div>
-        <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.12em]">
+        <div className="rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             O quadro diz
           </p>
-          <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
+          <p className="sl-figure mt-0.5 text-[17px] text-foreground">
             {eur.format(move.tableBankroll)}
             {Math.abs(move.versusTable) >= 0.01 && (
               <span
@@ -147,7 +149,7 @@ export function NextMoveCard({
           have to go looking for is half an instruction. */}
       {move.state === "play" && (
         <Button
-          className="sl-btn-primary mt-3 h-11 w-full text-sm"
+          className="sl-btn-primary mt-3 h-12 w-full text-[15px]"
           onClick={onStart}
         >
           <Plus className="mr-1.5 h-4 w-4" />
@@ -158,7 +160,7 @@ export function NextMoveCard({
       {move.state === "close-first" && (
         <Button
           variant="outline"
-          className="mt-3 h-11 w-full border-amber-500/40 text-sm font-semibold text-amber-700"
+          className="sl-tap mt-3 h-12 w-full rounded-2xl border-amber-500/40 bg-card text-sm font-semibold text-amber-700"
           onClick={onClose}
         >
           Ver o dia por fechar
@@ -167,7 +169,7 @@ export function NextMoveCard({
 
       {move.last && (
         <p
-          className={`mt-2 flex items-start gap-1.5 border-t border-border/70 pt-2 text-[11px] leading-5 ${
+          className={`mt-3 flex items-start gap-1.5 border-t border-border/60 pt-2.5 text-[11px] leading-5 ${
             movedDown ? "text-destructive" : "text-muted-foreground"
           }`}
         >

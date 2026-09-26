@@ -94,7 +94,7 @@ function MarketPicker({
             type="button"
             onClick={() => onPick(market.mercado, market.probabilidade_pct)}
             aria-label={`Apostar em ${MARKET_LABELS[market.mercado] ?? market.mercado}`}
-            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition hover:border-primary/50"
+            className="sl-tap flex items-center justify-between gap-2 rounded-xl bg-card px-2.5 py-2.5 text-left ring-1 ring-border hover:ring-primary/50"
           >
             <span className="min-w-0 flex-1 truncate text-[11px] text-foreground">
               {MARKET_LABELS[market.mercado] ?? market.mercado}
@@ -314,7 +314,7 @@ export function BetComposer({
       <div
         className={`${slipOnly ? "hidden" : "flex"} items-center gap-2 border-b border-border bg-gradient-to-r from-primary/10 to-transparent px-4 py-3`}
       >
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-primary font-mono-data text-xs font-bold text-white">
+        <span className="sl-figure flex h-9 w-9 flex-none items-center justify-center rounded-xl text-[13px] text-white [background:var(--sl-gradient)]">
           {day}
         </span>
         <div className="min-w-0 flex-1">
@@ -366,7 +366,7 @@ export function BetComposer({
                 }
                 placeholder="1.85"
                 aria-label={`Odd de ${leg.homeTeam} vs ${leg.awayTeam}`}
-                className="h-9 w-[68px] flex-none rounded-lg border border-primary/40 bg-card px-2 text-center font-mono-data text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="sl-figure h-10 w-[72px] flex-none rounded-xl border-0 bg-[hsl(var(--sl-surface))] px-2 text-center text-[15px] text-foreground ring-1 ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <button
                 type="button"
@@ -433,7 +433,7 @@ export function BetComposer({
                         current === match.fixture_id ? null : match.fixture_id,
                       )
                     }
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left disabled:opacity-40"
+                    className="sl-tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold text-foreground">
@@ -624,7 +624,7 @@ export function BetComposer({
 
       {legs.length > 0 && (
         <div className="space-y-2 border-t border-border bg-[hsl(var(--sl-surface))] p-4">
-          <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-card px-3.5 py-3">
+          <div className="flex items-center justify-between rounded-2xl bg-card px-3.5 py-3 ring-1 ring-primary/25">
             <div className="min-w-0">
               <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
                 Odd total
@@ -636,7 +636,7 @@ export function BetComposer({
               </p>
             </div>
             <div className="flex-none text-right">
-              <span className="font-mono-data text-2xl font-bold text-foreground">
+              <span className="sl-figure text-[1.9rem] leading-8 text-foreground">
                 {priced && combined > 1 ? combined.toFixed(2) : "—"}
               </span>
               {targetOdds > 1 && (
@@ -648,7 +648,7 @@ export function BetComposer({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="rounded-lg border border-border bg-card px-3 py-2">
+            <label className="rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
               <span className="sl-meta text-[10px] uppercase tracking-[0.13em]">
                 A apostar
               </span>
@@ -665,7 +665,7 @@ export function BetComposer({
                 </span>
               </div>
             </label>
-            <div className="rounded-lg border border-[hsl(var(--sl-green))]/30 bg-[hsl(var(--sl-green))]/5 px-3 py-2">
+            <div className="rounded-2xl bg-[hsl(var(--sl-green))]/8 px-3 py-2 ring-1 ring-[hsl(var(--sl-green))]/20">
               <span className="sl-meta text-[10px] uppercase tracking-[0.13em]">
                 Se entrar
               </span>
@@ -675,9 +675,9 @@ export function BetComposer({
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+          <div className="flex items-center justify-between rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
             <span className="sl-meta text-[11px]">Banca depois, se entrar</span>
-            <span className="font-mono-data text-sm font-bold text-foreground">
+            <span className="sl-figure text-[15px] text-foreground">
               {ready ? eur.format(bankroll + stake * (combined - 1)) : "—"}
             </span>
           </div>
