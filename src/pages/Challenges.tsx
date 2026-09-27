@@ -38,6 +38,7 @@ import { PlanPlayers } from "@/components/PlanPlayers";
 import {
   CreateChallenge,
   ChallengeSettings,
+  DangerZone,
 } from "@/components/ChallengeSettings";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import {
@@ -47,6 +48,7 @@ import {
   declineInvite,
   fetchMyPendingInvites,
   fetchPlanBets,
+  fetchPlanBetCounts,
   fetchPlanMembers,
   fetchPlans,
   isManualLeg,
@@ -209,6 +211,9 @@ export default function Challenges() {
   const { user } = useAuth();
 
   const [plans, setPlans] = useState<PlanRecord[]>([]);
+  // Bets per challenge. Two made from the same model look identical on
+  // screen, and this is the only thing that tells them apart.
+  const [betCounts, setBetCounts] = useState<Record<string, number>>({});
   const [planId, setPlanId] = useState<string | null>(null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
@@ -256,6 +261,12 @@ export default function Challenges() {
     fetchMyPendingInvites()
       .then((invites) => {
         if (!cancelled) setPendingInvites(invites);
+      })
+      .catch(() => undefined);
+
+    fetchPlanBetCounts()
+      .then((counts) => {
+        if (!cancelled) setBetCounts(counts);
       })
       .catch(() => undefined);
 
@@ -888,6 +899,9 @@ export default function Challenges() {
                 }`}
               >
                 {item.name}
+                <span className="ml-1.5 opacity-70">
+                  {betCounts[item.id] ?? 0}
+                </span>
               </button>
             ))}
           </motion.div>
@@ -1118,6 +1132,20 @@ export default function Challenges() {
               plan={plan}
               isOwner={Boolean(ownsPlan)}
               onSaved={() => setToken((value) => value + 1)}
+              onGone={() => {
+                setPlanId(null);
+                setToken((value) => value + 1);
+              }}
+            />
+          </motion.div>
+        )}
+
+        {saved && (
+          <motion.div variants={fadeUp} className="sl-card p-4">
+            <DangerZone
+              plan={plan}
+              isOwner={Boolean(ownsPlan)}
+              bets={betCounts[plan.id] ?? 0}
               onGone={() => {
                 setPlanId(null);
                 setToken((value) => value + 1);

@@ -77,6 +77,7 @@ vi.mock("@/lib/planStore", async () => {
         rules: MILLION_PLAN_RULES,
       },
     ]),
+    fetchPlanBetCounts: vi.fn(async () => ({ plan: 4, empty: 0 })),
     fetchPlanMembers: vi.fn(async () => [
       { plan_id: "plan", user_id: "david", display_name: "David", starting_bankroll: 10 },
       { plan_id: "plan", user_id: "irmao", display_name: "Irmão", starting_bankroll: 10 },
@@ -186,6 +187,7 @@ vi.mock("@/lib/planStore", async () => {
 });
 
 import Challenges from "@/pages/Challenges";
+import { fetchPlans } from "@/lib/planStore";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
 function boardMatch(id: number, home: string, pct: number, league = "Liga Portugal") {
@@ -657,11 +659,60 @@ describe("correcting a bet that was typed wrong", () => {
 });
 
 describe("managing challenges", () => {
+  it("tells two challenges of the same name apart by what is in them", async () => {
+    // Two made from the same model are identical on screen — same name, same
+    // bankroll, same target, same dates. Deleting the wrong one costs
+    // somebody their history, so the chips say how many bets each holds.
+    const twin = {
+      id: "empty",
+      name: "Plano Milhão",
+      starting_bankroll: 10,
+      target: 1000000,
+      created_by: "david",
+      start_date: null,
+      days: 38,
+      rules: MILLION_PLAN_RULES,
+    };
+    vi.mocked(fetchPlans).mockResolvedValueOnce([
+      { ...twin, id: "plan" },
+      twin,
+    ]);
+
+    renderPage();
+
+    const chips = await screen.findAllByRole("button", { name: /Plano Milhão/ });
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      "Plano Milhão4",
+      "Plano Milhão0",
+    ]);
+  });
+
+  it("offers deleting the challenge without hunting through the rules panel", async () => {
+    renderPage();
+
+    // Somebody looking for this goes looking for a delete button, not for
+    // "Regras deste desafio". It is on the page, not folded inside another.
+    expect(
+      await screen.findByRole("button", { name: /Apagar este desafio/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("says how many bets go with the challenge before it is deleted", async () => {
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Apagar este desafio/ }),
+    );
+
+    expect(screen.getByText(/4 apostas/)).toBeInTheDocument();
+  });
+
   it("asks for the name to be typed before deleting everyone's history", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Regras deste desafio/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Apagar este desafio/ }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Apagar este desafio/ }),
+    );
 
     const confirm = screen.getByRole("button", { name: /Apagar de vez/ });
     expect(confirm).toBeDisabled();
