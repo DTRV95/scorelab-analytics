@@ -437,13 +437,23 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
 }
 
 /** Deleting takes everyone's history with it, so the name has to be typed. */
-function DangerZone({
+/**
+ * Leaving or deleting a challenge.
+ *
+ * This lives on the page and not folded inside the rules panel: somebody
+ * looking for it goes looking for a delete button, not for "Regras deste
+ * desafio", and a button nobody can find is a button that is not there.
+ */
+export function DangerZone({
   plan,
   isOwner,
+  bets,
   onGone,
 }: {
   plan: PlanRecord;
   isOwner: boolean;
+  /** How many bets go with it, so the warning names what is actually lost. */
+  bets: number;
   onGone: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -486,9 +496,18 @@ function DangerZone({
       <p className="text-[12px] leading-relaxed text-foreground">
         {isOwner ? (
           <>
-            Isto apaga o desafio e <strong>todas as apostas</strong>, tuas e de
-            quem entrou contigo. Não há forma de voltar atrás. Escreve{" "}
-            <strong>{plan.name}</strong> para confirmar.
+            Isto apaga o desafio{" "}
+            {bets > 0 ? (
+              <>
+                e as <strong>{bets} apostas</strong> que tem
+              </>
+            ) : (
+              <>
+                , que está <strong>sem apostas nenhumas</strong>
+              </>
+            )}
+            , para ti e para quem entrou contigo. Não há forma de voltar atrás.
+            Escreve <strong>{plan.name}</strong> para confirmar.
           </>
         ) : (
           <>
@@ -627,10 +646,6 @@ export function ChallengeSettings({
               {describeRules(rules)}. Só quem criou o desafio pode mudar isto.
             </p>
           )}
-
-          <div className="border-t border-border pt-3">
-            <DangerZone plan={plan} isOwner={isOwner} onGone={onGone} />
-          </div>
         </div>
       )}
     </section>

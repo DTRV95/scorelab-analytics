@@ -203,6 +203,25 @@ export async function fetchPlans(): Promise<PlanRecord[]> {
   return (data ?? []) as PlanRecord[];
 }
 
+/**
+ * How many bets each challenge holds.
+ *
+ * Two challenges made from the same model are identical on screen — same
+ * name, same bankroll, same target, same dates — and picking the wrong one to
+ * delete costs somebody their history. This is the one thing that tells them
+ * apart, and it is one query for all of them, not one each.
+ */
+export async function fetchPlanBetCounts(): Promise<Record<string, number>> {
+  const { data, error } = await client().from("plan_bets").select("plan_id");
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { plan_id: string }[]) {
+    counts[row.plan_id] = (counts[row.plan_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function fetchPlanMembers(planId: string): Promise<PlanMember[]> {
   const { data, error } = await client()
     .from("plan_members")
