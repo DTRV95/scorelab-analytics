@@ -37,6 +37,14 @@ SUPPORTED_LEAGUES: Dict[str, str] = {
     "Bundesliga": "BL1",
     "Ligue 1": "FL1",
     "Eredivisie": "DED",
+    # National-team and continental competitions. The board was eight domestic
+    # club leagues, and every bet placed in the app so far has been on a
+    # national side or a small league — so nothing anybody actually backed was
+    # ever on it, and the model sat idle while the bets were typed by hand.
+    "Liga dos Campeões": "CL",
+    "Campeonato da Europa": "EC",
+    "Mundial": "WC",
+    "Brasileirão": "BSA",
 }
 
 FINISHED_STATUSES = {"FINISHED", "AWARDED"}
@@ -107,6 +115,42 @@ def _retry_after(exc: "urllib.error.HTTPError") -> Optional[float]:
     return min(max(wait, 1.0), MAX_RETRY_WAIT)
 
 
+# The free plan allows ten calls a minute and the board now covers twelve
+# competitions, so a cold load cannot fit in one window however it is arranged.
+# The two that do not fit are refused rather than queued: a page held open for
+# a minute is worse than a board that arrives with two competitions missing and
+# says so. It heals by itself — the ten that got through are cached for six
+# hours, so the next load spends its whole allowance on the ones that did not.
+RATE_LIMIT = 10
+RATE_WINDOW = 60.0
+# Long enough to absorb two people opening the app together, short enough that
+# nobody watches a spinner for it.
+MAX_SLOT_WAIT = 8.0
+
+_rate_lock = threading.Lock()
+_recent_calls: List[float] = []
+
+
+def _wait_for_slot(max_wait: float = MAX_SLOT_WAIT) -> bool:
+    """Take a slot from the provider's per-minute allowance, or report failure."""
+    deadline = time.time() + max_wait
+
+    while True:
+        with _rate_lock:
+            now = time.time()
+            while _recent_calls and now - _recent_calls[0] >= RATE_WINDOW:
+                _recent_calls.pop(0)
+            if len(_recent_calls) < RATE_LIMIT:
+                _recent_calls.append(now)
+                return True
+            sleep_for = RATE_WINDOW - (now - _recent_calls[0]) + 0.05
+
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            return False
+        time.sleep(min(sleep_for, remaining, 1.0))
+
+
 def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     api_key = get_api_key()
     if not api_key:
@@ -117,6 +161,12 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
         url = f"{url}?{urllib.parse.urlencode(params)}"
 
     request = urllib.request.Request(url, headers={"X-Auth-Token": api_key})
+
+    if not _wait_for_slot():
+        raise ProviderUnavailable(
+            "A fonte de dados só permite dez pedidos por minuto e esta competição "
+            "ficou de fora desta vez. Volta a procurar daqui a um minuto."
+        )
 
     try:
         with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
@@ -152,6 +202,39 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
         raise ProviderUnavailable("Resposta inesperada da fonte de dados.")
 
     return payload
+
+
+def available_competitions() -> Dict[str, Any]:
+    """What this API key actually covers, in the provider's own words.
+
+    The wired list is a guess until somebody asks. A competition missing from
+    the board because it was never wired looks exactly like one the provider
+    refuses, and both look like "there are no games" — so this asks outright,
+    and marks which of the answers the board is already using.
+    """
+    payload = _request("/competitions")
+    rows = []
+
+    for competition in payload.get("competitions") or []:
+        code = competition.get("code")
+        season = competition.get("currentSeason") or {}
+        rows.append(
+            {
+                "code": code,
+                "name": competition.get("name"),
+                "area": (competition.get("area") or {}).get("name"),
+                "type": competition.get("type"),
+                "season_end": season.get("endDate"),
+                "wired": code in set(SUPPORTED_LEAGUES.values()),
+            }
+        )
+
+    rows.sort(key=lambda row: (not row["wired"], row["name"] or ""))
+    return {
+        "count": len(rows),
+        "wired": sorted(SUPPORTED_LEAGUES.keys()),
+        "competitions": rows,
+    }
 
 
 def get_season_matches(

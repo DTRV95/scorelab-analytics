@@ -534,6 +534,75 @@ def test_frontend_league_list_matches_the_backend():
     assert frontend == set(football_data.SUPPORTED_LEAGUES)
 
 
+def test_the_allowance_holds_a_twelfth_call_back():
+    """Twelve competitions no longer fit in the ten calls a minute allowed.
+
+    Without a shared allowance the eleventh and twelfth calls of a cold load
+    come back 429, which drops two whole competitions from the board — the
+    exact failure the board was already losing leagues to.
+    """
+    football_data._recent_calls.clear()
+    try:
+        now = time.time()
+        # Ten calls already spent inside this minute.
+        football_data._recent_calls.extend([now] * football_data.RATE_LIMIT)
+
+        started = time.time()
+        got = football_data._wait_for_slot(max_wait=0.3)
+        waited = time.time() - started
+
+        # Refused, not queued: the caller turns this into "esta competição
+        # ficou de fora", which the board already knows how to show.
+        assert got is False
+        assert waited >= 0.25, f"desistiu cedo de mais: {waited:.2f}s"
+    finally:
+        football_data._recent_calls.clear()
+
+
+def test_the_allowance_lets_a_quiet_minute_straight_through():
+    football_data._recent_calls.clear()
+    try:
+        started = time.time()
+        for _ in range(football_data.RATE_LIMIT):
+            football_data._wait_for_slot(max_wait=5.0)
+        assert time.time() - started < 0.2
+        assert len(football_data._recent_calls) == football_data.RATE_LIMIT
+        assert football_data._wait_for_slot(max_wait=0.2) is False
+    finally:
+        football_data._recent_calls.clear()
+
+
+def test_competitions_report_says_which_ones_the_board_already_uses():
+    calls = []
+
+    def fake_request(path, params=None):
+        calls.append(path)
+        return {
+            "competitions": [
+                {"code": "DED", "name": "Eredivisie",
+                 "area": {"name": "Netherlands"}, "type": "LEAGUE",
+                 "currentSeason": {"endDate": "2027-05-30"}},
+                {"code": "NL", "name": "Nations League",
+                 "area": {"name": "Europe"}, "type": "CUP",
+                 "currentSeason": {"endDate": "2027-06-10"}},
+            ]
+        }
+
+    original = football_data._request
+    football_data._request = fake_request
+    try:
+        report = football_data.available_competitions()
+    finally:
+        football_data._request = original
+
+    assert calls == ["/competitions"]
+    rows = {row["code"]: row for row in report["competitions"]}
+    assert rows["DED"]["wired"] is True
+    # Offered by the key, never wired into the board: invisible until now.
+    assert rows["NL"]["wired"] is False
+    assert rows["NL"]["area"] == "Europe"
+
+
 class _FakeBody:
     def __init__(self, data):
         self._data = data

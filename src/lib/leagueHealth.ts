@@ -64,3 +64,33 @@ export function describeHealth(row: LeagueHealth): string {
     row.finished
   } já disputados esta época`;
 }
+
+export interface ProviderCompetition {
+  code: string | null;
+  name: string | null;
+  area: string | null;
+  type: string | null;
+  season_end: string | null;
+  /** Already on the board. The rest are offered and simply never wired in. */
+  wired: boolean;
+}
+
+export interface ProviderCatalogue {
+  count: number;
+  wired: string[];
+  competitions: ProviderCompetition[];
+}
+
+/**
+ * What the API key actually covers, asked of the provider itself.
+ *
+ * A competition that was never wired into the board looks exactly like one the
+ * provider refuses, and both look like "there are no games this week". Every
+ * bet placed in this app so far was on a national side or a small league —
+ * none of which were on the board — and nothing on screen said so.
+ */
+export async function fetchProviderCompetitions(): Promise<ProviderCatalogue> {
+  const response = await fetch(buildApiUrl("/data/competitions"));
+  if (!response.ok) throw new Error(String(response.status));
+  return response.json();
+}
