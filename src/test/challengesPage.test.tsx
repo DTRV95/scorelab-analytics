@@ -484,6 +484,42 @@ describe("building the day's bet", () => {
   });
 });
 
+describe("saying whether the bet is worth making", () => {
+  it("compares the model with the odd typed, before it is registered", async () => {
+    renderPage();
+    await pickFromBoard("Equipa 0");
+
+    fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
+      target: { value: "1.50" },
+    });
+
+    // The board gives Equipa 0 a 50% headline; 1.50 pays for 66.7%.
+    expect(await screen.findByText("Sem valor")).toBeInTheDocument();
+    expect(screen.getByText(/só dá 50%/)).toBeInTheDocument();
+  });
+
+  it("says so when the price is better than the model's chance", async () => {
+    renderPage();
+    await pickFromBoard("Equipa 0");
+
+    fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
+      target: { value: "2.50" },
+    });
+
+    expect(await screen.findByText("Tem valor")).toBeInTheDocument();
+  });
+
+  it("admits it cannot judge a game the model never saw", async () => {
+    renderPage();
+    await addByHand("Torreense", "Mafra", "Casa", "1.85");
+
+    expect(
+      await screen.findByText(/não tem previsão do modelo/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Sem valor")).not.toBeInTheDocument();
+  });
+});
+
 describe("closing a bet nobody else can close", () => {
   it("offers the owner a way to say how a hand-added game went", async () => {
     renderPage();
