@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
 
@@ -187,6 +187,7 @@ vi.mock("@/lib/planStore", async () => {
 });
 
 import Challenges from "@/pages/Challenges";
+import { Toaster } from "@/components/ui/toaster";
 import { fetchPlans } from "@/lib/planStore";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
@@ -236,9 +237,13 @@ afterEach(() => {
 });
 
 function renderPage() {
+  // The app mounts the Toaster in App.tsx, so a page rendered without it can
+  // fire a toast that nothing ever shows — which is the state this page was
+  // in until now.
   return render(
     <MemoryRouter>
       <Challenges />
+      <Toaster />
     </MemoryRouter>
   );
 }
@@ -495,6 +500,45 @@ describe("building the day's bet", () => {
     expect(payload).toMatchObject({ stake: 5 });
     // Staking less than the challenge asks is a choice, not a breach.
     expect(screen.queryByText(/Acima do desafio/)).not.toBeInTheDocument();
+  });
+});
+
+describe("telling the person what happened", () => {
+  it("confirms the day that was just registered", async () => {
+    renderPage();
+    await pickFromBoard("Equipa 0");
+    fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
+      target: { value: "1.95" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+
+    // The most consequential action in the app used to land in silence.
+    //
+    // Waiting on the content and not on the title: the toast store is a module
+    // singleton that survives between tests, and an earlier test leaves one
+    // with this very title behind — so matching the title alone resolves on
+    // the stale toast before this one is even rendered.
+    await waitFor(() => {
+      const shown = [...document.querySelectorAll("li")].find((node) =>
+        node.textContent?.includes("Dia 2 registado"),
+      );
+      expect(shown).toHaveTextContent("1 jogo @ 1.95");
+    });
+  });
+
+  it("says a failed save failed, instead of a line under the whole page", async () => {
+    savePlanBet.mockRejectedValueOnce(new Error("offline"));
+
+    renderPage();
+    await pickFromBoard("Equipa 0");
+    fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
+      target: { value: "1.95" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+
+    expect(
+      await screen.findByText("A aposta não ficou guardada. Tenta outra vez."),
+    ).toBeInTheDocument();
   });
 });
 
