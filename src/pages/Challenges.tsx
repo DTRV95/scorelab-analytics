@@ -17,6 +17,7 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -244,6 +245,19 @@ export default function Challenges() {
   const [wholeTable, setWholeTable] = useState(false);
   const [allDays, setAllDays] = useState(false);
   // Which bet is open in full, and whose it is.
+  /**
+   * An action that failed, said where the person is looking.
+   *
+   * These used to land in one line at the very bottom of the page — below the
+   * standings, the days and the ladder — so on a phone a bet could fail to
+   * save and nothing on screen would say so. The page-level error below is
+   * still there for a challenge that will not load at all, which is a
+   * different thing from an action that did not take.
+   */
+  const fail = useCallback((message: string) => {
+    toast({ title: message, variant: "destructive" });
+  }, []);
+
   const [openBet, setOpenBet] = useState<{
     bet: PlanBet;
     player: string;
@@ -517,12 +531,12 @@ export default function Challenges() {
         );
         setToken((value) => value + 1);
       } catch {
-        setError("Não foi possível responder ao convite.");
+        fail("Não foi possível responder ao convite.");
       } finally {
         setAnswering(false);
       }
     },
-    [],
+    [fail],
   );
 
   const place = useCallback(
@@ -554,6 +568,11 @@ export default function Challenges() {
           settledAt: null,
         });
 
+        toast({
+          title: `Dia ${me.day} registado`,
+          description: `${legs.length === 1 ? "1 jogo" : `${legs.length} jogos`} @ ${odds.toFixed(2)} · ${eur.format(stake)}`,
+        });
+
         if (plan.id) {
           setBets((previous) => [...previous, stored]);
         } else {
@@ -563,12 +582,12 @@ export default function Challenges() {
           setToken((value) => value + 1);
         }
       } catch {
-        setError("A aposta não ficou guardada. Tenta outra vez.");
+        fail("A aposta não ficou guardada. Tenta outra vez.");
       } finally {
         setSaving(false);
       }
     },
-    [plan, me, user, rules],
+    [plan, me, user, rules, fail],
   );
 
   /** Records how one game inside a bet went, and closes the day if that decides it. */
@@ -589,12 +608,12 @@ export default function Challenges() {
             : current,
         );
       } catch {
-        setError("Não foi possível guardar como correu esse jogo.");
+        fail("Não foi possível guardar como correu esse jogo.");
       } finally {
         setMarking(null);
       }
     },
-    [plan?.id],
+    [plan?.id, fail],
   );
 
   /** Settles every game still open in one bet, for the day that went all one way. */
@@ -615,12 +634,12 @@ export default function Challenges() {
             : current,
         );
       } catch {
-        setError("Não foi possível guardar como correram esses jogos.");
+        fail("Não foi possível guardar como correram esses jogos.");
       } finally {
         setMarking(null);
       }
     },
-    [plan?.id],
+    [plan?.id, fail],
   );
 
   /** Closes a lost day from the games the person named as failed. */
@@ -640,12 +659,12 @@ export default function Challenges() {
         );
         setLosing(null);
       } catch {
-        setError("Não foi possível fechar a aposta.");
+        fail("Não foi possível fechar a aposta.");
       } finally {
         setClosing(null);
       }
     },
-    [plan?.id],
+    [plan?.id, fail],
   );
 
   /**
@@ -672,12 +691,12 @@ export default function Challenges() {
         );
         setError(null);
       } catch {
-        setError(failure);
+        fail(failure);
       } finally {
         setSaving(false);
       }
     },
-    [plan?.id],
+    [plan?.id, fail],
   );
 
   const saveEdits = useCallback(
@@ -721,12 +740,12 @@ export default function Challenges() {
         setOpenBet(null);
         setError(null);
       } catch {
-        setError("Não foi possível apagar a aposta.");
+        fail("Não foi possível apagar a aposta.");
       } finally {
         setSaving(false);
       }
     },
-    [plan?.id],
+    [plan?.id, fail],
   );
 
   const closeBet = useCallback(
@@ -748,12 +767,12 @@ export default function Challenges() {
           setOpenBet({ bet: updated, player: me?.name ?? "" });
         }
       } catch {
-        setError("Não foi possível fechar a aposta.");
+        fail("Não foi possível fechar a aposta.");
       } finally {
         setClosing(null);
       }
     },
-    [plan, me?.name],
+    [plan, me?.name, fail],
   );
 
   if (loading) {
@@ -880,6 +899,15 @@ export default function Challenges() {
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </motion.div>
+
+        {error && (
+          <motion.p
+            variants={fadeUp}
+            className="rounded-xl bg-destructive/5 px-3.5 py-2.5 text-[12px] font-medium text-destructive ring-1 ring-destructive/25"
+          >
+            {error}
+          </motion.p>
+        )}
 
         {inviteBanner && (
           <motion.div variants={fadeUp}>{inviteBanner}</motion.div>
@@ -1421,11 +1449,6 @@ export default function Challenges() {
           onClose={() => setOpenBet(null)}
         />
 
-        {error && (
-          <motion.p variants={fadeUp} className="text-[11px] text-destructive">
-            {error}
-          </motion.p>
-        )}
       </motion.div>
     </AppLayout>
   );

@@ -743,11 +743,30 @@ export function BetComposer({
             {/* A competition that fails is dropped from the board on purpose,
                 so one outage cannot hide the other seven. Saying nothing about
                 it is how a whole league goes missing for days. */}
+            {/* Naming the competitions and stopping there left somebody
+                thinking the source was broken. The usual cause is the ten
+                requests a minute the free plan allows, which twelve
+                competitions cannot fit into — so the ones that missed out come
+                back on the next try, and the try is right here. */}
             {unavailable.length > 0 && (
-              <p className="mt-2 text-[11px] leading-relaxed text-amber-700">
-                Sem resposta da fonte de dados para: {unavailable.join(", ")}.
-                Esses jogos não estão aqui.
-              </p>
+              <div className="mt-2 rounded-lg bg-amber-500/8 p-2.5 ring-1 ring-amber-500/25">
+                <p className="text-[11px] leading-relaxed text-amber-700">
+                  Ficaram de fora desta vez: {unavailable.join(", ")}. A fonte
+                  só deixa passar dez pedidos por minuto e o quadro pede doze
+                  competições, por isso as últimas não couberam.
+                </p>
+                <button
+                  type="button"
+                  onClick={onRefreshBoard}
+                  disabled={boardLoading}
+                  className="sl-tap mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-card text-[11px] font-semibold text-foreground ring-1 ring-amber-500/30 disabled:opacity-40"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${boardLoading ? "animate-spin" : ""}`}
+                  />
+                  {boardLoading ? "A procurar..." : "Tentar trazer as que faltam"}
+                </button>
+              </div>
             )}
 
             <button
