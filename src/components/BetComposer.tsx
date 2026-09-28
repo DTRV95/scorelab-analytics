@@ -25,7 +25,9 @@ import {
   byUrgency,
   describeHealth,
   fetchLeagueHealth,
+  fetchProviderCompetitions,
   type LeagueHealthReport,
+  type ProviderCatalogue,
 } from "@/lib/leagueHealth";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
@@ -208,6 +210,8 @@ export function BetComposer({
   const [healthOpen, setHealthOpen] = useState(false);
   const [healthError, setHealthError] = useState(false);
   const [healthLoading, setHealthLoading] = useState(false);
+  const [catalogue, setCatalogue] = useState<ProviderCatalogue | null>(null);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
 
   useEffect(() => {
     if (openSignal) setPickerOpen(true);
@@ -230,6 +234,13 @@ export function BetComposer({
   useEffect(() => {
     if (healthOpen && !health && !healthError && !healthLoading) askHealth();
   }, [healthOpen, health, healthError, healthLoading, askHealth]);
+
+  useEffect(() => {
+    if (!catalogueOpen || catalogue) return;
+    fetchProviderCompetitions()
+      .then(setCatalogue)
+      .catch(() => undefined);
+  }, [catalogueOpen, catalogue]);
 
   const suggested = plannedStake;
   const stake =
@@ -767,6 +778,45 @@ export function BetComposer({
                 {healthLoading && (
                   <p className="sl-meta text-[11px]">A perguntar...</p>
                 )}
+                {health && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCatalogueOpen((open) => !open)}
+                      className="sl-meta w-full text-left text-[10px] underline"
+                    >
+                      {catalogueOpen
+                        ? "Esconder o que a fonte oferece"
+                        : "O que mais a fonte oferece?"}
+                    </button>
+
+                    {catalogueOpen && (
+                      <div className="space-y-1 rounded-lg bg-card p-2 ring-1 ring-border">
+                        {!catalogue && (
+                          <p className="sl-meta text-[10px]">A perguntar...</p>
+                        )}
+                        {catalogue?.competitions
+                          .filter((row) => !row.wired)
+                          .map((row) => (
+                            <p
+                              key={row.code ?? row.name}
+                              className="sl-meta text-[10px] leading-4"
+                            >
+                              {row.name}
+                              {row.area ? ` · ${row.area}` : ""} — fora do quadro
+                            </p>
+                          ))}
+                        {catalogue &&
+                          catalogue.competitions.every((row) => row.wired) && (
+                            <p className="sl-meta text-[10px]">
+                              O quadro já usa tudo o que a chave dá.
+                            </p>
+                          )}
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {health &&
                   byUrgency(health.leagues).map((row) => (
                     <div key={row.league} className="flex items-start gap-2">

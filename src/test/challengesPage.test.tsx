@@ -387,6 +387,20 @@ describe("building the day's bet", () => {
     expect(screen.queryByText(/Equipa 0 vs Rival/)).not.toBeInTheDocument();
   });
 
+  it("names the national-team competitions the board now covers", async () => {
+    // Every bet placed in this app so far was on a national side or a small
+    // league, and the board was eight domestic club leagues — so nothing
+    // anybody actually backed was ever on it.
+    renderPage();
+    await openPicker();
+
+    for (const league of ["Campeonato da Europa", "Mundial", "Liga dos Campeões"]) {
+      expect(
+        await screen.findByRole("button", { name: `${league}, 0 jogos` }),
+      ).toBeInTheDocument();
+    }
+  });
+
   it("says a competition has nothing rather than leaving it out", async () => {
     renderPage();
     await openPicker();

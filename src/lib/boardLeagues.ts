@@ -17,6 +17,10 @@ export const COVERED_LEAGUES = [
   "Bundesliga",
   "Ligue 1",
   "Eredivisie",
+  "Liga dos Campeões",
+  "Campeonato da Europa",
+  "Mundial",
+  "Brasileirão",
 ] as const;
 
 export interface LeagueCount {

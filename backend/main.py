@@ -93,6 +93,24 @@ def data_leagues(request: Request, days: int = 7):
     return football_data.league_diagnostics(days=days)
 
 
+@app.get("/data/competitions")
+@limiter.limit("4/minute")
+def data_competitions(request: Request):
+    """What the API key actually covers, asked of the provider itself.
+
+    The board only shows competitions somebody wired into it, so one that was
+    never wired is indistinguishable from one the provider refuses. This is the
+    page that tells them apart.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.available_competitions()
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/fixtures")
 @limiter.limit("20/minute")
 def data_fixtures(request: Request, league: str):
