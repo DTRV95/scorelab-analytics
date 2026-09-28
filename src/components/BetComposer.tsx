@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { leagueCounts } from "@/lib/boardLeagues";
+import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
 import { freshness } from "@/lib/freshness";
 import {
@@ -401,6 +402,24 @@ export function BetComposer({
                   {leg.fixtureId === null
                     ? " · à mão"
                     : ` · modelo ${leg.modelProb.toFixed(0)}%`}
+                  {(() => {
+                    // What the odd typed is paying for, against what the model
+                    // thinks. The only number on this row that says whether
+                    // backing it is a good idea.
+                    const points = edgePoints(leg.modelProb, toOdds(leg.odds));
+                    if (points === null) return null;
+                    return (
+                      <span
+                        className={
+                          points > 0
+                            ? " font-semibold text-[hsl(var(--sl-green))]"
+                            : " font-semibold text-destructive"
+                        }
+                      >
+                        {` · ${points > 0 ? "+" : ""}${points} pts`}
+                      </span>
+                    );
+                  })()}
                 </p>
               </div>
               <input
@@ -800,6 +819,68 @@ export function BetComposer({
               )}
             </div>
           </div>
+
+          {/* Every other number here says what happens if it lands. This one
+              says whether it is worth backing at the price, which is the only
+              one that decides whether a season ends up or down. It blocks
+              nothing: it puts the comparison on screen. */}
+          {(() => {
+            const value = slipValue(
+              legs.map((leg) => ({
+                modelProb: leg.modelProb,
+                odds: toOdds(leg.odds),
+              })),
+            );
+
+            if (!value) {
+              const blind = legs.some(
+                (leg) => leg.fixtureId === null && toOdds(leg.odds) > 1,
+              );
+              if (!blind) return null;
+              return (
+                <p className="sl-meta rounded-2xl bg-card px-3.5 py-2.5 text-[11px] leading-5 ring-1 ring-border">
+                  Um jogo metido à mão não tem previsão do modelo, por isso não
+                  dá para dizer se esta aposta vale a odd que estás a apanhar.
+                </p>
+              );
+            }
+
+            const good = value.edge > 0;
+            return (
+              <div
+                className={`rounded-2xl px-3.5 py-2.5 ring-1 ${
+                  good
+                    ? "bg-[hsl(var(--sl-green))]/8 ring-[hsl(var(--sl-green))]/25"
+                    : "bg-destructive/5 ring-destructive/25"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`text-[12px] font-bold ${
+                      good
+                        ? "text-[hsl(var(--sl-green))]"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {good ? "Tem valor" : "Sem valor"}
+                  </span>
+                  <span
+                    className={`sl-figure text-sm ${
+                      good
+                        ? "text-[hsl(var(--sl-green))]"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {value.edge > 0 ? "+" : ""}
+                    {value.edge} pts
+                  </span>
+                </div>
+                <p className="sl-meta mt-1 text-[11px] leading-5">
+                  {describeValue(value)}
+                </p>
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-2 gap-2">
             <label className="rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
