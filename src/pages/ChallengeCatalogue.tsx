@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Star, Trophy, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Star,
+  Trophy,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CreateChallenge } from "@/components/ChallengeSettings";
 import {
@@ -15,7 +22,22 @@ import {
   isViable,
   type ChallengeTemplate,
 } from "@/lib/challengeRules";
-import { fetchPlans, type PlanRecord } from "@/lib/planStore";
+import {
+  fetchBetsOfPlans,
+  fetchMembersOfPlans,
+  fetchPlans,
+  fetchVisiblePlans,
+  type PlanBet,
+  type PlanMember,
+  type PlanRecord,
+} from "@/lib/planStore";
+import { byPopularity, leaderboard, popularity } from "@/lib/leaderboard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -51,12 +73,18 @@ function Stars({ count }: { count: number }) {
 
 function ChallengeCard({
   template,
+  playing,
+  rows,
   onCreated,
 }: {
   template: ChallengeTemplate;
+  /** How many people are running it, across every challenge anybody opened. */
+  playing: number;
+  rows: ReturnType<typeof leaderboard>;
   onCreated: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [tableOpen, setTableOpen] = useState(false);
   const { chance, stars } = difficultyOf(template);
   const viable = isViable(template.rules);
   const lines = challengeLines(template);
@@ -72,11 +100,17 @@ function ChallengeCard({
           <p className="text-[14px] font-bold text-foreground">
             {template.name}
           </p>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Stars count={stars} />
             <span className="sl-meta text-[11px]">
               {describeDifficulty(chance)}
             </span>
+            {playing > 0 && (
+              <span className="sl-pill sl-pill-muted flex items-center gap-1 text-[10px]">
+                <Users className="h-3 w-3" />
+                {playing} a fazer
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
             {challengePitch(template)}
@@ -129,11 +163,65 @@ function ChallengeCard({
             </p>
           )}
 
-          <div className="mt-3">
+          {rows.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setTableOpen(true)}
+              className="sl-tap mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-foreground ring-1 ring-border"
+            >
+              <Trophy className="h-3.5 w-3.5" />
+              Ver classificação
+            </button>
+          )}
+
+          <div className="mt-2">
             <CreateChallenge startOn={template.key} onCreated={onCreated} />
           </div>
         </div>
       )}
+
+      <Dialog open={tableOpen} onOpenChange={setTableOpen}>
+        <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border px-4 py-3 text-left">
+            <DialogTitle className="text-sm font-bold">
+              {template.name} · classificação
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Ranked on how much of the climb is done, because the same
+              challenge can be started with €10 or with €200 and the euros
+              would put the bigger bankroll first for standing still. */}
+          <div className="divide-y divide-border">
+            {rows.map((row, index) => (
+              <div
+                key={`${row.planId}-${row.userId}`}
+                className="flex items-center gap-3 px-4 py-2.5"
+              >
+                <span className="sl-figure w-5 flex-none text-[13px] text-muted-foreground">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-foreground">
+                    {row.name}
+                  </p>
+                  <p className="sl-meta truncate text-[11px]">
+                    Dia {row.day} de {row.days} · {row.settled}{" "}
+                    {row.settled === 1 ? "dia fechado" : "dias fechados"}
+                  </p>
+                </div>
+                <span className="sl-figure flex-none text-right text-[13px] text-foreground">
+                  {Math.round(row.progress * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <p className="sl-meta border-t border-border px-4 py-2.5 text-[11px] leading-5">
+            A percentagem é quanto já se subiu da banca inicial até ao
+            objetivo. Só aparece quem abriu o desafio aos outros.
+          </p>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -148,6 +236,10 @@ function ChallengeCard({
  */
 export default function ChallengeCatalogue() {
   const [plans, setPlans] = useState<PlanRecord[]>([]);
+  const [everyone, setEveryone] = useState<PlanRecord[]>([]);
+  const [members, setMembers] = useState<PlanMember[]>([]);
+  const [bets, setBets] = useState<(PlanBet & { planId: string })[]>([]);
+  const [busiestFirst, setBusiestFirst] = useState(true);
   const [token, setToken] = useState(0);
 
   useEffect(() => {
@@ -161,6 +253,59 @@ export default function ChallengeCatalogue() {
       cancelled = true;
     };
   }, [token]);
+
+  // Everything anybody opened up, plus my own: the standings and the counts
+  // are built from the two together, so my own challenges count even while
+  // they are still closed to everybody else.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchVisiblePlans()
+      .then(async (open) => {
+        if (cancelled) return;
+        setEveryone(open);
+
+        const ids = open.map((entry) => entry.id);
+        const [people, placed] = await Promise.all([
+          fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
+          fetchBetsOfPlans(ids).catch(
+            () => [] as (PlanBet & { planId: string })[],
+          ),
+        ]);
+        if (cancelled) return;
+        setMembers(people);
+        setBets(placed);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const counts = useMemo(
+    () => popularity(everyone, members),
+    [everyone, members],
+  );
+
+  const ordered = useMemo(
+    () =>
+      busiestFirst
+        ? byPopularity([...CHALLENGE_TEMPLATES], counts)
+        : CHALLENGE_TEMPLATES,
+    [busiestFirst, counts],
+  );
+
+  const tables = useMemo(() => {
+    const byTemplate: Record<string, ReturnType<typeof leaderboard>> = {};
+    for (const template of CHALLENGE_TEMPLATES) {
+      const its = everyone.filter(
+        (entry) => entry.template_key === template.key,
+      );
+      byTemplate[template.key] = leaderboard(its, members, bets);
+    }
+    return byTemplate;
+  }, [everyone, members, bets]);
 
   return (
     <AppLayout>
@@ -207,13 +352,24 @@ export default function ChallengeCatalogue() {
         )}
 
         <motion.div variants={fadeUp} className="space-y-2 pt-1">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-            Para começar
-          </p>
-          {CHALLENGE_TEMPLATES.map((template) => (
+          <div className="flex items-center justify-between gap-2">
+            <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+              Para começar
+            </p>
+            <button
+              type="button"
+              onClick={() => setBusiestFirst((value) => !value)}
+              className="sl-tap rounded-full px-2.5 py-1 text-[11px] font-semibold text-muted-foreground ring-1 ring-border"
+            >
+              {busiestFirst ? "Mais feitos primeiro" : "Por ordem"}
+            </button>
+          </div>
+          {ordered.map((template) => (
             <ChallengeCard
               key={template.key}
               template={template}
+              playing={counts[template.key] ?? 0}
+              rows={tables[template.key] ?? []}
               onCreated={() => setToken((value) => value + 1)}
             />
           ))}

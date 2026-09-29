@@ -32,6 +32,7 @@ import {
 import {
   createPlan,
   deletePlan,
+  setPlanVisible,
   leavePlan,
   updatePlanTerms,
   type PlanRecord,
@@ -674,6 +675,7 @@ export function ChallengeSettings({
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFromPlan(plan));
+  const [visible, setVisible] = useState(Boolean(plan.visible));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -700,6 +702,45 @@ export function ChallengeSettings({
   // already said what it was.
   return (
     <div className="space-y-2 p-4">
+      {/* Until this existed a challenge was invisible to everybody outside it,
+          down to its name — so nobody could see what the others were running,
+          and no ranking could exist. Off by default: it is somebody's money. */}
+      {isOwner && (
+        <button
+          type="button"
+          onClick={async () => {
+            const next = !visible;
+            setVisible(next);
+            try {
+              await setPlanVisible(plan.id, next);
+              onSaved();
+            } catch {
+              setVisible(!next);
+              setError("Não foi possível mudar quem vê este desafio.");
+            }
+          }}
+          aria-pressed={visible}
+          className="sl-tap flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left ring-1 ring-border"
+        >
+          <span
+            className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded ${
+              visible ? "bg-primary text-primary-foreground" : "ring-1 ring-border"
+            }`}
+          >
+            {visible && <Check className="h-3 w-3" strokeWidth={3} />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] font-semibold text-foreground">
+              Deixar os outros verem este desafio
+            </span>
+            <span className="sl-meta block text-[11px] leading-5">
+              Entra na classificação e qualquer pessoa com conta passa a ver as
+              apostas, os dias e a banca. Desligado, só quem está cá dentro vê.
+            </span>
+          </span>
+        </button>
+      )}
+
       {isOwner ? (
         <>
           <Fields draft={draft} onChange={setDraft} />

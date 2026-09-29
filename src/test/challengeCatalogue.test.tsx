@@ -12,16 +12,27 @@ vi.mock("@/components/layout/AppLayout", () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-const { fetchPlans, createPlan } = vi.hoisted(() => ({
-  fetchPlans: vi.fn(async () => [] as unknown[]),
-  createPlan: vi.fn(async () => "new-plan"),
-}));
+const { fetchPlans, createPlan, fetchVisiblePlans, fetchMembersOfPlans, fetchBetsOfPlans } =
+  vi.hoisted(() => ({
+    fetchPlans: vi.fn(async () => [] as unknown[]),
+    createPlan: vi.fn(async () => "new-plan"),
+    fetchVisiblePlans: vi.fn(async () => [] as unknown[]),
+    fetchMembersOfPlans: vi.fn(async () => [] as unknown[]),
+    fetchBetsOfPlans: vi.fn(async () => [] as unknown[]),
+  }));
 
 vi.mock("@/lib/planStore", async () => {
   const actual = await vi.importActual<typeof import("@/lib/planStore")>(
     "@/lib/planStore"
   );
-  return { ...actual, fetchPlans, createPlan };
+  return {
+    ...actual,
+    fetchPlans,
+    createPlan,
+    fetchVisiblePlans,
+    fetchMembersOfPlans,
+    fetchBetsOfPlans,
+  };
 });
 
 import ChallengeCatalogue from "@/pages/ChallengeCatalogue";
@@ -131,5 +142,83 @@ describe("the page of challenges there are", () => {
 
     const link = await screen.findByRole("link", { name: /Plano Milhão/ });
     expect(link).toHaveAttribute("href", "/desafios/plan-1");
+  });
+});
+
+describe("seeing what everybody else is running", () => {
+  const openPlan = {
+    id: "p-open",
+    name: "Dobrar a banca",
+    starting_bankroll: 20,
+    target: 40,
+    created_by: "outro",
+    start_date: null,
+    days: 14,
+    rules: {},
+    visible: true,
+    template_key: "dobrar",
+  };
+
+  it("counts how many people are on each challenge", async () => {
+    fetchVisiblePlans.mockResolvedValueOnce([openPlan]);
+    fetchMembersOfPlans.mockResolvedValueOnce([
+      { plan_id: "p-open", user_id: "outro", display_name: "Outro", starting_bankroll: 20 },
+      { plan_id: "p-open", user_id: "terceiro", display_name: "Terceiro", starting_bankroll: 20 },
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("2 a fazer")).toBeInTheDocument();
+  });
+
+  it("opens a ranking of everybody doing it", async () => {
+    fetchVisiblePlans.mockResolvedValueOnce([openPlan]);
+    fetchMembersOfPlans.mockResolvedValueOnce([
+      { plan_id: "p-open", user_id: "outro", display_name: "Outro", starting_bankroll: 20 },
+    ]);
+    fetchBetsOfPlans.mockResolvedValueOnce([
+      {
+        planId: "p-open",
+        id: "b1",
+        userId: "outro",
+        legs: [],
+        odds: 1.9,
+        stake: 5,
+        day: 1,
+        status: "green",
+        profitLoss: 10,
+        placedAt: "2026-09-20T10:00:00.000Z",
+        settledAt: "2026-09-20T20:00:00.000Z",
+      },
+    ]);
+
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Dobrar a banca"));
+    fireEvent.click(await screen.findByRole("button", { name: /Ver classificação/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Outro")).toBeInTheDocument();
+    // €10 of a €20 climb.
+    expect(within(dialog).getByText("50%")).toBeInTheDocument();
+  });
+
+  it("offers no ranking for a challenge nobody has opened up", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Sprint de 7"));
+
+    expect(
+      screen.queryByRole("button", { name: /Ver classificação/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("can put the busiest challenges first, or leave them in order", async () => {
+    renderPage();
+
+    const toggle = await screen.findByRole("button", { name: /Mais feitos primeiro/ });
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("button", { name: /Por ordem/ })).toBeInTheDocument();
   });
 });
