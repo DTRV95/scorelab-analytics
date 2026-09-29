@@ -1,0 +1,222 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Clock,
+  Plus,
+  Target,
+  Trophy,
+  Zap,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { homeBoard, type HomeBoard, type HomeChallenge } from "@/lib/homeBoard";
+import {
+  fetchBetsOfPlans,
+  fetchMembersOfPlans,
+  fetchPlans,
+  type PlanBet,
+  type PlanMember,
+  type PlanRecord,
+} from "@/lib/planStore";
+
+const eur = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
+
+function Row({ entry }: { entry: HomeChallenge }) {
+  const { plan, standing, move } = entry;
+  const waiting = standing.openBets > 0;
+  const playable = move.state === "play" && !waiting;
+
+  return (
+    <Link
+      to={`/desafios/${plan.id}`}
+      className="sl-card sl-tap block overflow-hidden"
+    >
+      <div className="flex items-start gap-3 px-4 py-3.5">
+        <span
+          className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${
+            waiting
+              ? "bg-amber-500/12 text-amber-700"
+              : playable
+                ? "bg-primary/12 text-primary"
+                : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {waiting ? (
+            <Clock className="h-4 w-4" />
+          ) : playable ? (
+            <Zap className="h-4 w-4" />
+          ) : (
+            <Trophy className="h-4 w-4" />
+          )}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-foreground">
+            {plan.name}
+          </p>
+          <p className="sl-meta text-[11px]">
+            Dia {standing.day} de {plan.days} · {eur.format(standing.bankroll)}
+          </p>
+          {/* The instruction, not a status: what to do, and how much. */}
+          <p
+            className={`mt-1 text-[12px] font-semibold leading-5 ${
+              waiting
+                ? "text-amber-700"
+                : playable
+                  ? "text-primary"
+                  : "text-muted-foreground"
+            }`}
+          >
+            {waiting
+              ? `Fecha o dia ${standing.day} — ${standing.openBets === 1 ? "1 aposta" : `${standing.openBets} apostas`} por decidir`
+              : move.action}
+          </p>
+        </div>
+
+        <ArrowRight className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * The challenges, at the top of the home page.
+ *
+ * The page opened on saved analyses and charts built from a store nobody in
+ * this app has ever written to, while the thing it is used for every single
+ * day — the day's bet — was two taps away and unmentioned. What somebody needs
+ * on arriving is small: how much money there is, what is waiting to be closed,
+ * and what to bet next.
+ */
+export function HomeChallenges() {
+  const { user } = useAuth();
+  const [board, setBoard] = useState<HomeBoard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    fetchPlans()
+      .then(async (plans: PlanRecord[]) => {
+        const ids = plans.map((plan) => plan.id);
+        const [members, bets] = await Promise.all([
+          fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
+          fetchBetsOfPlans(ids).catch(
+            () => [] as (PlanBet & { planId: string })[],
+          ),
+        ]);
+        if (cancelled) return;
+        setBoard(homeBoard(user.id, plans, members, bets));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  if (loading || !board) return null;
+
+  if (board.challenges.length === 0) {
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="sl-card flex items-center gap-3 px-4 py-4"
+      >
+        <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/12">
+          <Plus className="h-4 w-4 text-primary" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-semibold text-foreground">
+            Ainda não tens nenhum desafio
+          </span>
+          <span className="sl-meta block text-[11px]">
+            Há onze para escolher, do mais calmo ao mais absurdo.
+          </span>
+        </span>
+        <Link
+          to="/desafios"
+          className="sl-btn-primary sl-tap flex h-10 flex-none items-center rounded-xl px-4 text-xs font-semibold"
+        >
+          Ver
+        </Link>
+      </motion.section>
+    );
+  }
+
+  const urgent = [...board.toClose, ...board.toPlay];
+  const rest = board.challenges.filter((entry) => !urgent.includes(entry));
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-3"
+    >
+      <div className="sl-card grid grid-cols-3 gap-px overflow-hidden bg-border">
+        {[
+          { label: "Banca somada", value: eur.format(board.bankroll) },
+          {
+            label: "Das apostas",
+            value: `${board.profit >= 0 ? "+" : ""}${eur.format(board.profit)}`,
+            tone:
+              board.profit > 0
+                ? "text-[hsl(var(--sl-green))]"
+                : board.profit < 0
+                  ? "text-destructive"
+                  : "",
+          },
+          {
+            label: "A pedir atenção",
+            value: `${urgent.length}`,
+            tone: urgent.length > 0 ? "text-primary" : "",
+          },
+        ].map((cell) => (
+          <div key={cell.label} className="bg-card px-3 py-3">
+            <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
+              {cell.label}
+            </p>
+            <p
+              className={`sl-figure mt-0.5 text-[15px] ${cell.tone ?? "text-foreground"}`}
+            >
+              {cell.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {urgent.length > 0 && (
+        <div className="space-y-2">
+          <p className="sl-meta flex items-center gap-1.5 text-[10px] uppercase tracking-[0.13em]">
+            <Target className="h-3 w-3" />
+            Agora
+          </p>
+          {urgent.map((entry) => (
+            <Row key={entry.plan.id} entry={entry} />
+          ))}
+        </div>
+      )}
+
+      {rest.length > 0 && (
+        <div className="space-y-2">
+          <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+            Os outros
+          </p>
+          {rest.map((entry) => (
+            <Row key={entry.plan.id} entry={entry} />
+          ))}
+        </div>
+      )}
+    </motion.section>
+  );
+}
