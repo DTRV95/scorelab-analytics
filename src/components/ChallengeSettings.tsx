@@ -4,10 +4,21 @@ import {
   Loader2,
   Settings2,
   Sparkles,
+  Star,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  describeDifficulty,
+  difficultyOf,
+} from "@/lib/challengeDifficulty";
 import {
   ASSUMED_WIN_RATE,
   CHALLENGE_TEMPLATES,
@@ -139,9 +150,12 @@ const field =
 function Fields({
   draft,
   onChange,
+  /** Given when the target should follow the starting bankroll. */
+  onStartChange,
 }: {
   draft: Draft;
   onChange: (next: Draft) => void;
+  onStartChange?: (startingBankroll: string) => void;
 }) {
   const single = draft.bands.length === 1;
 
@@ -177,7 +191,9 @@ function Fields({
             inputMode="decimal"
             value={draft.startingBankroll}
             onChange={(event) =>
-              onChange({ ...draft, startingBankroll: event.target.value })
+              onStartChange
+                ? onStartChange(event.target.value)
+                : onChange({ ...draft, startingBankroll: event.target.value })
             }
             placeholder="10"
             className={`${field} font-mono-data`}
@@ -347,10 +363,30 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const valid = isValid(draft);
+  const template = CHALLENGE_TEMPLATES[templateIndex];
+  const difficulty = difficultyOf(template);
 
   const pick = (index: number) => {
     setTemplateIndex(index);
     setDraft(draftFromTemplate(index));
+  };
+
+  /**
+   * Changing the starting bankroll moves the target with it.
+   *
+   * A model is a shape, not a pair of numbers: "dobrar a banca" means double
+   * whatever is put in. Leaving the target at the model's own figure turned
+   * starting with €200 into a challenge that was already finished.
+   */
+  const setStart = (startingBankroll: string) => {
+    const start = Number(startingBankroll.replace(",", ".")) || 0;
+    const multiple = template.target / template.startingBankroll;
+
+    setDraft((current) => ({
+      ...current,
+      startingBankroll,
+      target: start > 0 ? String(Math.round(start * multiple)) : current.target,
+    }));
   };
 
   const submit = async () => {
@@ -368,30 +404,24 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
     }
   };
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-        Criar um desafio
-      </button>
-    );
-  }
-
   return (
-    <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3.5">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Novo desafio
-        </h2>
-        <p className="mt-1 text-xs leading-6 text-muted-foreground">
-          Escolhe um modelo para preencher tudo, e muda o que quiseres.
-        </p>
-      </div>
+    <>
+      <Button
+        className="sl-btn-primary sl-tap h-12 w-full text-sm"
+        onClick={() => setOpen(true)}
+      >
+        <Sparkles className="h-4 w-4" />
+        Novo desafio
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border px-4 py-3 text-left">
+            <DialogTitle className="flex items-center gap-2 text-sm font-bold">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Novo desafio
+            </DialogTitle>
+          </DialogHeader>
 
       <div className="flex gap-1.5 overflow-x-auto px-4 py-3">
         {CHALLENGE_TEMPLATES.map((template, index) => (
@@ -408,6 +438,27 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
             {template.name}
           </button>
         ))}
+      </div>
+
+      {/* Measured, not decided: the challenge is played out thousands of times
+          at the win rate a decent bettor gets, and the stars are how often it
+          gets finished. */}
+      <div className="flex items-center gap-2 px-4 pb-1">
+        <span className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((step) => (
+            <Star
+              key={step}
+              className={`h-3.5 w-3.5 ${
+                step <= difficulty.stars
+                  ? "fill-primary text-primary"
+                  : "text-border"
+              }`}
+            />
+          ))}
+        </span>
+        <span className="sl-meta text-[11px]">
+          {describeDifficulty(difficulty.chance)}
+        </span>
       </div>
 
       <p className="sl-meta px-4 pb-2 text-[11px] leading-relaxed">
@@ -430,16 +481,18 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
           <p className="flex items-start gap-1.5 rounded-lg bg-destructive/5 px-2.5 py-2 text-[11px] leading-5 text-destructive ring-1 ring-destructive/25">
             <TriangleAlert className="mt-0.5 h-3 w-3 flex-none" />
             <span>
-              A aposta é grande de mais para a odd: mesmo com{" "}
-              {Math.round(ASSUMED_WIN_RATE * 100)}% de acerto a banca desce ao
-              longo do tempo. Dá para o fazer, mas é sorte, não plano.
+              {CHALLENGE_TEMPLATES[templateIndex].longShot
+                ? "Bilhete de lotaria, e de propósito: todos os dias têm de entrar, e uma falha acaba com ele. Vale pela perseguição, não pela matemática."
+                : `A aposta é grande de mais para a odd: mesmo com ${Math.round(
+                    ASSUMED_WIN_RATE * 100,
+                  )}% de acerto a banca desce ao longo do tempo.`}
             </span>
           </p>
         )}
       </div>
 
       <div className="space-y-2 p-4 pt-0">
-        <Fields draft={draft} onChange={setDraft} />
+        <Fields draft={draft} onChange={setDraft} onStartChange={setStart} />
         <Button
           className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
           disabled={!valid || saving}
@@ -464,8 +517,10 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
           </p>
         )}
         {error && <p className="text-[11px] text-destructive">{error}</p>}
-      </div>
-    </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

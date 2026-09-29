@@ -3,8 +3,10 @@ import {
   ASSUMED_WIN_RATE,
   CHALLENGE_TEMPLATES,
   MILLION_PLAN_RULES,
+  chanceOfCompleting,
   expectedGrowth,
   isViable,
+  ladderFor,
   maxSensibleStake,
 } from "@/lib/challengeRules";
 
@@ -66,12 +68,11 @@ describe("whether a challenge can be finished by betting well", () => {
 });
 
 describe("the ready-made challenges", () => {
-  const offered = CHALLENGE_TEMPLATES.filter(
-    (template) => template.key !== "milhao"
-  );
+  const planned = CHALLENGE_TEMPLATES.filter((template) => !template.longShot);
+  const longShots = CHALLENGE_TEMPLATES.filter((template) => template.longShot);
 
-  it.each(offered.map((template) => [template.name, template] as const))(
-    "%s grows the bankroll at a %s win rate",
+  it.each(planned.map((template) => [template.name, template] as const))(
+    "%s grows the bankroll at the assumed win rate",
     (_name, template) => {
       // The guard that keeps "matematicamente viável" a fact. A template whose
       // stake is too big for its odds fails here rather than on somebody's
@@ -82,19 +83,41 @@ describe("the ready-made challenges", () => {
     }
   );
 
-  it("keeps the Plano Milhão as the one that is not, rather than quietly fixing it", () => {
-    // They asked for it to stay exactly as the document writes it.
+  it.each(longShots.map((template) => [template.name, template] as const))(
+    "%s is honestly marked as the long shot it is",
+    (_name, template) => {
+      // A long shot that turned out to be viable would be mislabelled, and so
+      // would a planned challenge that quietly stopped growing. Both directions
+      // are checked, so the label cannot drift away from the arithmetic.
+      expect(isViable(template.rules)).toBe(false);
+    }
+  );
+
+  it("advertises odds on the long shots that match their own rules", () => {
+    for (const template of longShots) {
+      const written = /1 em ([\d\s\u00a0]+)/.exec(template.blurb);
+      if (!written) continue;
+
+      const claimed = Number(written[1].replace(/[\s\u00a0]/g, ""));
+      const ladder = ladderFor(template.rules, template.startingBankroll);
+      const real = 1 / chanceOfCompleting(ladder, 1);
+
+      // Within a percent: the blurb is rounded, the arithmetic is not.
+      expect(Math.abs(real - claimed) / claimed).toBeLessThan(0.01);
+    }
+  });
+
+  it("keeps the Plano Milhão exactly as the document writes it", () => {
     const milhao = CHALLENGE_TEMPLATES.find((t) => t.key === "milhao");
 
     expect(milhao).toBeDefined();
+    expect(milhao!.longShot).toBe(true);
     expect(isViable(milhao!.rules)).toBe(false);
   });
 
-  it("gives every challenge a reachable target", () => {
-    for (const template of offered) {
+  it("gives every planned challenge a reachable target", () => {
+    for (const template of planned) {
       expect(template.target).toBeGreaterThan(template.startingBankroll);
-      // Nothing asking for more than a tenfold, which is where the days needed
-      // stop fitting in the days offered.
       expect(template.target / template.startingBankroll).toBeLessThanOrEqual(10);
     }
   });

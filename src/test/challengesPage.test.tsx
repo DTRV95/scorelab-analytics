@@ -1038,12 +1038,13 @@ describe("managing challenges", () => {
   it("starts another challenge from a ready-made model", async () => {
     renderPage();
 
-    fireEvent.click((await screen.findAllByRole("button", { name: /Criar um desafio/ }))[0]);
-    fireEvent.click(screen.getByRole("button", { name: /^Dobrar a banca$/ }));
+    fireEvent.click((await screen.findAllByRole("button", { name: /Novo desafio/ }))[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Dobrar a banca$/ }));
 
     // The template carries its own verdict, computed from its stake and odds.
-    expect(screen.getByText(/Matematicamente viável/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Criar desafio$/ }));
+    expect(within(dialog).getByText(/Matematicamente viável/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Criar desafio$/ }));
 
     expect(createPlan).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1055,6 +1056,42 @@ describe("managing challenges", () => {
         }),
       })
     );
+  });
+
+  it("moves the target with the starting bankroll", async () => {
+    renderPage();
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Novo desafio/ }))[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Dobrar a banca$/ }));
+
+    // The model is 20 € → 40 €. Starting with 200 € has to mean 400 €, or the
+    // challenge opens already finished.
+    fireEvent.change(within(dialog).getByDisplayValue("20"), {
+      target: { value: "200" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Criar desafio$/ }));
+
+    expect(createPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ startingBankroll: 200, target: 400 }),
+    );
+  });
+
+  it("puts measured stars on each model", async () => {
+    renderPage();
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Novo desafio/ }))[0]);
+    const dialog = await screen.findByRole("dialog");
+
+    // The list opens on the Plano Milhão, which no simulation ever finishes.
+    expect(
+      within(dialog).getByText(/Nunca se acabou em nenhuma simulação/),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Sprint de 7$/ }));
+    expect(
+      within(dialog).getByText(/de cada 100 tentativas/),
+    ).toBeInTheDocument();
   });
 
   it("changes the terms of a challenge it owns", async () => {
