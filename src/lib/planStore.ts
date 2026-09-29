@@ -3,6 +3,21 @@ import type { ChallengeRules } from "@/lib/challengeRules";
 import { isGreenMarket } from "@/lib/modelAudit";
 import type { BetStatus } from "@/types/analysis";
 
+/**
+ * Fired after anything that moves a bankroll is written.
+ *
+ * The bankroll is on screen in two places at once — the bar at the top of
+ * every page and the home page — and a bet registered on a third page moves
+ * both. Rather than have each of them poll, or have every caller remember to
+ * tell them, the writes announce themselves here.
+ */
+export const PLANS_CHANGED_EVENT = "scorelab:plans-changed";
+
+function announceChange(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(PLANS_CHANGED_EVENT));
+}
+
 export interface PlanRecord {
   id: string;
   name: string;
@@ -189,6 +204,7 @@ export async function acceptInvite(planId: string): Promise<void> {
     target_plan: planId,
   });
   if (error) throw error;
+  announceChange();
 }
 
 export async function declineInvite(planId: string): Promise<void> {
@@ -250,6 +266,7 @@ export async function createPlan(terms: PlanTerms): Promise<string> {
   });
 
   if (error) throw error;
+  announceChange();
   return data as string;
 }
 
@@ -268,6 +285,7 @@ export async function updatePlanTerms(
   });
 
   if (error) throw error;
+  announceChange();
 }
 
 /**
@@ -346,12 +364,14 @@ export async function fetchBetsOfPlans(
 export async function deletePlan(planId: string): Promise<void> {
   const { error } = await client().rpc("delete_plan", { target_plan: planId });
   if (error) throw error;
+  announceChange();
 }
 
 /** Leaves a challenge someone else created, taking only your own bets. */
 export async function leavePlan(planId: string): Promise<void> {
   const { error } = await client().rpc("leave_plan", { target_plan: planId });
   if (error) throw error;
+  announceChange();
 }
 
 /**
@@ -431,6 +451,7 @@ export async function addPlanFunds(
     .single();
 
   if (error) throw error;
+  announceChange();
 
   const row = data as PlanFundsRow;
   return {
@@ -445,6 +466,7 @@ export async function addPlanFunds(
 export async function deletePlanFunds(id: string): Promise<void> {
   const { error } = await client().from("plan_funds").delete().eq("id", id);
   if (error) throw error;
+  announceChange();
 }
 
 export async function fetchPlanBets(planId: string): Promise<PlanBet[]> {
@@ -475,6 +497,7 @@ export async function savePlanBet(
     .insert({ plan_id: planId, id, user_id: userId, payload: bet });
 
   if (error) throw error;
+  announceChange();
   return { ...bet, id, userId };
 }
 
@@ -490,6 +513,7 @@ export async function updatePlanBet(
     .eq("id", betId);
 
   if (error) throw error;
+  announceChange();
 }
 
 export async function deletePlanBet(planId: string, betId: string): Promise<void> {
@@ -500,6 +524,7 @@ export async function deletePlanBet(planId: string, betId: string): Promise<void
     .eq("id", betId);
 
   if (error) throw error;
+  announceChange();
 }
 
 export interface PlayerStanding {
