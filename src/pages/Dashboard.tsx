@@ -48,7 +48,6 @@ import {
   type LeagueIntelligenceRow,
 } from "@/lib/leagueIntelligence";
 import { useScoreLabData } from "@/hooks/useScoreLabData";
-import { HomeChallenges } from "@/components/HomeChallenges";
 
 const stagger = {
   hidden: {},
@@ -617,18 +616,13 @@ export default function Dashboard() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="sl-section-title">Início</h1>
+            <h1 className="sl-section-title">Análises guardadas</h1>
             <p className="sl-meta mt-1">
-              O que está a decorrer, e o que falta fazer hoje.
+              Desempenho, risco e a próxima análise a fazer.
             </p>
           </div>
           <LayoutCustomizeButton layout={layout} />
         </div>
-
-        {/* First, above everything: this page opened on saved analyses and
-            charts, while the thing the app is used for every day was two taps
-            away and unmentioned. */}
-        <HomeChallenges />
 
         {/* Live state, not performance: how exposed the bankroll is right now
             and how many bets are still open. The performance figures live in

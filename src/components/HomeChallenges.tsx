@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,16 +8,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { homeBoard, type HomeBoard, type HomeChallenge } from "@/lib/homeBoard";
-import {
-  fetchBetsOfPlans,
-  fetchMembersOfPlans,
-  fetchPlans,
-  type PlanBet,
-  type PlanMember,
-  type PlanRecord,
-} from "@/lib/planStore";
+import type { HomeBoard, HomeChallenge } from "@/lib/homeBoard";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -93,39 +83,7 @@ function Row({ entry }: { entry: HomeChallenge }) {
  * on arriving is small: how much money there is, what is waiting to be closed,
  * and what to bet next.
  */
-export function HomeChallenges() {
-  const { user } = useAuth();
-  const [board, setBoard] = useState<HomeBoard | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-
-    fetchPlans()
-      .then(async (plans: PlanRecord[]) => {
-        const ids = plans.map((plan) => plan.id);
-        const [members, bets] = await Promise.all([
-          fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
-          fetchBetsOfPlans(ids).catch(
-            () => [] as (PlanBet & { planId: string })[],
-          ),
-        ]);
-        if (cancelled) return;
-        setBoard(homeBoard(user.id, plans, members, bets));
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  if (loading || !board) return null;
-
+export function HomeChallenges({ board }: { board: HomeBoard }) {
   if (board.challenges.length === 0) {
     return (
       <motion.section

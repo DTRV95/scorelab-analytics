@@ -16,6 +16,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Home = lazy(() => import("./pages/Home"));
 const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis"));
 const ProbabilityRadar = lazy(() => import("./pages/ProbabilityRadar"));
 const ValueRadar = lazy(() => import("./pages/ValueRadar"));
@@ -91,7 +92,8 @@ const App = () => {
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/dashboard" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                    <Route path="/dashboard/analises" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
                     <Route path="/probability" element={<ProtectedRoute><ProbabilityRadar /></ProtectedRoute>} />
                     <Route path="/radar" element={<ProtectedRoute><ValueRadar /></ProtectedRoute>} />
