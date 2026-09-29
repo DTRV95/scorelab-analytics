@@ -84,31 +84,82 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     rules: MILLION_PLAN_RULES,
   },
   {
-    key: "escada-10",
-    name: "Escada de 10 dias",
-    blurb: "10 dias a 50% da banca, odds 1.50–2.50. Dobra a banca 3 vezes.",
+    key: "sprint-7",
+    name: "Sprint de 7",
+    blurb:
+      "7 dias a 8% da banca, odds 1.90+. 20 € → 30 €. O mais curto que ainda cresce.",
     startingBankroll: 20,
-    target: 200,
+    target: 30,
+    rules: {
+      days: 7,
+      stakeBands: [{ untilDay: null, pct: 0.08 }],
+      oddsMin: 1.85,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 3,
+      oddsPlan: { first: 1.9, cycle: [1.9] },
+    },
+  },
+  {
+    key: "escada-10",
+    name: "Escada calma de 10",
+    blurb:
+      "10 dias a 7% da banca, odds 1.90+. 20 € → 30 €. Um dia mau custa 7%, não metade.",
+    startingBankroll: 20,
+    target: 30,
     rules: {
       days: 10,
-      stakeBands: [{ untilDay: null, pct: 0.5 }],
-      oddsMin: 1.5,
-      oddsMax: 2.5,
+      stakeBands: [{ untilDay: null, pct: 0.07 }],
+      oddsMin: 1.85,
+      oddsMax: null,
       onePerDay: true,
-      lossStreakPause: 2,
+      lossStreakPause: 3,
+      oddsPlan: { first: 1.9, cycle: [1.9] },
+    },
+  },
+  {
+    key: "dobrar",
+    name: "Dobrar a banca",
+    blurb: "14 dias a 8% da banca, odds 1.90+. 20 € → 40 €. Dobrar, a sério.",
+    startingBankroll: 20,
+    target: 40,
+    rules: {
+      days: 14,
+      stakeBands: [{ untilDay: null, pct: 0.08 }],
+      oddsMin: 1.85,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 3,
+      oddsPlan: { first: 1.9, cycle: [1.9] },
+    },
+  },
+  {
+    key: "maratona-60",
+    name: "Maratona dos 60",
+    blurb:
+      "60 dias a 5% da banca, odds 1.90+. 50 € → 150 €. O que cresce mais depressa a longo prazo.",
+    startingBankroll: 50,
+    target: 150,
+    rules: {
+      days: 60,
+      stakeBands: [{ untilDay: null, pct: 0.05 }],
+      oddsMin: 1.85,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 4,
       oddsPlan: { first: 1.9, cycle: [1.9] },
     },
   },
   {
     key: "conservador",
     name: "Crescer devagar",
-    blurb: "30 dias a 10% da banca, sem limite de odd. Um erro não mata.",
+    blurb: "30 dias a 5% da banca, odds 1.90+. 50 € → 100 €. Um erro não mata.",
     startingBankroll: 50,
-    target: 200,
+    target: 100,
     rules: {
       days: 30,
-      stakeBands: [{ untilDay: null, pct: 0.1 }],
-      oddsMin: null,
+      stakeBands: [{ untilDay: null, pct: 0.05 }],
+      oddsMin: 1.85,
       oddsMax: null,
       onePerDay: true,
       lossStreakPause: 4,
@@ -123,7 +174,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     target: 500,
     rules: {
       days: 30,
-      stakeBands: [{ untilDay: null, pct: 0.1 }],
+      stakeBands: [{ untilDay: null, pct: 0.05 }],
       oddsMin: null,
       oddsMax: null,
       onePerDay: false,
@@ -434,6 +485,67 @@ export function chanceOfCompleting(ladder: Rung[], fromDay: number): number {
     if (odds > 1) chance *= 1 / odds;
   }
   return chance;
+}
+
+/** The win rate a decent bettor gets at these prices, for judging a challenge. */
+export const ASSUMED_WIN_RATE = 0.55;
+
+/**
+ * How much the bankroll grows, or shrinks, per bet.
+ *
+ * The test a challenge either passes or fails. Staking a share `f` of the
+ * bankroll at odds `o`, a win multiplies it by 1 + f(o-1) and a loss by 1 - f,
+ * so what compounds is the average of the logarithms. Above zero the bankroll
+ * climbs over time; below zero it falls **however often the bets are won**,
+ * because the losses take a bigger bite than the wins put back.
+ *
+ * This is why the Plano Milhão cannot work: half the bankroll on a near
+ * even-money bet is far past the point where winning more often than not is
+ * enough, and no run of luck fixes arithmetic.
+ */
+export function expectedGrowth(
+  rules: ChallengeRules,
+  winRate = ASSUMED_WIN_RATE
+): number {
+  const stake = Math.max(...rules.stakeBands.map((band) => band.pct));
+  const odds = rules.oddsPlan.cycle.length
+    ? rules.oddsPlan.cycle.reduce((sum, odd) => sum + odd, 0) /
+      rules.oddsPlan.cycle.length
+    : rules.oddsPlan.first;
+
+  if (stake <= 0 || stake >= 1 || odds <= 1) return Number.NaN;
+
+  return (
+    winRate * Math.log(1 + stake * (odds - 1)) +
+    (1 - winRate) * Math.log(1 - stake)
+  );
+}
+
+/**
+ * Whether the challenge can be finished by betting well, rather than only by
+ * getting lucky before the arithmetic catches up.
+ */
+export function isViable(
+  rules: ChallengeRules,
+  winRate = ASSUMED_WIN_RATE
+): boolean {
+  const growth = expectedGrowth(rules, winRate);
+  return Number.isFinite(growth) && growth > 0;
+}
+
+/**
+ * The most that can be staked before the bankroll starts shrinking on average.
+ *
+ * Kelly's fraction: the share at which growth is fastest. Twice this and the
+ * growth is back to zero; past that it turns negative.
+ */
+export function maxSensibleStake(
+  odds: number,
+  winRate = ASSUMED_WIN_RATE
+): number {
+  const b = odds - 1;
+  if (b <= 0) return 0;
+  return Math.max(0, (winRate * b - (1 - winRate)) / b);
 }
 
 /** What a single lost day costs, and which day it sends you back to. */

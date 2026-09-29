@@ -1039,14 +1039,20 @@ describe("managing challenges", () => {
     renderPage();
 
     fireEvent.click((await screen.findAllByRole("button", { name: /Criar um desafio/ }))[0]);
-    fireEvent.click(screen.getByRole("button", { name: /^Escada de 10 dias$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Dobrar a banca$/ }));
+
+    // The template carries its own verdict, computed from its stake and odds.
+    expect(screen.getByText(/Matematicamente viável/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Criar desafio$/ }));
 
     expect(createPlan).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "Escada de 10 dias",
-        days: 10,
-        rules: expect.objectContaining({ oddsMin: 1.5, oddsMax: 2.5 }),
+        name: "Dobrar a banca",
+        days: 14,
+        rules: expect.objectContaining({
+          oddsMin: 1.85,
+          stakeBands: [{ untilDay: null, pct: 0.08 }],
+        }),
       })
     );
   });

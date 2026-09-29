@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { Loader2, Settings2, Sparkles, Trash2 } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  Settings2,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  ASSUMED_WIN_RATE,
   CHALLENGE_TEMPLATES,
   describeRules,
+  isViable,
   parseRules,
   type ChallengeRules,
   type StakeBand,
@@ -404,6 +413,30 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
       <p className="sl-meta px-4 pb-2 text-[11px] leading-relaxed">
         {CHALLENGE_TEMPLATES[templateIndex].blurb}
       </p>
+
+      {/* Not a badge for decoration: it is computed from the challenge's own
+          stake and odds, and a template that stopped passing would fail the
+          build rather than reach anybody's money. */}
+      <div className="px-4 pb-3">
+        {isViable(CHALLENGE_TEMPLATES[templateIndex].rules) ? (
+          <p className="flex items-start gap-1.5 rounded-lg bg-[hsl(var(--sl-green))]/8 px-2.5 py-2 text-[11px] leading-5 text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/25">
+            <Check className="mt-0.5 h-3 w-3 flex-none" strokeWidth={3} />
+            <span>
+              Matematicamente viável: com {Math.round(ASSUMED_WIN_RATE * 100)}%
+              de acerto, a banca cresce ao longo do tempo.
+            </span>
+          </p>
+        ) : (
+          <p className="flex items-start gap-1.5 rounded-lg bg-destructive/5 px-2.5 py-2 text-[11px] leading-5 text-destructive ring-1 ring-destructive/25">
+            <TriangleAlert className="mt-0.5 h-3 w-3 flex-none" />
+            <span>
+              A aposta é grande de mais para a odd: mesmo com{" "}
+              {Math.round(ASSUMED_WIN_RATE * 100)}% de acerto a banca desce ao
+              longo do tempo. Dá para o fazer, mas é sorte, não plano.
+            </span>
+          </p>
+        )}
+      </div>
 
       <div className="space-y-2 p-4 pt-0">
         <Fields draft={draft} onChange={setDraft} />
