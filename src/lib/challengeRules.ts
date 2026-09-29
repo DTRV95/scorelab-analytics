@@ -65,6 +65,12 @@ export interface ChallengeTemplate {
   startingBankroll: number;
   target: number;
   rules: ChallengeRules;
+  /**
+   * A challenge nobody expects to finish, kept because chasing one is the
+   * point. Marked rather than hidden: the app says what it is, and a test
+   * makes sure a long shot really is one and that the rest really are not.
+   */
+  longShot?: boolean;
 }
 
 /**
@@ -82,6 +88,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     startingBankroll: 10,
     target: 1_000_000,
     rules: MILLION_PLAN_RULES,
+    longShot: true,
   },
   {
     key: "sprint-7",
@@ -166,12 +173,88 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
       oddsPlan: { first: 1.9, cycle: [1.9] },
     },
   },
+  // The long shots. Every one of these is a run of wins with no second
+  // chances, and the app marks them as such — they exist because a plan you
+  // cannot finish is still a thing two brothers want to chase, not because
+  // the arithmetic says anything good about them.
+  {
+    key: "dobrar-10",
+    name: "Dobrar 10 dias seguidos",
+    blurb:
+      "10 dias, odd 2.00, tudo em cima. 10 € → 10 240 €. Uma falha e acabou: 1 em 1 024.",
+    startingBankroll: 10,
+    target: 10_240,
+    rules: {
+      days: 10,
+      stakeBands: [{ untilDay: null, pct: 1 }],
+      oddsMin: 2,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 1,
+      oddsPlan: { first: 2, cycle: [2] },
+    },
+    longShot: true,
+  },
+  {
+    key: "mil-em-10",
+    name: "Mil euros em 10",
+    blurb:
+      "10 dias a 65% da banca, odds 1.90. 10 € → 1 000 €. Cem vezes a banca: 1 em 613.",
+    startingBankroll: 10,
+    target: 1_000,
+    rules: {
+      days: 10,
+      stakeBands: [{ untilDay: null, pct: 0.65 }],
+      oddsMin: 1.9,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 2,
+      oddsPlan: { first: 1.9, cycle: [1.9] },
+    },
+    longShot: true,
+  },
+  {
+    key: "mes-perfeito",
+    name: "Um mês perfeito",
+    blurb:
+      "30 dias a 35% da banca, odds 1.50. 20 € → 2 500 €. Trinta dias sem falhar um: 1 em 191 751.",
+    startingBankroll: 20,
+    target: 2_500,
+    rules: {
+      days: 30,
+      stakeBands: [{ untilDay: null, pct: 0.35 }],
+      oddsMin: 1.5,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 2,
+      oddsPlan: { first: 1.5, cycle: [1.5] },
+    },
+    longShot: true,
+  },
+  {
+    key: "dez-mil-20",
+    name: "Dez mil em 20",
+    blurb:
+      "20 dias a 58% da banca, odds 1.80. 5 € → 10 000 €. 1 em 127 482 — mais raro do que levar com um raio este ano.",
+    startingBankroll: 5,
+    target: 10_000,
+    rules: {
+      days: 20,
+      stakeBands: [{ untilDay: null, pct: 0.58 }],
+      oddsMin: 1.8,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 2,
+      oddsPlan: { first: 1.8, cycle: [1.8] },
+    },
+    longShot: true,
+  },
   {
     key: "livre",
     name: "Desafio livre",
     blurb: "Sem limites: apostas quando quiseres, ao que quiseres.",
     startingBankroll: 50,
-    target: 500,
+    target: 100,
     rules: {
       days: 30,
       stakeBands: [{ untilDay: null, pct: 0.05 }],
