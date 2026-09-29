@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { downloadScoreLabExport } from "@/lib/exportData";
 import { OPEN_COMMAND_CENTER_EVENT } from "@/components/ScoreLabCommandCenter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useScoreLabData } from "@/hooks/useScoreLabData";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -13,7 +13,11 @@ const eur = new Intl.NumberFormat("pt-PT", {
 export function TopBar() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const { financialSnapshot } = useScoreLabData();
+  // The banca somada: every challenge's bankroll added up, the same figure the
+  // home page shows. It used to be a total built from the saved analyses, a
+  // store nothing in the app writes to any more, so the bar carried a number
+  // that matched nothing else on screen.
+  const { board, loading } = usePlanBoard();
 
   const openCommandCenter = () => {
     window.dispatchEvent(new Event(OPEN_COMMAND_CENTER_EVENT));
@@ -62,15 +66,18 @@ export function TopBar() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
-            to="/bankroll"
-            title="Banca"
+            to="/dashboard"
+            title="Banca somada"
             className="flex h-9 flex-none items-center gap-1.5 rounded-full bg-black/20 pl-1 pr-2.5 text-white transition hover:bg-black/30 sm:pr-3"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
               <User className="h-3.5 w-3.5" strokeWidth={2} />
             </span>
             <span className="font-mono-data text-[13px] font-semibold">
-              {eur.format(financialSnapshot.stats.currentBankroll)}
+              {/* A dash until it is known: a euro figure that appears as zero
+                  and then jumps reads as money lost for as long as it is on
+                  screen. */}
+              {loading || !board ? "—" : eur.format(board.bankroll)}
             </span>
           </Link>
 

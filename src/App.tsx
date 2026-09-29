@@ -9,6 +9,7 @@ import { hydrateStorageFromServer } from "@/lib/persistenceSync";
 import { ScoreLabCommandCenter } from "@/components/ScoreLabCommandCenter";
 import { ScoreLabDataProvider } from "@/contexts/ScoreLabDataContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PlanBoardProvider } from "@/contexts/PlanBoardContext";
 import { FrontDoor, ProtectedRoute, OwnerRoute } from "@/components/ProtectedRoute";
 
 const Landing = lazy(() => import("./pages/Landing"));
@@ -82,6 +83,7 @@ const App = () => {
         ) : (
           <BrowserRouter>
             <AuthProvider>
+            <PlanBoardProvider>
             <ScoreLabDataProvider>
               <ScoreLabCommandCenter />
               <Suspense fallback={<AppLoadingState />}>
@@ -113,6 +115,7 @@ const App = () => {
                 </AnimatePresence>
               </Suspense>
             </ScoreLabDataProvider>
+            </PlanBoardProvider>
             </AuthProvider>
           </BrowserRouter>
         )}

@@ -7,18 +7,10 @@ import { BankrollTrend } from "@/components/BankrollTrend";
 import { HomeChallenges } from "@/components/HomeChallenges";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { buildPlayerStyle, MIN_DECIDED } from "@/lib/bettingStyle";
-import { homeBoard, type HomeBoard } from "@/lib/homeBoard";
 import { canonicalMarket } from "@/lib/marketNames";
-import {
-  fetchBetsOfPlans,
-  fetchFundsOfPlans,
-  fetchMembersOfPlans,
-  fetchPlans,
-  type PlanBet,
-  type PlanFunds,
-  type PlanMember,
-} from "@/lib/planStore";
+import { type PlanBet } from "@/lib/planStore";
 import {
   readCachedBoard,
   type BoardMatch,
@@ -200,46 +192,11 @@ function YourRecord({ userId, bets }: { userId: string; bets: PlanBet[] }) {
  */
 export default function Home() {
   const { user } = useAuth();
-  const [board, setBoard] = useState<HomeBoard | null>(null);
-  const [bets, setBets] = useState<PlanBet[]>([]);
-  const [started, setStarted] = useState(0);
+  // Read once for the whole app, so the figure here and the one in the bar at
+  // the top of every page are the same figure rather than two answers to the
+  // same question.
+  const { board, bets, started } = usePlanBoard();
   const [games, setGames] = useState<BoardMatch[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-
-    fetchPlans()
-      .then(async (plans) => {
-        const ids = plans.map((plan) => plan.id);
-        const [members, placed, moved] = await Promise.all([
-          fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
-          fetchBetsOfPlans(ids).catch(
-            () => [] as (PlanBet & { planId: string })[],
-          ),
-          // Money put into a bankroll is part of that bankroll. Leaving it out
-          // made the same figure read differently here and on the challenge
-          // page, which is worse than either number on its own.
-          fetchFundsOfPlans(ids).catch(
-            () => [] as (PlanFunds & { planId: string })[],
-          ),
-        ]);
-        if (cancelled) return;
-
-        setBoard(homeBoard(user.id, plans, members, placed, moved));
-        setBets(placed.filter((bet) => bet.userId === user.id));
-        setStarted(
-          members
-            .filter((entry) => entry.user_id === user.id)
-            .reduce((sum, entry) => sum + Number(entry.starting_bankroll), 0),
-        );
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   // The games the challenge page already fetched. Reading the stored copy
   // rather than asking again keeps the home page off the provider's ten
