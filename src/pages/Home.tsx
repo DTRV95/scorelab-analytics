@@ -255,11 +255,23 @@ export default function Home() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-3 p-4 sm:p-5 md:p-6"
+        className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6"
       >
-        <motion.div variants={fadeUp}>
+        {/*
+         * The title sat 45px under the header bar and 6px above its own line,
+         * which read as a caption for the bar rather than as the name of the
+         * page. Three paddings stacked above it — the layout's, this page's,
+         * and the 8px phones put on every h1 — and nothing below. The page's
+         * own top padding is gone and the block is pulled up by the rest, so
+         * the title sits between the bar and the line under it.
+         *
+         * The offset is written out rather than as -mt-4: a phone-width rule
+         * matches any class containing "mt-4" and would turn this into a
+         * positive margin.
+         */}
+        <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
           <h1 className="sl-section-title text-[15px]">Início</h1>
-          <p className="sl-meta mt-0.5 text-[11px]">
+          <p className="sl-meta mt-1 text-[11px]">
             O que está a decorrer, e o que falta fazer hoje.
           </p>
         </motion.div>
