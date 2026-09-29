@@ -265,6 +265,13 @@ async function pickFromBoard(name: string, market = /Apostar em Vitória Casa/) 
   await openPicker();
   fireEvent.click(await screen.findByText(new RegExp(`${name} vs Rival`)));
   fireEvent.click(screen.getByRole("button", { name: market }));
+  closePicker();
+}
+
+/** The pop-up now stays open after a game goes in, so leaving it is a step. */
+function closePicker() {
+  const done = screen.queryByRole("button", { name: /Concluído/ });
+  if (done) fireEvent.click(done);
 }
 
 /** Types a game the site does not know into the pop-up. */
@@ -278,6 +285,7 @@ async function addByHand(home: string, away: string, market: string, odds: strin
   });
   fireEvent.change(screen.getByPlaceholderText("Odd"), { target: { value: odds } });
   fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
+  closePicker();
 }
 
 describe("a challenge's standings", () => {
@@ -434,6 +442,56 @@ describe("building the day's bet", () => {
 
     expect(screen.getByLabelText("Odd de Torreense vs Mafra")).toBeInTheDocument();
     expect(screen.getAllByText(/· à mão/).length).toBeGreaterThan(0);
+  });
+
+  it("stays open after a game goes in, ready for the next one", async () => {
+    // Every game these two have ever bet was typed in here by hand, two or
+    // three at a time. Closing after each one meant reopening the pop-up for
+    // every single game of every single bet.
+    renderPage();
+    await openPicker();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+    fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
+      target: { value: "Bélgica" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
+      target: { value: "França" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("A tua aposta (ex: Casa, Mais de 1.5)"),
+      { target: { value: "Mais de 2.5" } },
+    );
+    fireEvent.change(screen.getByPlaceholderText("Odd"), {
+      target: { value: "1.85" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
+
+    // Still open, the form empty and waiting, and the slip counted.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Equipa casa")).toHaveValue("");
+    expect(screen.getByText("1 jogo no boletim")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
+      target: { value: "Noruega" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
+      target: { value: "Portugal" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("A tua aposta (ex: Casa, Mais de 1.5)"),
+      { target: { value: "Ambas Marcam" } },
+    );
+    fireEvent.change(screen.getByPlaceholderText("Odd"), {
+      target: { value: "1.38" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
+
+    expect(screen.getByText("2 jogos no boletim")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Concluído/ }));
+    expect(screen.getByLabelText("Odd de Noruega vs Portugal")).toBeInTheDocument();
   });
 
   it("multiplies the odds of every game picked, whatever their source", async () => {

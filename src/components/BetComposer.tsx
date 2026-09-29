@@ -311,7 +311,8 @@ export function BetComposer({
     ]);
     setPicking(null);
     setSearch("");
-    setPickerOpen(false);
+    // The pop-up stays open. A slip is two or three games, and closing after
+    // each one meant reopening it for every single game of every single bet.
   };
 
   const addManual = () => {
@@ -334,9 +335,9 @@ export function BetComposer({
         odds: manual.odds,
       },
     ]);
+    // Empty and still open, ready for the next one: every game these two have
+    // ever bet was typed in here by hand, two or three at a time.
     setManual({ home: "", away: "", market: "", odds: "" });
-    setManualOpen(false);
-    setPickerOpen(false);
   };
 
   const place = () => {
@@ -861,6 +862,32 @@ export function BetComposer({
               </div>
             )}
           </div>
+
+          {/* The slip itself lives behind this pop-up, so with the pop-up
+              staying open there was nothing on screen to say a game had gone
+              in. This is that, and the way out. */}
+          {legs.length > 0 && (
+            <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-semibold text-foreground">
+                  {legs.length === 1
+                    ? "1 jogo no boletim"
+                    : `${legs.length} jogos no boletim`}
+                </p>
+                <p className="sl-meta truncate text-[11px]">
+                  {priced && combined > 1
+                    ? `odd total ${combined.toFixed(2)}`
+                    : "falta a odd de algum jogo"}
+                </p>
+              </div>
+              <Button
+                className="sl-btn-primary sl-tap h-10 flex-none px-5 text-xs"
+                onClick={() => setPickerOpen(false)}
+              >
+                Concluído
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
