@@ -436,7 +436,7 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-/** Deleting takes everyone's history with it, so the name has to be typed. */
+/** Deleting takes everyone's history with it, so it asks first. */
 /**
  * Leaving or deleting a challenge.
  *
@@ -448,16 +448,20 @@ export function DangerZone({
   plan,
   isOwner,
   bets,
+  /** Opened from something that already said what it was: ask outright. */
+  immediate = false,
+  onCancel,
   onGone,
 }: {
   plan: PlanRecord;
   isOwner: boolean;
   /** How many bets go with it, so the warning names what is actually lost. */
   bets: number;
+  immediate?: boolean;
+  onCancel?: () => void;
   onGone: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
-  const [typed, setTyped] = useState("");
+  const [confirming, setConfirming] = useState(immediate);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -506,8 +510,8 @@ export function DangerZone({
                 , que está <strong>sem apostas nenhumas</strong>
               </>
             )}
-            , para ti e para quem entrou contigo. Não há forma de voltar atrás.
-            Escreve <strong>{plan.name}</strong> para confirmar.
+            , para ti e para quem entrou contigo. Não há forma de voltar
+            atrás. Tens a certeza?
           </>
         ) : (
           <>
@@ -517,40 +521,28 @@ export function DangerZone({
         )}
       </p>
 
-      {isOwner && (
-        <input
-          value={typed}
-          onChange={(event) => setTyped(event.target.value)}
-          placeholder={plan.name}
-          aria-label="Escrever o nome do desafio para confirmar"
-          className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-destructive/30"
-        />
-      )}
-
+      {/* "Não" comes first and is the one that reads like a button, because
+          a careless tap should land on the side that changes nothing. The
+          destructive one is not focused by default for the same reason. */}
       <div className="flex gap-2">
         <Button
-          className="h-10 flex-1 bg-destructive text-xs text-white hover:bg-destructive/90 disabled:opacity-40"
-          disabled={working || (isOwner && typed.trim() !== plan.name)}
+          className="sl-btn-primary h-10 flex-1 text-xs"
+          onClick={() => (immediate ? onCancel?.() : setConfirming(false))}
+        >
+          Não
+        </Button>
+        <Button
+          variant="destructive"
+          className="h-10 flex-1 text-xs disabled:opacity-40"
+          disabled={working}
           onClick={run}
         >
           {working ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : isOwner ? (
-            "Apagar de vez"
           ) : (
-            "Sair"
+            "Sim"
           )}
         </Button>
-        <button
-          type="button"
-          onClick={() => {
-            setConfirming(false);
-            setTyped("");
-          }}
-          className="h-10 flex-none rounded-lg border border-border px-4 text-xs font-semibold text-muted-foreground"
-        >
-          Cancelar
-        </button>
       </div>
 
       {error && <p className="text-[11px] text-destructive">{error}</p>}
@@ -563,14 +555,11 @@ export function ChallengeSettings({
   plan,
   isOwner,
   onSaved,
-  onGone,
 }: {
   plan: PlanRecord;
   isOwner: boolean;
   onSaved: () => void;
-  onGone: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => draftFromPlan(plan));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -584,7 +573,6 @@ export function ChallengeSettings({
     setError(null);
     try {
       await updatePlanTerms(plan.id, terms(draft));
-      setOpen(false);
       onSaved();
     } catch {
       setError(
@@ -595,59 +583,31 @@ export function ChallengeSettings({
     }
   };
 
+  // No card, no fold: this is opened from the header now, and what opens it
+  // already said what it was.
   return (
-    <section className="sl-card overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
-      >
-        <Settings2 className="h-4 w-4 flex-none text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-foreground">
-            Regras deste desafio
+    <div className="space-y-2 p-4">
+      {isOwner ? (
+        <>
+          <Fields draft={draft} onChange={setDraft} />
+          <p className="sl-meta text-[11px] leading-relaxed">
+            Mudar a banca inicial só afeta quem ainda não apostou. Quem já
+            começou mantém o número contra o qual a banca dele foi medida.
           </p>
-          <p className="sl-meta truncate text-[11px]">
-            {plan.start_date
-              ? `Começa a ${plan.start_date.split("-").reverse().join("/")}`
-              : "Sem data de começo"}{" "}
-            · {eur.format(plan.starting_bankroll)} → {eur.format(plan.target)}
-          </p>
-        </div>
-        <span className="sl-meta flex-none text-[11px]">
-          {open ? "Fechar" : isOwner ? "Alterar" : "Ver"}
-        </span>
-      </button>
-
-      {open && (
-        <div className="space-y-2 border-t border-border p-4">
-          {isOwner ? (
-            <>
-              <Fields draft={draft} onChange={setDraft} />
-              <p className="sl-meta text-[11px] leading-relaxed">
-                Mudar a banca inicial só afeta quem ainda não apostou. Quem já
-                começou mantém o número contra o qual a banca dele foi medida.
-              </p>
-              <Button
-                className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
-                disabled={!valid || saving}
-                onClick={save}
-              >
-                {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Guardar"
-                )}
-              </Button>
-              {error && <p className="text-[11px] text-destructive">{error}</p>}
-            </>
-          ) : (
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {describeRules(rules)}. Só quem criou o desafio pode mudar isto.
-            </p>
-          )}
-        </div>
+          <Button
+            className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
+            disabled={!valid || saving}
+            onClick={save}
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Guardar"}
+          </Button>
+          {error && <p className="text-[11px] text-destructive">{error}</p>}
+        </>
+      ) : (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {describeRules(rules)}. Só quem criou o desafio pode mudar isto.
+        </p>
       )}
-    </section>
+    </div>
   );
 }
