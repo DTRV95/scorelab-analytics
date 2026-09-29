@@ -7,6 +7,8 @@ import {
   Check,
   ChevronRight,
   Swords,
+  Trash2,
+  UserPlus,
   Flame,
   Loader2,
   RefreshCw,
@@ -18,6 +20,12 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { AddFunds } from "@/components/AddFunds";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
@@ -290,6 +298,8 @@ export default function Challenges() {
   }, []);
 
   const [duelOpen, setDuelOpen] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
+  const [dangerOpen, setDangerOpen] = useState(false);
   const [openBet, setOpenBet] = useState<{
     bet: PlanBet;
     player: string;
@@ -950,6 +960,19 @@ export default function Challenges() {
               </p>
             )}
           </div>
+          <div className="flex flex-none items-center gap-0.5">
+          {saved && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              title="Convidar alguém"
+              aria-label="Convidar alguém"
+              onClick={() => setInvitesOpen(true)}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -962,6 +985,24 @@ export default function Challenges() {
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
+
+          {/* Apart from the others, and last. It is the one destructive
+              thing up here, and a trash can a thumb away from the refresh
+              button is how somebody gets a fright. Deleting still asks for
+              the challenge's name to be typed. */}
+          {saved && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-1.5 h-8 w-8 flex-none rounded-lg text-muted-foreground hover:text-destructive"
+              title={ownsPlan ? "Apagar este desafio" : "Sair deste desafio"}
+              aria-label={ownsPlan ? "Apagar este desafio" : "Sair deste desafio"}
+              onClick={() => setDangerOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          </div>
         </motion.div>
 
         {error && (
@@ -1230,44 +1271,6 @@ export default function Challenges() {
 
         {saved && (
           <motion.div variants={fadeUp}>
-            <ChallengeSettings
-              plan={plan}
-              isOwner={Boolean(ownsPlan)}
-              onSaved={() => setToken((value) => value + 1)}
-              onGone={() => {
-                setPlanId(null);
-                setToken((value) => value + 1);
-              }}
-            />
-          </motion.div>
-        )}
-
-        {saved && (
-          <motion.div variants={fadeUp} className="sl-card p-4">
-            <DangerZone
-              plan={plan}
-              isOwner={Boolean(ownsPlan)}
-              bets={betCounts[plan.id] ?? 0}
-              onGone={() => {
-                setPlanId(null);
-                setToken((value) => value + 1);
-              }}
-            />
-          </motion.div>
-        )}
-
-        {saved && (
-          <motion.div variants={fadeUp}>
-            <PlanPlayers
-              planId={plan.id}
-              members={members}
-              onChanged={() => setToken((value) => value + 1)}
-            />
-          </motion.div>
-        )}
-
-        {saved && (
-          <motion.div variants={fadeUp}>
             {standings.length > 1 && (
               <button
                 type="button"
@@ -1528,6 +1531,62 @@ export default function Challenges() {
         <motion.div variants={fadeUp}>
           <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
         </motion.div>
+
+        {saved && (
+          <motion.div variants={fadeUp}>
+            <ChallengeSettings
+              plan={plan}
+              isOwner={Boolean(ownsPlan)}
+              onSaved={() => setToken((value) => value + 1)}
+              onGone={() => {
+                setPlanId(null);
+                setToken((value) => value + 1);
+              }}
+            />
+          </motion.div>
+        )}
+
+
+        <Dialog open={invitesOpen} onOpenChange={setInvitesOpen}>
+          <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
+            <DialogHeader className="border-b border-border px-4 py-3 text-left">
+              <DialogTitle className="text-sm font-bold">
+                Quem está neste desafio
+              </DialogTitle>
+            </DialogHeader>
+            {saved && (
+              <PlanPlayers
+                planId={plan.id}
+                members={members}
+                onChanged={() => setToken((value) => value + 1)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={dangerOpen} onOpenChange={setDangerOpen}>
+          <DialogContent className="gap-0 p-0 sm:max-w-md">
+            <DialogHeader className="border-b border-border px-4 py-3 text-left">
+              <DialogTitle className="text-sm font-bold">
+                {ownsPlan ? "Apagar este desafio" : "Sair deste desafio"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-4">
+              {saved && (
+                <DangerZone
+                  plan={plan}
+                  isOwner={Boolean(ownsPlan)}
+                  bets={betCounts[plan.id] ?? 0}
+                  onGone={() => {
+                    setDangerOpen(false);
+                    setPlanId(null);
+                    setToken((value) => value + 1);
+                  }}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <HeadToHead
           standings={standings}
