@@ -13,8 +13,10 @@ import {
   Gauge,
   Trophy,
   Percent,
+  ListChecks,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchPlans, type PlanRecord } from "@/lib/planStore";
 
 const navGroups = [
   {
@@ -34,10 +36,6 @@ const navGroups = [
     ],
   },
   {
-    title: "Desafios",
-    items: [{ title: "Plano Milhão", url: "/desafios", icon: Trophy }],
-  },
-  {
     title: "System",
     items: [
       { title: "Settings", url: "/settings", icon: Settings },
@@ -48,9 +46,46 @@ const navGroups = [
 export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [plans, setPlans] = useState<PlanRecord[]>([]);
+
+  // The challenges are listed rather than hard-coded. This group used to hold
+  // one entry reading "Plano Milhão" that opened the list of every challenge —
+  // a label promising one thing and a link doing another, left over from when
+  // that was the only challenge there was.
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlans()
+      .then((mine) => {
+        if (!cancelled) setPlans(mine);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const challengeGroup = {
+    title: "Desafios",
+    items: [
+      { title: "Todos os desafios", url: "/desafios", icon: ListChecks },
+      ...plans.map((plan) => ({
+        title: plan.name,
+        url: `/desafios/${plan.id}`,
+        icon: Trophy,
+      })),
+      { title: "Análise de apostador", url: "/desafios/analise", icon: BarChart3 },
+    ],
+  };
+
+  const groups = [
+    ...navGroups.slice(0, 2),
+    challengeGroup,
+    ...navGroups.slice(2),
+  ];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Overview: true,
     Analysis: true,
+    Desafios: true,
     Tracking: true,
     System: false,
   });
@@ -84,7 +119,7 @@ export function AppSidebar() {
 
         <nav className="relative flex-1 overflow-y-auto p-3">
           <div className="space-y-4">
-            {navGroups.map((group) => (
+            {groups.map((group) => (
               <div key={group.title} className="space-y-1">
                 {!collapsed && (
                   <button
