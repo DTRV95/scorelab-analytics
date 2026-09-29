@@ -93,11 +93,16 @@ function ChallengeCard({
         <div className="border-t border-border px-4 py-3">
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
             {lines.map((line) => (
-              <div key={line.label} className="min-w-0">
+              <div
+                key={line.label}
+                className={`min-w-0 ${line.wide ? "col-span-2" : ""}`}
+              >
                 <dt className="sl-meta text-[10px] uppercase tracking-[0.1em]">
                   {line.label}
                 </dt>
-                <dd className="sl-figure truncate text-[13px] text-foreground">
+                {/* Wrapping, not truncating: a value cut off mid-word tells
+                    somebody less than no value at all. */}
+                <dd className="sl-figure text-[13px] leading-5 text-foreground">
                   {line.value}
                 </dd>
               </div>
