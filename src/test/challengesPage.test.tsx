@@ -574,21 +574,41 @@ describe("building the day's bet", () => {
 });
 
 describe("the two of them side by side", () => {
-  it("puts the players against each other, measure by measure", async () => {
+  async function openDuel() {
     renderPage();
+    // It lives behind a row of its own now, like the bettor analysis, instead
+    // of taking up the page.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Frente a frente/ }),
+    );
+    return screen.findByRole("dialog");
+  }
 
-    expect(await screen.findByText("Frente a frente")).toBeInTheDocument();
-    expect(screen.getByText("Lucro das apostas")).toBeInTheDocument();
-    expect(screen.getByText("Por cada euro apostado")).toBeInTheDocument();
+  it("puts the players against each other, measure by measure", async () => {
+    const dialog = await openDuel();
+
+    expect(within(dialog).getByText("Lucro das apostas")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Por cada euro apostado"),
+    ).toBeInTheDocument();
   });
 
   it("refuses to crown anybody off a handful of days", async () => {
     // Two settled days can put somebody ahead on every row at once.
-    renderPage();
+    const dialog = await openDuel();
 
     expect(
-      await screen.findByText(/poucos dias fechados para isto dizer/),
+      within(dialog).getByText(/poucos dias fechados para isto dizer/),
     ).toBeInTheDocument();
+  });
+
+  it("paints a loss red, whoever it belongs to", async () => {
+    const dialog = await openDuel();
+
+    // The brother lost his day 1: €5 gone. Leading a row where both are down
+    // is not something to paint green.
+    const loss = within(dialog).getByText("-5,00 €");
+    expect(loss.className).toContain("text-destructive");
   });
 });
 

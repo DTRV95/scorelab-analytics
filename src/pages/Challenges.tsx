@@ -6,6 +6,7 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Swords,
   Flame,
   Loader2,
   RefreshCw,
@@ -288,6 +289,7 @@ export default function Challenges() {
     toast({ title: message, variant: "destructive" });
   }, []);
 
+  const [duelOpen, setDuelOpen] = useState(false);
   const [openBet, setOpenBet] = useState<{
     bet: PlanBet;
     player: string;
@@ -1266,6 +1268,27 @@ export default function Challenges() {
 
         {saved && (
           <motion.div variants={fadeUp}>
+            {standings.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setDuelOpen(true)}
+                className="sl-card sl-tap mb-3 flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              >
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
+                  <Swords className="h-4 w-4 text-primary" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-foreground">
+                    Frente a frente
+                  </span>
+                  <span className="sl-meta block text-[11px]">
+                    Quem está à frente, e em quê
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+              </button>
+            )}
+
             <Link
               to="/desafios/analise"
               className="sl-card sl-tap flex items-center gap-3 px-4 py-3.5"
@@ -1283,12 +1306,6 @@ export default function Challenges() {
               </span>
               <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
             </Link>
-          </motion.div>
-        )}
-
-        {saved && standings.length > 1 && (
-          <motion.div variants={fadeUp}>
-            <HeadToHead standings={standings} />
           </motion.div>
         )}
 
@@ -1511,6 +1528,12 @@ export default function Challenges() {
         <motion.div variants={fadeUp}>
           <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
         </motion.div>
+
+        <HeadToHead
+          standings={standings}
+          open={duelOpen}
+          onClose={() => setDuelOpen(false)}
+        />
 
         <BetDetailDialog
           bet={openBet?.bet ?? null}
