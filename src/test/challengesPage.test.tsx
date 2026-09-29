@@ -198,7 +198,7 @@ vi.mock("@/lib/planStore", async () => {
 
 import Challenges from "@/pages/Challenges";
 import { Toaster } from "@/components/ui/toaster";
-import { fetchPlans } from "@/lib/planStore";
+import { fetchPlanBets, fetchPlans } from "@/lib/planStore";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
 function boardMatch(id: number, home: string, pct: number, league = "Liga Portugal") {
@@ -694,6 +694,49 @@ describe("telling the person what happened", () => {
     expect(
       await screen.findByText("A aposta não ficou guardada. Tenta outra vez."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("what the person's own record says, while they build the bet", () => {
+  it("brings the record of a market into the slip being built", async () => {
+    // Four decided legs on "Casa", three of them landed. The app knew this
+    // and only ever said it on a page nobody opens while deciding.
+    const past = (id: string, status: "green" | "red") => ({
+      id,
+      userId: "david",
+      legs: [
+        leg({ market: "Casa", status }),
+        leg({ market: "Casa", status }),
+      ],
+      odds: 1.9,
+      stake: 5,
+      day: 1,
+      status,
+      profitLoss: status === "green" ? 4.5 : -5,
+      placedAt: "2026-09-20T10:00:00.000Z",
+      settledAt: "2026-09-20T20:00:00.000Z",
+    });
+    vi.mocked(fetchPlanBets).mockResolvedValueOnce([
+      past("p1", "green"),
+      past("p2", "green"),
+    ] as never);
+
+    renderPage();
+    await pickFromBoard("Equipa 0");
+
+    expect(await screen.findByText("O teu registo")).toBeInTheDocument();
+    expect(
+      screen.getByText("Vitória Casa: entraram 4 de 4 que fizeste."),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing before there is a record to speak from", async () => {
+    vi.mocked(fetchPlanBets).mockResolvedValueOnce([]);
+
+    renderPage();
+    await pickFromBoard("Equipa 0");
+
+    expect(screen.queryByText("O teu registo")).not.toBeInTheDocument();
   });
 });
 

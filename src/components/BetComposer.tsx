@@ -17,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { betTips } from "@/lib/betTips";
+import type { PlayerStyle } from "@/lib/bettingStyle";
 import { leagueCounts } from "@/lib/boardLeagues";
 import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
@@ -153,6 +155,7 @@ export function BetComposer({
   boardAt,
   boardLoading,
   skipped,
+  style,
   onRefreshBoard,
   openSignal,
   entryElsewhere,
@@ -176,6 +179,8 @@ export function BetComposer({
   boardLoading: boolean;
   /** Fixtures the board fetched and dropped for want of history to forecast. */
   skipped: number;
+  /** This person's settled record, to say what it makes of the slip. */
+  style: PlayerStyle | null;
   onRefreshBoard: () => void;
   /** Bumped from outside to open the picker, so the card at the top of the
       page can start the day's bet without anyone scrolling to find it. */
@@ -259,6 +264,18 @@ export function BetComposer({
   );
 
   const counts = useMemo(() => leagueCounts(board), [board]);
+
+  const tips = useMemo(
+    () =>
+      style
+        ? betTips(
+            style,
+            legs,
+            (market) => MARKET_LABELS[market] ?? market,
+          )
+        : [],
+    [style, legs],
+  );
 
   const matches = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -977,6 +994,31 @@ export function BetComposer({
               </div>
             );
           })()}
+
+          {/* The app knew all of this already and only ever said it on a page
+              nobody opens while deciding. Same numbers, at the one moment they
+              could change something. */}
+          {tips.length > 0 && (
+            <div className="space-y-1 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-border">
+              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+                O teu registo
+              </p>
+              {tips.map((tip) => (
+                <p
+                  key={tip.id}
+                  className={`text-[11px] leading-5 ${
+                    tip.tone === "good"
+                      ? "text-[hsl(var(--sl-green))]"
+                      : tip.tone === "bad"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {tip.text}
+                </p>
+              ))}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <label className="rounded-2xl bg-card px-3 py-2 ring-1 ring-border">

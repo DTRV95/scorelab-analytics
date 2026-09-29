@@ -21,6 +21,7 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { AddFunds } from "@/components/AddFunds";
+import { buildPlayerStyle } from "@/lib/bettingStyle";
 import {
   Dialog,
   DialogContent,
@@ -515,6 +516,12 @@ export default function Challenges() {
    * closed before this existed could never be filled in, and the analysis
    * would carry "por decidir" forever.
    */
+  /** What this person's own settled bets add up to, for the tips in the slip. */
+  const myStyle = useMemo(
+    () => (user ? buildPlayerStyle(user.id, me?.name ?? "", bets) : null),
+    [user, me?.name, bets],
+  );
+
   const openBets = useMemo(
     () =>
       (me?.bets ?? [])
@@ -1274,6 +1281,7 @@ export default function Challenges() {
               boardAt={boardAt}
               boardLoading={boardLoading}
               skipped={skipped}
+              style={myStyle}
               onRefreshBoard={() => loadBoard(true)}
               entryElsewhere={move?.state === "play"}
               usedFixtures={usedFixtures}
