@@ -7,6 +7,7 @@ import {
   editBet,
   isManualLeg,
   openFixtureRefs,
+  type PlanFunds,
   reopenBet,
   resettleBet,
   setLegStatus,
@@ -677,5 +678,65 @@ describe("walking the ladder", () => {
     const bets = [day({ status: "green" }, 1), day({ status: "pending" }, 2)];
 
     expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
+  });
+});
+
+describe("money put into the bankroll, apart from betting", () => {
+  const funds = (amount: number, userId = "u1"): PlanFunds => ({
+    id: `f${amount}`,
+    userId,
+    amount,
+    note: null,
+    at: "2026-09-26T10:00:00.000Z",
+  });
+
+  it("counts a deposit in the bankroll", () => {
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(50)]);
+
+    expect(standing.bankroll).toBe(60);
+    expect(standing.added).toBe(50);
+  });
+
+  it("keeps a deposit out of the profit, which is the whole point", () => {
+    // €50 added moves the bankroll exactly as far as €50 won. Without this
+    // separation, putting money in reads on screen as winning it.
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(50)]);
+
+    expect(standing.profit).toBe(0);
+  });
+
+  it("adds the betting to the money put in", () => {
+    const won = bet({ status: "green", profitLoss: 5 });
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [won], [funds(50)]);
+
+    expect(standing.bankroll).toBe(65);
+    expect(standing.profit).toBe(5);
+    expect(standing.added).toBe(50);
+  });
+
+  it("takes money out when the amount is negative", () => {
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(-4)]);
+
+    expect(standing.bankroll).toBe(6);
+    expect(standing.added).toBe(-4);
+  });
+
+  it("leaves the other player's money alone", () => {
+    const standing = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [],
+      [funds(50, "outro")]
+    );
+
+    expect(standing.bankroll).toBe(10);
+    expect(standing.added).toBe(0);
+  });
+
+  it("does not move anybody up or down the ladder", () => {
+    // Money is not a result. Putting €500 in does not win a day.
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(500)]);
+
+    expect(standing.day).toBe(1);
   });
 });

@@ -32,6 +32,8 @@ function standing(overrides: Partial<PlayerStanding> = {}): PlayerStanding {
     name: "David",
     bankroll: 21.38,
     startingBankroll: 10,
+    added: 0,
+    profit: 11.38,
     bets: [],
     settled: 2,
     greens: 2,
