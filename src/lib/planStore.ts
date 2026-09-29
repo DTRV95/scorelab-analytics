@@ -395,6 +395,29 @@ export async function fetchPlanFunds(planId: string): Promise<PlanFunds[]> {
   }));
 }
 
+/** The money movements of several challenges at once, for a page that sums them. */
+export async function fetchFundsOfPlans(
+  planIds: string[]
+): Promise<(PlanFunds & { planId: string })[]> {
+  if (planIds.length === 0) return [];
+
+  const { data, error } = await client()
+    .from("plan_funds")
+    .select("plan_id, id, user_id, amount, note, created_at")
+    .in("plan_id", planIds);
+
+  if (error) throw error;
+
+  return ((data ?? []) as (PlanFundsRow & { plan_id: string })[]).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    amount: Number(row.amount),
+    note: row.note,
+    at: row.created_at,
+    planId: row.plan_id,
+  }));
+}
+
 export async function addPlanFunds(
   planId: string,
   userId: string,

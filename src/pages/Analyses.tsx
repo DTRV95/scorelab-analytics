@@ -105,7 +105,7 @@ const fromBands = (bands: Band[]): BarRow[] =>
   bands.map((row) => ({
     label: row.label,
     pct: row.winPct,
-    detail: `${row.won} de ${row.won + row.lost}`,
+    detail: `${row.won} de ${row.won + row.lost} · ${eur.format(row.staked)}`,
     profit: row.profit,
   }));
 
@@ -165,14 +165,28 @@ export default function Analyses() {
 
   const sizes = useMemo<BarRow[]>(
     () =>
-      style.sizes.map((row) => ({
-        label: row.label,
-        pct:
-          row.won + row.lost >= MIN_DECIDED ? Math.round(row.winPct ?? 0) : null,
-        detail: `${row.won} de ${row.won + row.lost}`,
-        profit: row.profit,
-      })),
-    [style],
+      style.sizes.map((row) => {
+        const staked = bets
+          .filter(
+            (bet) =>
+              bet.status !== "pending" &&
+              (row.legs === 4
+                ? bet.legs.length >= 4
+                : bet.legs.length === row.legs),
+          )
+          .reduce((sum, bet) => sum + bet.stake, 0);
+
+        return {
+          label: row.label,
+          pct:
+            row.won + row.lost >= MIN_DECIDED
+              ? Math.round(row.winPct ?? 0)
+              : null,
+          detail: `${row.won} de ${row.won + row.lost} · ${eur.format(staked)}`,
+          profit: row.profit,
+        };
+      }),
+    [style, bets],
   );
 
   const odds = useMemo(() => fromBands(byOddsBand(bets)), [bets]);
@@ -216,10 +230,11 @@ export default function Analyses() {
           <>
             <motion.div
               variants={fadeUp}
-              className="sl-card grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4"
+              className="sl-card grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-5"
             >
               {[
                 { label: "Apostas", value: `${summary.bets}` },
+                { label: "Apostado", value: eur.format(summary.staked) },
                 {
                   label: "Acerto",
                   value:
@@ -260,7 +275,7 @@ export default function Analyses() {
             <motion.div variants={fadeUp}>
               <Bars
                 title="Por mercado"
-                hint="Quantas vezes entrou cada aposta que costumas fazer"
+                hint="Quantas vezes entrou cada aposta que costumas fazer. Sem valor apostado: a aposta é do boletim inteiro, não de cada jogo."
                 rows={markets}
               />
             </motion.div>

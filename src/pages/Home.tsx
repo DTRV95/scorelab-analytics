@@ -12,9 +12,11 @@ import { homeBoard, type HomeBoard } from "@/lib/homeBoard";
 import { canonicalMarket } from "@/lib/marketNames";
 import {
   fetchBetsOfPlans,
+  fetchFundsOfPlans,
   fetchMembersOfPlans,
   fetchPlans,
   type PlanBet,
+  type PlanFunds,
   type PlanMember,
 } from "@/lib/planStore";
 import {
@@ -210,15 +212,21 @@ export default function Home() {
     fetchPlans()
       .then(async (plans) => {
         const ids = plans.map((plan) => plan.id);
-        const [members, placed] = await Promise.all([
+        const [members, placed, moved] = await Promise.all([
           fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
           fetchBetsOfPlans(ids).catch(
             () => [] as (PlanBet & { planId: string })[],
           ),
+          // Money put into a bankroll is part of that bankroll. Leaving it out
+          // made the same figure read differently here and on the challenge
+          // page, which is worse than either number on its own.
+          fetchFundsOfPlans(ids).catch(
+            () => [] as (PlanFunds & { planId: string })[],
+          ),
         ]);
         if (cancelled) return;
 
-        setBoard(homeBoard(user.id, plans, members, placed));
+        setBoard(homeBoard(user.id, plans, members, placed, moved));
         setBets(placed.filter((bet) => bet.userId === user.id));
         setStarted(
           members

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { homeBoard } from "@/lib/homeBoard";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
-import type { PlanBet, PlanMember, PlanRecord } from "@/lib/planStore";
+import type {
+  PlanBet,
+  PlanFunds,
+  PlanMember,
+  PlanRecord,
+} from "@/lib/planStore";
 
 function plan(overrides: Partial<PlanRecord> = {}): PlanRecord {
   return {
@@ -102,5 +107,70 @@ describe("what the home page has to say", () => {
     expect(board.challenges).toEqual([]);
     expect(board.toPlay).toEqual([]);
     expect(board.toClose).toEqual([]);
+  });
+});
+
+describe("money put into a bankroll, on the home page", () => {
+  const funds = (
+    planId: string,
+    amount: number,
+    userId = "david"
+  ): PlanFunds & { planId: string } => ({
+    planId,
+    id: `f${amount}`,
+    userId,
+    amount,
+    note: null,
+    at: "2026-09-29T10:00:00.000Z",
+  });
+
+  it("counts a deposit in the total, as the challenge page already did", () => {
+    // Leaving it out made the same bankroll read differently on two pages,
+    // which is worse than either number on its own.
+    const board = homeBoard(
+      "david",
+      [plan()],
+      [member()],
+      [bet("p1", "green", 5)],
+      [funds("p1", 50)]
+    );
+
+    expect(board.bankroll).toBe(65);
+  });
+
+  it("keeps it out of what the betting did", () => {
+    const board = homeBoard(
+      "david",
+      [plan()],
+      [member()],
+      [bet("p1", "green", 5)],
+      [funds("p1", 50)]
+    );
+
+    expect(board.profit).toBe(5);
+  });
+
+  it("adds up deposits across every challenge", () => {
+    const board = homeBoard(
+      "david",
+      [plan({ id: "a" }), plan({ id: "b" })],
+      [member("a"), member("b")],
+      [],
+      [funds("a", 20), funds("b", 5)]
+    );
+
+    expect(board.bankroll).toBe(45);
+  });
+
+  it("leaves the other player's money alone", () => {
+    const board = homeBoard(
+      "david",
+      [plan()],
+      [member()],
+      [],
+      [funds("p1", 50, "irmao")]
+    );
+
+    expect(board.bankroll).toBe(10);
   });
 });
