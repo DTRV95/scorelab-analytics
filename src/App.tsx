@@ -23,6 +23,7 @@ const ModelLab = lazy(() => import("./pages/ModelLab"));
 const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
 const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
 const Challenges = lazy(() => import("./pages/Challenges"));
+const ChallengeCatalogue = lazy(() => import("./pages/ChallengeCatalogue"));
 const BettorAnalysis = lazy(() => import("./pages/BettorAnalysis"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
 const RoadmapPlanner = lazy(() => import("./pages/RoadmapPlanner"));
@@ -94,8 +95,9 @@ const App = () => {
                     <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
                     <Route path="/probability" element={<ProtectedRoute><ProbabilityRadar /></ProtectedRoute>} />
                     <Route path="/radar" element={<ProtectedRoute><ValueRadar /></ProtectedRoute>} />
-                    <Route path="/desafios" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
+                    <Route path="/desafios" element={<ProtectedRoute><ChallengeCatalogue /></ProtectedRoute>} />
                     <Route path="/desafios/analise" element={<ProtectedRoute><BettorAnalysis /></ProtectedRoute>} />
+                    <Route path="/desafios/:planId" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                     {/* The tab was "Plano" before it held more than one challenge. */}
                     <Route path="/plano" element={<Navigate to="/desafios" replace />} />
                     <Route path="/match/:fixtureId" element={<ProtectedRoute><MatchDeepDive /></ProtectedRoute>} />

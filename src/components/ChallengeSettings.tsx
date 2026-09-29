@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState } from "react";
 import {
   Check,
@@ -355,10 +356,24 @@ function Fields({
  * curve from nothing — and every field stays editable afterwards, because the
  * templates are examples, not the only shapes a challenge can take.
  */
-export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
+export function CreateChallenge({
+  onCreated,
+  /** Opens straight on this model, for a page that already named one. */
+  startOn,
+  /** Rendered instead of the default button, when the page has its own. */
+  trigger,
+}: {
+  onCreated: () => void;
+  startOn?: string;
+  trigger?: (openIt: () => void) => React.ReactNode;
+}) {
+  const initial = Math.max(
+    0,
+    CHALLENGE_TEMPLATES.findIndex((entry) => entry.key === startOn),
+  );
   const [open, setOpen] = useState(false);
-  const [templateIndex, setTemplateIndex] = useState(0);
-  const [draft, setDraft] = useState<Draft>(() => draftFromTemplate(0));
+  const [templateIndex, setTemplateIndex] = useState(initial);
+  const [draft, setDraft] = useState<Draft>(() => draftFromTemplate(initial));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -404,15 +419,25 @@ export function CreateChallenge({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  const openIt = () => {
+    // A page that names a model opens on it, even the second time round.
+    pick(initial);
+    setOpen(true);
+  };
+
   return (
     <>
-      <Button
-        className="sl-btn-primary sl-tap h-12 w-full text-sm"
-        onClick={() => setOpen(true)}
-      >
-        <Sparkles className="h-4 w-4" />
-        Novo desafio
-      </Button>
+      {trigger ? (
+        trigger(openIt)
+      ) : (
+        <Button
+          className="sl-btn-primary sl-tap h-12 w-full text-sm"
+          onClick={openIt}
+        >
+          <Sparkles className="h-4 w-4" />
+          Novo desafio
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">

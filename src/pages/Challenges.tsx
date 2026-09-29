@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -256,7 +256,11 @@ export default function Challenges() {
   // Money put into the bankroll apart from betting. Kept separate from the
   // bets so a deposit never reads on screen as a win.
   const [funds, setFunds] = useState<PlanFunds[]>([]);
-  const [planId, setPlanId] = useState<string | null>(null);
+  // The catalogue at /desafios names which challenge this is; without one —
+  // an old link, or a challenge just created — the page falls back to the
+  // first it finds, as it always did.
+  const { planId: routePlanId } = useParams<{ planId: string }>();
+  const [planId, setPlanId] = useState<string | null>(routePlanId ?? null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
   const [board, setBoard] = useState<BoardMatch[]>([]);
