@@ -6,6 +6,7 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Settings2,
   Swords,
   Trash2,
   UserPlus,
@@ -299,6 +300,7 @@ export default function Challenges() {
 
   const [duelOpen, setDuelOpen] = useState(false);
   const [invitesOpen, setInvitesOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [openBet, setOpenBet] = useState<{
     bet: PlanBet;
@@ -966,6 +968,18 @@ export default function Challenges() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              title="Regras deste desafio"
+              aria-label="Regras deste desafio"
+              onClick={() => setRulesOpen(true)}
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {saved && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
               title="Convidar alguém"
               aria-label="Convidar alguém"
               onClick={() => setInvitesOpen(true)}
@@ -1532,20 +1546,27 @@ export default function Challenges() {
           <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
         </motion.div>
 
-        {saved && (
-          <motion.div variants={fadeUp}>
-            <ChallengeSettings
-              plan={plan}
-              isOwner={Boolean(ownsPlan)}
-              onSaved={() => setToken((value) => value + 1)}
-              onGone={() => {
-                setPlanId(null);
-                setToken((value) => value + 1);
-              }}
-            />
-          </motion.div>
-        )}
 
+
+        <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
+          <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
+            <DialogHeader className="border-b border-border px-4 py-3 text-left">
+              <DialogTitle className="text-sm font-bold">
+                Regras deste desafio
+              </DialogTitle>
+            </DialogHeader>
+            {saved && (
+              <ChallengeSettings
+                plan={plan}
+                isOwner={Boolean(ownsPlan)}
+                onSaved={() => {
+                  setRulesOpen(false);
+                  setToken((value) => value + 1);
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={invitesOpen} onOpenChange={setInvitesOpen}>
           <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
@@ -1577,6 +1598,8 @@ export default function Challenges() {
                   plan={plan}
                   isOwner={Boolean(ownsPlan)}
                   bets={betCounts[plan.id] ?? 0}
+                  immediate
+                  onCancel={() => setDangerOpen(false)}
                   onGone={() => {
                     setDangerOpen(false);
                     setPlanId(null);

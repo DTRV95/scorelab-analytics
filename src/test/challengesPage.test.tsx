@@ -953,35 +953,32 @@ describe("managing challenges", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /Apagar este desafio/ }),
     );
-    fireEvent.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: /Apagar este desafio/,
-      }),
-    );
 
-    expect(screen.getByText(/4 apostas/)).toBeInTheDocument();
+    expect(
+      within(await screen.findByRole("dialog")).getByText(/4 apostas/),
+    ).toBeInTheDocument();
   });
 
-  it("asks for the name to be typed before deleting everyone's history", async () => {
+  it("asks straight out, and takes no for an answer", async () => {
     renderPage();
 
     fireEvent.click(
       await screen.findByRole("button", { name: /Apagar este desafio/ }),
     );
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Não$/ }));
+    expect(deletePlan).not.toHaveBeenCalled();
+  });
+
+  it("deletes on yes", async () => {
+    renderPage();
+
     fireEvent.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: /Apagar este desafio/,
-      }),
+      await screen.findByRole("button", { name: /Apagar este desafio/ }),
     );
-
-    const confirm = screen.getByRole("button", { name: /Apagar de vez/ });
-    expect(confirm).toBeDisabled();
-
-    fireEvent.change(
-      screen.getByLabelText("Escrever o nome do desafio para confirmar"),
-      { target: { value: "Plano Milhão" } }
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Apagar de vez/ }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Sim$/ }));
 
     expect(deletePlan).toHaveBeenCalledWith("plan");
   });
@@ -1014,13 +1011,15 @@ describe("managing challenges", () => {
   it("changes the terms of a challenge it owns", async () => {
     renderPage();
 
-    const toggle = await screen.findByRole("button", { name: /Regras deste desafio/ });
-    fireEvent.click(toggle);
+    // The rules moved up beside the other rare actions, and open in a pop-up.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Regras deste desafio/ }),
+    );
 
-    const card = toggle.closest("section") as HTMLElement;
-    const date = card.querySelector('input[type="date"]') as HTMLInputElement;
+    const dialog = await screen.findByRole("dialog");
+    const date = dialog.querySelector('input[type="date"]') as HTMLInputElement;
     fireEvent.change(date, { target: { value: "2026-10-05" } });
-    fireEvent.click(within(card).getByRole("button", { name: /^Guardar$/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Guardar$/ }));
 
     expect(updatePlanTerms).toHaveBeenCalledWith(
       "plan",
