@@ -281,6 +281,76 @@ export async function leavePlan(planId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Money put into the bankroll, or taken out of it, apart from betting.
+ *
+ * A deposit had nowhere to go before this: the bankroll is the starting figure
+ * plus what the bets did, so €50 added read on screen exactly like €50 won.
+ */
+export interface PlanFunds {
+  id: string;
+  userId: string;
+  /** Positive puts money in, negative takes it out. */
+  amount: number;
+  note: string | null;
+  at: string;
+}
+
+interface PlanFundsRow {
+  id: string;
+  user_id: string;
+  amount: number | string;
+  note: string | null;
+  created_at: string;
+}
+
+export async function fetchPlanFunds(planId: string): Promise<PlanFunds[]> {
+  const { data, error } = await client()
+    .from("plan_funds")
+    .select("id, user_id, amount, note, created_at")
+    .eq("plan_id", planId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return ((data ?? []) as PlanFundsRow[]).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    amount: Number(row.amount),
+    note: row.note,
+    at: row.created_at,
+  }));
+}
+
+export async function addPlanFunds(
+  planId: string,
+  userId: string,
+  amount: number,
+  note: string | null
+): Promise<PlanFunds> {
+  const { data, error } = await client()
+    .from("plan_funds")
+    .insert({ plan_id: planId, user_id: userId, amount, note })
+    .select("id, user_id, amount, note, created_at")
+    .single();
+
+  if (error) throw error;
+
+  const row = data as PlanFundsRow;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    amount: Number(row.amount),
+    note: row.note,
+    at: row.created_at,
+  };
+}
+
+export async function deletePlanFunds(id: string): Promise<void> {
+  const { error } = await client().from("plan_funds").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function fetchPlanBets(planId: string): Promise<PlanBet[]> {
   const { data, error } = await client()
     .from("plan_bets")
@@ -341,6 +411,16 @@ export interface PlayerStanding {
   name: string;
   bankroll: number;
   startingBankroll: number;
+  /** Money put in (or taken out) apart from betting, over the challenge. */
+  added: number;
+  /**
+   * What the betting alone did.
+   *
+   * The bankroll on its own cannot answer "estamos a ganhar?" once anybody
+   * puts money in: €50 deposited moves it exactly as far as €50 won. This is
+   * the number that still means something afterwards.
+   */
+  profit: number;
   bets: PlanBet[];
   settled: number;
   greens: number;
@@ -374,13 +454,18 @@ export interface PlayerStanding {
 export function buildStanding(
   member: PlanMember,
   rules: ChallengeRules,
-  bets: PlanBet[]
+  bets: PlanBet[],
+  funds: PlanFunds[] = []
 ): PlayerStanding {
   const mine = bets
     .filter((bet) => bet.userId === member.user_id)
     .sort((a, b) => a.placedAt.localeCompare(b.placedAt));
 
-  let bankroll = Number(member.starting_bankroll);
+  const added = funds
+    .filter((entry) => entry.userId === member.user_id)
+    .reduce((total, entry) => total + entry.amount, 0);
+
+  let profit = 0;
   let greens = 0;
   let reds = 0;
   let lossStreak = 0;
@@ -398,13 +483,13 @@ export function buildStanding(
 
   mine.forEach((bet) => {
     if (bet.status === "green") {
-      bankroll += bet.profitLoss;
+      profit += bet.profitLoss;
       greens += 1;
       lossStreak = 0;
       lastSettled = bet;
       day = Math.min(day + 1, rules.days);
     } else if (bet.status === "red") {
-      bankroll += bet.profitLoss;
+      profit += bet.profitLoss;
       reds += 1;
       lossStreak += 1;
       lastSettled = bet;
@@ -415,13 +500,17 @@ export function buildStanding(
     }
   });
 
-  const rounded = Number(bankroll.toFixed(2));
+  const rounded = Number(
+    (Number(member.starting_bankroll) + added + profit).toFixed(2)
+  );
 
   return {
     userId: member.user_id,
     name: member.display_name,
     bankroll: rounded,
     startingBankroll: Number(member.starting_bankroll),
+    added: Number(added.toFixed(2)),
+    profit: Number(profit.toFixed(2)),
     bets: mine,
     settled: greens + reds,
     greens,

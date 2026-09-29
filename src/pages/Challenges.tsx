@@ -16,6 +16,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
+import { AddFunds } from "@/components/AddFunds";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
@@ -49,6 +50,8 @@ import {
   declineInvite,
   fetchMyPendingInvites,
   fetchPlanBets,
+  fetchPlanFunds,
+  addPlanFunds,
   fetchPlanBetCounts,
   fetchPlanMembers,
   fetchPlans,
@@ -69,6 +72,7 @@ import {
   type PendingInvite,
   type PlanBet,
   type PlanBetPayload,
+  type PlanFunds,
   type PlanLeg,
   type PlanMember,
   type PlanRecord,
@@ -156,6 +160,28 @@ function PlayerCard({
         {eur.format(standing.bankroll)}
       </p>
 
+      {/* Once money has been put in or taken out, the bankroll alone stops
+          answering "estamos a ganhar?" — €50 deposited moves it exactly as far
+          as €50 won. This splits the two. */}
+      {standing.added !== 0 && (
+        <p className="sl-meta mt-0.5 px-4 text-[11px]">
+          {eur.format(standing.startingBankroll)} iniciais
+          {standing.added > 0 ? " + " : " − "}
+          {eur.format(Math.abs(standing.added))}{" "}
+          {standing.added > 0 ? "metidos" : "tirados"} ·{" "}
+          <span
+            className={
+              standing.profit >= 0
+                ? "text-[hsl(var(--sl-green))]"
+                : "text-destructive"
+            }
+          >
+            {standing.profit >= 0 ? "+" : ""}
+            {eur.format(standing.profit)} das apostas
+          </span>
+        </p>
+      )}
+
       <p className="sl-meta mt-1 px-4 text-[11px]">
         {`Dia ${standing.day} de ${rules.days}`}
         {planned && (
@@ -215,6 +241,9 @@ export default function Challenges() {
   // Bets per challenge. Two made from the same model look identical on
   // screen, and this is the only thing that tells them apart.
   const [betCounts, setBetCounts] = useState<Record<string, number>>({});
+  // Money put into the bankroll apart from betting. Kept separate from the
+  // bets so a deposit never reads on screen as a win.
+  const [funds, setFunds] = useState<PlanFunds[]>([]);
   const [planId, setPlanId] = useState<string | null>(null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
@@ -313,11 +342,19 @@ export default function Challenges() {
     let cancelled = false;
     setLoading(true);
 
-    Promise.all([fetchPlanMembers(planId), fetchPlanBets(planId)])
-      .then(([planMembers, planBets]) => {
+    Promise.all([
+      fetchPlanMembers(planId),
+      fetchPlanBets(planId),
+      // The members and the bets are the challenge; the money movements are a
+      // note beside them. A challenge that will not open because this one call
+      // failed would be a bad trade, so it falls back to none.
+      fetchPlanFunds(planId).catch(() => [] as PlanFunds[]),
+    ])
+      .then(([planMembers, planBets, planFunds]) => {
         if (cancelled) return;
         setMembers(planMembers);
         setBets(planBets);
+        setFunds(planFunds);
       })
       .catch(() => {
         if (!cancelled) setError("Não foi possível abrir este desafio.");
@@ -424,8 +461,8 @@ export default function Challenges() {
   );
 
   const standings = useMemo(
-    () => players.map((member) => buildStanding(member, rules, bets)),
-    [players, bets, rules],
+    () => players.map((member) => buildStanding(member, rules, bets, funds)),
+    [players, bets, rules, funds],
   );
   const me = standings.find((standing) => standing.userId === user?.id) ?? null;
   const combined = standings.reduce(
@@ -537,6 +574,30 @@ export default function Challenges() {
       }
     },
     [fail],
+  );
+
+  /** Records money put into the bankroll, or taken out, apart from betting. */
+  const addFunds = useCallback(
+    async (amount: number, note: string | null) => {
+      if (!plan?.id || !user) return;
+      setSaving(true);
+      try {
+        const entry = await addPlanFunds(plan.id, user.id, amount, note);
+        setFunds((previous) => [...previous, entry]);
+        toast({
+          title:
+            amount > 0
+              ? `${eur.format(amount)} metidos na banca`
+              : `${eur.format(Math.abs(amount))} tirados da banca`,
+          description: "Entra na banca, fica de fora do lucro.",
+        });
+      } catch {
+        fail("Não foi possível guardar esse movimento da banca.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [plan?.id, user, fail],
   );
 
   const place = useCallback(
@@ -1127,6 +1188,16 @@ export default function Challenges() {
             />
           ))}
         </motion.div>
+
+        {me && saved && (
+          <motion.div variants={fadeUp}>
+            <AddFunds
+              added={me.added}
+              saving={saving}
+              onAdd={addFunds}
+            />
+          </motion.div>
+        )}
 
         {me && (
           <motion.div variants={fadeUp}>

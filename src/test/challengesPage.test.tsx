@@ -17,6 +17,7 @@ const {
   savePlanBet,
   updatePlanBet,
   deletePlanBet,
+  addPlanFunds,
   invitePlayer,
   fetchPlanInvites,
   fetchMyPendingInvites,
@@ -32,6 +33,13 @@ const {
   })),
   updatePlanBet: vi.fn(async (_planId: string, _betId: string, _payload: unknown) => undefined),
   deletePlanBet: vi.fn(async (_planId: string, _betId: string) => undefined),
+  addPlanFunds: vi.fn(async (_planId: string, userId: string, amount: number, note: string | null) => ({
+    id: "f1",
+    userId,
+    amount,
+    note,
+    at: "2026-09-29T10:00:00.000Z",
+  })),
   invitePlayer: vi.fn(
     async (): Promise<"invited" | "already_member" | "no_account"> => "invited"
   ),
@@ -78,6 +86,8 @@ vi.mock("@/lib/planStore", async () => {
       },
     ]),
     fetchPlanBetCounts: vi.fn(async () => ({ plan: 4, empty: 0 })),
+    fetchPlanFunds: vi.fn(async () => []),
+    addPlanFunds,
     fetchPlanMembers: vi.fn(async () => [
       { plan_id: "plan", user_id: "david", display_name: "David", starting_bankroll: 10 },
       { plan_id: "plan", user_id: "irmao", display_name: "Irmão", starting_bankroll: 10 },
@@ -558,6 +568,52 @@ describe("building the day's bet", () => {
     expect(payload).toMatchObject({ stake: 5 });
     // Staking less than the challenge asks is a choice, not a breach.
     expect(screen.queryByText(/Acima do desafio/)).not.toBeInTheDocument();
+  });
+});
+
+describe("money put into the bankroll", () => {
+  it("records it, and says it stays out of the profit", async () => {
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Meti ou tirei dinheiro/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Valor a meter ou tirar da banca"), {
+      target: { value: "50" },
+    });
+    fireEvent.change(screen.getByLabelText("Nota sobre o movimento"), {
+      target: { value: "depósito" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Guardar$/ }));
+
+    await waitFor(() => expect(addPlanFunds).toHaveBeenCalledTimes(1));
+    expect(addPlanFunds.mock.calls[0].slice(2)).toEqual([50, "depósito"]);
+  });
+
+  it("stores taking money out as a negative amount", async () => {
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Meti ou tirei dinheiro/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tirei dinheiro/ }));
+    fireEvent.change(screen.getByLabelText("Valor a meter ou tirar da banca"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Guardar$/ }));
+
+    await waitFor(() => expect(addPlanFunds).toHaveBeenCalledTimes(1));
+    expect(addPlanFunds.mock.calls[0][2]).toBe(-4);
+  });
+
+  it("will not save nothing", async () => {
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Meti ou tirei dinheiro/ }),
+    );
+
+    expect(screen.getByRole("button", { name: /^Guardar$/ })).toBeDisabled();
   });
 });
 
