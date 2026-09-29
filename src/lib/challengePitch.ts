@@ -14,6 +14,13 @@ const eur = new Intl.NumberFormat("pt-PT", {
 export interface ChallengeLine {
   label: string;
   value: string;
+  /**
+   * A phrase rather than a figure, so it needs the whole row.
+   *
+   * Measured on a 360px phone: in half a row these were the two that got cut
+   * off mid-word, and they are the two somebody most needs to read.
+   */
+  wide?: boolean;
 }
 
 /**
@@ -36,11 +43,13 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
     },
     {
       label: "Quanto multiplica",
-      value: `${Math.round(target / startingBankroll)}× a banca`,
+      // 100000× is a number nobody can read at a glance; 100 000× is.
+      value: `${Math.round(target / startingBankroll).toLocaleString("pt-PT")}× a banca`,
     },
     { label: "Dias", value: `${rules.days}` },
     {
       label: "Aposta por dia",
+      wide: true,
       value:
         pcts.length === 1
           ? `${Math.round(pcts[0] * 100)}% da banca`
@@ -63,6 +72,7 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
     },
     {
       label: "O que custa um dia mau",
+      wide: true,
       value: first
         ? `${eur.format(first.stake)} e um degrau abaixo`
         : "um degrau abaixo",

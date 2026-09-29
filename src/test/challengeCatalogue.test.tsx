@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { CHALLENGE_TEMPLATES } from "@/lib/challengeRules";
+import { challengeLines } from "@/lib/challengePitch";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "david", email: "david@example.com" } }),
@@ -65,6 +66,29 @@ describe("the page of challenges there are", () => {
     expect(screen.getByText("O que custa um dia mau")).toBeInTheDocument();
     expect(screen.getByText("Aposta por dia")).toBeInTheDocument();
     expect(screen.getByText(/Matematicamente viável/)).toBeInTheDocument();
+  });
+
+  it("keeps the phrases on a row of their own, where a phone can read them", async () => {
+    // Measured at 360px: in half a row these two were cut off mid-word, and
+    // they are the two somebody most needs before starting.
+    const lines = challengeLines(
+      CHALLENGE_TEMPLATES.find((t) => t.key === "milhao")!,
+    );
+    const wide = lines.filter((line) => line.wide).map((line) => line.label);
+
+    expect(wide).toEqual(["Aposta por dia", "O que custa um dia mau"]);
+  });
+
+  it("writes a big multiple in a way somebody can read", async () => {
+    const lines = challengeLines(
+      CHALLENGE_TEMPLATES.find((t) => t.key === "milhao")!,
+    );
+    const multiple = lines.find((line) => line.label === "Quanto multiplica");
+
+    // The separator is a non-breaking space, which is the point: it keeps the
+    // number from being split across two lines on a narrow phone.
+    expect(multiple?.value.replace(/\u00a0/g, " ")).toBe("100 000× a banca");
+    expect(multiple?.value).toContain("\u00a0");
   });
 
   it("says outright which ones are a chase rather than a plan", async () => {
