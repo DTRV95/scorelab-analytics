@@ -1,5 +1,11 @@
 import { Crown, Info } from "lucide-react";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   aheadOn,
   duel,
   MIN_SETTLED,
@@ -71,22 +77,33 @@ const ROWS: Row[] = [
  * actually argues about, and profit per euro sits right under it because
  * staking more is not the same as betting better.
  */
-export function HeadToHead({ standings }: { standings: PlayerStanding[] }) {
+export function HeadToHead({
+  standings,
+  open,
+  onClose,
+}: {
+  standings: PlayerStanding[];
+  open: boolean;
+  onClose: () => void;
+}) {
   if (standings.length < 2) return null;
 
   const { tallies, leader, margin, early } = duel(standings);
 
   return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3.5">
-        <h2 className="text-sm font-bold text-foreground">Frente a frente</h2>
-        {leader && !early && (
-          <span className="sl-pill sl-pill-win flex flex-none items-center gap-1">
-            <Crown className="h-3 w-3" />
-            {leader.name} +{eur.format(margin)}
-          </span>
-        )}
-      </div>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
+        <DialogHeader className="border-b border-border px-4 py-3 text-left">
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6 text-sm font-bold">
+            <span>Frente a frente</span>
+            {leader && !early && leader.profit > 0 && (
+              <span className="sl-pill sl-pill-win flex flex-none items-center gap-1">
+                <Crown className="h-3 w-3" />
+                {leader.name} +{eur.format(margin)}
+              </span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
 
       <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 px-4 py-2 text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         <span />
@@ -117,13 +134,20 @@ export function HeadToHead({ standings }: { standings: PlayerStanding[] }) {
 
               {tallies.map((entry) => {
                 const leads = winner === entry.userId;
+                const value = row.read(entry);
+                // Below zero is red whoever it belongs to. Leading a row where
+                // both are losing money is not something to paint green.
+                const down = value !== null && value < 0;
+
                 return (
                   <span
                     key={entry.userId}
                     className={`sl-figure min-w-[60px] text-right text-[13px] ${
-                      leads
-                        ? "font-bold text-[hsl(var(--sl-green))]"
-                        : "text-muted-foreground"
+                      down
+                        ? "font-bold text-destructive"
+                        : leads
+                          ? "font-bold text-[hsl(var(--sl-green))]"
+                          : "text-muted-foreground"
                     }`}
                   >
                     {row.show(entry)}
@@ -146,6 +170,7 @@ export function HeadToHead({ standings }: { standings: PlayerStanding[] }) {
           histórico, não um veredicto.
         </p>
       )}
-    </section>
+      </DialogContent>
+    </Dialog>
   );
 }
