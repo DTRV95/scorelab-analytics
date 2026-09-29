@@ -936,11 +936,12 @@ describe("managing challenges", () => {
     ]);
   });
 
-  it("offers deleting the challenge without hunting through the rules panel", async () => {
+  it("offers deleting the challenge from the top of the page", async () => {
     renderPage();
 
-    // Somebody looking for this goes looking for a delete button, not for
-    // "Regras deste desafio". It is on the page, not folded inside another.
+    // Rare and destructive, so it is a small control up in the header rather
+    // than a card in everybody's way — but visible the moment the page opens,
+    // which is the thing it was missing.
     expect(
       await screen.findByRole("button", { name: /Apagar este desafio/ }),
     ).toBeInTheDocument();
@@ -952,6 +953,11 @@ describe("managing challenges", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /Apagar este desafio/ }),
     );
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: /Apagar este desafio/,
+      }),
+    );
 
     expect(screen.getByText(/4 apostas/)).toBeInTheDocument();
   });
@@ -961,6 +967,11 @@ describe("managing challenges", () => {
 
     fireEvent.click(
       await screen.findByRole("button", { name: /Apagar este desafio/ }),
+    );
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: /Apagar este desafio/,
+      }),
     );
 
     const confirm = screen.getByRole("button", { name: /Apagar de vez/ });
@@ -1019,6 +1030,11 @@ describe("managing challenges", () => {
 
   it("invites someone by email and reports what happened", async () => {
     renderPage();
+
+    // Behind the small control at the top right now, not a card on the page.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Convidar alguém/ }),
+    );
 
     // The form is folded away until someone wants it: inviting happens once.
     fireEvent.click(await screen.findByRole("button", { name: /Convidar alguém/ }));
