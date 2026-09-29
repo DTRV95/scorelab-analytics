@@ -101,10 +101,13 @@ function NextGames({ board }: { board: BoardMatch[] }) {
 }
 
 /** What this person's own settled bets say, in two lines. */
-function YourRecord({ bets }: { bets: PlanBet[] }) {
+function YourRecord({ userId, bets }: { userId: string; bets: PlanBet[] }) {
+  // The id is passed through rather than every bet being relabelled as mine.
+  // Relabelling worked only because the caller had already filtered, and left
+  // the brother's bets one careless change away from counting as this record.
   const style = useMemo(
-    () => buildPlayerStyle("me", "", bets.map((bet) => ({ ...bet, userId: "me" }))),
-    [bets],
+    () => buildPlayerStyle(userId, "", bets),
+    [userId, bets],
   );
 
   if (!style.sharpest && !style.weakest) return null;
@@ -271,7 +274,7 @@ export default function Home() {
 
         {bets.length > 0 && (
           <motion.div variants={fadeUp}>
-            <YourRecord bets={bets} />
+            <YourRecord userId={user?.id ?? ""} bets={bets} />
           </motion.div>
         )}
 
