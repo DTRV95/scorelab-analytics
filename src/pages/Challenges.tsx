@@ -448,6 +448,8 @@ export default function Challenges() {
       start_date: null,
       days: MILLION_PLAN_RULES.days,
       rules: MILLION_PLAN_RULES,
+      visible: false,
+      template_key: "milhao",
     }),
     [user?.id],
   );

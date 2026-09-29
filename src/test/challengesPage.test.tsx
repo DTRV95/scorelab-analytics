@@ -83,6 +83,8 @@ vi.mock("@/lib/planStore", async () => {
         start_date: null,
         days: 38,
         rules: MILLION_PLAN_RULES,
+        visible: false,
+        template_key: "milhao",
       },
     ]),
     fetchPlanBetCounts: vi.fn(async () => ({ plan: 4, empty: 0 })),
@@ -964,6 +966,8 @@ describe("managing challenges", () => {
       start_date: null,
       days: 38,
       rules: MILLION_PLAN_RULES,
+      visible: false,
+      template_key: "milhao",
     };
     vi.mocked(fetchPlans).mockResolvedValueOnce([
       { ...twin, id: "plan" },

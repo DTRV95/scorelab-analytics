@@ -14,10 +14,16 @@ export interface PlanRecord {
   days: number;
   /** The challenge's own rules, as stored. Parsed by challengeRules.ts. */
   rules: unknown;
+  /** Whether anybody outside the challenge may look at it. */
+  visible: boolean;
+  /** The ready-made model it was started from, for counting and ranking. */
+  template_key: string | null;
 }
 
 export interface PlanTerms {
   name: string;
+  /** The ready-made model this came from, when it came from one. */
+  templateKey?: string | null;
   startDate: string | null;
   startingBankroll: number;
   target: number;
@@ -26,7 +32,7 @@ export interface PlanTerms {
 }
 
 const PLAN_COLUMNS =
-  "id, name, starting_bankroll, target, created_by, start_date, days, rules";
+  "id, name, starting_bankroll, target, created_by, start_date, days, rules, visible, template_key";
 
 export interface PlanMember {
   plan_id: string;
@@ -240,6 +246,7 @@ export async function createPlan(terms: PlanTerms): Promise<string> {
     plan_target: terms.target,
     plan_days: terms.days ?? 38,
     plan_rules: terms.rules ?? {},
+    plan_template: terms.templateKey ?? null,
   });
 
   if (error) throw error;
@@ -270,6 +277,72 @@ export async function updatePlanTerms(
  * the server only lets whoever created it do this, and why the page asks for
  * the name to be typed before calling.
  */
+/** Opens a challenge to everybody, or closes it again. Creator only. */
+export async function setPlanVisible(
+  planId: string,
+  visible: boolean
+): Promise<void> {
+  const { error } = await client().rpc("set_plan_visible", {
+    plan: planId,
+    make_visible: visible,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Every challenge anybody has opened up, whether or not you are in it.
+ *
+ * The point of the switch: until now a challenge was invisible to everyone but
+ * its members, down to its name, so there was no way to see what the others
+ * were running or how it was going for them.
+ */
+export async function fetchVisiblePlans(): Promise<PlanRecord[]> {
+  const { data, error } = await client()
+    .from("plans")
+    .select(PLAN_COLUMNS)
+    .eq("visible", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as PlanRecord[];
+}
+
+/** The members of several challenges at once, for a table of standings. */
+export async function fetchMembersOfPlans(
+  planIds: string[]
+): Promise<PlanMember[]> {
+  if (planIds.length === 0) return [];
+
+  const { data, error } = await client()
+    .from("plan_members")
+    .select("plan_id, user_id, display_name, starting_bankroll")
+    .in("plan_id", planIds);
+
+  if (error) throw error;
+  return (data ?? []) as PlanMember[];
+}
+
+/** The bets of several challenges at once, for a table of standings. */
+export async function fetchBetsOfPlans(
+  planIds: string[]
+): Promise<(PlanBet & { planId: string })[]> {
+  if (planIds.length === 0) return [];
+
+  const { data, error } = await client()
+    .from("plan_bets")
+    .select("plan_id, id, user_id, payload")
+    .in("plan_id", planIds);
+
+  if (error) throw error;
+
+  return ((data ?? []) as (PlanBetRow & { plan_id: string })[]).map((row) => ({
+    ...row.payload,
+    id: row.id,
+    userId: row.user_id,
+    planId: row.plan_id,
+  }));
+}
+
 export async function deletePlan(planId: string): Promise<void> {
   const { error } = await client().rpc("delete_plan", { target_plan: planId });
   if (error) throw error;
