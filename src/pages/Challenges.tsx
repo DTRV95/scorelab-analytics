@@ -18,6 +18,7 @@ import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { AddFunds } from "@/components/AddFunds";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
@@ -1282,6 +1283,12 @@ export default function Challenges() {
               </span>
               <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
             </Link>
+          </motion.div>
+        )}
+
+        {saved && standings.length > 1 && (
+          <motion.div variants={fadeUp}>
+            <HeadToHead standings={standings} />
           </motion.div>
         )}
 

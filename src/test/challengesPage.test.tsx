@@ -315,8 +315,10 @@ describe("a challenge's standings", () => {
     // David won €5 onto €10: €15 is where day 2 opens. His open bet has not
     // moved anything, so it has not moved his day either. His brother lost his
     // first day and is back under the opening rung.
+    // Both appear more than once now: on the player's own card, and again on
+    // the head-to-head row that puts the two ladders side by side.
     expect((await screen.findAllByText("Dia 2")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Dia 1")).toBeInTheDocument();
+    expect(screen.getAllByText("Dia 1").length).toBeGreaterThan(0);
   });
 
   it("says what to do next, with the stake and the odd already worked out", async () => {
@@ -568,6 +570,25 @@ describe("building the day's bet", () => {
     expect(payload).toMatchObject({ stake: 5 });
     // Staking less than the challenge asks is a choice, not a breach.
     expect(screen.queryByText(/Acima do desafio/)).not.toBeInTheDocument();
+  });
+});
+
+describe("the two of them side by side", () => {
+  it("puts the players against each other, measure by measure", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Frente a frente")).toBeInTheDocument();
+    expect(screen.getByText("Lucro das apostas")).toBeInTheDocument();
+    expect(screen.getByText("Por cada euro apostado")).toBeInTheDocument();
+  });
+
+  it("refuses to crown anybody off a handful of days", async () => {
+    // Two settled days can put somebody ahead on every row at once.
+    renderPage();
+
+    expect(
+      await screen.findByText(/poucos dias fechados para isto dizer/),
+    ).toBeInTheDocument();
   });
 });
 
