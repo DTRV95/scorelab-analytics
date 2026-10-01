@@ -992,7 +992,15 @@
   }
 
   @media (max-width: 767px) {
-    html,
+    /* Not `html`, and this is load-bearing. A dialog's scroll lock is a rule
+       on `body`, and the viewport only takes its overflow from `body` while
+       `html`'s own overflow is `visible`. Naming `html` here made its
+       overflow-y compute to `auto`, so the viewport scrolled on `html` and the
+       lock on `body` did nothing: opening "Inserir jogo" on a phone and
+       dragging to reach the games scrolled the page behind the pop-up instead
+       of the list inside it. Measured in Chromium: 600px of page movement with
+       `html` named, none without. `body` and `#root` hold the sideways
+       containment on their own — also measured. */
     body,
     #root {
       width: 100%;
