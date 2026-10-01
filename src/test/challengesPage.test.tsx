@@ -950,6 +950,82 @@ describe("correcting a bet that was typed wrong", () => {
     expect(betId).toBe("b1");
     expect(payload).toMatchObject({ status: "red", profitLoss: -5 });
   });
+
+  // Taking a game out was possible from the start. Putting one in meant
+  // deleting the bet and typing the whole slip again, for one forgotten game.
+  it("puts another game into a day still open, and multiplies it in", async () => {
+    const dialog = await openMine();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Adicionar jogo/ }),
+    );
+
+    const picker = await screen.findByRole("dialog", {
+      name: /Juntar ao dia 2/,
+    });
+    fireEvent.click(
+      within(picker).getByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+    fireEvent.change(within(picker).getByPlaceholderText("Equipa casa"), {
+      target: { value: "Braga" },
+    });
+    fireEvent.change(within(picker).getByPlaceholderText("Equipa fora"), {
+      target: { value: "Estoril" },
+    });
+    fireEvent.change(
+      within(picker).getByPlaceholderText(/A tua aposta/),
+      { target: { value: "Casa" } },
+    );
+    fireEvent.change(within(picker).getByPlaceholderText("Odd"), {
+      target: { value: "1.50" },
+    });
+    fireEvent.click(
+      within(picker).getByRole("button", { name: /Juntar ao boletim/ }),
+    );
+    fireEvent.click(within(picker).getByRole("button", { name: /Concluído/ }));
+
+    fireEvent.click(
+      await within(dialog).findByRole("button", { name: /Guardar correção/ }),
+    );
+
+    const [, betId, payload] = updatePlanBet.mock.calls[0];
+    expect(betId).toBe("b3");
+    expect(payload.legs).toHaveLength(2);
+    expect(payload.legs[1]).toMatchObject({
+      homeTeam: "Braga",
+      awayTeam: "Estoril",
+      market: "Casa",
+      odds: 1.5,
+      status: "pending",
+    });
+    // 1.90 and 1.50, multiplied, as any bookmaker would.
+    expect(payload.odds).toBeCloseTo(2.85, 5);
+  });
+
+  it("will not put a game into a day already closed", async () => {
+    // The arithmetic is done and the games have results. A new one would
+    // arrive undecided on a bet that is not, and there is no honest answer
+    // to what that day then won.
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver todos os dias/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de David/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Corrigir esta aposta/ }),
+    );
+
+    expect(
+      within(dialog).queryByRole("button", { name: /Adicionar jogo/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/enquanto o dia estiver em aberto/),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("managing challenges", () => {
