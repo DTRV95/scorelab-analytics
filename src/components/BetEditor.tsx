@@ -5,8 +5,10 @@ import {
   type BoardAccess,
   type PickedGame,
 } from "@/components/GamePicker";
+import { MarketField } from "@/components/MarketField";
 import { Button } from "@/components/ui/button";
 import { combineOdds, type PlanBet, type PlanLeg } from "@/lib/planStore";
+import type { TypingMemory } from "@/lib/typingMemory";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -37,6 +39,7 @@ function toNumber(raw: string): number {
 export function BetEditor({
   bet,
   access,
+  memory,
   saving,
   onSave,
   onDelete,
@@ -45,6 +48,8 @@ export function BetEditor({
   bet: PlanBet;
   /** The board, so a game can be picked here the same way it is in the slip. */
   access: BoardAccess;
+  /** What has already been typed on these slips, to offer back. */
+  memory: TypingMemory;
   saving: boolean;
   onSave: (legs: PlanLeg[], stake: number) => void;
   onDelete: () => void;
@@ -150,14 +155,18 @@ export function BetEditor({
               )}
             </div>
 
-            <div className="grid grid-cols-[1fr_84px] gap-2">
-              <input
-                value={leg.market}
-                onChange={(event) => setMarket(index, event.target.value)}
-                placeholder="A tua aposta"
-                aria-label={`Mercado de ${leg.homeTeam} vs ${leg.awayTeam}`}
-                className={field}
-              />
+            <MarketField
+              value={leg.market}
+              onChange={(market) => setMarket(index, market)}
+              used={memory.markets}
+              label={`${leg.homeTeam} vs ${leg.awayTeam}`}
+              describedAs={`Mercado de ${leg.homeTeam} vs ${leg.awayTeam}`}
+            />
+
+            <div>
+              <p className="sl-meta mb-1 text-[10px] uppercase tracking-[0.12em]">
+                Odd
+              </p>
               <input
                 inputMode="decimal"
                 value={odds[index] ?? ""}
@@ -198,6 +207,7 @@ export function BetEditor({
           open={picking}
           onOpenChange={setPicking}
           access={access}
+          memory={memory}
           chosenIds={chosenIds}
           onPick={add}
           title={`Juntar ao dia ${bet.day}`}

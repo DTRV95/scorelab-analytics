@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, Info, PenLine, Plus, RefreshCw, Search } from "lucide-react";
+import { MarketField } from "@/components/MarketField";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import {
   type ProviderCatalogue,
 } from "@/lib/leagueHealth";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
+import type { TypingMemory } from "@/lib/typingMemory";
 
 // The list scrolls, so this is a guard against a pathological board rather
 // than a shortlist: with the league chips above it, anything on the board is
@@ -137,6 +139,7 @@ export function GamePicker({
   open,
   onOpenChange,
   access,
+  memory,
   chosenIds,
   onPick,
   title = "Inserir jogo",
@@ -145,6 +148,8 @@ export function GamePicker({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   access: BoardAccess;
+  /** What has already been typed on these slips, to offer back. */
+  memory: TypingMemory;
   /** Fixtures already on whatever is being built, to show as taken. */
   chosenIds: Set<number>;
   onPick: (game: PickedGame) => void;
@@ -456,33 +461,49 @@ export function GamePicker({
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Jogo à mão
               </p>
+              {/* The same side went in as "Gales" and "País de Gales",
+                  "Chequia" and "Chéquia". Each spelling is a team of its own
+                  to anything that counts them, so what was typed before is
+                  offered back. */}
+              <datalist id="sl-equipas">
+                {memory.teams.map((team) => (
+                  <option key={team} value={team} />
+                ))}
+              </datalist>
+
               <div className="grid grid-cols-2 gap-2">
                 <input
+                  list="sl-equipas"
                   value={manual.home}
                   onChange={(event) =>
                     setManual({ ...manual, home: event.target.value })
                   }
                   placeholder="Equipa casa"
+                  aria-label="Equipa da casa"
                   className={field}
                 />
                 <input
+                  list="sl-equipas"
                   value={manual.away}
                   onChange={(event) =>
                     setManual({ ...manual, away: event.target.value })
                   }
                   placeholder="Equipa fora"
+                  aria-label="Equipa de fora"
                   className={field}
                 />
               </div>
-              <div className="grid grid-cols-[1fr_88px] gap-2">
-                <input
-                  value={manual.market}
-                  onChange={(event) =>
-                    setManual({ ...manual, market: event.target.value })
-                  }
-                  placeholder="A tua aposta (ex: Casa, Mais de 1.5)"
-                  className={field}
-                />
+
+              <MarketField
+                value={manual.market}
+                onChange={(market) => setManual({ ...manual, market })}
+                used={memory.markets}
+              />
+
+              <div>
+                <p className="sl-meta mb-1 text-[10px] uppercase tracking-[0.12em]">
+                  Odd
+                </p>
                 <input
                   inputMode="decimal"
                   value={manual.odds}
@@ -490,6 +511,7 @@ export function GamePicker({
                     setManual({ ...manual, odds: event.target.value })
                   }
                   placeholder="Odd"
+                  aria-label="Odd do jogo à mão"
                   className={`${field} text-center font-mono-data`}
                 />
               </div>

@@ -200,7 +200,11 @@ vi.mock("@/lib/planStore", async () => {
 
 import Challenges from "@/pages/Challenges";
 import { Toaster } from "@/components/ui/toaster";
-import { fetchPlanBets, fetchPlans } from "@/lib/planStore";
+import {
+  fetchPlanBets,
+  fetchPlans,
+  type PlanBetPayload,
+} from "@/lib/planStore";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
 function boardMatch(id: number, home: string, pct: number, league = "Liga Portugal") {
@@ -292,7 +296,7 @@ async function addByHand(home: string, away: string, market: string, odds: strin
   fireEvent.click(await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }));
   fireEvent.change(screen.getByPlaceholderText("Equipa casa"), { target: { value: home } });
   fireEvent.change(screen.getByPlaceholderText("Equipa fora"), { target: { value: away } });
-  fireEvent.change(screen.getByPlaceholderText("A tua aposta (ex: Casa, Mais de 1.5)"), {
+  fireEvent.change(screen.getByLabelText("A tua aposta"), {
     target: { value: market },
   });
   fireEvent.change(screen.getByPlaceholderText("Odd"), { target: { value: odds } });
@@ -473,10 +477,9 @@ describe("building the day's bet", () => {
     fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
       target: { value: "França" },
     });
-    fireEvent.change(
-      screen.getByPlaceholderText("A tua aposta (ex: Casa, Mais de 1.5)"),
-      { target: { value: "Mais de 2.5" } },
-    );
+    fireEvent.change(screen.getByLabelText("A tua aposta"), {
+      target: { value: "Mais de 2.5" },
+    });
     fireEvent.change(screen.getByPlaceholderText("Odd"), {
       target: { value: "1.85" },
     });
@@ -493,10 +496,9 @@ describe("building the day's bet", () => {
     fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
       target: { value: "Portugal" },
     });
-    fireEvent.change(
-      screen.getByPlaceholderText("A tua aposta (ex: Casa, Mais de 1.5)"),
-      { target: { value: "Ambas Marcam" } },
-    );
+    fireEvent.change(screen.getByLabelText("A tua aposta"), {
+      target: { value: "Ambas Marcam" },
+    });
     fireEvent.change(screen.getByPlaceholderText("Odd"), {
       target: { value: "1.38" },
     });
@@ -742,6 +744,83 @@ describe("what the person's own record says, while they build the bet", () => {
   });
 });
 
+// Every market on every bet so far was typed into a blank box: "V1" and
+// "Casa" for the same bet, "AM" and "Ambas Marcam", two spellings of "X2 e
+// +1,5 golos". And the same side went in as "Gales" and "País de Gales".
+describe("choosing the market and the teams instead of spelling them", () => {
+  it("writes the market with a tap, in the name the analysis counts", async () => {
+    renderPage();
+    await openPicker();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+    fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
+      target: { value: "Bélgica" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
+      target: { value: "França" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ambas Marcam" }));
+    expect(screen.getByLabelText("A tua aposta")).toHaveValue("Ambas Marcam");
+
+    fireEvent.change(screen.getByPlaceholderText("Odd"), {
+      target: { value: "1.85" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
+    closePicker();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Registar o dia/ }),
+    );
+
+    const [, , payload] = savePlanBet.mock.calls[0] as [
+      string,
+      string,
+      PlanBetPayload,
+    ];
+    expect(payload.legs[0]).toMatchObject({ market: "Ambas Marcam" });
+  });
+
+  it("shows a shorthand already typed as the market it will be counted as", async () => {
+    // "V1" is on the bets already registered. The button it lights up is the
+    // one it folds to, so nobody has to know both names.
+    renderPage();
+    await openPicker();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+    fireEvent.change(screen.getByLabelText("A tua aposta"), {
+      target: { value: "V1" },
+    });
+
+    expect(screen.getByRole("button", { name: "Vitória Casa" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("offers back the teams already written on these slips", async () => {
+    renderPage();
+    await openPicker();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+
+    const home = screen.getByPlaceholderText("Equipa casa");
+    expect(home).toHaveAttribute("list", "sl-equipas");
+
+    const offered = [
+      ...document.querySelectorAll("#sl-equipas option"),
+    ].map((option) => option.getAttribute("value"));
+
+    // Off the bets the page already loaded, both players' and both sides.
+    expect(offered).toContain("Torreense");
+    expect(offered).toContain("Mafra");
+    expect(offered).toContain("Sporting CP");
+  });
+});
+
 describe("saying whether the bet is worth making", () => {
   it("compares the model with the odd typed, before it is registered", async () => {
     renderPage();
@@ -972,10 +1051,9 @@ describe("correcting a bet that was typed wrong", () => {
     fireEvent.change(within(picker).getByPlaceholderText("Equipa fora"), {
       target: { value: "Estoril" },
     });
-    fireEvent.change(
-      within(picker).getByPlaceholderText(/A tua aposta/),
-      { target: { value: "Casa" } },
-    );
+    fireEvent.change(within(picker).getByLabelText("A tua aposta"), {
+      target: { value: "Casa" },
+    });
     fireEvent.change(within(picker).getByPlaceholderText("Odd"), {
       target: { value: "1.50" },
     });
@@ -988,7 +1066,11 @@ describe("correcting a bet that was typed wrong", () => {
       await within(dialog).findByRole("button", { name: /Guardar correção/ }),
     );
 
-    const [, betId, payload] = updatePlanBet.mock.calls[0];
+    const [, betId, payload] = updatePlanBet.mock.calls[0] as [
+      string,
+      string,
+      PlanBetPayload,
+    ];
     expect(betId).toBe("b3");
     expect(payload.legs).toHaveLength(2);
     expect(payload.legs[1]).toMatchObject({
