@@ -32,17 +32,25 @@ const EXACT: Record<string, string> = {
   "vitoria casa": "Casa",
   "casa para vencer": "Casa",
   "1": "Casa",
+  // The shorthand both players actually write on their slips.
+  v1: "Casa",
   fora: "Fora",
   "vitoria fora": "Fora",
   "2": "Fora",
+  v2: "Fora",
   empate: "Empate",
   x: "Empate",
+  vx: "Empate",
   "1x": "1X",
   "x1": "1X",
   "casa ou empate": "1X",
+  // Written with "e" by people who mean "either": caught here so the rule for
+  // genuine combinations below never sees it and reads it as both at once.
+  "casa e empate": "1X",
   "2x": "2X",
   x2: "2X",
   "fora ou empate": "2X",
+  "fora e empate": "2X",
   "12": "12",
   btts: "Ambas Marcam",
   "btts yes": "Ambas Marcam",
@@ -51,26 +59,43 @@ const EXACT: Record<string, string> = {
   "ambas marcam - sim": "Ambas Marcam",
   "ambas marcam sim": "Ambas Marcam",
   "ambas equipas marcam": "Ambas Marcam",
+  am: "Ambas Marcam",
+  "am - sim": "Ambas Marcam",
+  "am sim": "Ambas Marcam",
   "btts no": "BTTS No",
   "btts nao": "BTTS No",
   "ambas marcam - nao": "BTTS No",
   "ambas marcam nao": "BTTS No",
   "ambas nao marcam": "BTTS No",
+  "am - nao": "BTTS No",
+  "am nao": "BTTS No",
 };
 
 /**
- * The market a leg was really on.
+ * Which half of a combination a market is, and the order the halves go in.
  *
- * A bare "-3.5" is a goals line: a handicap always names the team it applies
- * to ("Suíça +0.5"), so a sign and a number with no team beside them cannot be
- * one. Anything this cannot recognise — a team name, a handicap, a wording
- * nobody anticipated — is handed back with its spacing tidied and nothing
- * else changed, because guessing would be worse than leaving it alone.
+ * The model names its own combinations result-first — "2X e Mais de 1.5 Golos"
+ * — so folding to that order is what makes a hand-typed "+1,5 e X2" land on
+ * the very market the model already has a forecast for.
  */
-export function canonicalMarket(raw: string): string {
-  const text = plain(raw);
-  if (!text) return raw.trim();
+const RANK: Record<string, number> = {
+  Casa: 0,
+  Empate: 0,
+  Fora: 0,
+  "1X": 0,
+  "2X": 0,
+  "12": 0,
+  "Ambas Marcam": 2,
+  "BTTS No": 2,
+};
 
+function rankOf(label: string): number {
+  // Anything left is a goals line, which sits between the result and BTTS.
+  return RANK[label] ?? 1;
+}
+
+/** One market, recognised — or null, which is how a combination knows to stop. */
+function fold(text: string): string | null {
   const exact = EXACT[text];
   if (exact) return exact;
 
@@ -89,5 +114,66 @@ export function canonicalMarket(raw: string): string {
     return goalsLine(signed[1] as "-" | "+", signed[2]);
   }
 
-  return raw.trim().replace(/\s+/g, " ");
+  return null;
+}
+
+/**
+ * Two markets on one leg: "X2 e +1,5 golos", "V1 e AM - Não".
+ *
+ * Only when every half is recognised. Half a fold is worse than none — a
+ * market this cannot read in full is handed back exactly as written, because
+ * "Casa e escanteios acima" tidied into something else would be a different
+ * bet from the one somebody placed.
+ */
+function foldCombination(text: string): string | null {
+  const parts = text.split(/\s+e\s+/).filter((part) => part.length > 0);
+  if (parts.length < 2) return null;
+
+  const folded = parts.map(fold);
+  if (folded.some((part) => part === null)) return null;
+
+  return (folded as string[])
+    .slice()
+    .sort((a, b) => rankOf(a) - rankOf(b))
+    .join(" e ");
+}
+
+/**
+ * The markets worth a button.
+ *
+ * The model's own set, in the order a slip is usually built: who wins, then
+ * the double chance, then goals, then both-teams, then the two combinations
+ * the board also forecasts. A market outside this is still typed by hand —
+ * the box is never taken away.
+ */
+export const COMMON_MARKETS = [
+  "Casa",
+  "Empate",
+  "Fora",
+  "1X",
+  "2X",
+  "Mais de 1.5 Golos",
+  "Mais de 2.5 Golos",
+  "Menos de 2.5 Golos",
+  "Menos de 3.5 Golos",
+  "Ambas Marcam",
+  "BTTS No",
+  "1X e Mais de 1.5 Golos",
+  "2X e Mais de 1.5 Golos",
+];
+
+/**
+ * The market a leg was really on.
+ *
+ * A bare "-3.5" is a goals line: a handicap always names the team it applies
+ * to ("Suíça +0.5"), so a sign and a number with no team beside them cannot be
+ * one. Anything this cannot recognise — a team name, a handicap, a wording
+ * nobody anticipated — is handed back with its spacing tidied and nothing
+ * else changed, because guessing would be worse than leaving it alone.
+ */
+export function canonicalMarket(raw: string): string {
+  const text = plain(raw);
+  if (!text) return raw.trim();
+
+  return fold(text) ?? foldCombination(text) ?? raw.trim().replace(/\s+/g, " ");
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Clock, PenLine, Pencil, RotateCcw, X } from "lucide-react";
 import { BetEditor } from "@/components/BetEditor";
 import type { BoardAccess } from "@/components/GamePicker";
+import type { TypingMemory } from "@/lib/typingMemory";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import {
   Dialog,
@@ -46,6 +47,7 @@ const LEG_TONE = {
 export function BetDetailDialog({
   bet,
   access,
+  memory,
   player,
   mine,
   marking,
@@ -61,6 +63,8 @@ export function BetDetailDialog({
   bet: PlanBet | null;
   /** The board, so a correction can also put a game in rather than only out. */
   access: BoardAccess;
+  /** What has already been typed on these slips, to offer back. */
+  memory: TypingMemory;
   player: string;
   /** Only the person who placed it gets to say how its games went. */
   mine: boolean;
@@ -140,6 +144,7 @@ export function BetDetailDialog({
           <BetEditor
             bet={bet}
             access={access}
+            memory={memory}
             saving={saving}
             onSave={(legs, stake) => onSaveEdits(bet, legs, stake)}
             onDelete={() => onDelete(bet)}

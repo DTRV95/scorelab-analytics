@@ -56,6 +56,7 @@ import {
   DangerZone,
 } from "@/components/ChallengeSettings";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
+import { typingMemory } from "@/lib/typingMemory";
 import {
   acceptInvite,
   betsPlacedToday,
@@ -515,6 +516,15 @@ export default function Challenges() {
       ),
     [me],
   );
+
+  /**
+   * What has already been typed on this challenge's slips.
+   *
+   * Both players' bets, not only this person's: a team the brother spelled
+   * once is a spelling worth offering back, and the point is that the next
+   * slip lands on a name that already exists instead of inventing a third.
+   */
+  const memory = useMemo(() => typingMemory(bets), [bets]);
 
   /**
    * The board of games and everything said about how it was fetched, in one
@@ -1293,6 +1303,7 @@ export default function Challenges() {
           <motion.div variants={fadeUp}>
             <BetComposer
               access={access}
+              memory={memory}
               rules={rules}
               day={me.day}
               bankroll={me.bankroll}
@@ -1647,6 +1658,7 @@ export default function Challenges() {
         <BetDetailDialog
           bet={openBet?.bet ?? null}
           access={access}
+          memory={memory}
           player={openBet?.player ?? ""}
           mine={openBet?.bet.userId === user?.id}
           marking={marking}

@@ -12,6 +12,7 @@ import type { PlayerStyle } from "@/lib/bettingStyle";
 import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
+import type { TypingMemory } from "@/lib/typingMemory";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -48,6 +49,7 @@ function toOdds(raw: string): number {
  */
 export function BetComposer({
   access,
+  memory,
   rules,
   day,
   bankroll,
@@ -64,6 +66,8 @@ export function BetComposer({
 }: {
   /** The board of games, and everything said about how it was fetched. */
   access: BoardAccess;
+  /** What has already been typed on these slips, to offer back. */
+  memory: TypingMemory;
   rules: ChallengeRules;
   day: number;
   bankroll: number;
@@ -291,6 +295,7 @@ export function BetComposer({
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         access={access}
+        memory={memory}
         chosenIds={chosenIds}
         onPick={addGame}
         footer={
