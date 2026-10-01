@@ -56,6 +56,7 @@ import {
   DangerZone,
 } from "@/components/ChallengeSettings";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
+import { markSeen } from "@/lib/seenStore";
 import { typingMemory } from "@/lib/typingMemory";
 import {
   acceptInvite,
@@ -357,6 +358,14 @@ export default function Challenges() {
       cancelled = true;
     };
   }, [token]);
+
+  // Looking at it is what makes it seen. The mark moves on the way in rather
+  // than on the way out, because a tab closed, a phone locked or a back button
+  // never fire anything, and a challenge read five times would stay unread.
+  useEffect(() => {
+    if (!planId || !user?.id) return;
+    markSeen(user.id, planId);
+  }, [planId, user?.id, bets]);
 
   // The contents of whichever challenge is being looked at.
   useEffect(() => {
