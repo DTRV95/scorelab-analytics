@@ -5,9 +5,6 @@ const LAST_USER_KEY = "scorelab_last_user_id";
 const MULTIPLES_KEY = "scorelab_multiples";
 const MULTIPLE_DRAFT_KEY = "scorelab_multiple_draft";
 const BANKROLL_SETTINGS_KEY = "scorelab_bankroll_settings";
-const ROADMAP_SETTINGS_KEY = "scorelab_roadmap_settings";
-const ROADMAP_DAY_MEMORIES_KEY = "scorelab_roadmap_day_memories";
-const ROADMAP_MISSIONS_KEY = "scorelab_roadmap_missions";
 const STORAGE_METADATA_KEY = "scorelab_storage_metadata";
 const STORAGE_BACKUP_KEY = "scorelab_storage_backup_latest";
 
@@ -22,18 +19,6 @@ const ENTITY_CONFIG = {
   bankroll_settings: {
     storageKey: BANKROLL_SETTINGS_KEY,
     fallback: {} as Record<string, unknown>,
-  },
-  roadmap_settings: {
-    storageKey: ROADMAP_SETTINGS_KEY,
-    fallback: {} as Record<string, unknown>,
-  },
-  roadmap_day_memories: {
-    storageKey: ROADMAP_DAY_MEMORIES_KEY,
-    fallback: [] as unknown[],
-  },
-  roadmap_missions: {
-    storageKey: ROADMAP_MISSIONS_KEY,
-    fallback: [] as unknown[],
   },
   layout_settings: {
     storageKey: "scorelab_layout_settings",
@@ -67,9 +52,6 @@ export interface StorageSnapshotPayload {
   multiples: unknown[];
   multiple_draft: unknown[];
   bankroll_settings: Record<string, unknown>;
-  roadmap_settings: Record<string, unknown>;
-  roadmap_day_memories: unknown[];
-  roadmap_missions: unknown[];
 }
 
 let queuedPersistTimeout: number | null = null;
@@ -81,9 +63,8 @@ const LOCAL_RESET_KEYS = [
   MULTIPLES_KEY,
   MULTIPLE_DRAFT_KEY,
   BANKROLL_SETTINGS_KEY,
-  ROADMAP_SETTINGS_KEY,
-  ROADMAP_DAY_MEMORIES_KEY,
-  ROADMAP_MISSIONS_KEY,
+  // The roadmap's three keys were cleared here too, until the page they
+  // belonged to was taken out of the app.
   STORAGE_METADATA_KEY,
   STORAGE_BACKUP_KEY,
   `${STORAGE_METADATA_KEY}_snapshot`,
@@ -206,9 +187,6 @@ export function getLocalStorageSnapshot(): StorageSnapshotPayload {
     multiples: readJson(MULTIPLES_KEY, []),
     multiple_draft: readJson(MULTIPLE_DRAFT_KEY, []),
     bankroll_settings: readJson(BANKROLL_SETTINGS_KEY, {}),
-    roadmap_settings: readJson(ROADMAP_SETTINGS_KEY, {}),
-    roadmap_day_memories: readJson(ROADMAP_DAY_MEMORIES_KEY, []),
-    roadmap_missions: readJson(ROADMAP_MISSIONS_KEY, []),
   };
 }
 
@@ -217,10 +195,7 @@ function snapshotHasMeaningfulData(snapshot: StorageSnapshotPayload) {
     snapshot.analyses.length > 0 ||
     snapshot.multiples.length > 0 ||
     snapshot.multiple_draft.length > 0 ||
-    Object.keys(snapshot.bankroll_settings).length > 0 ||
-    Object.keys(snapshot.roadmap_settings).length > 0 ||
-    snapshot.roadmap_day_memories.length > 0 ||
-    snapshot.roadmap_missions.length > 0
+    Object.keys(snapshot.bankroll_settings).length > 0
   );
 }
 

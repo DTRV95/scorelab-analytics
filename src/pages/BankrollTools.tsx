@@ -1,463 +1,245 @@
-﻿import { AppLayout } from "@/components/layout/AppLayout";
-import { getEdgeZoneSummary } from "@/lib/edgeInteligence";
-import {
-  type DailyPerformanceItem,
-  saveBankrollSettings,
-  getMarketPerformance,
-  getEdgeBucketPerformance,
-  getConfidenceBucketPerformance,
-  getQualityScorePerformance,
-} from "@/lib/analysisStorage";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  Area,
-  Bar,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { MatchdayHero } from "@/components/MatchdayHero";
-import { HudStateIcon, HudStatusPill } from "@/components/HudLayer";
-import { PulseOnChange } from "@/components/MotionIntelligence";
-import { StadiumLightSweep } from "@/components/ArenaEffects";
-import { SystemPulse3D } from "@/components/SystemPulse3D";
-import { useScoreLabData } from "@/hooks/useScoreLabData";
-import { getModelAuditSummary } from "@/lib/modelAudit";
-import {
-  buildTrueEdgeValidationModel,
-  type TrueEdgeVerdict,
-} from "@/lib/trueEdgeValidation";
+import { ArrowRight, Clock, Plus } from "lucide-react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { BankrollTrend } from "@/components/BankrollTrend";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
+import type { HomeChallenge } from "@/lib/homeBoard";
 
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
+const eur = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
 
-const TRUE_EDGE_FILTERS = ["All", "Trusted", "Promising", "Watch", "Avoid", "Learning"] as const;
-type TrueEdgeFilter = (typeof TRUE_EDGE_FILTERS)[number];
+const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
+const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
+const signed = (value: number) =>
+  `${value >= 0 ? "+" : ""}${eur.format(value)}`;
 
-type ChartRow = Record<string, string | number | null | undefined>;
+const days = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
 
-const resultColors: Record<string, string> = {
-  Greens: "rgba(34,197,94,0.95)",
-  Reds: "rgba(239,68,68,0.95)",
-  Pending: "rgba(234,179,8,0.95)",
-  Voids: "rgba(148,163,184,0.9)",
-};
+const tone = (value: number) =>
+  value > 0
+    ? "text-[hsl(var(--sl-green))]"
+    : value < 0
+      ? "text-destructive"
+      : "text-foreground";
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
-function getTrueEdgeVerdictClass(verdict: TrueEdgeVerdict) {
-  if (verdict === "Trusted") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-700";
-  if (verdict === "Promising") return "border-primary/30 bg-primary/10 text-primary";
-  if (verdict === "Avoid") return "border-red-300/25 bg-red-300/10 text-red-700";
-  if (verdict === "Watch") return "border-amber-300/25 bg-amber-300/10 text-amber-700";
-  return "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground";
-}
-
-function getLocalDateKey(dateInput: string | null | undefined) {
-  if (!dateInput) return null;
-
-  const date = new Date(dateInput);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function ToolTipCard({
-  active,
-  payload,
-  label,
-  valueLabel = "Value",
-  suffix = "",
-}: {
-  active?: boolean;
-  payload?: Array<{ value?: number | string }>;
-  label?: string;
-  valueLabel?: string;
-  suffix?: string;
-}) {
-  if (!active || !payload || !payload.length) return null;
-
-  const value = payload[0]?.value;
-
-  return (
-    <div className="scorelab-chart-tooltip rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-foreground">
-        {valueLabel}:{" "}
-        <span className="font-mono-data">
-          {typeof value === "number" ? `${value.toFixed(2)}${suffix}` : value}
-        </span>
-      </p>
-    </div>
+/**
+ * How much money each challenge is holding.
+ *
+ * Magnitude, so one hue and no legend — the heading names it. The tick is
+ * where the challenge started: a bar can be the longest on screen and still be
+ * behind, and that is the thing worth seeing at a glance.
+ */
+function WhereTheMoneyIs({ rows }: { rows: HomeChallenge[] }) {
+  const top = Math.max(
+    ...rows.map((row) => Math.max(row.standing.bankroll, row.standing.startingBankroll)),
+    1,
   );
-}
 
-function SectionCard({
-  title,
-  description,
-  badge,
-  children,
-  className = "",
-}: {
-  title: string;
-  description?: string;
-  badge?: string;
-  children: ReactNode;
-  className?: string;
-}) {
   return (
-    <motion.section
-      variants={fadeUp}
-      className={`relative overflow-hidden rounded-[26px] border border-border ${className}`}
-    >
-      <div className="relative z-10 flex items-start justify-between gap-4 border-b border-border px-4 py-3.5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground md:text-[15px]">{title}</h2>
-          {description ? (
-            <p className="mt-1 text-xs leading-6 text-muted-foreground md:text-[13px]">{description}</p>
-          ) : null}
-        </div>
-        {badge ? (
-          <span className="sl-pill sl-pill-muted px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
-            {badge}
-          </span>
-        ) : null}
+    <section className="sl-card overflow-hidden">
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-[13px] font-semibold text-foreground">
+          Onde está a banca
+        </h2>
+        <p className="sl-meta text-[11px]">
+          A marca em cada barra é onde esse desafio começou.
+        </p>
       </div>
-      <div className="relative z-10 p-4">{children}</div>
-    </motion.section>
-  );
-}
 
-function FocusMetric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border p-3.5">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 font-mono-data text-lg font-semibold text-foreground md:text-[1.15rem]">
-        {value}
-      </p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
+      <div className="space-y-3 px-4 py-3.5">
+        {rows.map(({ plan, standing }) => {
+          const width = (standing.bankroll / top) * 100;
+          const start = (standing.startingBankroll / top) * 100;
+          const moved = standing.bankroll - standing.startingBankroll;
 
-function CompactStatCard({
-  label,
-  value,
-  change,
-  changeType = "neutral",
-}: {
-  label: string;
-  value: string;
-  change?: string;
-  changeType?: "positive" | "negative" | "neutral";
-}) {
-  return (
-    <PulseOnChange value={`${value}-${change ?? ""}`}>
-      <StadiumLightSweep trigger={`${value}-${change ?? ""}`}>
-        <motion.div
-          whileHover={{ y: -1 }}
-          transition={{ type: "spring", stiffness: 360, damping: 26 }}
-          className="relative overflow-hidden rounded-[20px] border border-border px-4 py-3.5"
-        >
-          <div className="relative">
-            <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-              {label}
-            </p>
-            <div className="mt-2 h-1 w-8 rounded-full bg-primary" />
-            <p className="mt-3 font-mono-data text-[1.28rem] font-semibold tracking-[-0.03em] text-foreground md:text-[1.46rem]">
-              {value}
-            </p>
-            {change ? (
-              <p
-                className={`mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.11em] leading-4 ${
-                  changeType === "positive"
-                    ? "text-emerald-700"
-                    : changeType === "negative"
-                    ? "text-red-400"
-                    : "text-muted-foreground"
-                }`}
+          return (
+            <div key={plan.id}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate text-[12px] font-semibold text-foreground">
+                  {plan.name}
+                </span>
+                <span className="sl-figure flex-none text-[12px] text-foreground">
+                  {eur.format(standing.bankroll)}
+                </span>
+              </div>
+
+              <div
+                className="relative mt-1 h-2.5 overflow-hidden rounded-full bg-muted"
+                title={`${plan.name}: ${eur.format(standing.bankroll)}, começou em ${eur.format(standing.startingBankroll)}`}
               >
-                {change}
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${Math.max(width, 2)}%` }}
+                />
+                <div
+                  className="absolute inset-y-0 w-px bg-foreground/45"
+                  style={{ left: `${Math.min(start, 99.5)}%` }}
+                />
+              </div>
+
+              <p className="sl-meta mt-1 text-[10px]">
+                começou em {eur.format(standing.startingBankroll)} ·{" "}
+                <span className={tone(moved)}>{signed(moved)}</span>
               </p>
-            ) : null}
-          </div>
-        </motion.div>
-      </StadiumLightSweep>
-    </PulseOnChange>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
-function SegmentBarCard({
-  title,
-  description,
-  data,
-  yKey,
-  valueKey = "roi",
-  suffix = "%",
-}: {
-  title: string;
-  description: string;
-  data: ChartRow[];
-  yKey: string;
-  valueKey?: string;
-  suffix?: string;
-}) {
-  const safeData = Array.isArray(data) ? data : [];
+/**
+ * What the betting alone did to each challenge.
+ *
+ * Polarity, so the bars leave a middle line in the direction they went. Green
+ * and red are only eight units apart for a deuteranope, which is why the side
+ * of the line, the sign and the figure all say it too — the colour is the last
+ * of four ways to read this, not the only one.
+ */
+function WhatEachOneDid({ rows }: { rows: HomeChallenge[] }) {
+  const worst = Math.max(
+    ...rows.map((row) => Math.abs(row.standing.profit)),
+    1,
+  );
 
   return (
-    <SectionCard title={title} description={description} badge="Segments">
-      <div className="h-[240px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={safeData}
-            layout="vertical"
-            margin={{ top: 8, right: 4, left: 8, bottom: 0 }}
-          >
-            <CartesianGrid
-              stroke="hsl(var(--border))"
-              horizontal
-              vertical={false}
-              strokeDasharray="3 3"
-            />
-            <XAxis
-              type="number"
-              axisLine={false}
-              tickLine={false}
-              tickMargin={10}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-            />
-            <YAxis
-              type="category"
-              dataKey={yKey}
-              width={90}
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-            />
-            <Tooltip content={<ToolTipCard valueLabel={title} suffix={suffix} />} />
-            <Bar dataKey={valueKey} radius={[0, 10, 10, 0]} maxBarSize={26}>
-              {safeData.map((entry, index) => {
-                const value = Number(entry[valueKey] ?? 0);
-                return (
-                  <Cell
-                    key={index}
-                    fill={
-                      value >= 0
-                        ? "rgba(16,185,129,0.9)"
-                        : "rgba(239,68,68,0.92)"
+    <section className="sl-card overflow-hidden">
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-[13px] font-semibold text-foreground">
+          O que cada desafio deu
+        </h2>
+        <p className="sl-meta text-[11px]">
+          Só as apostas. O dinheiro que puseste fica de fora desta conta.
+        </p>
+      </div>
+
+      <div className="space-y-3 px-4 py-3.5">
+        {rows.map(({ plan, standing }) => {
+          const up = standing.profit >= 0;
+          const half = (Math.abs(standing.profit) / worst) * 50;
+
+          return (
+            <div key={plan.id}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate text-[12px] font-semibold text-foreground">
+                  {plan.name}
+                </span>
+                <span
+                  className={`sl-figure flex-none text-[12px] ${tone(standing.profit)}`}
+                >
+                  {signed(standing.profit)}
+                </span>
+              </div>
+
+              <div
+                className="relative mt-1 h-2.5 rounded-full bg-muted"
+                title={`${plan.name}: ${signed(standing.profit)} das apostas`}
+              >
+                <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+                {standing.profit !== 0 && (
+                  <div
+                    className={`absolute inset-y-0 rounded-full ${
+                      up ? "bg-[hsl(var(--sl-green))]" : "bg-destructive"
+                    }`}
+                    style={
+                      up
+                        ? { left: "calc(50% + 1px)", width: `${Math.max(half, 1)}%` }
+                        : { right: "calc(50% + 1px)", width: `${Math.max(half, 1)}%` }
                     }
                   />
-                );
-              })}
-            </Bar>
-          </ComposedChart>
-        </ResponsiveContainer>
+                )}
+              </div>
+
+              <p className="sl-meta mt-1 text-[10px]">
+                {days(standing.greens, "ganho", "ganhos")} ·{" "}
+                {days(standing.reds, "perdido", "perdidos")}
+                {standing.added !== 0
+                  ? ` · ${signed(standing.added)} postos à parte`
+                  : ""}
+              </p>
+            </div>
+          );
+        })}
       </div>
-    </SectionCard>
+    </section>
   );
 }
 
+/** What is riding on days nobody has closed yet. */
+function AtRisk({ staked, could, bankroll }: {
+  staked: number;
+  could: number;
+  bankroll: number;
+}) {
+  const share = bankroll > 0 ? Math.min((staked / bankroll) * 100, 100) : 0;
+
+  return (
+    <section className="sl-card overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <Clock className="h-3.5 w-3.5 text-amber-700" />
+        <h2 className="text-[13px] font-semibold text-foreground">
+          O que está em jogo
+        </h2>
+      </div>
+
+      <div className="px-4 py-3.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="sl-figure text-[17px] text-foreground">
+            {eur.format(staked)}
+          </span>
+          <span className="sl-meta text-[11px]">
+            {share.toFixed(0)}% da banca
+          </span>
+        </div>
+
+        <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-amber-500"
+            style={{ width: `${Math.max(share, 2)}%` }}
+          />
+        </div>
+
+        <p className="sl-meta mt-2 text-[11px]">
+          Se entrarem todos, a banca passa a{" "}
+          <span className="sl-figure text-foreground">
+            {eur.format(bankroll + could)}
+          </span>
+          .
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The money, and what moved it.
+ *
+ * The page that used to live here ran on the saved analyses — a store the
+ * challenges never write to — so it showed a bankroll nobody recognised and
+ * eleven panels of text about it. This is the same money the rest of the app
+ * counts, drawn rather than described.
+ */
 export default function BankrollTools() {
-  const { analyses, financialSnapshot, dataVersion, refresh } = useScoreLabData();
-  const stats = financialSnapshot.stats;
-  const [initialBankrollInput, setInitialBankrollInput] = useState("");
-  const [savedMessage, setSavedMessage] = useState("");
-  const [showAllDailyPerformance, setShowAllDailyPerformance] = useState(false);
-  const [trueEdgeFilter, setTrueEdgeFilter] = useState<TrueEdgeFilter>("All");
+  const { board, bets, started, loading } = usePlanBoard();
 
-  useEffect(() => {
-    setInitialBankrollInput(
-      stats.initialBankroll ? String(stats.initialBankroll) : ""
-    );
-  }, [stats.initialBankroll]);
-
-  const marketPerformance = useMemo(
-    () => {
-      void dataVersion;
-      return         getMarketPerformance(analyses);
-    },
-    [analyses, dataVersion]
+  const rows = board?.challenges ?? [];
+  const staked = rows.reduce((sum, row) => sum + row.standing.openStake, 0);
+  const could = rows.reduce(
+    (sum, row) =>
+      sum +
+      row.standing.bets
+        .filter((bet) => bet.status === "pending")
+        .reduce((total, bet) => total + bet.stake * bet.odds - bet.stake, 0),
+    0,
   );
-  const edgeBucketPerformance = useMemo(
-    () => {
-      void dataVersion;
-      return getEdgeBucketPerformance(analyses);
-    },
-    [analyses, dataVersion]
-  );
-  const confidenceBucketPerformance = useMemo(
-    () => {
-      void dataVersion;
-      return getConfidenceBucketPerformance(analyses);
-    },
-    [analyses, dataVersion]
-  );
-  const qualityScorePerformance = useMemo(
-    () => {
-      void dataVersion;
-      return getQualityScorePerformance(analyses);
-    },
-    [analyses, dataVersion]
-  );
-  const edgeZoneSummary = useMemo(() => {
-    void dataVersion;
-    return getEdgeZoneSummary();
-  }, [dataVersion]);
-  const trueEdgeValidation = useMemo(
-    () => buildTrueEdgeValidationModel(analyses),
-    [analyses]
-  );
-  const modelAuditSummary = useMemo(
-    () => getModelAuditSummary(analyses),
-    [analyses]
-  );
-
-  const handleSaveBankroll = () => {
-    const parsedValue = Number(initialBankrollInput);
-
-    if (Number.isNaN(parsedValue) || parsedValue < 0) {
-      setSavedMessage("Please enter a valid bankroll value.");
-      return;
-    }
-
-    saveBankrollSettings({ initialBankroll: parsedValue });
-    refresh();
-    setSavedMessage("Bankroll baseline saved successfully.");
-
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
-  };
-
-  const bankrollEvolutionData = financialSnapshot.bankrollEvolution;
-
-  const performanceData = useMemo(
-    () => [
-      { name: "Greens", value: stats.totalGreens },
-      { name: "Reds", value: stats.totalReds },
-      { name: "Pending", value: stats.totalPending },
-      { name: "Voids", value: stats.totalVoids },
-    ],
-    [stats]
-  );
-
-  const openExposure = financialSnapshot.openExposure;
-
-  const openExposurePct =
-    stats.currentBankroll > 0 ? (openExposure / stats.currentBankroll) * 100 : 0;
-  const openPotentialProfit = financialSnapshot.openPotentialProfit;
-  const combinedDailyPerformance = financialSnapshot.dailyPerformance;
-  const todayPerformance = financialSnapshot.todayPerformance;
-  const combinedDrawdownSeries = financialSnapshot.drawdownSeries;
-  const currentDrawdown = combinedDrawdownSeries.at(-1)?.drawdownPct ?? 0;
-  const maxDrawdown = combinedDrawdownSeries.reduce(
-    (worst, point) => Math.min(worst, point.drawdownPct),
-    0
-  );
-  const edgeBucketChartData: ChartRow[] = edgeBucketPerformance.map((item) => ({
-    ...item,
-  }));
-  const confidenceBucketChartData: ChartRow[] = confidenceBucketPerformance.map(
-    (item) => ({ ...item })
-  );
-  const qualityScoreChartData: ChartRow[] = qualityScorePerformance.map((item) => ({
-    ...item,
-  }));
-  const strongestMarket = useMemo(
-    () =>
-      [...marketPerformance].sort((a, b) => {
-        if (b.profitLoss !== a.profitLoss) return b.profitLoss - a.profitLoss;
-        return b.hitRate - a.hitRate;
-      })[0] || null,
-    [marketPerformance]
-  );
-  const betResultsTotal = performanceData.reduce((acc, item) => acc + item.value, 0);
-  const combinedDailyProfitSeries = useMemo(
-    () =>
-      combinedDailyPerformance
-        .slice()
-        .reverse()
-        .map((day) => ({
-          date: day.date.slice(5),
-          profitLoss: Number(day.profitLoss.toFixed(2)),
-          growthPct: Number(day.growthPct.toFixed(2)),
-        })),
-    [combinedDailyPerformance]
-  );
-  const visibleDailyPerformance: DailyPerformanceItem[] = showAllDailyPerformance
-    ? combinedDailyPerformance
-    : combinedDailyPerformance.slice(0, 5);
-  const hiddenDailyRows = Math.max(0, combinedDailyPerformance.length - 5);
-  const marketPerformanceRows = useMemo(
-    () => [...marketPerformance].sort((a, b) => b.hitRate - a.hitRate),
-    [marketPerformance]
-  );
-  const trueEdgeRows = useMemo(() => {
-    const rows = trueEdgeValidation.segments.filter((segment) =>
-      trueEdgeFilter === "All" ? true : segment.verdict === trueEdgeFilter
-    );
-
-    return rows
-      .sort((a, b) => {
-        const verdictOrder: Record<TrueEdgeVerdict, number> = {
-          Trusted: 0,
-          Promising: 1,
-          Avoid: 2,
-          Watch: 3,
-          Learning: 4,
-        };
-        const verdictDiff = verdictOrder[a.verdict] - verdictOrder[b.verdict];
-        if (verdictDiff !== 0) return verdictDiff;
-        if (b.trueEdgeScore !== a.trueEdgeScore) return b.trueEdgeScore - a.trueEdgeScore;
-        return b.settled - a.settled;
-      })
-      .slice(0, 8);
-  }, [trueEdgeFilter, trueEdgeValidation.segments]);
-  const bankrollHeroTone =
-    openExposurePct > 8
-      ? "red"
-      : stats.totalProfitLoss >= 0
-      ? "emerald"
-      : "cyan";
-  const bankrollHeroState =
-    openExposurePct > 8 ? "risk" : openExposure > 0 ? "scanning" : "online";
+  const added = rows.reduce((sum, row) => sum + row.standing.added, 0);
 
   return (
     <AppLayout>
@@ -465,771 +247,106 @@ export default function BankrollTools() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-8 p-6"
+        className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6"
       >
-        <MatchdayHero
-          eyebrow="Bankroll Workspace"
-          tone={bankrollHeroTone}
-          statusIcon={<HudStateIcon state={bankrollHeroState} />}
-          title="Bankroll Tools"
-          description="Treat the bankroll as an operating system: set the baseline, track pressure on capital and understand where performance is really coming from."
-          statusItems={
-            <>
-              <HudStatusPill
-                label={`${openExposurePct.toFixed(1)}% Exposure`}
-                tone={openExposurePct > 8 ? "red" : openExposure > 0 ? "amber" : "cyan"}
-                icon={<HudStateIcon state={openExposurePct > 8 ? "risk" : "scanning"} />}
-              />
-              <HudStatusPill
-                label={`${stats.totalPending} Pending`}
-                tone={stats.totalPending > 0 ? "amber" : "emerald"}
-                icon={<HudStateIcon state={stats.totalPending > 0 ? "scanning" : "online"} />}
-              />
-              <HudStatusPill
-                label={`${stats.roi.toFixed(2)}% ROI`}
-                tone={stats.roi >= 0 ? "emerald" : "red"}
-                icon={<HudStateIcon state={stats.roi >= 0 ? "online" : "risk"} />}
-              />
-            </>
-          }
-          visual={
-            <SystemPulse3D
-              label="Capital Pulse"
-              value={formatCurrency(stats.currentBankroll)}
-              detail={`Net P/L ${formatCurrency(stats.totalProfitLoss)} with ${formatCurrency(openExposure)} open.`}
-              tone={bankrollHeroTone}
-            />
-          }
-        />
-
-        <SectionCard
-          title="Bankroll Baseline"
-          description="This starting balance powers growth, drawdown and bankroll health calculations across the product."
-          badge="Setup"
-        >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="w-full lg:max-w-xs">
-              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Starting bankroll
-              </label>
-              <input
-                type="number"
-                value={initialBankrollInput}
-                onChange={(e) => setInitialBankrollInput(e.target.value)}
-                placeholder="Enter bankroll"
-                className="h-11 w-full rounded-lg border border-border bg-input px-4 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="flex items-end gap-3">
-              <button
-                type="button"
-                onClick={handleSaveBankroll}
-                className="h-11 rounded-2xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-              >
-                Save baseline
-              </button>
-              {savedMessage ? (
-                <p className="text-sm text-primary">{savedMessage}</p>
-              ) : null}
-            </div>
-          </div>
-        </SectionCard>
-
-        <motion.div
-          variants={fadeUp}
-          className="grid grid-cols-2 gap-2.5 xl:grid-cols-4"
-        >
-            <CompactStatCard
-              label="Free Bankroll"
-              value={formatCurrency(stats.currentBankroll)}
-              change={`${stats.totalBetsPlaced} tracked bets`}
-              changeType="neutral"
-            />
-            <CompactStatCard
-              label="Net P/L"
-              value={formatCurrency(stats.totalProfitLoss)}
-              change={`${stats.roi.toFixed(2)}% return on total staked`}
-              changeType={stats.totalProfitLoss >= 0 ? "positive" : "negative"}
-            />
-            <CompactStatCard
-              label="Open Exposure"
-              value={formatCurrency(openExposure)}
-              change={`${openExposurePct.toFixed(1)}% of free bankroll`}
-              changeType={openExposurePct > 8 ? "negative" : "neutral"}
-            />
-            <CompactStatCard
-              label="Max Drawdown"
-              value={`${maxDrawdown.toFixed(2)}%`}
-              change={`Live drawdown ${currentDrawdown.toFixed(2)}%`}
-              changeType={maxDrawdown < -8 ? "negative" : "neutral"}
-            />
+        <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
+          <h1 className="sl-section-title text-[15px]">Banca</h1>
+          <p className="sl-meta mt-1 text-[11px]">
+            Onde está o dinheiro, e o que o fez mexer.
+          </p>
         </motion.div>
 
-        <motion.div
-          variants={fadeUp}
-          className="grid grid-cols-2 gap-2.5 xl:grid-cols-4"
-        >
-            <CompactStatCard
-              label="Potential Profit"
-              value={formatCurrency(openPotentialProfit)}
-              change="If every open position wins"
-              changeType={openPotentialProfit > 0 ? "positive" : "neutral"}
-            />
-        </motion.div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
-          <SectionCard
-            title="Bankroll Health"
-            description="A practical read on how capital is behaving right now."
-            badge="Overview"
+        {!loading && rows.length === 0 && (
+          <motion.div
+            variants={fadeUp}
+            className="sl-card flex items-center gap-3 px-4 py-4"
           >
-            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-              <FocusMetric
-                label="Hit Rate"
-                value={`${stats.hitRate.toFixed(2)}%`}
-                detail={`${stats.totalGreens} wins and ${stats.totalReds} losses`}
-              />
-              <FocusMetric
-                label="Pending Bets"
-                value={String(stats.totalPending)}
-                detail="Open positions still affecting your risk"
-                />
-                <FocusMetric
-                  label="Settled Today"
-                  value={todayPerformance ? `${todayPerformance.growthPct.toFixed(2)}%` : "0.00%"}
-                  detail={
-                    todayPerformance
-                      ? `${formatCurrency(todayPerformance.profitLoss)} across ${todayPerformance.settledBets} settled bets`
-                      : "No settled bets today"
-                  }
-                />
-              <FocusMetric
-                label="Best Market"
-                value={strongestMarket?.market ?? "N/A"}
-                detail={
-                  strongestMarket
-                    ? `${formatCurrency(strongestMarket.profitLoss)} profit so far`
-                    : "Track results to identify your strongest market"
-                }
-              />
-            </div>
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/12">
+              <Plus className="h-4 w-4 text-primary" />
+            </span>
+            <span className="min-w-0 flex-1 text-[13px] font-semibold text-foreground">
+              A banca vive dentro dos desafios. Ainda não tens nenhum.
+            </span>
+            <Link
+              to="/desafios"
+              className="sl-btn-primary sl-tap flex h-10 flex-none items-center rounded-xl px-4 text-xs font-semibold"
+            >
+              Ver
+            </Link>
+          </motion.div>
+        )}
 
-            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Strongest Zone
-                </p>
-                <p className="mt-2 text-sm text-foreground">
-                  {edgeZoneSummary.bestMarket
-                    ? `${edgeZoneSummary.bestMarket.market} is currently your strongest tracked zone.`
-                    : "No strong zone detected yet."}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {edgeZoneSummary.bestMarket
-                    ? `${edgeZoneSummary.bestMarket.bets} bets · ${edgeZoneSummary.bestMarket.roi.toFixed(2)}% ROI`
-                    : "Once you have enough settled bets, this section will become more informative."}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Confidence Check
-                </p>
-                <p className="mt-2 text-sm text-foreground">
-                  {edgeZoneSummary.bestConfidenceBucket
-                    ? `Confidence bucket ${edgeZoneSummary.bestConfidenceBucket.bucket} is leading.`
-                    : "Confidence buckets need more settled data."}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {edgeZoneSummary.bestConfidenceBucket
-                    ? `${edgeZoneSummary.bestConfidenceBucket.bets} bets · ${edgeZoneSummary.bestConfidenceBucket.roi.toFixed(2)}% ROI`
-                    : "Keep tracking outcomes to validate whether confidence is actually predictive."}
-                </p>
-              </div>
-              <div
-                className={`rounded-xl border p-4 ${
-                  trueEdgeValidation.bestSegment
-                    ? "border-emerald-300/18 bg-emerald-300/[0.06]"
-                    : trueEdgeValidation.strongestWarning
-                    ? "border-red-300/18 bg-red-300/[0.06]"
-                    : "border-border bg-[hsl(var(--sl-surface))]"
-                }`}
-              >
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  True Edge
-                </p>
-                <p className="mt-2 text-sm text-foreground">
-                  {trueEdgeValidation.bestSegment
-                    ? `${trueEdgeValidation.bestSegment.label} is validated.`
-                    : trueEdgeValidation.strongestWarning
-                    ? `${trueEdgeValidation.strongestWarning.label} is failing validation.`
-                    : "No validated edge yet."}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {trueEdgeValidation.bestSegment
-                    ? `${trueEdgeValidation.bestSegment.actualHitRate.toFixed(1)}% actual vs ${trueEdgeValidation.bestSegment.expectedHitRate.toFixed(1)}% expected · ${trueEdgeValidation.bestSegment.roi.toFixed(2)}% ROI`
-                    : trueEdgeValidation.strongestWarning
-                    ? `${trueEdgeValidation.strongestWarning.actualHitRate.toFixed(1)}% actual vs ${trueEdgeValidation.strongestWarning.expectedHitRate.toFixed(1)}% expected · avoid until it improves`
-                    : "The system requires at least 8 settled results before trusting a zone."}
-                </p>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Result Mix"
-            description="Distribution of tracked outcomes across the bankroll."
-            badge="Status"
-          >
-            <div className="relative flex h-[240px] items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip content={<ToolTipCard valueLabel="Count" />} />
-                  <Pie
-                    data={performanceData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={65}
-                    outerRadius={96}
-                    paddingAngle={4}
-                    stroke="rgba(255,255,255,0.04)"
+        {rows.length > 0 && (
+          <>
+            <motion.div
+              variants={fadeUp}
+              className="sl-card grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4"
+            >
+              {[
+                { label: "Banca somada", value: eur.format(board?.bankroll ?? 0) },
+                { label: "Dinheiro posto", value: eur.format(started + added) },
+                {
+                  label: "Das apostas",
+                  value: signed(board?.profit ?? 0),
+                  tint: tone(board?.profit ?? 0),
+                },
+                {
+                  label: "Em jogo agora",
+                  value: eur.format(staked),
+                  tint: staked > 0 ? "text-amber-700" : "",
+                },
+              ].map((cell) => (
+                <div key={cell.label} className="bg-card px-3 py-3">
+                  <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
+                    {cell.label}
+                  </p>
+                  <p
+                    className={`sl-figure mt-0.5 text-[15px] ${cell.tint || "text-foreground"}`}
                   >
-                    {performanceData.map((entry, index) => (
-                      <Cell key={index} fill={resultColors[entry.name]} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute text-center">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Total
-                </p>
-                <p className="font-mono-data text-3xl font-semibold text-foreground">
-                  {betResultsTotal}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-              {performanceData.map((item) => (
-                <div
-                  key={item.name}
-                  className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] p-3"
-                >
-                  <p className="text-muted-foreground">{item.name}</p>
-                  <p className="mt-1 font-mono-data text-foreground">{item.value}</p>
+                    {cell.value}
+                  </p>
                 </div>
               ))}
-            </div>
-          </SectionCard>
-        </div>
+            </motion.div>
 
-        <SectionCard
-          title="Bankroll Evolution"
-          description="See how the bankroll moved after each settled bet instead of relying on a raw total."
-          badge="Trend"
-        >
-          <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={bankrollEvolutionData}
-                margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
+            {bets.length > 0 && (
+              <motion.div variants={fadeUp}>
+                <BankrollTrend startingBankroll={started} bets={bets} />
+              </motion.div>
+            )}
+
+            <motion.div variants={fadeUp}>
+              <WhereTheMoneyIs rows={rows} />
+            </motion.div>
+
+            <motion.div variants={fadeUp}>
+              <WhatEachOneDid rows={rows} />
+            </motion.div>
+
+            {staked > 0 && (
+              <motion.div variants={fadeUp}>
+                <AtRisk
+                  staked={staked}
+                  could={could}
+                  bankroll={board?.bankroll ?? 0}
+                />
+              </motion.div>
+            )}
+
+            <motion.div variants={fadeUp}>
+              <Link
+                to="/dashboard/analises"
+                className="sl-card sl-tap flex items-center gap-3 px-4 py-3"
               >
-                <CartesianGrid
-                  stroke="hsl(var(--border))"
-                  vertical={false}
-                  strokeDasharray="3 3"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tickMargin={10}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tickMargin={10}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                />
-                <Tooltip content={<ToolTipCard valueLabel="Bankroll" suffix="" />} />
-                <Area
-                  type="monotone"
-                  dataKey="bankroll"
-                  stroke="none"
-                  fill="rgba(16,185,129,0.12)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="bankroll"
-                  stroke="rgba(16,185,129,0.95)"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </SectionCard>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <SectionCard
-            title="Daily P/L"
-            description="Resolved day by day, so the trend is easier to trust."
-            badge="P/L"
-          >
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={combinedDailyProfitSeries}
-                  margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="hsl(var(--border))"
-                    vertical={false}
-                    strokeDasharray="3 3"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <Tooltip content={<ToolTipCard valueLabel="P/L" suffix="" />} />
-                  <Bar dataKey="profitLoss" radius={[10, 10, 0, 0]} maxBarSize={42}>
-                    {combinedDailyProfitSeries.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={
-                          entry.profitLoss >= 0
-                            ? "rgba(16,185,129,0.9)"
-                            : "rgba(239,68,68,0.92)"
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Drawdown"
-            description="Understand pressure against the bankroll peak, not just profit or loss."
-            badge="Risk"
-          >
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={combinedDrawdownSeries}
-                  margin={{ top: 8, right: 6, left: -18, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="hsl(var(--border))"
-                    vertical={false}
-                    strokeDasharray="3 3"
-                  />
-                  <XAxis
-                    dataKey="step"
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <Tooltip content={<ToolTipCard valueLabel="Drawdown" suffix="%" />} />
-                  <Area
-                    type="monotone"
-                    dataKey="drawdownPct"
-                    stroke="none"
-                    fill="rgba(239,68,68,0.12)"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="drawdownPct"
-                    stroke="rgba(239,68,68,0.92)"
-                    strokeWidth={2.5}
-                    dot={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <SegmentBarCard
-            title="ROI by Quality Score"
-            description="Validates whether high-quality bets are actually producing better returns."
-            data={qualityScoreChartData}
-            yKey="bucket"
-          />
-          <SegmentBarCard
-            title="ROI by Edge Bucket"
-            description="Use this to confirm whether the strongest model edges are really monetising."
-            data={edgeBucketChartData}
-            yKey="bucket"
-          />
-          <SegmentBarCard
-            title="ROI by Confidence Bucket"
-            description="A clean check on whether confidence is aligned with outcomes."
-            data={confidenceBucketChartData}
-            yKey="bucket"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        </div>
-
-        <SectionCard
-          title="Validation Lab"
-          description="Audit the zones the system trusts, watches or rejects before they influence roadmap execution."
-          badge="True Edge"
-          className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
-        >
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Trusted
-                </p>
-                <p className="mt-1 font-mono-data text-lg text-emerald-700">
-                  {trueEdgeValidation.summary.trustedCount}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Avoid
-                </p>
-                <p className="mt-1 font-mono-data text-lg text-red-700">
-                  {trueEdgeValidation.summary.avoidCount}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Learning
-                </p>
-                <p className="mt-1 font-mono-data text-lg text-foreground">
-                  {trueEdgeValidation.summary.learningCount}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Min Sample
-                </p>
-                <p className="mt-1 font-mono-data text-lg text-primary">8</p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {TRUE_EDGE_FILTERS.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setTrueEdgeFilter(filter)}
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
-                    trueEdgeFilter === filter
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-[hsl(var(--sl-surface))] text-muted-foreground hover:bg-[hsl(var(--sl-surface))]"
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {trueEdgeRows.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
-              No validation segments match this filter yet. Keep resolving bets and the lab will become more useful.
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-sm">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="px-4 py-3 pr-4">Segment</th>
-                      <th className="px-4 py-3 pr-4">Type</th>
-                      <th className="px-4 py-3 pr-4">Verdict</th>
-                      <th className="px-4 py-3 pr-4">Settled</th>
-                      <th className="px-4 py-3 pr-4">Actual</th>
-                      <th className="px-4 py-3 pr-4">Expected</th>
-                      <th className="px-4 py-3 pr-4">Gap</th>
-                      <th className="px-4 py-3 pr-4">ROI</th>
-                      <th className="px-4 py-3 pr-4">Score</th>
-                      <th className="px-4 py-3 pr-4">Roadmap Impact</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trueEdgeRows.map((segment) => (
-                      <tr
-                        key={segment.key}
-                        className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
-                      >
-                        <td className="px-4 py-3 pr-4 font-medium">{segment.label}</td>
-                        <td className="px-4 py-3 pr-4 text-muted-foreground">{segment.type}</td>
-                        <td className="px-4 py-3 pr-4">
-                          <span
-                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getTrueEdgeVerdictClass(
-                              segment.verdict
-                            )}`}
-                          >
-                            {segment.verdict}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">{segment.settled}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {segment.actualHitRate.toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {segment.expectedHitRate.toFixed(1)}%
-                        </td>
-                        <td
-                          className={`px-4 py-3 pr-4 font-mono-data ${
-                            segment.calibrationGap >= 0
-                              ? "text-emerald-700"
-                              : "text-red-700"
-                          }`}
-                        >
-                          {segment.calibrationGap >= 0 ? "+" : ""}
-                          {segment.calibrationGap.toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {segment.roi.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {segment.trueEdgeScore}/100
-                        </td>
-                        <td className="px-4 py-3 pr-4 text-muted-foreground">
-                          {segment.verdict === "Trusted" || segment.verdict === "Promising"
-                            ? "Can support clean picks"
-                            : segment.verdict === "Avoid"
-                            ? "Blocks clean execution"
-                            : segment.verdict === "Watch"
-                            ? "Needs stronger pick quality"
-                            : "No operational trust yet"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </SectionCard>
-
-        <div className="space-y-6">
-          <SectionCard
-            title="Daily Performance"
-            description="Operational day-by-day recap for bankroll growth and discipline."
-            badge="Daily"
-            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
-          >
-            {combinedDailyPerformance.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
-                No settled bets yet. Track results in History and this page will start showing real bankroll movement.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
-                {hiddenDailyRows > 0 ? (
-                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                    <p className="text-sm text-muted-foreground">
-                      Showing the last 5 days by default.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowAllDailyPerformance((prev) => !prev)
-                      }
-                      className="rounded-full border border-border bg-[hsl(var(--sl-surface))] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-foreground transition hover:bg-[hsl(var(--sl-surface))]"
-                    >
-                      {showAllDailyPerformance
-                        ? "Show Less"
-                        : `Show ${hiddenDailyRows} More`}
-                    </button>
-                  </div>
-                ) : null}
-                <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="px-4 py-3 pr-4">Date</th>
-                      <th className="px-4 py-3 pr-4">Start</th>
-                      <th className="px-4 py-3 pr-4">End</th>
-                      <th className="px-4 py-3 pr-4">P/L</th>
-                      <th className="px-4 py-3 pr-4">Growth</th>
-                      <th className="px-4 py-3 pr-4">Settled</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleDailyPerformance.map((item: DailyPerformanceItem) => (
-                      <tr key={item.date} className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]">
-                        <td className="px-4 py-3 pr-4 font-medium">{item.date}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {formatCurrency(item.startBankroll)}
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {formatCurrency(item.endBankroll)}
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {formatCurrency(item.profitLoss)}
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {item.growthPct.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">{item.settledBets}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Model Audit"
-            description="Paper performance for analysed games. It validates model behaviour without touching bankroll, ROI or real-money P/L."
-            badge="Model"
-            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
-          >
-            {modelAuditSummary.auditedMatches === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
-                Ainda não há jogos auditados. O acerto do modelo contra os resultados reais está em "Acerto do Modelo".
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <FocusMetric
-                    label="Audited Matches"
-                    value={String(modelAuditSummary.auditedMatches)}
-                    detail={`${modelAuditSummary.auditedMarkets} market checks`}
-                  />
-                  <FocusMetric
-                    label="Model Hit Rate"
-                    value={`${modelAuditSummary.hitRate.toFixed(1)}%`}
-                    detail={`${modelAuditSummary.greens} green / ${modelAuditSummary.reds} red`}
-                  />
-                  <FocusMetric
-                    label="Avg Model Prob."
-                    value={`${modelAuditSummary.avgModelProb.toFixed(1)}%`}
-                    detail="Average predicted probability"
-                  />
-                  <FocusMetric
-                    label="Brier Score"
-                    value={modelAuditSummary.brierScore.toFixed(3)}
-                    detail="Lower means better calibration"
-                  />
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-sm">
-                      <thead className="border-b border-border">
-                        <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                          <th className="px-4 py-3 pr-4">Market</th>
-                          <th className="px-4 py-3 pr-4">Samples</th>
-                          <th className="px-4 py-3 pr-4">Greens</th>
-                          <th className="px-4 py-3 pr-4">Reds</th>
-                          <th className="px-4 py-3 pr-4">Hit Rate</th>
-                          <th className="px-4 py-3 pr-4">Avg Prob.</th>
-                          <th className="px-4 py-3 pr-4">Brier</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modelAuditSummary.marketPerformance.slice(0, 8).map((item) => (
-                          <tr
-                            key={item.market}
-                            className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
-                          >
-                            <td className="px-4 py-3 pr-4 font-medium">{item.market}</td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">{item.samples}</td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">{item.greens}</td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">{item.reds}</td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">
-                              {item.hitRate.toFixed(1)}%
-                            </td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">
-                              {item.avgModelProb.toFixed(1)}%
-                            </td>
-                            <td className="px-4 py-3 pr-4 font-mono-data">
-                              {item.brierScore.toFixed(3)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Market Performance"
-            description="The quickest way to see which markets deserve more trust and which ones should be challenged."
-            badge="Markets"
-            className="overflow-hidden rounded-3xl border border-border bg-card ring-0"
-          >
-            {marketPerformance.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--sl-surface))] px-4 py-5 text-sm text-muted-foreground">
-                No tracked bets yet. Once you log results, market-level performance will appear here.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-border bg-[hsl(var(--sl-surface))]">
-                <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="px-4 py-3 pr-4">Market</th>
-                      <th className="px-4 py-3 pr-4">Bets</th>
-                      <th className="px-4 py-3 pr-4">Greens</th>
-                      <th className="px-4 py-3 pr-4">Reds</th>
-                      <th className="px-4 py-3 pr-4">Hit Rate</th>
-                      <th className="px-4 py-3 pr-4">P/L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marketPerformanceRows.map((item) => (
-                      <tr
-                        key={item.market}
-                        className="border-t border-border text-foreground transition-colors hover:bg-[hsl(var(--sl-surface))]"
-                      >
-                        <td className="px-4 py-3 pr-4 font-medium">{item.market}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">{item.bets}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">{item.greens}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">{item.reds}</td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {item.hitRate.toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-3 pr-4 font-mono-data">
-                          {formatCurrency(item.profitLoss)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              </div>
-            )}
-          </SectionCard>
-        </div>
+                <span className="sl-meta min-w-0 flex-1 text-[12px]">
+                  O que as apostas dizem, por mercado, por odd e por dia
+                </span>
+                <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />
+              </Link>
+            </motion.div>
+          </>
+        )}
       </motion.div>
     </AppLayout>
   );
 }
-
-
-

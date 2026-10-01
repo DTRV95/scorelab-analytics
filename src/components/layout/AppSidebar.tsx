@@ -2,14 +2,11 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Target,
   Wallet,
-  Flag,
   Settings,
   BarChart3,
   ChevronLeft,
   ChevronDown,
-  Radar,
   Gauge,
   Trophy,
   Percent,
@@ -18,27 +15,28 @@ import {
 import { useEffect, useState } from "react";
 import { fetchPlans, type PlanRecord } from "@/lib/planStore";
 
+// In Portuguese, like the pages they open. "Dashboard" opened a page whose
+// own title said "Início", and "Overview" sat above it in a second language.
 const navGroups = [
   {
-    title: "Overview",
+    title: "Geral",
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-      { title: "Bankroll Tools", url: "/bankroll", icon: Wallet },
-      { title: "Roadmap", url: "/roadmap", icon: Flag },
+      { title: "Início", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Banca", url: "/bankroll", icon: Wallet },
+      { title: "Análises", url: "/dashboard/analises", icon: BarChart3 },
     ],
   },
   {
-    title: "Analysis",
+    title: "Jogos",
     items: [
-      { title: "Probability", url: "/probability", icon: Percent },
-      { title: "Value Radar", url: "/radar", icon: Radar },
-      { title: "Acerto do Modelo", url: "/accuracy", icon: Gauge },
+      { title: "Quadro de jogos", url: "/probability", icon: Percent },
+      { title: "Acerto do modelo", url: "/accuracy", icon: Gauge },
     ],
   },
   {
-    title: "System",
+    title: "Conta",
     items: [
-      { title: "Settings", url: "/settings", icon: Settings },
+      { title: "Definições", url: "/settings", icon: Settings },
     ],
   },
 ];
@@ -83,11 +81,10 @@ export function AppSidebar() {
     ...navGroups.slice(2),
   ];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    Overview: true,
-    Analysis: true,
+    Geral: true,
+    Jogos: true,
     Desafios: true,
-    Tracking: true,
-    System: false,
+    Conta: false,
   });
 
   const toggleGroup = (groupTitle: string) => {
