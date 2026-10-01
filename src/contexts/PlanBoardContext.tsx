@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { PlanBoardContext, type PlanBoardValue } from "@/contexts/planBoardCore";
 import { useAuth } from "@/contexts/AuthContext";
 import { homeBoard, type HomeBoard } from "@/lib/homeBoard";
+import type { PlanRecord } from "@/lib/planStore";
 import {
   fetchBetsOfPlans,
   fetchFundsOfPlans,
@@ -16,11 +17,24 @@ import {
 interface Loaded {
   board: HomeBoard | null;
   bets: (PlanBet & { planId: string })[];
+  plans: PlanRecord[];
+  members: PlanMember[];
+  allBets: (PlanBet & { planId: string })[];
+  funds: (PlanFunds & { planId: string })[];
   started: number;
   loading: boolean;
 }
 
-const EMPTY: Loaded = { board: null, bets: [], started: 0, loading: true };
+const EMPTY: Loaded = {
+  board: null,
+  bets: [],
+  plans: [],
+  members: [],
+  allBets: [],
+  funds: [],
+  started: 0,
+  loading: true,
+};
 
 /**
  * The challenges, read once for the whole app.
@@ -71,6 +85,10 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
         setState({
           board: homeBoard(userId, plans, members, placed, moved),
           bets: placed.filter((bet) => bet.userId === userId),
+          plans,
+          members,
+          allBets: placed,
+          funds: moved,
           started: members
             .filter((entry) => entry.user_id === userId)
             .reduce((sum, entry) => sum + Number(entry.starting_bankroll), 0),

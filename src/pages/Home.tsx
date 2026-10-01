@@ -5,11 +5,15 @@ import { ArrowRight, BarChart3, CalendarClock, Percent } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollTrend } from "@/components/BankrollTrend";
 import { HomeChallenges } from "@/components/HomeChallenges";
+import { HomeRivals } from "@/components/HomeRivals";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { buildPlayerStyle, MIN_DECIDED } from "@/lib/bettingStyle";
 import { canonicalMarket } from "@/lib/marketNames";
+import { newsByPlan, planNews } from "@/lib/planNews";
+import { rivalries } from "@/lib/rivals";
+import { seenByPlan } from "@/lib/seenStore";
 import { type PlanBet } from "@/lib/planStore";
 import {
   readCachedBoard,
@@ -195,8 +199,33 @@ export default function Home() {
   // Read once for the whole app, so the figure here and the one in the bar at
   // the top of every page are the same figure rather than two answers to the
   // same question.
-  const { board, bets, started } = usePlanBoard();
+  const { board, bets, started, plans, members, allBets, funds } =
+    usePlanBoard();
   const [games, setGames] = useState<BoardMatch[]>([]);
+
+  // Read once per visit to this page. Leaving a challenge unmounts the home
+  // page and coming back mounts it again, so a challenge opened a moment ago
+  // has already stopped being news by the time this is read next.
+  const since = useMemo(() => seenByPlan(user?.id ?? ""), [user?.id]);
+
+  const news = useMemo(
+    () =>
+      planNews({
+        userId: user?.id ?? "",
+        members,
+        bets: allBets,
+        funds,
+        since,
+      }),
+    [user?.id, members, allBets, funds, since],
+  );
+
+  const rivals = useMemo(
+    () => rivalries(user?.id ?? "", plans, members, allBets, funds),
+    [user?.id, plans, members, allBets, funds],
+  );
+
+  const newsCounts = useMemo(() => newsByPlan(news), [news]);
 
   // The games the challenge page already fetched. Reading the stored copy
   // rather than asking again keeps the home page off the provider's ten
@@ -233,9 +262,15 @@ export default function Home() {
           </p>
         </motion.div>
 
+        {rivals.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <HomeRivals rivalries={rivals} news={news} />
+          </motion.div>
+        )}
+
         {board && (
           <motion.div variants={fadeUp}>
-            <HomeChallenges board={board} />
+            <HomeChallenges board={board} news={newsCounts} />
           </motion.div>
         )}
 

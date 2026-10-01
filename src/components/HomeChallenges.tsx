@@ -16,7 +16,7 @@ const eur = new Intl.NumberFormat("pt-PT", {
   maximumFractionDigits: 2,
 });
 
-function Row({ entry }: { entry: HomeChallenge }) {
+function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
   const { plan, standing, move } = entry;
   const waiting = standing.openBets > 0;
   const playable = move.state === "play" && !waiting;
@@ -46,9 +46,22 @@ function Row({ entry }: { entry: HomeChallenge }) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-foreground">
-            {plan.name}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="min-w-0 truncate text-[13px] font-semibold text-foreground">
+              {plan.name}
+            </p>
+            {/* What happened here while this person was away. The number is
+                beside the dot because a dot alone says "something", and the
+                thing worth knowing is whether it is one day or four. */}
+            {news > 0 && (
+              <span
+                className="flex-none rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary"
+                aria-label={`${news} ${news === 1 ? "novidade" : "novidades"}`}
+              >
+                {news}
+              </span>
+            )}
+          </div>
           <p className="sl-meta text-[11px]">
             Dia {standing.day} de {plan.days} · {eur.format(standing.bankroll)}
           </p>
@@ -83,7 +96,14 @@ function Row({ entry }: { entry: HomeChallenge }) {
  * on arriving is small: how much money there is, what is waiting to be closed,
  * and what to bet next.
  */
-export function HomeChallenges({ board }: { board: HomeBoard }) {
+export function HomeChallenges({
+  board,
+  news = {},
+}: {
+  board: HomeBoard;
+  /** How much each challenge has that this person has not seen. */
+  news?: Record<string, number>;
+}) {
   if (board.challenges.length === 0) {
     return (
       <motion.section
@@ -160,7 +180,7 @@ export function HomeChallenges({ board }: { board: HomeBoard }) {
             Agora
           </p>
           {urgent.map((entry) => (
-            <Row key={entry.plan.id} entry={entry} />
+            <Row key={entry.plan.id} entry={entry} news={news[entry.plan.id]} />
           ))}
         </div>
       )}
@@ -171,7 +191,7 @@ export function HomeChallenges({ board }: { board: HomeBoard }) {
             Os outros
           </p>
           {rest.map((entry) => (
-            <Row key={entry.plan.id} entry={entry} />
+            <Row key={entry.plan.id} entry={entry} news={news[entry.plan.id]} />
           ))}
         </div>
       )}
