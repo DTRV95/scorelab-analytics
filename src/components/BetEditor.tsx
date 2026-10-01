@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { Loader2, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Loader2, Plus, Trash2, X } from "lucide-react";
+import {
+  GamePicker,
+  type BoardAccess,
+  type PickedGame,
+} from "@/components/GamePicker";
 import { Button } from "@/components/ui/button";
 import { combineOdds, type PlanBet, type PlanLeg } from "@/lib/planStore";
 
@@ -20,19 +25,26 @@ function toNumber(raw: string): number {
  * A registered bet, corrected.
  *
  * Everything anybody can get wrong while typing a slip on a phone: the odd,
- * the market, the amount, a game that should not be in there at all. The
- * games themselves are not re-picked here — a slip with the wrong game in it
- * is a slip to take the game out of, and adding one is what the bet composer
- * is for.
+ * the market, the amount, a game that should not be in there at all — and a
+ * game that should be in there and is not. Taking one out was possible from
+ * the start; putting one in meant deleting the bet and typing the whole slip
+ * again, which is a lot to ask for one forgotten game.
+ *
+ * Only while the day is still open. On a day already closed the arithmetic is
+ * done and the games have results: a new game would arrive undecided on a bet
+ * that is not, and there is no honest answer to what that day then won.
  */
 export function BetEditor({
   bet,
+  access,
   saving,
   onSave,
   onDelete,
   onCancel,
 }: {
   bet: PlanBet;
+  /** The board, so a game can be picked here the same way it is in the slip. */
+  access: BoardAccess;
   saving: boolean;
   onSave: (legs: PlanLeg[], stake: number) => void;
   onDelete: () => void;
@@ -44,6 +56,19 @@ export function BetEditor({
     bet.legs.map((leg) => leg.odds.toFixed(2)),
   );
   const [confirming, setConfirming] = useState(false);
+  const [picking, setPicking] = useState(false);
+
+  const stillOpen = bet.status === "pending";
+
+  const chosenIds = useMemo(
+    () =>
+      new Set(
+        legs
+          .map((leg) => leg.fixtureId)
+          .filter((id): id is number => id !== null),
+      ),
+    [legs],
+  );
 
   const priced = legs.map((leg, index) => ({
     ...leg,
@@ -66,6 +91,26 @@ export function BetEditor({
   const drop = (index: number) => {
     setLegs((current) => current.filter((_, position) => position !== index));
     setOdds((current) => current.filter((_, position) => position !== index));
+  };
+
+  /** A game chosen in the pop-up, onto the slip, still undecided like the day. */
+  const add = (game: PickedGame) => {
+    setLegs((current) => [
+      ...current,
+      {
+        match: `${game.homeTeam} vs ${game.awayTeam}`,
+        homeTeam: game.homeTeam,
+        awayTeam: game.awayTeam,
+        league: game.league,
+        market: game.market,
+        odds: toNumber(game.odds),
+        modelProb: game.modelProb,
+        fixtureId: game.fixtureId,
+        kickoff: game.kickoff,
+        status: "pending",
+      },
+    ]);
+    setOdds((current) => [...current, game.odds]);
   };
 
   return (
@@ -131,6 +176,49 @@ export function BetEditor({
           </div>
         ))}
       </div>
+
+      {stillOpen ? (
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary transition hover:bg-primary/5"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Adicionar jogo
+        </button>
+      ) : (
+        <p className="sl-meta text-[11px] leading-5">
+          Só dá para juntar outro jogo enquanto o dia estiver em aberto. Põe a
+          aposta em aberto primeiro, se foi fechada cedo demais.
+        </p>
+      )}
+
+      {stillOpen && (
+        <GamePicker
+          open={picking}
+          onOpenChange={setPicking}
+          access={access}
+          chosenIds={chosenIds}
+          onPick={add}
+          title={`Juntar ao dia ${bet.day}`}
+          footer={
+            <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+              <p className="sl-meta min-w-0 flex-1 text-[11px]">
+                {legs.length === 1
+                  ? "1 jogo nesta aposta"
+                  : `${legs.length} jogos nesta aposta`}
+                {" · a odd escreve-se na correção"}
+              </p>
+              <Button
+                className="sl-btn-primary sl-tap h-10 flex-none px-5 text-xs"
+                onClick={() => setPicking(false)}
+              >
+                Concluído
+              </Button>
+            </div>
+          }
+        />
+      )}
 
       <div className="flex items-center justify-between rounded-xl bg-card px-3 py-2.5 ring-1 ring-primary/25">
         <span className="sl-meta text-[11px]">

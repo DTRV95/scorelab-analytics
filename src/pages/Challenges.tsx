@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import type { BoardAccess } from "@/components/GamePicker";
 import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
@@ -513,6 +514,24 @@ export default function Challenges() {
         ),
       ),
     [me],
+  );
+
+  /**
+   * The board of games and everything said about how it was fetched, in one
+   * piece. The slip and a correction both pick games from it, so both are
+   * handed the same thing rather than seven props each.
+   */
+  const access = useMemo<BoardAccess>(
+    () => ({
+      board,
+      boardAt,
+      boardLoading,
+      skipped,
+      unavailable,
+      usedFixtures,
+      onRefreshBoard: () => loadBoard(true),
+    }),
+    [board, boardAt, boardLoading, skipped, unavailable, usedFixtures, loadBoard],
   );
 
   /** My bets still open, newest first — the ones waiting to be closed. */
@@ -1273,7 +1292,7 @@ export default function Challenges() {
         {me && (
           <motion.div variants={fadeUp}>
             <BetComposer
-              board={board}
+              access={access}
               rules={rules}
               day={me.day}
               bankroll={me.bankroll}
@@ -1282,15 +1301,9 @@ export default function Challenges() {
               openBets={me.openBets}
               targetOdds={move?.targetOdds ?? 0}
               plannedStake={move?.stake ?? 0}
-              unavailable={unavailable}
               openSignal={pickSignal}
-              boardAt={boardAt}
-              boardLoading={boardLoading}
-              skipped={skipped}
               style={myStyle}
-              onRefreshBoard={() => loadBoard(true)}
               entryElsewhere={move?.state === "play"}
-              usedFixtures={usedFixtures}
               saving={saving}
               onPlace={place}
             />
@@ -1633,6 +1646,7 @@ export default function Challenges() {
 
         <BetDetailDialog
           bet={openBet?.bet ?? null}
+          access={access}
           player={openBet?.player ?? ""}
           mine={openBet?.bet.userId === user?.id}
           marking={marking}
