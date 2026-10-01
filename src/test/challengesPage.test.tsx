@@ -800,6 +800,25 @@ describe("choosing the market and the teams instead of spelling them", () => {
     );
   });
 
+  it("sorts the markets into families instead of one long row", async () => {
+    // Fourteen chips in one wrapped blob is a wall to read on a phone, and the
+    // heading carries the half of each name the chips would repeat: under
+    // "Golos", "+2.5" says everything "Mais de 2.5 Golos" says.
+    renderPage();
+    await openPicker();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
+    );
+
+    for (const family of ["Resultado", "Golos", "Ambas", "Combos"]) {
+      expect(screen.getByText(family)).toBeInTheDocument();
+    }
+
+    // Short on screen, whole to a screen reader.
+    const chip = screen.getByRole("button", { name: "Mais de 2.5 Golos" });
+    expect(chip).toHaveTextContent("+2.5");
+  });
+
   it("offers back the teams already written on these slips", async () => {
     renderPage();
     await openPicker();

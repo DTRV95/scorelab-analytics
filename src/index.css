@@ -1392,3 +1392,19 @@
     transform: none;
   }
 }
+
+/* iOS Safari zooms the page in whenever it focuses a field whose text is
+   under 16px, and then leaves it zoomed: typing a game by hand ended with the
+   pop-up wider than the screen and no way back to it. 16px is the threshold,
+   so every field that takes typing gets it on a touch screen.
+
+   Important because the alternative is losing to Tailwind's own text-sm, which
+   is a class and wins on specificity wherever these fields are styled — and
+   there are five copies of that style, plus every field in the shadcn kit. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

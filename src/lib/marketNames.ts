@@ -139,28 +139,63 @@ function foldCombination(text: string): string | null {
 }
 
 /**
- * The markets worth a button.
+ * The markets worth a button, in families.
  *
- * The model's own set, in the order a slip is usually built: who wins, then
- * the double chance, then goals, then both-teams, then the two combinations
- * the board also forecasts. A market outside this is still typed by hand —
- * the box is never taken away.
+ * Fourteen chips in one wrapped blob is a wall to read on a phone. The same
+ * fourteen under four headings is four short rows, and the heading carries the
+ * half of each name that would otherwise be repeated on every chip: under
+ * "Golos", "+2.5" says everything "Mais de 2.5 Golos" says.
+ *
+ * The headings are short on purpose: they sit in a fixed column beside the
+ * chips, and "Ambas marcam" wrapped that column onto two lines while
+ * "Combinados" simply ran out over the first chip.
  */
-export const COMMON_MARKETS = [
-  "Casa",
-  "Empate",
-  "Fora",
-  "1X",
-  "2X",
-  "Mais de 1.5 Golos",
-  "Mais de 2.5 Golos",
-  "Menos de 2.5 Golos",
-  "Menos de 3.5 Golos",
-  "Ambas Marcam",
-  "BTTS No",
-  "1X e Mais de 1.5 Golos",
-  "2X e Mais de 1.5 Golos",
+export interface MarketGroup {
+  title: string;
+  markets: string[];
+}
+
+export const MARKET_GROUPS: MarketGroup[] = [
+  { title: "Resultado", markets: ["Casa", "Empate", "Fora", "1X", "2X"] },
+  {
+    title: "Golos",
+    markets: [
+      "Mais de 1.5 Golos",
+      "Mais de 2.5 Golos",
+      "Menos de 2.5 Golos",
+      "Menos de 3.5 Golos",
+    ],
+  },
+  { title: "Ambas", markets: ["Ambas Marcam", "BTTS No"] },
+  {
+    title: "Combos",
+    markets: ["1X e Mais de 1.5 Golos", "2X e Mais de 1.5 Golos"],
+  },
 ];
+
+/** Every market with a button, flat, for anything that only needs the set. */
+export const COMMON_MARKETS = MARKET_GROUPS.flatMap((group) => group.markets);
+
+/**
+ * What a chip says once its heading has said the rest.
+ *
+ * Only inside a group: on its own a bare "+2.5" is a riddle, which is why
+ * everywhere else keeps the full name.
+ */
+const SHORT: Record<string, string> = {
+  "Mais de 1.5 Golos": "+1.5",
+  "Mais de 2.5 Golos": "+2.5",
+  "Menos de 2.5 Golos": "−2.5",
+  "Menos de 3.5 Golos": "−3.5",
+  "Ambas Marcam": "Sim",
+  "BTTS No": "Não",
+  "1X e Mais de 1.5 Golos": "1X e +1.5",
+  "2X e Mais de 1.5 Golos": "2X e +1.5",
+};
+
+export function shortMarket(market: string): string {
+  return SHORT[market] ?? market;
+}
 
 /**
  * The market a leg was really on.
