@@ -368,94 +368,7 @@ export function GamePicker({
           </div>
         </div>
 
-        <div className="max-h-[42vh] divide-y divide-border overflow-y-auto border-y border-border">
-          {matches.map((match) => {
-            const already = chosenIds.has(match.fixture_id);
-            const used = usedFixtures.has(match.fixture_id);
-
-            return (
-              <div key={match.fixture_id}>
-                <button
-                  type="button"
-                  disabled={already || used}
-                  onClick={() =>
-                    setPicking((current) =>
-                      current === match.fixture_id ? null : match.fixture_id,
-                    )
-                  }
-                  className="sl-tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-foreground">
-                      {match.home_name} vs {match.away_name}
-                    </p>
-                    <p className="sl-meta truncate text-[11px]">
-                      {MARKET_LABELS[match.headline_market] ??
-                        match.headline_market}{" "}
-                      {match.headline_pct.toFixed(0)}% ·{" "}
-                      {kickoffTime(match.kickoff)}
-                    </p>
-                  </div>
-                  <span
-                    className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
-                      already || used
-                        ? "text-[hsl(var(--sl-green))]"
-                        : "border border-primary/40 text-primary"
-                    }`}
-                  >
-                    {already || used ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      <Plus className="h-3.5 w-3.5" />
-                    )}
-                  </span>
-                </button>
-
-                {picking === match.fixture_id && (
-                  <MarketPicker
-                    match={match}
-                    onClose={() => setPicking(null)}
-                    onPick={(market, prob) =>
-                      addFromBoard(match, market, prob)
-                    }
-                  />
-                )}
-              </div>
-            );
-          })}
-
-          {matches.length === 0 && (
-            <div className="px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                {search
-                  ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
-                  : league
-                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
-                    : "Sem jogos no quadro neste momento. Pode ser só a fonte de dados a não responder agora."}
-              </p>
-
-              {/* An empty list is the one moment the button is actually
-                  needed, and the icon beside the search box is small and
-                  easy to miss. Say it in words, here. */}
-              {!search && (
-                <Button
-                  className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs"
-                  disabled={boardLoading}
-                  onClick={onRefreshBoard}
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
-                  />
-                  {boardLoading
-                    ? "A procurar jogos..."
-                    : "Procurar jogos outra vez"}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 py-3">
+        <div className="px-4 pb-3">
           {manualOpen ? (
             <div className="space-y-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -546,6 +459,103 @@ export function GamePicker({
               Adicionar um jogo à mão
             </button>
           )}
+        </div>
+
+        {/* One scrolling region, not two.
+            A list with its own height and its own overflow, inside a fixed
+            pop-up that also scrolls, is the arrangement iOS Safari is known to
+            refuse to scroll with a finger — and it was never worth much
+            anyway: two nested scrollers on a phone means the drag that works
+            depends on where it starts. The pop-up scrolls; the list is just a
+            list. */}
+        <div className="divide-y divide-border border-y border-border">
+          {matches.map((match) => {
+            const already = chosenIds.has(match.fixture_id);
+            const used = usedFixtures.has(match.fixture_id);
+
+            return (
+              <div key={match.fixture_id}>
+                <button
+                  type="button"
+                  disabled={already || used}
+                  onClick={() =>
+                    setPicking((current) =>
+                      current === match.fixture_id ? null : match.fixture_id,
+                    )
+                  }
+                  className="sl-tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-foreground">
+                      {match.home_name} vs {match.away_name}
+                    </p>
+                    <p className="sl-meta truncate text-[11px]">
+                      {MARKET_LABELS[match.headline_market] ??
+                        match.headline_market}{" "}
+                      {match.headline_pct.toFixed(0)}% ·{" "}
+                      {kickoffTime(match.kickoff)}
+                    </p>
+                  </div>
+                  <span
+                    className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
+                      already || used
+                        ? "text-[hsl(var(--sl-green))]"
+                        : "border border-primary/40 text-primary"
+                    }`}
+                  >
+                    {already || used ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                  </span>
+                </button>
+
+                {picking === match.fixture_id && (
+                  <MarketPicker
+                    match={match}
+                    onClose={() => setPicking(null)}
+                    onPick={(market, prob) =>
+                      addFromBoard(match, market, prob)
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {matches.length === 0 && (
+            <div className="px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                {search
+                  ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
+                  : league
+                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
+                    : "Sem jogos no quadro neste momento. Pode ser só a fonte de dados a não responder agora."}
+              </p>
+
+              {/* An empty list is the one moment the button is actually
+                  needed, and the icon beside the search box is small and
+                  easy to miss. Say it in words, here. */}
+              {!search && (
+                <Button
+                  className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs"
+                  disabled={boardLoading}
+                  onClick={onRefreshBoard}
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
+                  />
+                  {boardLoading
+                    ? "A procurar jogos..."
+                    : "Procurar jogos outra vez"}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-3">
 
           {/* A competition that fails is dropped from the board on purpose,
               so one outage cannot hide the other seven. Saying nothing about
