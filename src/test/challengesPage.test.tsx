@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
+import { canonicalMarket } from "@/lib/marketNames";
 
 vi.mock("@/components/layout/AppLayout", () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -747,28 +748,36 @@ describe("what the person's own record says, while they build the bet", () => {
 // Every market on every bet so far was typed into a blank box: "V1" and
 // "Casa" for the same bet, "AM" and "Ambas Marcam", two spellings of "X2 e
 // +1,5 golos". And the same side went in as "Gales" and "País de Gales".
-describe("choosing the market and the teams instead of spelling them", () => {
-  it("writes the market with a tap, in the name the analysis counts", async () => {
+// Every market on every bet so far was typed into a blank box, and it shows:
+// "V1" and "Casa" for the same bet, "AM" and "Ambas Marcam", two spellings of
+// "X2 e +1,5 golos". And the same side went in as "Gales" and "País de Gales".
+describe("writing the market and the teams", () => {
+  it("offers names it has seen before, without a wall of buttons", async () => {
+    // A row of buttons for every market lived here and was asked to go: above
+    // a form somebody is filling in, it reads as a quiz. The list stays out of
+    // the way until they start typing.
     renderPage();
     await openPicker();
     fireEvent.click(
       await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
     );
-    fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
-      target: { value: "Bélgica" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("Equipa fora"), {
-      target: { value: "França" },
-    });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ambas Marcam" }));
-    expect(screen.getByLabelText("A tua aposta")).toHaveValue("Ambas Marcam");
+    const market = screen.getByLabelText("A tua aposta");
+    const listId = market.getAttribute("list");
+    expect(listId).toBeTruthy();
 
-    fireEvent.change(screen.getByPlaceholderText("Odd"), {
-      target: { value: "1.85" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
-    closePicker();
+    const offered = [
+      ...document.querySelectorAll(`#${CSS.escape(listId as string)} option`),
+    ].map((option) => option.getAttribute("value"));
+
+    expect(offered).toContain("Casa");
+    expect(offered).toContain("Mais de 2.5 Golos");
+    expect(screen.queryByRole("button", { name: "Vitória Casa" })).toBeNull();
+  });
+
+  it("registers whatever was written, folded to the name the analysis counts", async () => {
+    renderPage();
+    await addByHand("Bélgica", "França", "V1", "1.85");
 
     fireEvent.click(
       await screen.findByRole("button", { name: /Registar o dia/ }),
@@ -779,44 +788,10 @@ describe("choosing the market and the teams instead of spelling them", () => {
       string,
       PlanBetPayload,
     ];
-    expect(payload.legs[0]).toMatchObject({ market: "Ambas Marcam" });
-  });
-
-  it("shows a shorthand already typed as the market it will be counted as", async () => {
-    // "V1" is on the bets already registered. The button it lights up is the
-    // one it folds to, so nobody has to know both names.
-    renderPage();
-    await openPicker();
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
-    );
-    fireEvent.change(screen.getByLabelText("A tua aposta"), {
-      target: { value: "V1" },
-    });
-
-    expect(screen.getByRole("button", { name: "Vitória Casa" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-  });
-
-  it("sorts the markets into families instead of one long row", async () => {
-    // Fourteen chips in one wrapped blob is a wall to read on a phone, and the
-    // heading carries the half of each name the chips would repeat: under
-    // "Golos", "+2.5" says everything "Mais de 2.5 Golos" says.
-    renderPage();
-    await openPicker();
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Adicionar um jogo à mão/ }),
-    );
-
-    for (const family of ["Resultado", "Golos", "Ambas", "Combos"]) {
-      expect(screen.getByText(family)).toBeInTheDocument();
-    }
-
-    // Short on screen, whole to a screen reader.
-    const chip = screen.getByRole("button", { name: "Mais de 2.5 Golos" });
-    expect(chip).toHaveTextContent("+2.5");
+    // Stored exactly as typed — the record of what somebody wrote stays as it
+    // is, and the folding happens on the way out, when it is counted.
+    expect(payload.legs[0]).toMatchObject({ market: "V1" });
+    expect(canonicalMarket(payload.legs[0].market)).toBe("Casa");
   });
 
   it("offers back the teams already written on these slips", async () => {
