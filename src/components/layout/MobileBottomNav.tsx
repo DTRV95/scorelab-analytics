@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 // Five destinations, the most a thumb row holds before the labels truncate.
 // A phone has no sidebar, so what is here is all there is: the board to find a
 // game, the challenges to bet it and follow it, how right the model has been,
-// and the bankroll. Roadmap and Value Radar stay one level in, from the Dashboard.
+// and the bankroll.
 const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },

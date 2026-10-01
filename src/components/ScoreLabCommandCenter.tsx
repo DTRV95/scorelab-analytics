@@ -48,22 +48,16 @@ const formatCurrency = (value: number) =>
 const pages = [
   { title: "Dashboard", detail: "System overview", url: "/dashboard", icon: BarChart3 },
   { title: "Probability", detail: "See a match's odds-free forecast", url: "/probability", icon: Percent },
-  { title: "Value Radar", detail: "Find today's best edges", url: "/radar", icon: Radar },
   { title: "Acerto do Modelo", detail: "Measure forecasts against results", url: "/accuracy", icon: Gauge },
   { title: "Desafios", detail: "Pick one, or carry on with yours", url: "/desafios", icon: Trophy },
   { title: "Bankroll Tools", detail: "Financial truth center", url: "/bankroll", icon: Wallet },
-  { title: "Roadmap", detail: "Mission control", url: "/roadmap", icon: Flag },
   { title: "Settings", detail: "Workspace controls", url: "/settings", icon: Settings },
 ];
 
 export function ScoreLabCommandCenter() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const {
-    analyses,
-    financialSnapshot,
-    radarOpportunities,
-  } = useScoreLabData();
+  const { analyses, financialSnapshot } = useScoreLabData();
 
   useEffect(() => {
     const openCommandCenter = () => setOpen(true);
@@ -89,9 +83,6 @@ export function ScoreLabCommandCenter() {
 
   const intelligence = useMemo(() => {
     const markets = getMarketPerformance(analyses);
-    const radar = radarOpportunities
-      .filter((point) => point.calibratedProb >= 75)
-      .sort((a, b) => b.calibratedProb - a.calibratedProb || b.edge - a.edge);
     const stats = financialSnapshot.stats;
 
     const pendingSingles = analyses.filter(
@@ -108,25 +99,12 @@ export function ScoreLabCommandCenter() {
       openExposure: financialSnapshot.openExposure,
       pending: pendingSingles,
       bestMarket,
-      radar,
     };
-  }, [analyses, financialSnapshot, radarOpportunities]);
+  }, [analyses, financialSnapshot]);
 
   const runCommand = (url: string) => {
     setOpen(false);
     navigate(url);
-  };
-
-  const openRadarPoint = (point: (typeof intelligence.radar)[number]) => {
-    const params = new URLSearchParams({
-      analysisId: point.id,
-      prepareBet: "1",
-      market: point.market,
-      stake: String(Number(point.stake.toFixed(2))),
-      odd: String(Number(point.odds.toFixed(2))),
-    });
-
-    runCommand(`/history?${params.toString()}`);
   };
 
   return (
@@ -155,7 +133,7 @@ export function ScoreLabCommandCenter() {
 
         <Command className="bg-transparent text-foreground">
           <CommandInput
-            placeholder="Search pages, actions, radar picks..."
+            placeholder="Procurar páginas e atalhos..."
             className="text-foreground placeholder:text-muted-foreground"
           />
           <CommandList className="max-h-[520px] px-2 py-3">
@@ -226,46 +204,7 @@ export function ScoreLabCommandCenter() {
                 </div>
                 <CommandShortcut>NEW</CommandShortcut>
               </CommandItem>
-              <CommandItem
-                value="today execution roadmap orders"
-                onSelect={() => runCommand("/roadmap")}
-                className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
-              >
-                <Zap className="mr-3 h-4 w-4 text-primary" strokeWidth={1.7} />
-                <div>
-                  <p className="text-sm font-medium">Open today's execution desk</p>
-                  <p className="text-xs text-muted-foreground">
-                    Mission orders, stake logic and roadmap state.
-                  </p>
-                </div>
-              </CommandItem>
             </CommandGroup>
-
-            {intelligence.radar.length > 0 ? (
-              <>
-                <CommandSeparator className="my-2 bg-primary/10" />
-                <CommandGroup heading="High Probability Radar">
-                  {intelligence.radar.slice(0, 5).map((point) => (
-                    <CommandItem
-                      key={`${point.id}-${point.market}`}
-                      value={`${point.match} ${point.market} ${point.calibratedProb}`}
-                      onSelect={() => openRadarPoint(point)}
-                      className="rounded-2xl px-3 py-3 text-foreground data-[selected=true]:bg-primary/5 data-[selected=true]:text-foreground"
-                    >
-                      <Radar className="mr-3 h-4 w-4 text-emerald-700/75" strokeWidth={1.7} />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{point.match}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {point.market} · learned {point.calibratedProb.toFixed(1)}% · odds{" "}
-                          {point.odds.toFixed(2)}
-                        </p>
-                      </div>
-                      <CommandShortcut>{point.edge.toFixed(1)}%</CommandShortcut>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            ) : null}
 
             <CommandSeparator className="my-2 bg-primary/10" />
 

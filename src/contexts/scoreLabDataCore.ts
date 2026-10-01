@@ -8,7 +8,6 @@ import {
   buildFinancialSnapshot,
   type FinancialSnapshot,
 } from "@/lib/financialEngine";
-import { buildRadarOpportunities, type RadarOpportunity } from "@/lib/valueRadar";
 import { buildCalibrationModel, type CalibrationModel } from "@/lib/calibrationEngine";
 import type { SavedAnalysis } from "@/types/analysis";
 
@@ -18,7 +17,6 @@ export interface ScoreLabDataContextValue {
   analyses: SavedAnalysis[];
   trackingEntries: AnalysisTrackingEntry[];
   financialSnapshot: FinancialSnapshot;
-  radarOpportunities: RadarOpportunity[];
   calibrationModel: CalibrationModel;
   dataVersion: number;
   refresh: () => void;
@@ -39,13 +37,11 @@ export function loadCoreScoreLabData() {
     initialBankroll,
   });
   const calibrationModel = buildCalibrationModel(analyses);
-  const radarOpportunities = buildRadarOpportunities(analyses, calibrationModel);
 
   return {
     analyses,
     trackingEntries,
     financialSnapshot,
-    radarOpportunities,
     calibrationModel,
   };
 }
