@@ -1354,7 +1354,7 @@ export default function Challenges() {
             )}
 
             <Link
-              to="/desafios/analise"
+              to={`/desafios/${plan?.id ?? ""}/analise`}
               className="sl-card sl-tap flex items-center gap-3 px-4 py-3.5"
             >
               <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">

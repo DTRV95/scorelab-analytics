@@ -5,7 +5,6 @@ import {
   Check,
   ChevronRight,
   Star,
-  Swords,
   Trophy,
   TriangleAlert,
   Users,
@@ -385,23 +384,6 @@ export default function ChallengeCatalogue() {
                 <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
               </Link>
             ))}
-          </motion.div>
-        )}
-
-        {plans.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <Link
-              to="/desafios/analise"
-              className="sl-card sl-tap flex items-center gap-3 px-4 py-3"
-            >
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
-                <Swords className="h-4 w-4 text-muted-foreground" />
-              </span>
-              <span className="sl-meta min-w-0 flex-1 text-[12px]">
-                Comparar jogadores: em que mercados cada um acerta
-              </span>
-              <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
-            </Link>
           </motion.div>
         )}
 

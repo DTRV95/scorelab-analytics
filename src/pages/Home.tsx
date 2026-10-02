@@ -144,8 +144,11 @@ function YourRecord({ userId, bets }: { userId: string; bets: PlanBet[] }) {
         <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
           <Percent className="h-3.5 w-3.5 text-muted-foreground" />O teu registo
         </h2>
+        {/* All of this person's bets, which is what this block is a summary
+            of. The per-challenge analysis answers a narrower question and
+            lives inside each challenge. */}
         <Link
-          to="/desafios/analise"
+          to="/dashboard/analises"
           className="sl-meta flex items-center gap-1 text-[11px]"
         >
           Ver tudo <ArrowRight className="h-3 w-3" />
