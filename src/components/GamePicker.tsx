@@ -59,12 +59,52 @@ export interface BoardAccess {
   onRefreshBoard: () => void;
 }
 
+function stamp(kickoff: string | null): number {
+  if (!kickoff) return Number.POSITIVE_INFINITY;
+  const at = new Date(kickoff).getTime();
+  return Number.isNaN(at) ? Number.POSITIVE_INFINITY : at;
+}
+
+/** Which day a kickoff falls on, as a key the list can group by. */
+function dayKey(kickoff: string | null): string {
+  if (!kickoff) return "sem-data";
+  const date = new Date(kickoff);
+  if (Number.isNaN(date.getTime())) return "sem-data";
+  return date.toDateString();
+}
+
+/**
+ * The day a game is played, named the way somebody would say it.
+ *
+ * "Hoje" and "Amanhã" rather than a date, because those are the two that
+ * decide whether a game is still bettable this evening.
+ */
+function dayLabel(kickoff: string | null): string {
+  if (!kickoff) return "Sem data";
+
+  const date = new Date(kickoff);
+  if (Number.isNaN(date.getTime())) return "Sem data";
+
+  const midnight = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const days = Math.round((midnight(date) - midnight(new Date())) / 86400000);
+
+  if (days === 0) return "Hoje";
+  if (days === 1) return "Amanhã";
+
+  return new Intl.DateTimeFormat("pt-PT", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
+/** Just the hour: the heading above the run of games already said the day. */
 function kickoffTime(kickoff: string | null) {
   if (!kickoff) return "";
   const date = new Date(kickoff);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("pt-PT", {
-    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
@@ -223,7 +263,18 @@ export function GamePicker({
             .toLowerCase()
             .includes(needle),
       )
-      .sort((a, b) => b.headline_pct - a.headline_pct)
+      // In the order they are played, which is the order somebody picking
+      // today's bet reads them in. Ranked by the model's confidence instead,
+      // a game on Sunday sat above one kicking off in an hour, and nothing on
+      // screen said why. The forecast only breaks a tie between two games
+      // starting at the same minute; a fixture with no kickoff goes last,
+      // because an unknown time cannot be put anywhere honestly.
+      .sort((a, b) => {
+        const left = stamp(a.kickoff);
+        const right = stamp(b.kickoff);
+        if (left !== right) return left - right;
+        return b.headline_pct - a.headline_pct;
+      })
       .slice(0, LIST_LIMIT);
   }, [board, league, search]);
 
@@ -469,12 +520,23 @@ export function GamePicker({
             depends on where it starts. The pop-up scrolls; the list is just a
             list. */}
         <div className="divide-y divide-border border-y border-border">
-          {matches.map((match) => {
+          {matches.map((match, index) => {
             const already = chosenIds.has(match.fixture_id);
             const used = usedFixtures.has(match.fixture_id);
+            // A line whenever the day changes, so the order is something you
+            // can see rather than something you have to work out from the
+            // kickoff times.
+            const opensDay =
+              index === 0 ||
+              dayKey(match.kickoff) !== dayKey(matches[index - 1].kickoff);
 
             return (
               <div key={match.fixture_id}>
+                {opensDay && (
+                  <p className="sl-meta bg-[hsl(var(--sl-surface))] px-4 py-1.5 text-[10px] uppercase tracking-[0.13em]">
+                    {dayLabel(match.kickoff)}
+                  </p>
+                )}
                 <button
                   type="button"
                   disabled={already || used}
