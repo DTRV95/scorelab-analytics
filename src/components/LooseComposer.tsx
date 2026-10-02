@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { GamePicker, type BoardAccess, type PickedGame } from "@/components/GamePicker";
+import { LegContextRow } from "@/components/LegContext";
 import { Button } from "@/components/ui/button";
+import { legContext, leaguesOnSlip } from "@/lib/betContext";
+import type { PlayerStyle } from "@/lib/bettingStyle";
+import { useLeagueRates } from "@/hooks/useLeagueRates";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +52,7 @@ export function LooseComposer({
   onOpenChange,
   access,
   memory,
+  style,
   saving,
   onPlace,
 }: {
@@ -55,12 +60,15 @@ export function LooseComposer({
   onOpenChange: (open: boolean) => void;
   access: BoardAccess;
   memory: TypingMemory;
+  /** This person's settled record, to put beside the price being taken. */
+  style?: PlayerStyle | null;
   saving: boolean;
   onPlace: (legs: PlanLeg[], odds: number, stake: number) => void;
 }) {
   const [legs, setLegs] = useState<Draft[]>([]);
   const [stakeInput, setStakeInput] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const rates = useLeagueRates(useMemo(() => leaguesOnSlip(legs), [legs]));
 
   const chosenIds = useMemo(
     () =>
@@ -166,6 +174,15 @@ export function LooseComposer({
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
+
+              <LegContextRow
+                context={legContext({
+                  market: leg.market,
+                  odds: toOdds(leg.odds),
+                  report: rates.get(leg.league),
+                  style,
+                })}
+              />
             </div>
           ))}
 

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BoardAccess } from "@/components/GamePicker";
+import { buildPlayerStyle } from "@/lib/bettingStyle";
 import { canonicalMarket } from "@/lib/marketNames";
 import { buildApiUrl } from "@/lib/apiConfig";
 import {
@@ -187,6 +188,19 @@ export default function LooseBets() {
   const memory = useMemo(
     () => typingMemory([...allBets, ...bets]),
     [allBets, bets],
+  );
+
+  // The same record, for the same reason: what this person's own bets on a
+  // market have done belongs beside the price being taken, challenge or not.
+  const style = useMemo(
+    () =>
+      user
+        ? buildPlayerStyle(user.id, "Tu", [
+            ...allBets.filter((bet) => bet.userId === user.id),
+            ...bets.map((bet) => ({ ...bet, userId: user.id })),
+          ])
+        : null,
+    [user, allBets, bets],
   );
 
   const totals = useMemo(() => looseTotals(bets), [bets]);
@@ -409,6 +423,7 @@ export default function LooseBets() {
         onOpenChange={setOpen}
         access={access}
         memory={memory}
+        style={style}
         saving={saving}
         onPlace={place}
       />

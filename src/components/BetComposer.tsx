@@ -5,8 +5,11 @@ import {
   type BoardAccess,
   type PickedGame,
 } from "@/components/GamePicker";
+import { LegContextRow } from "@/components/LegContext";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
+import { legContext, leaguesOnSlip } from "@/lib/betContext";
+import { useLeagueRates } from "@/hooks/useLeagueRates";
 import { betTips } from "@/lib/betTips";
 import type { PlayerStyle } from "@/lib/bettingStyle";
 import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
@@ -114,6 +117,11 @@ export function BetComposer({
     [legs],
   );
 
+  // What the competitions on the slip usually give. Fetched per competition,
+  // held for the session, and absent for a game typed by hand — which is the
+  // honest answer for a competition the provider does not cover.
+  const rates = useLeagueRates(useMemo(() => leaguesOnSlip(legs), [legs]));
+
   const tips = useMemo(
     () =>
       style
@@ -209,10 +217,8 @@ export function BetComposer({
       {legs.length > 0 && (
         <div className="divide-y divide-border border-b border-border">
           {legs.map((leg, index) => (
-            <div
-              key={leg.key}
-              className="flex items-center gap-2.5 px-4 py-2.5"
-            >
+            <div key={leg.key} className="px-4 py-2.5">
+              <div className="flex items-center gap-2.5">
               <span className="font-mono-data w-4 flex-none text-[11px] text-muted-foreground">
                 {index + 1}
               </span>
@@ -273,6 +279,18 @@ export function BetComposer({
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+              </div>
+
+              {/* The competition, the price and this person's own record, at
+                  the one moment they could change what gets registered. */}
+              <LegContextRow
+                context={legContext({
+                  market: leg.market,
+                  odds: toOdds(leg.odds),
+                  report: rates.get(leg.league),
+                  style,
+                })}
+              />
             </div>
           ))}
         </div>
