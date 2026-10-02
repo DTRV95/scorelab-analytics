@@ -187,6 +187,23 @@ def data_league_report(request: Request, league: str, season: Optional[int] = No
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/data/league-rates")
+@limiter.limit("10/minute")
+def data_league_rates(request: Request):
+    """Every covered competition's market rates, in one answer.
+
+    What the board needs to say how a game compares with its own league: one
+    request for the lot, because a board holds a dozen competitions at once.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.league_rates()
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/model-accuracy")
 @limiter.limit("10/minute")
 def data_model_accuracy(request: Request, league: str, season: Optional[int] = None):

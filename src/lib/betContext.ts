@@ -1,6 +1,6 @@
 import type { PlayerStyle } from "@/lib/bettingStyle";
 import { canonicalMarket } from "@/lib/marketNames";
-import type { LeagueReport } from "@/lib/leagueReport";
+import type { LeagueRates } from "@/lib/leagueReport";
 
 /**
  * The three things that were never in the same place.
@@ -53,7 +53,7 @@ export function requiredPct(odds: number): number | null {
 
 /** How often a competition gave this market, out of the games it has played. */
 export function leagueRate(
-  report: LeagueReport | null | undefined,
+  report: LeagueRates | null | undefined,
   market: string,
 ): (Source & { league: string }) | null {
   if (!report || report.played === 0) return null;
@@ -101,7 +101,7 @@ export function legContext({
 }: {
   market: string;
   odds: number;
-  report?: LeagueReport | null;
+  report?: LeagueRates | null;
   style?: PlayerStyle | null;
 }): LegContext {
   return {
@@ -134,9 +134,4 @@ export function clearsThePrice(
   context: LegContext,
 ): "acima" | "abaixo" | null {
   return clears((context.league ?? context.own)?.pct ?? null, context.required);
-}
-
-/** The competitions on a slip whose rates are worth fetching. */
-export function leaguesOnSlip(legs: { league: string }[]): string[] {
-  return [...new Set(legs.map((leg) => leg.league))];
 }

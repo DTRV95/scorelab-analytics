@@ -8,7 +8,7 @@ import {
 import { LegContextRow } from "@/components/LegContext";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
-import { legContext, leaguesOnSlip } from "@/lib/betContext";
+import { legContext } from "@/lib/betContext";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
 import { betTips } from "@/lib/betTips";
 import type { PlayerStyle } from "@/lib/bettingStyle";
@@ -117,10 +117,10 @@ export function BetComposer({
     [legs],
   );
 
-  // What the competitions on the slip usually give. Fetched per competition,
-  // held for the session, and absent for a game typed by hand — which is the
-  // honest answer for a competition the provider does not cover.
-  const rates = useLeagueRates(useMemo(() => leaguesOnSlip(legs), [legs]));
+  // What the competitions usually give: one request for the lot, held for the
+  // session, and absent for a game typed by hand — which is the honest answer
+  // for a competition the provider does not cover.
+  const rates = useLeagueRates();
 
   const tips = useMemo(
     () =>

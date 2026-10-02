@@ -6,6 +6,7 @@ Run with `pytest` or directly: `python test_football_data.py`.
 import json
 import pathlib
 import time
+from datetime import datetime, time as dt_time, timedelta, timezone
 import urllib.error
 import urllib.request
 
@@ -691,6 +692,63 @@ def test_league_report_survives_a_competition_with_nothing_played():
     assert report["form"] == []
     # No percentage is invented out of no games.
     assert all(row["pct"] is None for row in report["markets"])
+
+
+def test_the_board_carries_the_whole_of_its_last_day():
+    """Seven times twenty-four hours from the moment of the request cut the
+    seventh day in half: asked at lunchtime, it kept that day's early kickoffs
+    and dropped the evening ones. A day is either on the board or it is not."""
+    original = football_data.upcoming_fixtures
+    late = datetime.combine(
+        datetime.now(timezone.utc).date() + timedelta(days=7),
+        dt_time(20, 45),
+        tzinfo=timezone.utc,
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    beyond = datetime.combine(
+        datetime.now(timezone.utc).date() + timedelta(days=8),
+        dt_time(12, 0),
+        tzinfo=timezone.utc,
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def fixtures(league_key, limit=100):
+        if league_key != "Brasileirão":
+            return []
+        return [
+            {"fixture_id": 1, "kickoff": late, "home_id": 1,
+             "home_name": "Mineiro", "away_id": 2, "away_name": "Bragantino"},
+            {"fixture_id": 2, "kickoff": beyond, "home_id": 2,
+             "home_name": "Santos", "away_id": 1, "away_name": "São Paulo"},
+        ]
+
+    football_data.upcoming_fixtures = fixtures
+    try:
+        board = football_data.matches_for_days(7)
+    finally:
+        football_data.upcoming_fixtures = original
+
+    # The late kickoff of the seventh day is in; the eighth day is not.
+    assert [match["fixture_id"] for match in board["matches"]] == [1]
+
+
+def test_league_rates_answers_for_every_competition_at_once():
+    """A board holds a dozen competitions; asking one by one would spend a
+    dozen requests to say what is already computed."""
+    football_data._cache.clear()
+    football_data._cache_put("matches:PPL:current", _season(SEASON))
+    for code in football_data.SUPPORTED_LEAGUES.values():
+        if code != "PPL":
+            football_data._cache_put(f"matches:{code}:current", [])
+
+    rates = football_data.league_rates()
+
+    # Only the competition with games played says anything.
+    assert [row["league"] for row in rates["leagues"]] == ["Liga Portugal"]
+    row = rates["leagues"][0]
+    assert row["played"] == 10
+    casa = next(m for m in row["markets"] if m["mercado"] == "Casa")
+    assert (casa["jogos"], casa["pct"]) == (5, 50.0)
+    # The form is left out: it is not read against a single game.
+    assert "form" not in row
 
 
 class _FakeBody:
