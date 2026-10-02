@@ -366,7 +366,10 @@ describe("building the day's bet", () => {
     renderPage();
     await pickFromBoard("Equipa 11", /Apostar em Mais de 1.5 Golos/);
 
-    expect(screen.getByText(/Mais de 1.5 Golos · modelo 78%/)).toBeInTheDocument();
+    // The line wraps instead of being cut, so the market and the model's
+    // call are spans of their own.
+    expect(screen.getByText("Mais de 1.5 Golos")).toBeInTheDocument();
+    expect(screen.getByText("· modelo 78%")).toBeInTheDocument();
   });
 
   it("goes looking for new games when asked, without waiting for the cache", async () => {
@@ -786,10 +789,17 @@ describe("the order the games come in", () => {
     renderPage();
     await openPicker();
 
-    const names = (await screen.findAllByText(/vs Rival/)).map(
+    // The picker opens on the day being played, soonest kickoff first.
+    const openingDay = (await screen.findAllByText(/vs Rival/)).map(
       (node) => node.textContent,
     );
-    expect(names).toEqual([
+    expect(openingDay).toEqual(["Hoje cedo vs Rival", "Hoje tarde vs Rival"]);
+
+    // And every day at once is still in the order they are played.
+    fireEvent.click(screen.getByRole("button", { name: /^Todos 4$/ }));
+
+    const all = screen.getAllByText(/vs Rival/).map((node) => node.textContent);
+    expect(all).toEqual([
       "Hoje cedo vs Rival",
       "Hoje tarde vs Rival",
       "Amanhã cedo vs Rival",
@@ -819,7 +829,18 @@ describe("the order the games come in", () => {
     renderPage();
     await openPicker();
 
-    expect(await screen.findByText("Hoje")).toBeInTheDocument();
+    // One tab per day, each saying how many games it holds.
+    expect(
+      await screen.findByRole("button", { name: /^Hoje 1$/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Amanhã 1$/ })).toBeInTheDocument();
+
+    // A day chosen is grouped by competition instead; every day at once keeps
+    // the day headings.
+    expect(screen.getByText("Liga Portugal")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Todos 2$/ }));
+    expect(screen.getByText("Hoje")).toBeInTheDocument();
     expect(screen.getByText("Amanhã")).toBeInTheDocument();
   });
 });

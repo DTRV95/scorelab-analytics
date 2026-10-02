@@ -1311,6 +1311,8 @@ export default function Challenges() {
         {me && (
           <motion.div variants={fadeUp}>
             <BetComposer
+              /* A slip belongs to the challenge it was being built in. */
+              key={planId ?? "sem-desafio"}
               access={access}
               memory={memory}
               rules={rules}
