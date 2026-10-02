@@ -71,7 +71,11 @@ const bet = (
   settledAt: null,
 });
 
-function load(plans: PlanRecord[] = [], members: PlanMember[] = [], bets: (PlanBet & { planId: string })[] = []) {
+function load(
+  plans: PlanRecord[] = [],
+  members: PlanMember[] = [],
+  bets: (PlanBet & { planId: string })[] = [],
+) {
   fetchPlans.mockResolvedValue(plans);
   fetchMembersOfPlans.mockResolvedValue(members);
   fetchBetsOfPlans.mockResolvedValue(bets);
@@ -94,59 +98,45 @@ const renderNav = () =>
     </MemoryRouter>,
   );
 
-describe("getting to a challenge from the sidebar", () => {
-  it("lists the challenges being played, each straight to its own page", async () => {
+describe("getting to the challenges from the sidebar", () => {
+  it("holds one way in, not one entry per challenge", async () => {
+    // The menu used to unfold them: every challenge by name, the full list,
+    // and the comparison — four entries in a sidebar for what is one page.
     load([plan("p1", "Plano Milhão"), plan("p2", "Dobrar a banca")]);
 
     renderNav();
 
     expect(
-      await screen.findByRole("link", { name: /Plano Milhão/ }),
-    ).toHaveAttribute("href", "/desafios/p1");
-    expect(
-      screen.getByRole("link", { name: /Dobrar a banca/ }),
-    ).toHaveAttribute("href", "/desafios/p2");
-  });
-
-  it("keeps the way to all of them, and to the comparison, below them", async () => {
-    // The group opened with "Todos os desafios", a tautology under a heading
-    // that already says Desafios, and closed with "Análise de apostador" —
-    // not a challenge, sitting in a list of challenge names, answering to
-    // almost the same words as the "Análises" two groups above it.
-    renderNav();
-
-    expect(
-      await screen.findByRole("link", { name: /Todos os desafios/ }),
+      await screen.findByRole("link", { name: /Desafios/ }),
     ).toHaveAttribute("href", "/desafios");
-    expect(
-      screen.getByRole("link", { name: /Comparar jogadores/ }),
-    ).toHaveAttribute("href", "/desafios/analise");
-    expect(screen.queryByRole("link", { name: "Análise de apostador" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Plano Milhão/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Todos os desafios/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Comparar jogadores/ })).toBeNull();
   });
 
-  it("shows no challenge of its own when there are none", async () => {
-    renderNav();
-
-    await screen.findByRole("link", { name: /Todos os desafios/ });
-    expect(
-      screen.queryByRole("link", { name: /Plano Milhão/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("marks a challenge the other player moved while you were away", async () => {
+  it("counts what the other players did across every challenge", async () => {
     markSeen("david", "p1", "2026-10-01T08:00:00.000Z");
+    markSeen("david", "p2", "2026-10-01T08:00:00.000Z");
     load(
-      [plan("p1", "Plano Milhão")],
-      [member("p1", "david", "David"), member("p1", "irmao", "Vilagreen")],
-      [bet("p1", "irmao", 4, "2026-10-01T10:00:00.000Z")],
+      [plan("p1", "Plano Milhão"), plan("p2", "Dobrar a banca")],
+      [
+        member("p1", "david", "David"),
+        member("p1", "irmao", "Vilagreen"),
+        member("p2", "david", "David"),
+        member("p2", "irmao", "Vilagreen"),
+      ],
+      [
+        bet("p1", "irmao", 4, "2026-10-01T10:00:00.000Z"),
+        bet("p2", "irmao", 2, "2026-10-01T11:00:00.000Z"),
+      ],
     );
 
     renderNav();
 
-    expect(await screen.findByLabelText("1 novidade")).toBeInTheDocument();
+    expect(await screen.findByLabelText("2 novidades")).toBeInTheDocument();
   });
 
-  it("says nothing on a challenge with nothing new", async () => {
+  it("says nothing when there is nothing new", async () => {
     markSeen("david", "p1", "2026-10-02T08:00:00.000Z");
     load(
       [plan("p1", "Plano Milhão")],
@@ -156,7 +146,7 @@ describe("getting to a challenge from the sidebar", () => {
 
     renderNav();
 
-    await screen.findByRole("link", { name: /Plano Milhão/ });
+    await screen.findByRole("link", { name: /Desafios/ });
     expect(screen.queryByLabelText(/novidade/)).toBeNull();
   });
 });

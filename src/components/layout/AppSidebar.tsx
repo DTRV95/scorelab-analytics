@@ -10,21 +10,20 @@ import {
   Gauge,
   Trophy,
   Percent,
-  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
-import { newsByPlan, planNews } from "@/lib/planNews";
+import { planNews } from "@/lib/planNews";
 import { seenByPlan } from "@/lib/seenStore";
 
 interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
-  /** Set on a challenge, so its row can carry what happened there. */
-  planId?: string;
+  /** The challenges entry, which carries what happened in all of them. */
+  challenges?: boolean;
 }
 
 interface NavGroup {
@@ -39,6 +38,10 @@ const navGroups: NavGroup[] = [
     title: "Geral",
     items: [
       { title: "Início", url: "/dashboard", icon: LayoutDashboard },
+      // One way in, and everything about the challenges behind it. The menu
+      // used to unfold them — each challenge, the full list, the comparison —
+      // which put four entries in a sidebar for what is one page.
+      { title: "Desafios", url: "/desafios", icon: Trophy, challenges: true },
       { title: "Banca", url: "/bankroll", icon: Wallet },
       { title: "Análises", url: "/dashboard/analises", icon: BarChart3 },
     ],
@@ -64,46 +67,24 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   // Read from the app's own copy of the challenges rather than fetched again
   // here: the sidebar is on every page, and so was its own extra query.
-  const { plans, members, allBets, funds } = usePlanBoard();
+  const { members, allBets, funds } = usePlanBoard();
 
-  const news = useMemo(() => {
+  // Everything the other players did, across every challenge, since this
+  // person last looked at each of them.
+  const waiting = useMemo(() => {
     const since = seenByPlan(user?.id ?? "");
-    return newsByPlan(
-      planNews({ userId: user?.id ?? "", members, bets: allBets, funds, since }),
-    );
+    return planNews({
+      userId: user?.id ?? "",
+      members,
+      bets: allBets,
+      funds,
+      since,
+    }).length;
   }, [user?.id, members, allBets, funds]);
 
-  // The challenges, and then the two things somebody does around them. The
-  // group used to open with "Todos os desafios", which under a heading that
-  // already says Desafios is a tautology — after the list it is the whole set
-  // beside mine, which is a different thing. And it used to close with
-  // "Análise de apostador": not a challenge, sitting in a list of challenge
-  // names, answering to almost the same words as the "Análises" above it.
-  const challengeGroup: NavGroup = {
-    title: "Desafios",
-    items: [
-      ...plans.map((plan) => ({
-        title: plan.name,
-        url: `/desafios/${plan.id}`,
-        icon: Trophy,
-        planId: plan.id,
-      })),
-      { title: "Todos os desafios", url: "/desafios", icon: ListChecks },
-      { title: "Comparar jogadores", url: "/desafios/analise", icon: BarChart3 },
-    ],
-  };
-
-  // The challenges are what this is used for every day, so they come before
-  // the board and the model's record, which are the tools around them.
-  const groups = [
-    navGroups[0],
-    challengeGroup,
-    ...navGroups.slice(1),
-  ];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Geral: true,
     Jogos: true,
-    Desafios: true,
     Conta: false,
   });
 
@@ -136,7 +117,7 @@ export function AppSidebar() {
 
         <nav className="relative flex-1 overflow-y-auto p-3">
           <div className="space-y-4">
-            {groups.map((group) => (
+            {navGroups.map((group) => (
               <div key={group.title} className="space-y-1">
                 {!collapsed && (
                   <button
@@ -158,8 +139,12 @@ export function AppSidebar() {
                 )}
                 {(collapsed || openGroups[group.title]) &&
                   group.items.map((item) => {
-                  const isActive = location.pathname === item.url;
-                  const waiting = item.planId ? (news[item.planId] ?? 0) : 0;
+                  // Every challenge page sits behind this one entry, so the
+                  // entry has to stay lit on all of them.
+                  const isActive =
+                    location.pathname === item.url ||
+                    (item.challenges && location.pathname.startsWith("/desafios"));
+                  const unseen = item.challenges ? waiting : 0;
                   return (
                     <Link
                       key={item.url}
@@ -180,12 +165,12 @@ export function AppSidebar() {
                           else in the app. It used to mean "you are here", on
                           a row already saying that in colour and background —
                           which read as a notification that was never one. */}
-                      {waiting > 0 && !collapsed && (
+                      {unseen > 0 && !collapsed && (
                         <span
                           className="ml-auto flex-none rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary"
-                          aria-label={`${waiting} ${waiting === 1 ? "novidade" : "novidades"}`}
+                          aria-label={`${unseen} ${unseen === 1 ? "novidade" : "novidades"}`}
                         >
-                          {waiting}
+                          {unseen}
                         </span>
                       )}
                     </Link>

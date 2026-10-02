@@ -5,12 +5,17 @@ import {
   Check,
   ChevronRight,
   Star,
+  Swords,
   Trophy,
   TriangleAlert,
   Users,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CreateChallenge } from "@/components/ChallengeSettings";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { newsByPlan, planNews } from "@/lib/planNews";
+import { seenByPlan } from "@/lib/seenStore";
 import {
   describeDifficulty,
   difficultyOf,
@@ -235,12 +240,34 @@ function ChallengeCard({
  * played stay at the top, one tap from the day's bet.
  */
 export default function ChallengeCatalogue() {
+  const { user } = useAuth();
+  const {
+    members: myMembers,
+    allBets,
+    funds,
+  } = usePlanBoard();
   const [plans, setPlans] = useState<PlanRecord[]>([]);
   const [everyone, setEveryone] = useState<PlanRecord[]>([]);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<(PlanBet & { planId: string })[]>([]);
   const [busiestFirst, setBusiestFirst] = useState(true);
   const [token, setToken] = useState(0);
+
+  // What the other players did in each challenge since this person last had
+  // it open. The sidebar no longer unfolds the challenges, so this page is
+  // where that has to be visible.
+  const news = useMemo(() => {
+    const since = seenByPlan(user?.id ?? "");
+    return newsByPlan(
+      planNews({
+        userId: user?.id ?? "",
+        members: myMembers,
+        bets: allBets,
+        funds,
+        since,
+      }),
+    );
+  }, [user?.id, myMembers, allBets, funds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -337,8 +364,18 @@ export default function ChallengeCatalogue() {
                   <Trophy className="h-4 w-4 text-primary" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-foreground">
-                    {plan.name}
+                  <span className="flex items-center gap-1.5">
+                    <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">
+                      {plan.name}
+                    </span>
+                    {(news[plan.id] ?? 0) > 0 && (
+                      <span
+                        className="flex-none rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary"
+                        aria-label={`${news[plan.id]} ${news[plan.id] === 1 ? "novidade" : "novidades"}`}
+                      >
+                        {news[plan.id]}
+                      </span>
+                    )}
                   </span>
                   <span className="sl-meta block text-[11px]">
                     {eur.format(Number(plan.starting_bankroll))} →{" "}
@@ -348,6 +385,23 @@ export default function ChallengeCatalogue() {
                 <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
               </Link>
             ))}
+          </motion.div>
+        )}
+
+        {plans.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <Link
+              to="/desafios/analise"
+              className="sl-card sl-tap flex items-center gap-3 px-4 py-3"
+            >
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
+                <Swords className="h-4 w-4 text-muted-foreground" />
+              </span>
+              <span className="sl-meta min-w-0 flex-1 text-[12px]">
+                Comparar jogadores: em que mercados cada um acerta
+              </span>
+              <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+            </Link>
           </motion.div>
         )}
 

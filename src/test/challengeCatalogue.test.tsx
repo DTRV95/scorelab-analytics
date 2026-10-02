@@ -12,14 +12,21 @@ vi.mock("@/components/layout/AppLayout", () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-const { fetchPlans, createPlan, fetchVisiblePlans, fetchMembersOfPlans, fetchBetsOfPlans } =
-  vi.hoisted(() => ({
-    fetchPlans: vi.fn(async () => [] as unknown[]),
-    createPlan: vi.fn(async () => "new-plan"),
-    fetchVisiblePlans: vi.fn(async () => [] as unknown[]),
-    fetchMembersOfPlans: vi.fn(async () => [] as unknown[]),
-    fetchBetsOfPlans: vi.fn(async () => [] as unknown[]),
-  }));
+const {
+  fetchPlans,
+  createPlan,
+  fetchVisiblePlans,
+  fetchMembersOfPlans,
+  fetchBetsOfPlans,
+  fetchFundsOfPlans,
+} = vi.hoisted(() => ({
+  fetchPlans: vi.fn(async () => [] as unknown[]),
+  createPlan: vi.fn(async () => "new-plan"),
+  fetchVisiblePlans: vi.fn(async () => [] as unknown[]),
+  fetchMembersOfPlans: vi.fn(async () => [] as unknown[]),
+  fetchBetsOfPlans: vi.fn(async () => [] as unknown[]),
+  fetchFundsOfPlans: vi.fn(async () => [] as unknown[]),
+}));
 
 vi.mock("@/lib/planStore", async () => {
   const actual = await vi.importActual<typeof import("@/lib/planStore")>(
@@ -32,9 +39,11 @@ vi.mock("@/lib/planStore", async () => {
     fetchVisiblePlans,
     fetchMembersOfPlans,
     fetchBetsOfPlans,
+    fetchFundsOfPlans,
   };
 });
 
+import { PlanBoardProvider } from "@/contexts/PlanBoardContext";
 import ChallengeCatalogue from "@/pages/ChallengeCatalogue";
 
 beforeEach(() => vi.clearAllMocks());
@@ -43,7 +52,9 @@ afterEach(() => cleanup());
 const renderPage = () =>
   render(
     <MemoryRouter>
-      <ChallengeCatalogue />
+      <PlanBoardProvider>
+        <ChallengeCatalogue />
+      </PlanBoardProvider>
     </MemoryRouter>
   );
 
