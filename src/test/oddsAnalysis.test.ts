@@ -102,15 +102,33 @@ describe("the prices of the individual games", () => {
     expect(rows[0].legs).toBe(1);
   });
 
-  it("holds its tongue on a band too small to mean anything", () => {
+  it("shows a thin band's rate, but refuses to call it good or bad", () => {
     const rows = byLegOdds([bet(2, 10, "green", [leg(2, "green")])]);
 
     expect(rows[0].legs).toBe(1);
-    expect(rows[0].winPct).toBeNull();
+    // One of one really is 100%. What it is not is evidence.
+    expect(rows[0].winPct).toBe(100);
+    expect(rows[0].enough).toBe(false);
     expect(rows[0].edge).toBeNull();
     // The price itself is known whatever the sample: it is arithmetic, not a
     // measurement.
     expect(rows[0].breakEven).toBe(50);
+  });
+
+  it("waits for five games before calling a band good or bad", () => {
+    // Four of four at 1.50 is 100% against the 67% the price wanted, and
+    // still not something to act on.
+    const four = byLegOdds([
+      bet(1.5, 10, "green", Array.from({ length: 4 }, () => leg(1.5, "green"))),
+    ]);
+    expect(four[0].winPct).toBe(100);
+    expect(four[0].enough).toBe(false);
+
+    const five = byLegOdds([
+      bet(1.5, 10, "green", Array.from({ length: 5 }, () => leg(1.5, "green"))),
+    ]);
+    expect(five[0].enough).toBe(true);
+    expect(five[0].edge).toBe(33);
   });
 
   it("has nothing to show for a record with no decided games", () => {

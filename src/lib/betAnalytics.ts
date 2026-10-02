@@ -6,8 +6,16 @@ export interface Band {
   bets: number;
   won: number;
   lost: number;
-  /** Null until enough days are decided for a percentage to mean anything. */
+  /** The real hit rate. Null only when nothing in the band is decided. */
   winPct: number | null;
+  /**
+   * Whether there is enough decided for the rate to settle an argument.
+   *
+   * The rate is shown either way: printing "2 de 2" beside a dash makes a
+   * page look like it cannot divide, and the reader does the division anyway.
+   * What a thin band gets is a warning, not a silence.
+   */
+  enough: boolean;
   profit: number;
   staked: number;
   /** Profit per euro staked, as a percentage. */
@@ -54,7 +62,8 @@ function band(label: string, bets: PlanBet[]): Band {
     bets: bets.length,
     won,
     lost,
-    winPct: settled >= MIN_DECIDED ? round((won / settled) * 100, 0) : null,
+    winPct: settled > 0 ? round((won / settled) * 100, 0) : null,
+    enough: settled >= MIN_DECIDED,
     profit: round(profit),
     staked: round(staked),
     roi: staked > 0 ? round((profit / staked) * 100, 1) : null,
@@ -119,16 +128,22 @@ const LEG_BANDS: { label: string; from: number; to: number }[] = [
   { label: "2.50 ou mais", from: 2.5, to: Infinity },
 ];
 
+/** Below this many games, a band is shown but never called good or bad. */
+export const MIN_FOR_VERDICT = 5;
+
 export interface LegBand {
   label: string;
   legs: number;
   won: number;
   lost: number;
+  /** The real hit rate. Null only when nothing in the band is decided. */
   winPct: number | null;
   /** What these prices asked for, with every game weighing the same. */
   breakEven: number;
-  /** Points above or below that. Null until enough games to say. */
+  /** Points above or below that. Null until there are enough games to say. */
   edge: number | null;
+  /** Whether there is enough here to call the band good or bad. */
+  enough: boolean;
 }
 
 /**
@@ -160,18 +175,17 @@ export function byLegOdds(bets: PlanBet[]): LegBand[] {
 
     const hit = inBand.length > 0 ? (won / inBand.length) * 100 : null;
 
+    const enough = inBand.length >= MIN_FOR_VERDICT;
+
     return {
       label: range.label,
       legs: inBand.length,
       won,
       lost,
-      winPct:
-        inBand.length >= MIN_DECIDED && hit !== null ? round(hit, 0) : null,
+      winPct: hit === null ? null : round(hit, 0),
       breakEven: round(demanded, 0),
-      edge:
-        inBand.length >= MIN_DECIDED && hit !== null
-          ? round(hit - demanded, 0)
-          : null,
+      edge: enough && hit !== null ? round(hit - demanded, 0) : null,
+      enough,
     };
   }).filter((row) => row.legs > 0);
 }

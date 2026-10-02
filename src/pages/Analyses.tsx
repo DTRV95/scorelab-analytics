@@ -45,6 +45,31 @@ interface BarRow {
   mark?: number | null;
   /** Shown instead of the money, where there is no money to show. */
   note?: string;
+  /** Too few games here to call it good or bad, whatever the rate says. */
+  thin?: boolean;
+  /** A line of its own under the bar. Long text in the row's own line pushed
+   *  the label clean off the card. */
+  warning?: string;
+}
+
+/**
+ * Green when the band is beating what the price asked, red when it is not,
+ * grey while there are too few games to say either.
+ *
+ * The colour is never the only word on it: the two percentages sit beside the
+ * bar and the thin bands say so in writing. Green and red are eight units
+ * apart for a deuteranope, which is nowhere near enough on their own.
+ */
+function tone(row: BarRow): { bar: string; text: string } {
+  if (row.mark == null || row.pct === null) {
+    return { bar: "bg-primary", text: "text-muted-foreground" };
+  }
+  if (row.thin) {
+    return { bar: "bg-muted-foreground/40", text: "text-muted-foreground" };
+  }
+  return row.pct >= row.mark
+    ? { bar: "bg-[hsl(var(--sl-green))]", text: "text-[hsl(var(--sl-green))]" }
+    : { bar: "bg-destructive", text: "text-destructive" };
 }
 
 /**
@@ -70,10 +95,32 @@ function Bars({
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-[13px] font-semibold text-foreground">{title}</h2>
         <p className="sl-meta text-[11px]">{hint}</p>
+        {/* Said in words as well as in colour, because a chart that needs to
+            be explained out loud has not been drawn properly, and because
+            green and red are not far enough apart for everybody. */}
+        {rows.some((row) => row.mark != null) && (
+          <p className="sl-meta mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-[hsl(var(--sl-green))]" />
+              acima do que o preço pedia
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-destructive" />
+              abaixo
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+              poucos jogos
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="space-y-2.5 px-4 py-3.5">
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const paint = tone(row);
+
+          return (
           <div key={row.label}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="min-w-0 truncate text-[12px] font-semibold text-foreground">
@@ -108,11 +155,7 @@ function Bars({
                 <div className="h-full overflow-hidden rounded-full">
                   {row.pct !== null && (
                     <div
-                      className={`h-full rounded-full ${
-                        row.mark != null && row.pct < row.mark
-                          ? "bg-destructive"
-                          : "bg-primary"
-                      }`}
+                      className={`h-full rounded-full ${paint.bar}`}
                       style={{ width: `${Math.max(row.pct, 2)}%` }}
                     />
                   )}
@@ -128,12 +171,19 @@ function Bars({
                   />
                 )}
               </div>
-              <span className="sl-figure w-10 flex-none text-right text-[11px] text-muted-foreground">
+              <span
+                className={`sl-figure w-10 flex-none text-right text-[11px] ${paint.text}`}
+              >
                 {row.pct === null ? "—" : `${row.pct}%`}
               </span>
             </div>
+
+            {row.warning && (
+              <p className="sl-meta mt-0.5 text-[10px]">{row.warning}</p>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -146,6 +196,7 @@ const fromBands = (bands: Band[], withMark = false): BarRow[] =>
     detail: `${row.won} de ${row.won + row.lost} · ${eur.format(row.staked)}`,
     profit: row.profit,
     mark: withMark ? row.breakEven : null,
+    thin: !row.enough,
   }));
 
 /** One row per price band of the individual games, against what it demanded. */
@@ -157,6 +208,10 @@ const fromLegBands = (bands: LegBand[]): BarRow[] =>
     profit: 0,
     mark: row.breakEven,
     note: `o preço pedia ${row.breakEven}%`,
+    thin: !row.enough,
+    warning: row.enough
+      ? undefined
+      : `${row.legs === 1 ? "1 jogo" : `${row.legs} jogos`} ainda não chega para dizer se esta faixa se paga`,
   }));
 
 /**
