@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Gauge,
   Trophy,
+  Ticket,
   Percent,
   type LucideIcon,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const navGroups: NavGroup[] = [
       // used to unfold them — each challenge, the full list, the comparison —
       // which put four entries in a sidebar for what is one page.
       { title: "Desafios", url: "/desafios", icon: Trophy, challenges: true },
+      { title: "Apostas", url: "/apostas", icon: Ticket },
       { title: "Banca", url: "/bankroll", icon: Wallet },
       { title: "Análises", url: "/dashboard/analises", icon: BarChart3 },
     ],

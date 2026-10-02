@@ -1,16 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Gauge, Percent, Trophy, Wallet } from "lucide-react";
+import { BarChart3, Percent, Ticket, Trophy, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Five destinations, the most a thumb row holds before the labels truncate.
 // A phone has no sidebar, so what is here is all there is: the board to find a
 // game, the challenges to bet it and follow it, how right the model has been,
-// and the bankroll.
+// and the bankroll. The model's record gave up its place to the loose bets:
+// a phone has no sidebar, so a page missing from here cannot be reached at
+// all, and every game these two have ever bet was one the model never saw.
 const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },
   { title: "Desafios", url: "/desafios", icon: Trophy },
-  { title: "Acerto", url: "/accuracy", icon: Gauge },
+  { title: "Apostas", url: "/apostas", icon: Ticket },
   { title: "Banca", url: "/bankroll", icon: Wallet },
 ];
 

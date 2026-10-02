@@ -100,11 +100,21 @@ export function BetDetailDialog({
     <Dialog open={Boolean(bet)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
         <DialogHeader className="border-b border-border px-4 py-3 text-left">
+          {/* A bet outside a challenge climbs no ladder, so it has no day. It
+              is named by what is in it instead, which is how somebody would
+              refer to it anyway. */}
           <DialogTitle className="flex items-center gap-2 text-sm font-bold">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-primary/15 font-mono-data text-[11px] font-bold text-primary">
-              {bet.day}
+            {bet.day > 0 && (
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-primary/15 font-mono-data text-[11px] font-bold text-primary">
+                {bet.day}
+              </span>
+            )}
+            <span className="min-w-0 truncate">
+              {bet.day > 0
+                ? `Dia ${bet.day} · ${player}`
+                : (bet.legs[0]?.match ??
+                  `${bet.legs.length} jogos`)}
             </span>
-            Dia {bet.day} · {player}
           </DialogTitle>
         </DialogHeader>
 

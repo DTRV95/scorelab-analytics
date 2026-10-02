@@ -27,6 +27,7 @@ const Challenges = lazy(() => import("./pages/Challenges"));
 const ChallengeCatalogue = lazy(() => import("./pages/ChallengeCatalogue"));
 const BettorAnalysis = lazy(() => import("./pages/BettorAnalysis"));
 const BankrollTools = lazy(() => import("./pages/BankrollTools"));
+const LooseBets = lazy(() => import("./pages/LooseBets"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -105,6 +106,7 @@ const App = () => {
                     <Route path="/accuracy" element={<ProtectedRoute><ModelAccuracy /></ProtectedRoute>} />
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />
                     <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
+                    <Route path="/apostas" element={<ProtectedRoute><LooseBets /></ProtectedRoute>} />
                     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
