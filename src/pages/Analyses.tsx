@@ -5,7 +5,14 @@ import { ArrowLeft, Info } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
-import { byOddsBand, byWeekday, summarise, type Band } from "@/lib/betAnalytics";
+import {
+  byLegOdds,
+  byOddsBand,
+  byWeekday,
+  summarise,
+  type Band,
+  type LegBand,
+} from "@/lib/betAnalytics";
 import { buildPlayerStyle, MIN_DECIDED } from "@/lib/bettingStyle";
 import { canonicalMarket } from "@/lib/marketNames";
 import { fetchLooseBets } from "@/lib/looseBets";
@@ -31,6 +38,13 @@ interface BarRow {
   /** The count behind it, which is what stops a percentage from lying. */
   detail: string;
   profit: number;
+  /**
+   * The line the bar has to clear, 0 to 100 — the hit rate these prices
+   * demanded. Absent where the question has no threshold, as "by market" has.
+   */
+  mark?: number | null;
+  /** Shown instead of the money, where there is no money to show. */
+  note?: string;
 }
 
 /**
@@ -66,28 +80,51 @@ function Bars({
                 {row.label}
               </span>
               <span className="sl-meta flex-none text-[11px]">
-                {row.detail} ·{" "}
-                <span
-                  className={
-                    row.profit > 0
-                      ? "text-[hsl(var(--sl-green))]"
-                      : row.profit < 0
-                        ? "text-destructive"
-                        : ""
-                  }
-                >
-                  {row.profit >= 0 ? "+" : ""}
-                  {eur.format(row.profit)}
-                </span>
+                {row.detail}
+                {row.note ? (
+                  ` · ${row.note}`
+                ) : (
+                  <>
+                    {" · "}
+                    <span
+                      className={
+                        row.profit > 0
+                          ? "text-[hsl(var(--sl-green))]"
+                          : row.profit < 0
+                            ? "text-destructive"
+                            : ""
+                      }
+                    >
+                      {row.profit >= 0 ? "+" : ""}
+                      {eur.format(row.profit)}
+                    </span>
+                  </>
+                )}
               </span>
             </div>
 
             <div className="mt-1 flex items-center gap-2">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                {row.pct !== null && (
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${Math.max(row.pct, 2)}%` }}
+              <div className="relative h-2 flex-1 rounded-full bg-muted">
+                <div className="h-full overflow-hidden rounded-full">
+                  {row.pct !== null && (
+                    <div
+                      className={`h-full rounded-full ${
+                        row.mark != null && row.pct < row.mark
+                          ? "bg-destructive"
+                          : "bg-primary"
+                      }`}
+                      style={{ width: `${Math.max(row.pct, 2)}%` }}
+                    />
+                  )}
+                </div>
+                {/* The line the price demanded. A bar that stops short of it
+                    is a band that lost money however healthy the percentage
+                    on the end of it looks. */}
+                {row.mark != null && (
+                  <span
+                    className="absolute inset-y-[-2px] w-px bg-foreground/55"
+                    style={{ left: `${Math.min(row.mark, 99.5)}%` }}
+                    aria-hidden
                   />
                 )}
               </div>
@@ -102,12 +139,24 @@ function Bars({
   );
 }
 
-const fromBands = (bands: Band[]): BarRow[] =>
+const fromBands = (bands: Band[], withMark = false): BarRow[] =>
   bands.map((row) => ({
     label: row.label,
     pct: row.winPct,
     detail: `${row.won} de ${row.won + row.lost} · ${eur.format(row.staked)}`,
     profit: row.profit,
+    mark: withMark ? row.breakEven : null,
+  }));
+
+/** One row per price band of the individual games, against what it demanded. */
+const fromLegBands = (bands: LegBand[]): BarRow[] =>
+  bands.map((row) => ({
+    label: row.label,
+    pct: row.winPct,
+    detail: `${row.won} de ${row.legs}`,
+    profit: 0,
+    mark: row.breakEven,
+    note: `o preço pedia ${row.breakEven}%`,
   }));
 
 /**
@@ -196,7 +245,8 @@ export default function Analyses() {
     [style, bets],
   );
 
-  const odds = useMemo(() => fromBands(byOddsBand(bets)), [bets]);
+  const odds = useMemo(() => fromBands(byOddsBand(bets), true), [bets]);
+  const legOdds = useMemo(() => fromLegBands(byLegOdds(bets)), [bets]);
   const days = useMemo(() => fromBands(byWeekday(bets)), [bets]);
 
   return (
@@ -298,8 +348,16 @@ export default function Analyses() {
 
             <motion.div variants={fadeUp}>
               <Bars
-                title="Por odd"
-                hint="As curtas estão a carregar isto, ou as longas?"
+                title="Por odd de cada jogo"
+                hint="A que preços acertas. O traço é o acerto que o preço exigia: uma barra que não lá chega é uma faixa que não se paga."
+                rows={legOdds}
+              />
+            </motion.div>
+
+            <motion.div variants={fadeUp}>
+              <Bars
+                title="Por odd do boletim"
+                hint="A mesma pergunta, mas para a aposta inteira — as curtas estão a carregar isto, ou as longas?"
                 rows={odds}
               />
             </motion.div>
