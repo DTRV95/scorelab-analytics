@@ -222,7 +222,7 @@ function Fields({
 
         <div className="mt-2 grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="sl-meta text-[11px]">Dias</span>
+            <span className="sl-meta text-[11px]">Níveis</span>
             <input
               inputMode="numeric"
               value={draft.days}
@@ -235,7 +235,7 @@ function Fields({
 
           {single ? (
             <label className="block">
-              <span className="sl-meta text-[11px]">% da banca por dia</span>
+              <span className="sl-meta text-[11px]">% da banca por nível</span>
               <input
                 inputMode="decimal"
                 value={String(Math.round(draft.bands[0].pct * 100))}
@@ -258,7 +258,7 @@ function Fields({
             </label>
           ) : (
             <div>
-              <span className="sl-meta text-[11px]">% da banca por dia</span>
+              <span className="sl-meta text-[11px]">% da banca por nível</span>
               <div
                 className={`${field} flex items-center justify-between gap-2`}
               >
@@ -287,7 +287,7 @@ function Fields({
         {!single && (
           <p className="sl-meta mt-1 text-[10px] leading-relaxed">
             A percentagem desce ao longo do desafio, como no Plano Milhão.
-            Carrega em &ldquo;fixar&rdquo; para usares a mesma todos os dias.
+            Carrega em &ldquo;fixar&rdquo; para usares a mesma em todos os níveis.
           </p>
         )}
 
@@ -508,7 +508,7 @@ export function CreateChallenge({
             <TriangleAlert className="mt-0.5 h-3 w-3 flex-none" />
             <span>
               {CHALLENGE_TEMPLATES[templateIndex].longShot
-                ? "Bilhete de lotaria, e de propósito: todos os dias têm de entrar, e uma falha acaba com ele. Vale pela perseguição, não pela matemática."
+                ? "Bilhete de lotaria, e de propósito: todos os níveis têm de entrar, e uma falha acaba com ele. Vale pela perseguição, não pela matemática."
                 : `A aposta é grande de mais para a odd: mesmo com ${Math.round(
                     ASSUMED_WIN_RATE * 100,
                   )}% de acerto a banca desce ao longo do tempo.`}
@@ -735,7 +735,7 @@ export function ChallengeSettings({
             </span>
             <span className="sl-meta block text-[11px] leading-5">
               Entra na classificação e qualquer pessoa com conta passa a ver as
-              apostas, os dias e a banca. Desligado, só quem está cá dentro vê.
+              apostas, os níveis e a banca. Desligado, só quem está cá dentro vê.
             </span>
           </span>
         </button>

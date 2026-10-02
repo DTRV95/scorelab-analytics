@@ -122,7 +122,7 @@ describe("bets that answer to no challenge", () => {
     renderPage();
 
     expect(
-      await screen.findByText(/não tem dia nem escada/),
+      await screen.findByText(/não tem nível nem escada/),
     ).toBeInTheDocument();
   });
 

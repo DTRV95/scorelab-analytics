@@ -92,7 +92,7 @@ export function FailedPicker({
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            "Guardar o dia perdido"
+            "Guardar o nível perdido"
           )}
         </Button>
         <button
@@ -106,7 +106,7 @@ export function FailedPicker({
 
       {failed.length === 0 && (
         <p className="sl-meta text-[11px]">
-          Um dia perdido tem pelo menos um jogo falhado.
+          Um nível perdido tem pelo menos um jogo falhado.
         </p>
       )}
     </div>

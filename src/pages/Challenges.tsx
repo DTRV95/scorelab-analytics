@@ -166,7 +166,7 @@ function PlayerCard({
             </span>
           )}
           <span className="sl-pill sl-pill-muted sl-figure">
-            Dia {standing.day}
+            Nível {standing.day}
           </span>
         </div>
       </div>
@@ -198,7 +198,7 @@ function PlayerCard({
       )}
 
       <p className="sl-meta mt-1 px-4 text-[11px]">
-        {`Dia ${standing.day} de ${rules.days}`}
+        {`Nível ${standing.day} de ${rules.days}`}
         {planned && (
           <>
             {" · "}
@@ -242,7 +242,7 @@ function PlayerCard({
       {rules.lossStreakPause !== null &&
         standing.lossStreak >= rules.lossStreakPause && (
           <p className="px-4 pb-3 text-[11px] leading-relaxed text-destructive">
-            {standing.lossStreak} perdas seguidas. O desafio manda parar um dia.
+            {standing.lossStreak} perdas seguidas. O desafio manda parar e reavaliar.
           </p>
         )}
     </div>
@@ -696,7 +696,7 @@ export default function Challenges() {
         });
 
         toast({
-          title: `Dia ${me.day} registado`,
+          title: `Nível ${me.day} registado`,
           description: `${legs.length === 1 ? "1 jogo" : `${legs.length} jogos`} @ ${odds.toFixed(2)} · ${eur.format(stake)}`,
         });
 
@@ -841,7 +841,7 @@ export default function Challenges() {
       applyCorrection(
         bet,
         resettleBet(bet, won),
-        "Não foi possível trocar o resultado do dia.",
+        "Não foi possível trocar o resultado do nível.",
       ),
     [applyCorrection],
   );
@@ -1003,7 +1003,7 @@ export default function Challenges() {
             )}
             {schedule.state === "finished" && (
               <p className="sl-meta mt-0.5 text-[11px]">
-                Os {rules.days} dias já passaram
+                Os {rules.days} níveis já passaram
               </p>
             )}
             {schedule.behindBy > 0 && (
@@ -1143,7 +1143,7 @@ export default function Challenges() {
                             : `${bet.legs.length} jogos`}
                         </p>
                         <p className="sl-meta truncate text-[11px]">
-                          Dia {bet.day} · {eur.format(bet.stake)} @{" "}
+                          Nível {bet.day} · {eur.format(bet.stake)} @{" "}
                           {bet.odds.toFixed(2)} · ganha{" "}
                           {eur.format(bet.stake * (bet.odds - 1))}
                         </p>
@@ -1219,7 +1219,7 @@ export default function Challenges() {
                           className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40 disabled:opacity-40"
                         >
                           <X className="h-3.5 w-3.5" />
-                          {bet.legs.length === 1 ? "Falhou" : "Perdi o dia"}
+                          {bet.legs.length === 1 ? "Falhou" : "Perdi o nível"}
                         </button>
                       </div>
                     )}
@@ -1270,7 +1270,7 @@ export default function Challenges() {
             />
           </div>
           <p className="sl-meta mt-1.5 text-[11px]">
-            Dia {day} de {rules.days} ·{" "}
+            Nível {day} de {rules.days} ·{" "}
             <span
               className={
                 combined > startedWith + 0.005
@@ -1397,7 +1397,7 @@ export default function Challenges() {
                           onClick={() =>
                             setOpenBet({ bet, player: standing.name })
                           }
-                          aria-label={`Ver a aposta do dia ${bet.day} de ${standing.name}`}
+                          aria-label={`Ver a aposta do nível ${bet.day} de ${standing.name}`}
                           className="sl-tap flex w-full items-center gap-2.5 rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5 text-left hover:bg-muted"
                         >
                           <div className="min-w-0 flex-1">
@@ -1407,7 +1407,7 @@ export default function Challenges() {
                                 : `${bet.legs[0]?.match ?? "—"} + ${bet.legs.length - 1}`}
                             </p>
                             <p className="sl-meta truncate text-[11px]">
-                              Dia {bet.day} ·{" "}
+                              Nível {bet.day} ·{" "}
                               {bet.legs.length === 1
                                 ? (MARKET_LABELS[bet.legs[0].market] ??
                                   canonicalMarket(bet.legs[0].market))
@@ -1449,7 +1449,7 @@ export default function Challenges() {
                 onClick={() => setAllDays((open) => !open)}
                 className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
               >
-                {allDays ? "Mostrar só os últimos 2 dias" : "Ver todos os dias"}
+                {allDays ? "Mostrar só os últimos 2 níveis" : "Ver todos os níveis"}
               </button>
             )}
           </motion.section>
@@ -1461,7 +1461,7 @@ export default function Challenges() {
               <Trophy className="h-4 w-4 text-primary" />A escada
             </h2>
             <span className="sl-meta text-[11px]">
-              {me ? `estás no dia ${me.day}` : ""}
+              {me ? `estás no nível ${me.day}` : ""}
             </span>
           </div>
 
@@ -1471,7 +1471,7 @@ export default function Challenges() {
           <div className="space-y-2 border-b border-border p-4">
             <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
               <span className="sl-meta min-w-0 flex-1 text-[11px]">
-                Chegar do dia {me?.day ?? 1} ao fim
+                Chegar do nível {me?.day ?? 1} ao fim
               </span>
               <span className="font-mono-data flex-none text-sm font-bold text-foreground">
                 {chance < 0.0001
@@ -1486,8 +1486,8 @@ export default function Challenges() {
                   {eur.format(loss.bankrollAfter)}
                   <span className="sl-meta font-normal">
                     {loss.dayAfter === loss.dayBefore
-                      ? " · e ainda no dia 1"
-                      : ` · de volta ao dia ${loss.dayAfter}, que pede ${eur.format(
+                      ? " · e ainda no nível 1"
+                      : ` · de volta ao nível ${loss.dayAfter}, que pede ${eur.format(
                           ladder[loss.dayAfter - 1]?.stake ?? 0,
                         )}`}
                   </span>
@@ -1500,7 +1500,7 @@ export default function Challenges() {
               table and the screen can be read side by side. */}
           <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
             <span className="sl-meta w-6 flex-none text-[10px] uppercase tracking-[0.1em]">
-              Dia
+              Nível
             </span>
             <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.1em]">
               Banca
@@ -1575,7 +1575,7 @@ export default function Challenges() {
               onClick={() => setWholeTable(true)}
               className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
             >
-              Ver o quadro todo ({ladder.length} dias)
+              Ver o quadro todo ({ladder.length} níveis)
             </button>
           )}
           {wholeTable && (
@@ -1584,7 +1584,7 @@ export default function Challenges() {
               onClick={() => setWholeTable(false)}
               className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-muted-foreground"
             >
-              Mostrar só à volta do dia de hoje
+              Mostrar só à volta do nível de agora
             </button>
           )}
         </motion.section>

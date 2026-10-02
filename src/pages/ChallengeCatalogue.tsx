@@ -161,7 +161,7 @@ function ChallengeCard({
               <TriangleAlert className="mt-0.5 h-3 w-3 flex-none" />
               <span>
                 {template.longShot
-                  ? "Bilhete de lotaria, e de propósito: todos os dias têm de entrar, e uma falha acaba com ele."
+                  ? "Bilhete de lotaria, e de propósito: todos os níveis têm de entrar, e uma falha acaba com ele."
                   : "A aposta é grande de mais para a odd: a banca desce ao longo do tempo."}
               </span>
             </p>
@@ -209,8 +209,8 @@ function ChallengeCard({
                     {row.name}
                   </p>
                   <p className="sl-meta truncate text-[11px]">
-                    Dia {row.day} de {row.days} · {row.settled}{" "}
-                    {row.settled === 1 ? "dia fechado" : "dias fechados"}
+                    Nível {row.day} de {row.days} · {row.settled}{" "}
+                    {row.settled === 1 ? "nível fechado" : "níveis fechados"}
                   </p>
                 </div>
                 <span className="sl-figure flex-none text-right text-[13px] text-foreground">
@@ -378,7 +378,7 @@ export default function ChallengeCatalogue() {
                   </span>
                   <span className="sl-meta block text-[11px]">
                     {eur.format(Number(plan.starting_bankroll))} →{" "}
-                    {eur.format(Number(plan.target))} · {plan.days} dias
+                    {eur.format(Number(plan.target))} · {plan.days} níveis
                   </span>
                 </span>
                 <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />

@@ -84,7 +84,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   {
     key: "milhao",
     name: "Plano Milhão",
-    blurb: "38 dias, 50% da banca a descer até 30%, odds 1.75–2.10.",
+    blurb: "38 níveis, 50% da banca a descer até 30%, odds 1.75–2.10.",
     startingBankroll: 10,
     target: 1_000_000,
     rules: MILLION_PLAN_RULES,
@@ -94,7 +94,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "sprint-7",
     name: "Sprint de 7",
     blurb:
-      "7 dias a 8% da banca, odds 1.90+. 20 € → 30 €. O mais curto que ainda cresce.",
+      "7 níveis a 8% da banca, odds 1.90+. 20 € → 30 €. O mais curto que ainda cresce.",
     startingBankroll: 20,
     target: 30,
     rules: {
@@ -111,7 +111,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "escada-10",
     name: "Escada calma de 10",
     blurb:
-      "10 dias a 7% da banca, odds 1.90+. 20 € → 30 €. Um dia mau custa 7%, não metade.",
+      "10 níveis a 7% da banca, odds 1.90+. 20 € → 30 €. Um nível mau custa 7%, não metade.",
     startingBankroll: 20,
     target: 30,
     rules: {
@@ -127,7 +127,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   {
     key: "dobrar",
     name: "Dobrar a banca",
-    blurb: "14 dias a 8% da banca, odds 1.90+. 20 € → 40 €. Dobrar, a sério.",
+    blurb: "14 níveis a 8% da banca, odds 1.90+. 20 € → 40 €. Dobrar, a sério.",
     startingBankroll: 20,
     target: 40,
     rules: {
@@ -144,7 +144,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "maratona-60",
     name: "Maratona dos 60",
     blurb:
-      "60 dias a 5% da banca, odds 1.90+. 50 € → 150 €. O que cresce mais depressa a longo prazo.",
+      "60 níveis a 5% da banca, odds 1.90+. 50 € → 150 €. O que cresce mais depressa a longo prazo.",
     startingBankroll: 50,
     target: 150,
     rules: {
@@ -160,7 +160,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   {
     key: "conservador",
     name: "Crescer devagar",
-    blurb: "30 dias a 5% da banca, odds 1.90+. 50 € → 100 €. Um erro não mata.",
+    blurb: "30 níveis a 5% da banca, odds 1.90+. 50 € → 100 €. Um erro não mata.",
     startingBankroll: 50,
     target: 100,
     rules: {
@@ -179,9 +179,9 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   // the arithmetic says anything good about them.
   {
     key: "dobrar-10",
-    name: "Dobrar 10 dias seguidos",
+    name: "Dobrar 10 níveis seguidos",
     blurb:
-      "10 dias, odd 2.00, tudo em cima. 10 € → 10 240 €. Uma falha e acabou: 1 em 1 024.",
+      "10 níveis, odd 2.00, tudo em cima. 10 € → 10 240 €. Uma falha e acabou: 1 em 1 024.",
     startingBankroll: 10,
     target: 10_240,
     rules: {
@@ -199,7 +199,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "mil-em-10",
     name: "Mil euros em 10",
     blurb:
-      "10 dias a 65% da banca, odds 1.90. 10 € → 1 000 €. Cem vezes a banca: 1 em 613.",
+      "10 níveis a 65% da banca, odds 1.90. 10 € → 1 000 €. Cem vezes a banca: 1 em 613.",
     startingBankroll: 10,
     target: 1_000,
     rules: {
@@ -217,7 +217,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "mes-perfeito",
     name: "Um mês perfeito",
     blurb:
-      "30 dias a 35% da banca, odds 1.50. 20 € → 2 500 €. Trinta dias sem falhar um: 1 em 191 751.",
+      "30 níveis a 35% da banca, odds 1.50. 20 € → 2 500 €. Trinta níveis sem falhar um: 1 em 191 751.",
     startingBankroll: 20,
     target: 2_500,
     rules: {
@@ -235,7 +235,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     key: "dez-mil-20",
     name: "Dez mil em 20",
     blurb:
-      "20 dias a 58% da banca, odds 1.80. 5 € → 10 000 €. 1 em 127 482 — mais raro do que levar com um raio este ano.",
+      "20 níveis a 58% da banca, odds 1.80. 5 € → 10 000 €. 1 em 127 482 — mais raro do que levar com um raio este ano.",
     startingBankroll: 5,
     target: 10_000,
     rules: {
@@ -492,8 +492,8 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
       severity: "breach",
       message:
         (input.openBets ?? 0) === 1
-          ? "Tens um dia por fechar. Fecha-o antes de abrir outro, ou a escada perde a conta."
-          : `Tens ${input.openBets} dias por fechar. Fecha-os antes de abrir outro.`,
+          ? "Tens um nível por fechar. Fecha-o antes de abrir outro, ou a escada perde a conta."
+          : `Tens ${input.openBets} níveis por fechar. Fecha-os antes de abrir outro.`,
     });
   }
 
@@ -501,7 +501,7 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
     violations.push({
       code: "loss-streak",
       severity: "breach",
-      message: `${lossStreak} perdas seguidas. O desafio manda parar um dia e reavaliar antes da próxima aposta.`,
+      message: `${lossStreak} perdas seguidas. O desafio manda parar e reavaliar antes da próxima aposta.`,
     });
   }
 
@@ -537,7 +537,7 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
     violations.push({
       code: "stake-over",
       severity: "breach",
-      message: `Acima do quadro: o dia ${day} são ${planned.toFixed(
+      message: `Acima do quadro: o nível ${day} são ${planned.toFixed(
         2
       )} €, não ${stake.toFixed(2)} €.`,
     });
@@ -545,7 +545,7 @@ export function checkBet(rules: ChallengeRules, input: BetCheckInput): Violation
     violations.push({
       code: "stake-under",
       severity: "note",
-      message: `Abaixo do quadro: o dia ${day} pede ${planned.toFixed(
+      message: `Abaixo do quadro: o nível ${day} pede ${planned.toFixed(
         2
       )} €. Arriscas menos, mas o quadro deixa de bater certo.`,
     });
@@ -645,7 +645,7 @@ export function costOfOneLoss(ladder: Rung[], bankroll: number, day: number) {
 
 /** The rules in one line, for a card that has no room for a table. */
 export function describeRules(rules: ChallengeRules): string {
-  const parts: string[] = [`${rules.days} dias`];
+  const parts: string[] = [`${rules.days} níveis`];
 
   const pcts = [...new Set(rules.stakeBands.map((band) => Math.round(band.pct * 100)))];
   parts.push(

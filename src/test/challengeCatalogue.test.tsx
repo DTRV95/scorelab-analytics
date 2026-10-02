@@ -85,8 +85,8 @@ describe("the page of challenges there are", () => {
 
     fireEvent.click(await screen.findByText("Sprint de 7"));
 
-    expect(screen.getByText("O que custa um dia mau")).toBeInTheDocument();
-    expect(screen.getByText("Aposta por dia")).toBeInTheDocument();
+    expect(screen.getByText("O que custa um nível mau")).toBeInTheDocument();
+    expect(screen.getByText("Aposta por nível")).toBeInTheDocument();
     expect(screen.getByText(/Matematicamente viável/)).toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe("the page of challenges there are", () => {
     );
     const wide = lines.filter((line) => line.wide).map((line) => line.label);
 
-    expect(wide).toEqual(["Aposta por dia", "O que custa um dia mau"]);
+    expect(wide).toEqual(["Aposta por nível", "O que custa um nível mau"]);
   });
 
   it("writes a big multiple in a way somebody can read", async () => {
@@ -116,7 +116,7 @@ describe("the page of challenges there are", () => {
   it("says outright which ones are a chase rather than a plan", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByText("Dobrar 10 dias seguidos"));
+    fireEvent.click(await screen.findByText("Dobrar 10 níveis seguidos"));
 
     expect(screen.getByText(/Bilhete de lotaria, e de propósito/)).toBeInTheDocument();
   });

@@ -46,9 +46,9 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
       // 100000× is a number nobody can read at a glance; 100 000× is.
       value: `${Math.round(target / startingBankroll).toLocaleString("pt-PT")}× a banca`,
     },
-    { label: "Dias", value: `${rules.days}` },
+    { label: "Níveis", value: `${rules.days}` },
     {
-      label: "Aposta por dia",
+      label: "Aposta por nível",
       wide: true,
       value:
         pcts.length === 1
@@ -71,7 +71,7 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
       value: first ? eur.format(first.stake) : "—",
     },
     {
-      label: "O que custa um dia mau",
+      label: "O que custa um nível mau",
       wide: true,
       value: first
         ? `${eur.format(first.stake)} e um degrau abaixo`
@@ -91,12 +91,12 @@ export function challengePitch(template: ChallengeTemplate): string {
   const growth = expectedGrowth(template.rules, ASSUMED_WIN_RATE);
 
   if (template.longShot) {
-    return `Não é um plano, é uma perseguição: ${template.rules.days} dias sem falhar um único. Se sair, conta-se durante anos. Quase sempre não sai.`;
+    return `Não é um plano, é uma perseguição: ${template.rules.days} níveis sem falhar um único. Se sair, conta-se durante anos. Quase sempre não sai.`;
   }
 
   if (Number.isFinite(growth) && growth > 0) {
     return `Multiplicar por ${multiple} sem nunca arriscar o suficiente para uma má semana acabar com tudo. É o tipo de desafio que se pode perder e recomeçar na mesma banca.`;
   }
 
-  return `Multiplicar por ${multiple} em ${template.rules.days} dias.`;
+  return `Multiplicar por ${multiple} em ${template.rules.days} níveis.`;
 }

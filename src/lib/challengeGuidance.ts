@@ -63,16 +63,16 @@ function lastLine(standing: PlayerStanding, day: number): string | null {
   if (!bet) return null;
 
   if (bet.status === "green") {
-    return `Ganhaste o dia ${bet.day}, +${eur.format(
+    return `Ganhaste o nível ${bet.day}, +${eur.format(
       bet.profitLoss,
-    )}. Avanças para o dia ${day}.`;
+    )}. Avanças para o nível ${day}.`;
   }
 
   if (bet.status === "red") {
-    return `Perdeste o dia ${bet.day}, ${eur.format(bet.profitLoss)}.${
+    return `Perdeste o nível ${bet.day}, ${eur.format(bet.profitLoss)}.${
       day < bet.day
-        ? ` Recuas para o dia ${day}.`
-        : " Já estavas no primeiro dia."
+        ? ` Recuas para o nível ${day}.`
+        : " Já estavas no primeiro nível."
     }`;
   }
 
@@ -149,7 +149,7 @@ export function nextMove({
       ...base,
       state: "close-first",
       blocked: true,
-      action: "Fecha o dia que está aberto",
+      action: "Fecha o nível que está aberto",
       detail:
         standing.openBets === 1
           ? "A banca só mexe quando esta fechar."
@@ -165,7 +165,7 @@ export function nextMove({
       action: `Começa daqui a ${schedule.daysUntilStart} ${
         schedule.daysUntilStart === 1 ? "dia" : "dias"
       }`,
-      detail: `No dia 1 são ${eur.format(stake)} a ${targetOdds.toFixed(2)}.`,
+      detail: `No nível 1 são ${eur.format(stake)} a ${targetOdds.toFixed(2)}.`,
     };
   }
 
@@ -175,7 +175,7 @@ export function nextMove({
       state: "finished",
       blocked: true,
       action: "O desafio chegou ao fim",
-      detail: `Dia ${day} de ${rules.days}, com ${eur.format(standing.bankroll)}.`,
+      detail: `Nível ${day} de ${rules.days}, com ${eur.format(standing.bankroll)}.`,
     };
   }
 
@@ -205,7 +205,7 @@ export function nextMove({
     ? `O quadro pede ${eur.format(row?.stake ?? 0)}, só tens ${eur.format(
         standing.bankroll,
       )}: vai tudo${band}`
-    : `Dia ${day} de ${rules.days}${band}`;
+    : `Nível ${day} de ${rules.days}${band}`;
 
   return {
     ...base,

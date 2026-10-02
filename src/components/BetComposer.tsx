@@ -202,7 +202,7 @@ export function BetComposer({
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-bold text-foreground">
-            A aposta do dia {day}
+            A aposta do nível {day}
           </h2>
           <p className="sl-meta truncate text-[11px]">
             O quadro pede {eur.format(suggested)}
@@ -523,7 +523,7 @@ export function BetComposer({
             onClick={place}
           >
             <ListPlus className="mr-1.5 h-4 w-4" />
-            {saving ? "A guardar..." : `Registar o dia ${day}`}
+            {saving ? "A guardar..." : `Registar o nível ${day}`}
           </Button>
         </div>
       )}

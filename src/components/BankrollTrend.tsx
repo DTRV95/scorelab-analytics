@@ -41,7 +41,7 @@ function Detail({
         {eur.format(point.bankroll)}
       </p>
       <p className="sl-meta text-[11px]">
-        Dia {point.step} · {when(point.at)} ·{" "}
+        Nível {point.step} · {when(point.at)} ·{" "}
         <span
           className={
             point.change >= 0
@@ -86,10 +86,10 @@ export function BankrollTrend({
       <div className="flex items-end justify-between gap-3 px-4 pb-1 pt-3.5">
         <div className="min-w-0">
           <h2 className="text-[13px] font-semibold text-foreground">
-            A banca, dia a dia
+            A banca, nível a nível
           </h2>
           <p className="sl-meta text-[11px]">
-            {points.length} dias fechados, desde{" "}
+            {points.length} níveis fechados, desde{" "}
             {eur.format(startingBankroll)}
           </p>
         </div>

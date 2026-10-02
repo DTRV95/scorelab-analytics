@@ -148,7 +148,7 @@ describe("the home page and the person on the other side", () => {
 
     renderHome();
 
-    expect(await screen.findByText(/Vilagreen ganhou o dia 4/)).toBeInTheDocument();
+    expect(await screen.findByText(/Vilagreen ganhou o nível 4/)).toBeInTheDocument();
     expect(screen.getByText("2 novidades")).toBeInTheDocument();
   });
 

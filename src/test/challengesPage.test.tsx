@@ -279,7 +279,7 @@ function renderPage() {
  */
 async function openPicker() {
   fireEvent.click(
-    await screen.findByRole("button", { name: /Inserir (os jogos do dia \d+|outro jogo)/ })
+    await screen.findByRole("button", { name: /Inserir (os jogos do nível \d+|outro jogo)/ })
   );
 }
 
@@ -330,8 +330,8 @@ describe("a challenge's standings", () => {
     // first day and is back under the opening rung.
     // Both appear more than once now: on the player's own card, and again on
     // the head-to-head row that puts the two ladders side by side.
-    expect((await screen.findAllByText("Dia 2")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Dia 1").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Nível 2")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nível 1").length).toBeGreaterThan(0);
   });
 
   it("says what to do next, with the stake and the odd already worked out", async () => {
@@ -339,7 +339,7 @@ describe("a challenge's standings", () => {
 
     // The open day comes first: nothing else can be decided until it closes.
     expect(await screen.findByText("O que fazer agora")).toBeInTheDocument();
-    expect(screen.getByText(/Fecha o dia que está aberto/)).toBeInTheDocument();
+    expect(screen.getByText(/Fecha o nível que está aberto/)).toBeInTheDocument();
   });
 
   it("says out loud what the ladder actually requires", async () => {
@@ -347,7 +347,7 @@ describe("a challenge's standings", () => {
 
     // The odds of the whole run, beside the ladder itself rather than in a
     // card of their own: a schedule that is really a parlay has to say so.
-    expect(await screen.findByText(/Chegar do dia \d+ ao fim/)).toBeInTheDocument();
+    expect(await screen.findByText(/Chegar do nível \d+ ao fim/)).toBeInTheDocument();
     expect(screen.getByText(/1 em/)).toBeInTheDocument();
     expect(screen.getByText(/Perder hoje deixa-te em/)).toBeInTheDocument();
   });
@@ -559,7 +559,7 @@ describe("building the day's bet", () => {
     fireEvent.change(screen.getByLabelText("Odd de Equipa 11 vs Rival"), {
       target: { value: "1.85" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o nível 2/ }));
 
     expect(savePlanBet).toHaveBeenCalledTimes(1);
     const [, userId, payload] = savePlanBet.mock.calls[0];
@@ -575,7 +575,7 @@ describe("building the day's bet", () => {
       target: { value: "1.85" },
     });
     fireEvent.change(screen.getByLabelText("Valor a apostar"), { target: { value: "5" } });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o nível 2/ }));
 
     const [, , payload] = savePlanBet.mock.calls[0];
     expect(payload).toMatchObject({ stake: 5 });
@@ -609,7 +609,7 @@ describe("the two of them side by side", () => {
     const dialog = await openDuel();
 
     expect(
-      within(dialog).getByText(/poucos dias fechados para isto dizer/),
+      within(dialog).getByText(/poucos níveis fechados para isto dizer/),
     ).toBeInTheDocument();
   });
 
@@ -676,7 +676,7 @@ describe("telling the person what happened", () => {
     fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
       target: { value: "1.95" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o nível 2/ }));
 
     // The most consequential action in the app used to land in silence.
     //
@@ -686,7 +686,7 @@ describe("telling the person what happened", () => {
     // the stale toast before this one is even rendered.
     await waitFor(() => {
       const shown = [...document.querySelectorAll("li")].find((node) =>
-        node.textContent?.includes("Dia 2 registado"),
+        node.textContent?.includes("Nível 2 registado"),
       );
       expect(shown).toHaveTextContent("1 jogo @ 1.95");
     });
@@ -700,7 +700,7 @@ describe("telling the person what happened", () => {
     fireEvent.change(screen.getByLabelText("Odd de Equipa 0 vs Rival"), {
       target: { value: "1.95" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Registar o dia 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Registar o nível 2/ }));
 
     expect(
       await screen.findByText("A aposta não ficou guardada. Tenta outra vez."),
@@ -853,7 +853,7 @@ describe("writing the market and the teams", () => {
     await addByHand("Bélgica", "França", "V1", "1.85");
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Registar o dia/ }),
+      await screen.findByRole("button", { name: /Registar o nível/ }),
     );
 
     const [, , payload] = savePlanBet.mock.calls[0] as [
@@ -959,10 +959,10 @@ describe("closing a bet nobody else can close", () => {
     // ones that failed is the whole of what is left to say.
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Perdi o dia/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Perdi o nível/ }));
     expect(screen.getByText("Quais é que falharam?")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: /Guardar o dia perdido/ });
+    const save = screen.getByRole("button", { name: /Guardar o nível perdido/ });
     expect(save).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /Sporting CP vs Arouca/ }));
@@ -983,11 +983,11 @@ describe("reading the other player's bet", () => {
 
     // The brother's day 1, which the list can only show as one line.
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de Irmão/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de Irmão/ }),
     );
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Dia 1 · Irmão")).toBeInTheDocument();
+    expect(within(dialog).getByText("Nível 1 · Irmão")).toBeInTheDocument();
     expect(within(dialog).getByText("Sporting CP vs Arouca")).toBeInTheDocument();
     expect(within(dialog).getByText(/o modelo dava 71%/)).toBeInTheDocument();
     expect(within(dialog).getByText("Perdeu")).toBeInTheDocument();
@@ -998,7 +998,7 @@ describe("reading the other player's bet", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 2 de David/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 2 de David/ }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1014,7 +1014,7 @@ describe("correcting a bet that was typed wrong", () => {
   async function openMine() {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 2 de David/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 2 de David/ }),
     );
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(
@@ -1070,7 +1070,7 @@ describe("correcting a bet that was typed wrong", () => {
   it("leaves the other player's bet alone", async () => {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de Irmão/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de Irmão/ }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1083,10 +1083,10 @@ describe("correcting a bet that was typed wrong", () => {
     renderPage();
     // Day 1 is behind the fold: the list shows the last two days by default.
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver todos os dias/ }),
+      await screen.findByRole("button", { name: /Ver todos os níveis/ }),
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de David/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de David/ }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1107,7 +1107,7 @@ describe("correcting a bet that was typed wrong", () => {
     );
 
     const picker = await screen.findByRole("dialog", {
-      name: /Juntar ao dia 2/,
+      name: /Juntar ao nível 2/,
     });
     fireEvent.click(
       within(picker).getByRole("button", { name: /Adicionar um jogo à mão/ }),
@@ -1157,10 +1157,10 @@ describe("correcting a bet that was typed wrong", () => {
     // to what that day then won.
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver todos os dias/ }),
+      await screen.findByRole("button", { name: /Ver todos os níveis/ }),
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do dia 1 de David/ }),
+      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de David/ }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1172,7 +1172,7 @@ describe("correcting a bet that was typed wrong", () => {
       within(dialog).queryByRole("button", { name: /Adicionar jogo/ }),
     ).not.toBeInTheDocument();
     expect(
-      within(dialog).getByText(/enquanto o dia estiver em aberto/),
+      within(dialog).getByText(/enquanto o nível estiver em aberto/),
     ).toBeInTheDocument();
   });
 });

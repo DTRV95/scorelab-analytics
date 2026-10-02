@@ -63,7 +63,7 @@ function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
             )}
           </div>
           <p className="sl-meta text-[11px]">
-            Dia {standing.day} de {plan.days} · {eur.format(standing.bankroll)}
+            Nível {standing.day} de {plan.days} · {eur.format(standing.bankroll)}
           </p>
           {/* The instruction, not a status: what to do, and how much. */}
           <p
@@ -76,7 +76,7 @@ function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
             }`}
           >
             {waiting
-              ? `Fecha o dia ${standing.day} — ${standing.openBets === 1 ? "1 aposta" : `${standing.openBets} apostas`} por decidir`
+              ? `Fecha o nível ${standing.day} — ${standing.openBets === 1 ? "1 aposta" : `${standing.openBets} apostas`} por decidir`
               : move.action}
           </p>
         </div>

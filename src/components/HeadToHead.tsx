@@ -41,7 +41,7 @@ const ROWS: Row[] = [
       entry.roi === null ? "—" : `${entry.roi > 0 ? "+" : ""}${entry.roi}%`,
   },
   {
-    label: "Dias ganhos",
+    label: "Níveis ganhos",
     read: (entry) => entry.greens,
     show: (entry) => `${entry.greens} de ${entry.settled}`,
   },
@@ -54,7 +54,7 @@ const ROWS: Row[] = [
     label: "Melhor sequência",
     read: (entry) => entry.bestStreak,
     show: (entry) =>
-      entry.bestStreak === 1 ? "1 dia" : `${entry.bestStreak} dias`,
+      entry.bestStreak === 1 ? "1 nível" : `${entry.bestStreak} níveis`,
   },
   {
     label: "Melhor odd acertada",
@@ -62,9 +62,9 @@ const ROWS: Row[] = [
     show: (entry) => (entry.bestOdds === null ? "—" : entry.bestOdds.toFixed(2)),
   },
   {
-    label: "Dia da escada",
+    label: "Nível da escada",
     read: (entry) => entry.day,
-    show: (entry) => `Dia ${entry.day}`,
+    show: (entry) => `Nível ${entry.day}`,
   },
 ];
 
@@ -165,7 +165,7 @@ export function HeadToHead({
       {early && (
         <p className="sl-meta flex items-start gap-1.5 border-t border-border px-4 py-2.5 text-[11px] leading-5">
           <Info className="mt-0.5 h-3 w-3 flex-none" />
-          Ainda são poucos dias fechados para isto dizer quem aposta melhor —
+          Ainda são poucos níveis fechados para isto dizer quem aposta melhor —
           são precisos pelo menos {MIN_SETTLED} de cada um. Até lá é o
           histórico, não um veredicto.
         </p>

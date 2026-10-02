@@ -72,13 +72,13 @@ describe("telling someone what to do next", () => {
     // The euro formatter uses a non-breaking space before the symbol, so the
     // expectations match on it loosely rather than pretending otherwise.
     expect(result.action).toMatch(/^Aposta 10,69\s€ a uma odd de 1\.90$/);
-    expect(result.detail).toMatch(/^Dia 3 de 38 · odd entre 1\.75 e 2\.10$/);
+    expect(result.detail).toMatch(/^Nível 3 de 38 · odd entre 1\.75 e 2\.10$/);
     expect(result.blocked).toBe(false);
     expect(result.short).toBe(false);
   });
 
   it("says a win moved the player up a day", () => {
-    expect(move().last).toMatch(/^Ganhaste o dia 2, \+6,38\s€\. Avanças para o dia 3\.$/);
+    expect(move().last).toMatch(/^Ganhaste o nível 2, \+6,38\s€\. Avanças para o nível 3\.$/);
   });
 
   it("says a loss moved the player back down", () => {
@@ -91,7 +91,7 @@ describe("telling someone what to do next", () => {
       lastSettled: settled({ status: "red", day: 3, stake: 10.69, profitLoss: -10.69 }),
     });
 
-    expect(result.last).toMatch(/^Perdeste o dia 3, -10,69\s€\. Recuas para o dia 1\.$/);
+    expect(result.last).toMatch(/^Perdeste o nível 3, -10,69\s€\. Recuas para o nível 1\.$/);
     // Back on row 1, which asks for €5 — not half of whatever is left.
     expect(result.stake).toBe(5);
     expect(result.targetOdds).toBe(2);
@@ -132,7 +132,7 @@ describe("telling someone what to do next", () => {
 
     expect(result.state).toBe("close-first");
     expect(result.blocked).toBe(true);
-    expect(result.action).toMatch(/Fecha o dia/);
+    expect(result.action).toMatch(/Fecha o nível/);
   });
 
   it("calls the pause the challenge asked for, and says what comes after it", () => {

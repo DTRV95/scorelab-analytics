@@ -129,7 +129,7 @@ function Row({ rivalry, news }: { rivalry: Rivalry; news: NewsItem[] }) {
 
       {early && news.length === 0 && (
         <p className="sl-meta mt-1 text-[10px]">
-          Poucos dias fechados para isto querer dizer muito.
+          Poucos níveis fechados para isto querer dizer muito.
         </p>
       )}
     </Link>
