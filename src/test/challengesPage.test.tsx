@@ -208,13 +208,19 @@ import {
 } from "@/lib/planStore";
 import { writeCachedBoard } from "@/lib/probabilityBoardCache";
 
-function boardMatch(id: number, home: string, pct: number, league = "Liga Portugal") {
+function boardMatch(
+  id: number,
+  home: string,
+  pct: number,
+  league = "Liga Portugal",
+  kickoff = "2026-09-26T18:00:00Z",
+) {
   return {
     fixture_id: id,
     league,
     home_name: home,
     away_name: "Rival",
-    kickoff: "2026-09-26T18:00:00Z",
+    kickoff,
     headline_market: "Casa",
     headline_pct: pct,
     amostra_pct: 80,
@@ -751,6 +757,73 @@ describe("what the person's own record says, while they build the bet", () => {
 // Every market on every bet so far was typed into a blank box, and it shows:
 // "V1" and "Casa" for the same bet, "AM" and "Ambas Marcam", two spellings of
 // "X2 e +1,5 golos". And the same side went in as "Gales" and "País de Gales".
+// Ranked by the model's confidence, a game on Sunday sat above one kicking
+// off in an hour, and nothing on screen said why.
+describe("the order the games come in", () => {
+  it("puts them in the order they are played, soonest first", async () => {
+    const today = new Date();
+    const at = (days: number, hour: number) => {
+      const when = new Date(today);
+      when.setDate(when.getDate() + days);
+      when.setHours(hour, 0, 0, 0);
+      return when.toISOString();
+    };
+
+    writeCachedBoard({
+      days: 7,
+      matches: [
+        // Written worst-first on purpose: the model's number must not decide
+        // this, and the most confident game here is the one furthest away.
+        boardMatch(1, "Amanhã cedo", 60, "Liga Portugal", at(1, 11)),
+        boardMatch(2, "Depois de amanhã", 95, "Liga Portugal", at(2, 15)),
+        boardMatch(3, "Hoje tarde", 55, "Liga Portugal", at(0, 21)),
+        boardMatch(4, "Hoje cedo", 50, "Liga Portugal", at(0, 14)),
+      ],
+      unavailable: [],
+      skipped: 0,
+    });
+
+    renderPage();
+    await openPicker();
+
+    const names = (await screen.findAllByText(/vs Rival/)).map(
+      (node) => node.textContent,
+    );
+    expect(names).toEqual([
+      "Hoje cedo vs Rival",
+      "Hoje tarde vs Rival",
+      "Amanhã cedo vs Rival",
+      "Depois de amanhã vs Rival",
+    ]);
+  });
+
+  it("says which day each run of games belongs to", async () => {
+    const today = new Date();
+    const at = (days: number, hour: number) => {
+      const when = new Date(today);
+      when.setDate(when.getDate() + days);
+      when.setHours(hour, 0, 0, 0);
+      return when.toISOString();
+    };
+
+    writeCachedBoard({
+      days: 7,
+      matches: [
+        boardMatch(1, "Hoje", 50, "Liga Portugal", at(0, 14)),
+        boardMatch(2, "Amanhã", 50, "Liga Portugal", at(1, 14)),
+      ],
+      unavailable: [],
+      skipped: 0,
+    });
+
+    renderPage();
+    await openPicker();
+
+    expect(await screen.findByText("Hoje")).toBeInTheDocument();
+    expect(screen.getByText("Amanhã")).toBeInTheDocument();
+  });
+});
+
 describe("writing the market and the teams", () => {
   it("offers names it has seen before, without a wall of buttons", async () => {
     // A row of buttons for every market lived here and was asked to go: above
