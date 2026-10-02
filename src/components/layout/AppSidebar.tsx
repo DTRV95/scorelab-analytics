@@ -11,13 +11,30 @@ import {
   Trophy,
   Percent,
   ListChecks,
+  type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { fetchPlans, type PlanRecord } from "@/lib/planStore";
+import { useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { newsByPlan, planNews } from "@/lib/planNews";
+import { seenByPlan } from "@/lib/seenStore";
+
+interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  /** Set on a challenge, so its row can carry what happened there. */
+  planId?: string;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
 
 // In Portuguese, like the pages they open. "Dashboard" opened a page whose
 // own title said "Início", and "Overview" sat above it in a second language.
-const navGroups = [
+const navGroups: NavGroup[] = [
   {
     title: "Geral",
     items: [
@@ -43,42 +60,45 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const [plans, setPlans] = useState<PlanRecord[]>([]);
+  // Read from the app's own copy of the challenges rather than fetched again
+  // here: the sidebar is on every page, and so was its own extra query.
+  const { plans, members, allBets, funds } = usePlanBoard();
 
-  // The challenges are listed rather than hard-coded. This group used to hold
-  // one entry reading "Plano Milhão" that opened the list of every challenge —
-  // a label promising one thing and a link doing another, left over from when
-  // that was the only challenge there was.
-  useEffect(() => {
-    let cancelled = false;
-    fetchPlans()
-      .then((mine) => {
-        if (!cancelled) setPlans(mine);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const news = useMemo(() => {
+    const since = seenByPlan(user?.id ?? "");
+    return newsByPlan(
+      planNews({ userId: user?.id ?? "", members, bets: allBets, funds, since }),
+    );
+  }, [user?.id, members, allBets, funds]);
 
-  const challengeGroup = {
+  // The challenges, and then the two things somebody does around them. The
+  // group used to open with "Todos os desafios", which under a heading that
+  // already says Desafios is a tautology — after the list it is the whole set
+  // beside mine, which is a different thing. And it used to close with
+  // "Análise de apostador": not a challenge, sitting in a list of challenge
+  // names, answering to almost the same words as the "Análises" above it.
+  const challengeGroup: NavGroup = {
     title: "Desafios",
     items: [
-      { title: "Todos os desafios", url: "/desafios", icon: ListChecks },
       ...plans.map((plan) => ({
         title: plan.name,
         url: `/desafios/${plan.id}`,
         icon: Trophy,
+        planId: plan.id,
       })),
-      { title: "Análise de apostador", url: "/desafios/analise", icon: BarChart3 },
+      { title: "Todos os desafios", url: "/desafios", icon: ListChecks },
+      { title: "Comparar jogadores", url: "/desafios/analise", icon: BarChart3 },
     ],
   };
 
+  // The challenges are what this is used for every day, so they come before
+  // the board and the model's record, which are the tools around them.
   const groups = [
-    ...navGroups.slice(0, 2),
+    navGroups[0],
     challengeGroup,
-    ...navGroups.slice(2),
+    ...navGroups.slice(1),
   ];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Geral: true,
@@ -139,6 +159,7 @@ export function AppSidebar() {
                 {(collapsed || openGroups[group.title]) &&
                   group.items.map((item) => {
                   const isActive = location.pathname === item.url;
+                  const waiting = item.planId ? (news[item.planId] ?? 0) : 0;
                   return (
                     <Link
                       key={item.url}
@@ -154,9 +175,18 @@ export function AppSidebar() {
                         className="h-4 w-4 flex-shrink-0"
                         strokeWidth={2}
                       />
-                      {!collapsed && <span>{item.title}</span>}
-                      {isActive && !collapsed && (
-                        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                      {!collapsed && <span className="truncate">{item.title}</span>}
+                      {/* A dot means something happened, here as everywhere
+                          else in the app. It used to mean "you are here", on
+                          a row already saying that in colour and background —
+                          which read as a notification that was never one. */}
+                      {waiting > 0 && !collapsed && (
+                        <span
+                          className="ml-auto flex-none rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary"
+                          aria-label={`${waiting} ${waiting === 1 ? "novidade" : "novidades"}`}
+                        >
+                          {waiting}
+                        </span>
                       )}
                     </Link>
                   );
