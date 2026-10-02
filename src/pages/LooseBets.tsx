@@ -24,8 +24,10 @@ import {
   editBet,
   reopenBet,
   resettleBet,
+  openFixtureRefs,
   setLegStatus,
   setRemainingLegs,
+  settleFromScores,
   type PlanBetPayload,
   type PlanLeg,
 } from "@/lib/planStore";
@@ -33,6 +35,7 @@ import {
   readCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
+import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import { typingMemory } from "@/lib/typingMemory";
 
 const eur = new Intl.NumberFormat("pt-PT", {
@@ -187,6 +190,51 @@ export default function LooseBets() {
   );
 
   const totals = useMemo(() => looseTotals(bets), [bets]);
+
+  /**
+   * Bets close themselves off the final scores, game by game.
+   *
+   * Exactly as they do inside a challenge, and from the same provider: a game
+   * whose market came in goes green, one that failed goes red, and the bet is
+   * green only when every one of its games is. A game typed by hand has no
+   * fixture to look up and no result to fetch, so those wait for their owner.
+   */
+  useEffect(() => {
+    const refs = openFixtureRefs(bets);
+    if (refs.length === 0) return;
+
+    let cancelled = false;
+
+    fetchFixtureResults(refs)
+      .then(async ({ results }) => {
+        const scores = new Map<
+          number,
+          { homeGoals: number; awayGoals: number }
+        >();
+        refs.forEach((ref) => {
+          const score = finalScore(results, ref.id);
+          if (score) scores.set(ref.id, score);
+        });
+        if (scores.size === 0 || cancelled) return;
+
+        const settled = bets
+          .filter((bet) => bet.status === "pending")
+          .map((bet) => ({ bet, payload: settleFromScores(bet, scores) }))
+          .filter((entry) => entry.payload !== null);
+
+        if (settled.length === 0 || cancelled) return;
+
+        await Promise.all(
+          settled.map((entry) => updateLooseBet(entry.bet.id, entry.payload!)),
+        );
+        if (!cancelled) load();
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bets, load]);
 
   const place = useCallback(
     async (legs: PlanLeg[], odds: number, stake: number) => {

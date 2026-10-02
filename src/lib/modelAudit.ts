@@ -1,3 +1,4 @@
+import { canonicalMarket } from "@/lib/marketNames";
 import type {
   AnalysisResult,
   ModelAuditMarketResult,
@@ -29,85 +30,71 @@ export interface ModelAuditSummary {
   marketPerformance: ModelAuditMarketPerformance[];
 }
 
-function normalizeMarket(market: string): string {
-  return market.trim().toLowerCase().replace(/\s+/g, " ");
-}
+/** What a market asks of a final score, or null when it cannot be read. */
+type Judge = (homeGoals: number, awayGoals: number) => boolean;
+
+const RESULTS: Record<string, Judge> = {
+  Casa: (home, away) => home > away,
+  Empate: (home, away) => home === away,
+  Fora: (home, away) => away > home,
+  "1X": (home, away) => home >= away,
+  "2X": (home, away) => away >= home,
+  "12": (home, away) => home !== away,
+  "Ambas Marcam": (home, away) => home > 0 && away > 0,
+  "BTTS No": (home, away) => home === 0 || away === 0,
+};
 
 /**
- * Every way a goals line is written across the app, English and Portuguese.
+ * A goals line, at whatever number it was written at.
  *
- * Spelled out in words only. A bare "+1.5" or "-3.5" would also match a
- * handicap, which this function must leave unsettled.
+ * Spelled out in words only, and only in the shape the normaliser produces. A
+ * bare "+1.5" or "-3.5" would also match a handicap, which this must leave
+ * unsettled rather than guess at.
  */
-const OVER_15 = ["over 1.5", "mais de 1.5", "+ de 1.5", "+ de 1,5"];
-const UNDER_35 = ["under 3.5", "menos de 3.5", "- de 3.5", "- de 3,5"];
-const OVER_35 = ["over 3.5", "mais de 3.5"];
-const OVER_25 = ["over 2.5", "mais de 2.5"];
-const UNDER_25 = ["under 2.5", "menos de 2.5"];
+function goalsJudge(market: string): Judge | null {
+  const line = market.match(/^(Mais|Menos) de (\d+(?:\.\d+)?) Golos$/);
+  if (!line) return null;
 
-function says(market: string, phrases: string[]): boolean {
-  return phrases.some((phrase) => market.includes(phrase));
+  const value = Number(line[2]);
+  return line[1] === "Mais"
+    ? (home, away) => home + away > value
+    : (home, away) => home + away < value;
+}
+
+function judgeOf(market: string): Judge | null {
+  return RESULTS[market] ?? goalsJudge(market);
 }
 
 /**
- * Did this market win, given the final score?
+ * Whether a market came in, read off the final score.
  *
- * `null` means the market cannot be settled from the score alone (corners,
- * cards, handicaps), and must stay with the user.
+ * Every half has to be readable, and a combination is only green when all of
+ * them are. Reading one half and settling on it is exactly how "Casa e Mais de
+ * 2.5 Golos" came to be paid out on a 1-3 away win: the goals were there, the
+ * result was not, and nothing looked at the result.
+ *
+ * Anything it cannot read in full — a team name, a handicap, a corners line,
+ * a wording nobody anticipated — comes back null and stays for its owner to
+ * settle by hand. Money rides on this, so silence is the only safe answer.
  */
 export function isGreenMarket(
   market: string,
   homeGoals: number,
   awayGoals: number
 ): boolean | null {
-  const normalized = normalizeMarket(market);
-  const totalGoals = homeGoals + awayGoals;
-  const homeWin = homeGoals > awayGoals;
-  const draw = homeGoals === awayGoals;
-  const awayWin = awayGoals > homeGoals;
-  const under35 = totalGoals <= 3;
-  const over15 = totalGoals >= 2;
+  // The same reading the analysis uses, so a leg typed "V1" or "X2 e +1,5
+  // golos" is judged rather than left open: nine of the eleven markets these
+  // two actually write were unreadable here while this went by raw text.
+  const canonical = canonicalMarket(market);
+  if (!canonical) return null;
 
-  // One list of phrasings per line, shared by the plain markets and the double
-  // chance combos. Spelling them out branch by branch is how the combos came to
-  // read only the goals half of a Portuguese name and settle it as if the
-  // result half had won.
-  const saysOver15 = says(normalized, OVER_15);
-  const saysUnder35 = says(normalized, UNDER_35);
+  const parts = canonical.split(/\s+e\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
 
-  if (normalized.includes("1x") && saysOver15) {
-    return (homeWin || draw) && over15;
-  }
+  const judges = parts.map(judgeOf);
+  if (judges.some((judge) => judge === null)) return null;
 
-  if (normalized.includes("2x") && saysOver15) {
-    return (awayWin || draw) && over15;
-  }
-
-  if (normalized.includes("1x") && saysUnder35) {
-    return (homeWin || draw) && under35;
-  }
-
-  if (normalized.includes("2x") && saysUnder35) {
-    return (awayWin || draw) && under35;
-  }
-
-  if (normalized === "home" || normalized === "casa") return homeWin;
-  if (normalized === "draw" || normalized === "empate") return draw;
-  if (normalized === "away" || normalized === "fora") return awayWin;
-  if (normalized === "1x") return homeWin || draw;
-  if (normalized === "2x") return awayWin || draw;
-  if (says(normalized, OVER_25)) return totalGoals >= 3;
-  if (says(normalized, UNDER_25)) return totalGoals <= 2;
-  if (says(normalized, OVER_35)) return totalGoals >= 4;
-  if (saysUnder35) return totalGoals <= 3;
-  if (normalized.includes("btts yes") || normalized === "btts" || normalized.includes("ambas marcam")) {
-    return homeGoals > 0 && awayGoals > 0;
-  }
-  if (normalized.includes("btts no") || normalized.includes("ambas nao") || normalized.includes("ambas não")) {
-    return homeGoals === 0 || awayGoals === 0;
-  }
-
-  return null;
+  return (judges as Judge[]).every((judge) => judge(homeGoals, awayGoals));
 }
 
 function buildOutcome(
