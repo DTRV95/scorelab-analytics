@@ -74,6 +74,40 @@ export async function fetchLeagueRates(): Promise<LeagueRates[]> {
   return payload.leagues ?? [];
 }
 
+export interface LeagueHealth {
+  league: string;
+  code: string;
+  /** "lida" (in hand), "por-ler" (never needed yet), "vazia", "falhou". */
+  state: "lida" | "por-ler" | "vazia" | "falhou";
+  /** Why it failed, in the provider's own terms. */
+  detail: string | null;
+  played: number | null;
+  upcoming: number | null;
+  next_kickoff: string | null;
+}
+
+/**
+ * Whether each competition is actually answering.
+ *
+ * Free without `probe`: it reports what the server already holds. With it,
+ * the competitions never read are asked for — one request each, which is the
+ * only way to tell "nobody needed it yet" from "the provider refuses it".
+ */
+export async function fetchLeaguesHealth(
+  probe = false,
+): Promise<LeagueHealth[]> {
+  const response = await fetch(
+    buildApiUrl(`/data/leagues-health${probe ? "?probe=true" : ""}`),
+  );
+
+  if (!response.ok) {
+    throw new Error("Não foi possível falar com o motor.");
+  }
+
+  const payload = (await response.json()) as { leagues?: LeagueHealth[] };
+  return payload.leagues ?? [];
+}
+
 /** The order the groups are read in, which is the order a slip is built in. */
 export const GROUP_ORDER = ["Resultado", "Golos", "Ambas Marcam", "Combinados"];
 

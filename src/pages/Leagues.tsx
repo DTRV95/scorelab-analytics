@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { LeaguesHealth } from "@/components/LeaguesHealth";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { COVERED_LEAGUES } from "@/lib/boardLeagues";
 import {
@@ -367,6 +368,11 @@ export default function Leagues() {
             </motion.p>
           </>
         )}
+        {/* Last, because it answers a question nobody has until something
+            looks wrong: está a chegar tudo? */}
+        <motion.div variants={fadeUp}>
+          <LeaguesHealth />
+        </motion.div>
       </motion.div>
     </AppLayout>
   );

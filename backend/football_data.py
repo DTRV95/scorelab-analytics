@@ -1177,6 +1177,96 @@ def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, An
     return payload
 
 
+def is_season_cached(league_key: str, season: Optional[int] = None) -> bool:
+    """Whether a competition's season is in hand without asking the provider."""
+    code = _competition_code(league_key)
+    return _cache_get(f"matches:{code}:{season or 'current'}", MATCHES_TTL) is not None
+
+
+def leagues_health(probe: bool = False) -> Dict[str, Any]:
+    """Whether each wired competition is actually answering, one row each.
+
+    Cache-first on purpose: a competition already read is proof it works, and
+    reading it again would spend one of the ten calls a minute to prove it
+    twice. With `probe`, the ones not yet in hand are asked for — which is the
+    only way to tell "never needed yet" apart from "the provider refuses it",
+    and is exactly what somebody checking the connection wants to know.
+
+    Costs nothing without `probe`, and never more than one request per
+    competition with it.
+    """
+    rows: List[Dict[str, Any]] = []
+
+    for league_key in supported_leagues():
+        code = _competition_code(league_key)
+        matches = _cache_get(f"matches:{code}:current", MATCHES_TTL)
+        state = "lida"
+        detail = None
+
+        if matches is None:
+            if not probe:
+                rows.append(
+                    {
+                        "league": league_key,
+                        "code": code,
+                        "state": "por-ler",
+                        "detail": None,
+                        "played": None,
+                        "upcoming": None,
+                        "next_kickoff": None,
+                    }
+                )
+                continue
+
+            try:
+                matches = get_season_matches(league_key)
+            except ProviderUnavailable as exc:
+                rows.append(
+                    {
+                        "league": league_key,
+                        "code": code,
+                        "state": "falhou",
+                        "detail": str(exc),
+                        "played": None,
+                        "upcoming": None,
+                        "next_kickoff": None,
+                    }
+                )
+                continue
+
+        played = [
+            match
+            for match in matches
+            if _is_finished(match) and None not in _full_time_goals(match)
+        ]
+        upcoming = sorted(
+            (
+                match.get("utcDate")
+                for match in matches
+                if match.get("status") in UPCOMING_STATUSES and match.get("utcDate")
+            )
+        )
+
+        if not played and not upcoming:
+            # Answered, with nothing in it: a season that has not started, or
+            # one already over. Not a failure, and not usable either.
+            state = "vazia"
+
+        rows.append(
+            {
+                "league": league_key,
+                "code": code,
+                "state": state,
+                "detail": detail,
+                "played": len(played),
+                "upcoming": len(upcoming),
+                "next_kickoff": upcoming[0] if upcoming else None,
+            }
+        )
+
+    return {"leagues": rows, "probed": probe, "rate_limit": RATE_LIMIT}
+
+
 def league_rates() -> Dict[str, Any]:
     """Every covered competition's market rates, in one answer.
 
@@ -1185,12 +1275,19 @@ def league_rates() -> Dict[str, Any]:
     already computed and cached. The form is left out: this exists to be read
     against a forecast, game by game, and nobody reads a form table that way.
 
-    A competition whose season cannot be read is left out rather than failing
-    the lot — the same rule the board itself follows.
+    Served strictly from what is already cached. The free plan allows ten calls
+    a minute and the board alone wants one per competition, so an endpoint that
+    fetched would take slots from the very board it is annotating — and a
+    missing competition here costs a note under a game, while a missing
+    competition there costs the game itself. A competition not yet in hand
+    simply says nothing until the board warms it.
     """
     rates: List[Dict[str, Any]] = []
 
     for league_key in supported_leagues():
+        if not is_season_cached(league_key):
+            continue
+
         try:
             report = league_report(league_key)
         except ProviderUnavailable:

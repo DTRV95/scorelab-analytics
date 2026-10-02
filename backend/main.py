@@ -187,6 +187,21 @@ def data_league_report(request: Request, league: str, season: Optional[int] = No
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/data/leagues-health")
+@limiter.limit("10/minute")
+def data_leagues_health(request: Request, probe: bool = False):
+    """Whether each wired competition is actually answering.
+
+    Free by default — it reports what is already in hand. With `probe=true` it
+    asks for the competitions not yet read, which is the only way to tell one
+    nobody has needed yet from one the provider refuses.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    return football_data.leagues_health(probe=probe)
+
+
 @app.get("/data/league-rates")
 @limiter.limit("10/minute")
 def data_league_rates(request: Request):
