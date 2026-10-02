@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -13,13 +13,8 @@ import {
   buildPlayerStyle,
   type PlayerStyle,
 } from "@/lib/bettingStyle";
-import {
-  fetchPlanBets,
-  fetchPlanMembers,
-  fetchPlans,
-  type PlanBet,
-  type PlanMember,
-} from "@/lib/planStore";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
+import type { PlanBet } from "@/lib/planStore";
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 const fadeUp = {
@@ -121,41 +116,34 @@ function headline(style: PlayerStyle): string {
 
 export default function BettorAnalysis() {
   const { user } = useAuth();
-  const [members, setMembers] = useState<PlanMember[]>([]);
-  const [bets, setBets] = useState<PlanBet[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { planId } = useParams<{ planId: string }>();
+  const { plans, members: everyMember, allBets, loading } = usePlanBoard();
   const [who, setWho] = useState<string>("__all__");
 
-  useEffect(() => {
-    let cancelled = false;
+  // The challenge in the address, and no other. This used to read whichever
+  // challenge the account joined first, whatever page it was opened from — so
+  // a challenge nobody else is in showed another one's bets, and the other
+  // player's with them.
+  const plan = useMemo(
+    () => plans.find((entry) => entry.id === planId) ?? null,
+    [plans, planId],
+  );
 
-    fetchPlans()
-      .then(async (plans) => {
-        const plan = plans[0];
-        if (!plan) return { members: [], bets: [] };
-        const [planMembers, planBets] = await Promise.all([
-          fetchPlanMembers(plan.id),
-          fetchPlanBets(plan.id),
-        ]);
-        return { members: planMembers, bets: planBets };
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setMembers(data.members);
-        setBets(data.bets);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Não foi possível abrir a análise.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+  const members = useMemo(
+    () => everyMember.filter((entry) => entry.plan_id === planId),
+    [everyMember, planId],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const bets = useMemo<PlanBet[]>(
+    () => allBets.filter((bet) => bet.planId === planId),
+    [allBets, planId],
+  );
+
+  // A player picked in one challenge is not in the next one.
+  useEffect(() => setWho("__all__"), [planId]);
+
+  const error =
+    !loading && !plan ? "Não foi possível abrir a análise." : null;
 
   const style = useMemo(() => {
     if (who === "__all__") return buildCombinedStyle(bets);
@@ -186,13 +174,18 @@ export default function BettorAnalysis() {
       >
         <motion.div variants={fadeUp}>
           <Link
-            to="/desafios"
+            to={planId ? `/desafios/${planId}` : "/desafios"}
             className="sl-meta mb-1 inline-flex items-center gap-1.5 text-[11px]"
           >
             <ArrowLeft className="h-3 w-3" />
             Voltar ao desafio
           </Link>
           <h1 className="sl-section-title text-[15px]">Análise de apostador</h1>
+          {/* Named, because the figures below belong to this challenge alone
+              and to no other. */}
+          <p className="sl-meta mt-1 text-[11px]">
+            Só as apostas do {plan?.name ?? "desafio"}.
+          </p>
         </motion.div>
 
         {members.length > 1 && (

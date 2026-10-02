@@ -1255,13 +1255,16 @@ describe("managing challenges", () => {
     expect(deletePlan).toHaveBeenCalledWith("plan");
   });
 
-  it("offers the way into the bettor analysis", async () => {
+  it("offers the way into this challenge's analysis, and no other's", async () => {
+    // It used to point at a page that read whichever challenge the account
+    // joined first, so opening it from a challenge nobody else is in showed
+    // another one's bets, and the other player's with them.
     renderPage();
 
     const link = await screen.findByRole("link", {
       name: /Abrir análise de apostador/,
     });
-    expect(link).toHaveAttribute("href", "/desafios/analise");
+    expect(link).toHaveAttribute("href", "/desafios/plan/analise");
   });
 
   it("starts another challenge from a ready-made model", async () => {

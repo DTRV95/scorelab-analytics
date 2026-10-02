@@ -98,7 +98,7 @@ const App = () => {
                     <Route path="/analysis" element={<ProtectedRoute><MatchAnalysis /></ProtectedRoute>} />
                     <Route path="/probability" element={<ProtectedRoute><ProbabilityRadar /></ProtectedRoute>} />
                     <Route path="/desafios" element={<ProtectedRoute><ChallengeCatalogue /></ProtectedRoute>} />
-                    <Route path="/desafios/analise" element={<ProtectedRoute><BettorAnalysis /></ProtectedRoute>} />
+                    <Route path="/desafios/:planId/analise" element={<ProtectedRoute><BettorAnalysis /></ProtectedRoute>} />
                     <Route path="/desafios/:planId" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                     {/* The tab was "Plano" before it held more than one challenge. */}
                     <Route path="/plano" element={<Navigate to="/desafios" replace />} />
