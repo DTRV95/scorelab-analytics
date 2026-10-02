@@ -47,6 +47,20 @@ vi.mock("@/lib/planStore", async () => {
   };
 });
 
+const { fetchFixtureResults } = vi.hoisted(() => ({
+  fetchFixtureResults: vi.fn(async () => ({
+    results: new Map<number, unknown>(),
+    unavailable: [] as string[],
+  })),
+}));
+
+vi.mock("@/lib/resultsSync", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/resultsSync")>(
+    "@/lib/resultsSync",
+  );
+  return { ...actual, fetchFixtureResults };
+});
+
 import { PlanBoardProvider } from "@/contexts/PlanBoardContext";
 import { Toaster } from "@/components/ui/toaster";
 import LooseBets from "@/pages/LooseBets";
@@ -82,6 +96,10 @@ const bet = (overrides: Partial<LooseBet> = {}): LooseBet => ({
 beforeEach(() => {
   vi.clearAllMocks();
   fetchLooseBets.mockResolvedValue([]);
+  fetchFixtureResults.mockResolvedValue({
+    results: new Map(),
+    unavailable: [],
+  });
   global.fetch = vi.fn(async () => ({
     ok: true,
     json: async () => ({ matches: [], unavailable: [] }),
@@ -206,6 +224,55 @@ describe("bets that answer to no challenge", () => {
     // One of two marked: the bet is not decided yet.
     expect(payload.status).toBe("pending");
     expect(payload.legs[0].status).toBe("green");
+  });
+
+  it("closes itself off the final scores, game by game", async () => {
+    // Exactly as inside a challenge, and from the same provider: the market
+    // that came in goes green, the one that failed goes red, and the bet is
+    // green only when every game is.
+    const fromBoard = {
+      ...leg("Cruzeiro", "São Paulo", "1X", 1.5),
+      fixtureId: 11,
+      league: "Brasileirão",
+    };
+    const other = {
+      ...leg("Internacional", "Corinthians", "Menos de 3.5 Golos", 1.9),
+      fixtureId: 12,
+      league: "Brasileirão",
+    };
+    fetchLooseBets.mockResolvedValue([bet({ legs: [fromBoard, other] })]);
+    fetchFixtureResults.mockResolvedValue({
+      results: new Map([
+        [11, { fixture_id: 11, status: "FINISHED", finished: true, home_goals: 2, away_goals: 0, kickoff: null, home_name: null, away_name: null }],
+        [12, { fixture_id: 12, status: "FINISHED", finished: true, home_goals: 3, away_goals: 2, kickoff: null, home_name: null, away_name: null }],
+      ]),
+      unavailable: [],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(updateLooseBet).toHaveBeenCalled());
+    const [, payload] = updateLooseBet.mock.calls[0] as unknown as [
+      string,
+      PlanBetPayload,
+    ];
+    // 2-0 is a home win, so 1X came in. 3-2 is five goals, so under 3.5 did
+    // not — and one red takes the whole bet down.
+    expect(payload.legs[0].status).toBe("green");
+    expect(payload.legs[1].status).toBe("red");
+    expect(payload.status).toBe("red");
+    expect(payload.profitLoss).toBe(-10);
+  });
+
+  it("leaves a game typed by hand for its owner", async () => {
+    // Nothing to look up and no result to fetch.
+    fetchLooseBets.mockResolvedValue([bet()]);
+
+    renderPage();
+    await screen.findByRole("button", { name: /Ver a aposta/ });
+
+    expect(fetchFixtureResults).not.toHaveBeenCalled();
+    expect(updateLooseBet).not.toHaveBeenCalled();
   });
 
   it("names the bet by its games, with no day to name it by", async () => {
