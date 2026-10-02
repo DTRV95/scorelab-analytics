@@ -751,6 +751,80 @@ def test_league_rates_answers_for_every_competition_at_once():
     assert "form" not in row
 
 
+def test_league_rates_never_spends_a_request_at_the_provider():
+    """Ten calls a minute, and the board wants one per competition: an endpoint
+    that fetched would take slots from the board it is annotating. A missing
+    note under a game is cheap; a missing game is not."""
+    football_data._cache.clear()
+    football_data._cache_put("matches:PPL:current", _season(SEASON))
+
+    def refuse(path, params=None):
+        raise AssertionError(f"asked the provider for {path}")
+
+    original = football_data._request
+    football_data._request = refuse
+    try:
+        rates = football_data.league_rates()
+    finally:
+        football_data._request = original
+
+    # Only what was already in hand; the rest stay quiet until the board
+    # warms them.
+    assert [row["league"] for row in rates["leagues"]] == ["Liga Portugal"]
+
+
+def test_leagues_health_reports_every_wired_competition_without_asking():
+    """Checking the connection cannot itself spend the allowance it is
+    checking: a competition already read is proof enough that it works."""
+    football_data._cache.clear()
+    football_data._cache_put(
+        "matches:PPL:current",
+        _season(SEASON) + [
+            {"id": 99, "status": "SCHEDULED", "utcDate": "2026-10-18T18:00:00Z",
+             "homeTeam": {"id": 1, "name": "A"}, "awayTeam": {"id": 2, "name": "B"},
+             "score": {"fullTime": {"home": None, "away": None}}},
+        ],
+    )
+
+    def refuse(path, params=None):
+        raise AssertionError(f"asked the provider for {path}")
+
+    original = football_data._request
+    football_data._request = refuse
+    try:
+        health = football_data.leagues_health()
+    finally:
+        football_data._request = original
+
+    rows = {row["league"]: row for row in health["leagues"]}
+    # Every wired competition has a row, read or not.
+    assert set(rows) == set(football_data.SUPPORTED_LEAGUES)
+    assert rows["Liga Portugal"]["state"] == "lida"
+    assert rows["Liga Portugal"]["played"] == 10
+    assert rows["Liga Portugal"]["upcoming"] == 1
+    assert rows["Liga Portugal"]["next_kickoff"] == "2026-10-18T18:00:00Z"
+    # Never needed yet is not the same as broken, and does not claim to be.
+    assert rows["Serie A"]["state"] == "por-ler"
+
+
+def test_leagues_health_names_the_competition_the_provider_refuses():
+    """The one answer a cache cannot give: a competition that fails."""
+    football_data._cache.clear()
+
+    def refuse(path, params=None):
+        raise football_data.ProviderUnavailable("A chave foi recusada.")
+
+    original = football_data._request
+    football_data._request = refuse
+    try:
+        health = football_data.leagues_health(probe=True)
+    finally:
+        football_data._request = original
+
+    assert all(row["state"] == "falhou" for row in health["leagues"])
+    assert health["leagues"][0]["detail"] == "A chave foi recusada."
+
+
 class _FakeBody:
     def __init__(self, data):
         self._data = data
