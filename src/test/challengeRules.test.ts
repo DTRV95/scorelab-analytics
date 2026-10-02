@@ -141,10 +141,10 @@ describe("rules as they come back from the database", () => {
 describe("saying what a challenge is in one line", () => {
   it("describes a stepped challenge and a flat one differently", () => {
     expect(describeRules(MILLION_PLAN_RULES)).toBe(
-      "38 dias · 50% a descer até 30% · odds 1.75–2.10 · uma aposta por dia"
+      "38 níveis · 50% a descer até 30% · odds 1.75–2.10 · uma aposta por dia"
     );
     expect(describeRules(flat())).toBe(
-      "10 dias · 25% da banca · sem limite de odd · apostas sem limite diário"
+      "10 níveis · 25% da banca · sem limite de odd · apostas sem limite diário"
     );
   });
 

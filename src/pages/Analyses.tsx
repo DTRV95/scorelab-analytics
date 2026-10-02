@@ -396,7 +396,7 @@ export default function Analyses() {
             <motion.div variants={fadeUp}>
               <Bars
                 title="Por jogos no boletim"
-                hint="Um jogo ou vários: onde é que os teus dias se ganham"
+                hint="Um jogo ou vários: onde é que as tuas apostas se ganham"
                 rows={sizes}
               />
             </motion.div>
@@ -430,7 +430,7 @@ export default function Analyses() {
               className="sl-meta flex items-start gap-1.5 px-1 text-[11px] leading-5"
             >
               <Info className="mt-0.5 h-3 w-3 flex-none" />
-              Uma percentagem só aparece com pelo menos {MIN_DECIDED} dias
+              Uma percentagem só aparece com pelo menos {MIN_DECIDED} apostas
               decididos. Abaixo disso fica um traço — o número existiria, mas
               não queria dizer nada.
             </motion.p>

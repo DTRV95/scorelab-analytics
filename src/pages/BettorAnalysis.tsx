@@ -358,7 +358,7 @@ export default function BettorAnalysis() {
           <motion.p variants={fadeUp} className="sl-meta px-1 text-[11px] leading-5">
             {style.undecided}{" "}
             {style.undecided === 1 ? "jogo está" : "jogos estão"} por decidir:
-            ou a aposta ainda está em aberto, ou o dia foi dado como perdido sem
+            ou a aposta ainda está em aberto, ou o nível foi dado como perdido sem
             se dizer qual dos jogos falhou. Ficam de fora das percentagens em vez
             de serem atribuídos a palpite — abre a aposta no desafio para dizeres
             como correu cada um.

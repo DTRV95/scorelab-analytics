@@ -339,7 +339,7 @@ export default function BankrollTools() {
                 className="sl-card sl-tap flex items-center gap-3 px-4 py-3"
               >
                 <span className="sl-meta min-w-0 flex-1 text-[12px]">
-                  O que as apostas dizem, por mercado, por odd e por dia
+                  O que as apostas dizem, por mercado, por odd e por dia da semana
                 </span>
                 <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />
               </Link>

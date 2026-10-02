@@ -99,7 +99,7 @@ export function NextMoveCard({
         <span
           className={`sl-figure flex-none rounded-full px-3 py-1 text-[11px] ${tone.chip}`}
         >
-          Dia {move.day}
+          Nível {move.day}
         </span>
       </div>
 
@@ -153,7 +153,7 @@ export function NextMoveCard({
           onClick={onStart}
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          Inserir os jogos do dia {move.day}
+          Inserir os jogos do nível {move.day}
         </Button>
       )}
 
@@ -163,7 +163,7 @@ export function NextMoveCard({
           className="sl-tap mt-3 h-12 w-full rounded-2xl border-amber-500/40 bg-card text-sm font-semibold text-amber-700"
           onClick={onClose}
         >
-          Ver o dia por fechar
+          Ver o nível por fechar
         </Button>
       )}
 

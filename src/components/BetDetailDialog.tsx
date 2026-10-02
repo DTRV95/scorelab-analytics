@@ -111,7 +111,7 @@ export function BetDetailDialog({
             )}
             <span className="min-w-0 truncate">
               {bet.day > 0
-                ? `Dia ${bet.day} · ${player}`
+                ? `Nível ${bet.day} · ${player}`
                 : (bet.legs[0]?.match ??
                   `${bet.legs.length} jogos`)}
             </span>

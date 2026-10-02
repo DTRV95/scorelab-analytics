@@ -397,7 +397,7 @@ export default function LooseBets() {
             variants={fadeUp}
             className="sl-card px-4 py-4 text-[13px] leading-6 text-muted-foreground"
           >
-            Ainda não há nenhuma. Uma aposta registada aqui não tem dia nem
+            Ainda não há nenhuma. Uma aposta registada aqui não tem nível nem
             escada: é só o que jogaste, por quanto, e como correu.
           </motion.p>
         )}

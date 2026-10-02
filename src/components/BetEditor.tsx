@@ -197,7 +197,7 @@ export function BetEditor({
         </button>
       ) : (
         <p className="sl-meta text-[11px] leading-5">
-          Só dá para juntar outro jogo enquanto o dia estiver em aberto. Põe a
+          Só dá para juntar outro jogo enquanto o nível estiver em aberto. Põe a
           aposta em aberto primeiro, se foi fechada cedo demais.
         </p>
       )}
@@ -210,7 +210,7 @@ export function BetEditor({
           memory={memory}
           chosenIds={chosenIds}
           onPick={add}
-          title={`Juntar ao dia ${bet.day}`}
+          title={`Juntar ao nível ${bet.day}`}
           footer={
             <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-card px-4 py-3">
               <p className="sl-meta min-w-0 flex-1 text-[11px]">
@@ -264,7 +264,7 @@ export function BetEditor({
       {confirming ? (
         <div className="space-y-2 rounded-xl bg-destructive/5 p-3">
           <p className="text-[11px] leading-5 text-foreground">
-            Apagar apaga o dia {bet.day} do histórico, para os dois. Não dá para
+            Apagar apaga o nível {bet.day} do histórico, para os dois. Não dá para
             voltar atrás.
           </p>
           <div className="flex gap-2">

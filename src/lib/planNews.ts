@@ -121,9 +121,9 @@ const eur = new Intl.NumberFormat("pt-PT", {
 
 /** One piece of news, in the words somebody would use. */
 export function describeNews(item: NewsItem): string {
-  if (item.kind === "placed") return `${item.name} registou o dia ${item.day}`;
+  if (item.kind === "placed") return `${item.name} registou o nível ${item.day}`;
   if (item.kind === "settled") {
-    return `${item.name} ${item.won ? "ganhou" : "perdeu"} o dia ${item.day}`;
+    return `${item.name} ${item.won ? "ganhou" : "perdeu"} o nível ${item.day}`;
   }
 
   const amount = item.amount ?? 0;

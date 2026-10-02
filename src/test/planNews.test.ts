@@ -57,7 +57,7 @@ describe("what the other players did since you last looked", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0].userId).toBe("irmao");
-    expect(describeNews(items[0])).toBe("Vilagreen registou o dia 4");
+    expect(describeNews(items[0])).toBe("Vilagreen registou o nível 4");
   });
 
   it("says nothing about what happened before the last look", () => {
@@ -89,7 +89,7 @@ describe("what the other players did since you last looked", () => {
     });
 
     expect(items.map((item) => item.kind)).toEqual(["settled", "placed"]);
-    expect(describeNews(items[0])).toBe("Vilagreen ganhou o dia 4");
+    expect(describeNews(items[0])).toBe("Vilagreen ganhou o nível 4");
   });
 
   it("treats everything as new when there is no mark yet", () => {
@@ -146,6 +146,6 @@ describe("what the other players did since you last looked", () => {
       since: {},
     });
 
-    expect(describeNews(items[0])).toBe("Alguém registou o dia 1");
+    expect(describeNews(items[0])).toBe("Alguém registou o nível 1");
   });
 });
