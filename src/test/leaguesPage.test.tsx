@@ -106,25 +106,37 @@ describe("what a competition actually does", () => {
   it("opens on a covered league and asks for that one", async () => {
     renderPage();
 
-    // The games tile, which every percentage on the page is out of.
-    expect(await screen.findByText("100")).toBeInTheDocument();
+    // The games every percentage on the page is out of.
+    expect(await screen.findByText("100 jogos")).toBeInTheDocument();
     expect(fetchLeagueReport).toHaveBeenCalledWith(COVERED_LEAGUES[0]);
   });
 
   it("shows every market as a share of the games played", async () => {
     renderPage();
 
-    await screen.findByText("46 de 100");
+    await screen.findAllByText("46 de 100");
     expect(screen.getByText("Vitória Casa")).toBeInTheDocument();
     expect(screen.getByText("72 de 100")).toBeInTheDocument();
     // Twice over: the group's heading, and the market inside it.
     expect(screen.getAllByText("Ambas Marcam")).toHaveLength(2);
   });
 
+  it("answers the three questions a competition is opened with, up top", async () => {
+    // Before scrolling anything: ganha-se em casa, dá golos, marcam as duas.
+    renderPage();
+
+    await screen.findByText("Ganha em casa");
+    expect(screen.getByText("Mais de 2.5")).toBeInTheDocument();
+    expect(screen.getByText("Ambas marcam")).toBeInTheDocument();
+    // The home figure, read big, and the same one the Resultado group carries.
+    expect(screen.getAllByText("46%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("46 de 100")).toHaveLength(2);
+  });
+
   it("sorts the markets into the groups a slip is built in", async () => {
     renderPage();
 
-    await screen.findByText("46 de 100");
+    await screen.findAllByText("46 de 100");
     for (const group of ["Resultado", "Golos", "Ambas Marcam", "Combinados"]) {
       expect(screen.getAllByText(group).length).toBeGreaterThan(0);
     }
@@ -146,7 +158,7 @@ describe("what a competition actually does", () => {
 
   it("asks for the league that was tapped", async () => {
     renderPage();
-    await screen.findByText("46 de 100");
+    await screen.findAllByText("46 de 100");
 
     fireEvent.click(screen.getByRole("button", { name: "Serie A" }));
 
@@ -177,6 +189,6 @@ describe("what a competition actually does", () => {
     fetchLeagueReport.mockResolvedValue(report());
     fireEvent.click(screen.getByRole("button", { name: /Tentar outra vez/ }));
 
-    expect(await screen.findByText("46 de 100")).toBeInTheDocument();
+    expect((await screen.findAllByText("46 de 100")).length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -9,6 +9,7 @@ import {
   groupMarkets,
   standsOut,
   type FormRow,
+  type LeagueMarket,
   type LeagueReport,
 } from "@/lib/leagueReport";
 
@@ -37,6 +38,49 @@ function Run({ run }: { run: string }) {
         </span>
       ))}
     </span>
+  );
+}
+
+/**
+ * The three markets everybody actually bets, big enough to read at arm's
+ * length.
+ *
+ * On a phone the groups below are four screens of scrolling, and the first
+ * question anybody opens a competition with — ganha-se em casa? dá golos? —
+ * was at the bottom of the third. Here it is answered before the thumb moves.
+ */
+const HEADLINE: { market: string; label: string }[] = [
+  { market: "Casa", label: "Ganha em casa" },
+  { market: "Mais de 2.5 Golos", label: "Mais de 2.5" },
+  { market: "Ambas Marcam", label: "Ambas marcam" },
+];
+
+function Headline({ markets, played }: { markets: LeagueMarket[]; played: number }) {
+  const rows = HEADLINE.map((head) => ({
+    ...head,
+    row: markets.find((market) => market.mercado === head.market),
+  })).filter((entry) => entry.row);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="sl-card grid grid-cols-3 gap-px overflow-hidden bg-border">
+      {rows.map(({ label, row }) => (
+        // A column, so a label that takes two lines on a narrow phone does
+        // not push its own count below the other two.
+        <div key={label} className="flex flex-col bg-card px-3 py-3 text-center">
+          <p className="sl-figure text-[26px] leading-none text-foreground">
+            {row!.pct === null ? "—" : `${row!.pct.toFixed(0)}%`}
+          </p>
+          <p className="mt-1.5 text-[11px] font-semibold leading-tight text-foreground">
+            {label}
+          </p>
+          <p className="sl-meta mt-auto pt-0.5 text-[10px]">
+            {row!.jogos} de {played}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -125,6 +169,17 @@ export default function Leagues() {
 
   useEffect(() => load(league), [league, load]);
 
+  // Twelve chips do not fit a phone, so the one that is open can sit off the
+  // side of the screen — the page would then be showing a competition whose
+  // name is nowhere to be seen.
+  const chips = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const chosen = chips.current?.querySelector('[aria-pressed="true"]');
+    // Guarded because not every environment implements it, and a page that
+    // throws here would render nothing at all.
+    chosen?.scrollIntoView?.({ block: "nearest", inline: "center" });
+  }, [league]);
+
   const groups = useMemo(
     () => (report ? groupMarkets(report.markets) : []),
     [report],
@@ -147,6 +202,7 @@ export default function Leagues() {
 
         <motion.div
           variants={fadeUp}
+          ref={chips}
           className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden"
         >
           {COVERED_LEAGUES.map((name) => (
@@ -201,33 +257,30 @@ export default function Leagues() {
 
         {report && !loading && report.played > 0 && (
           <>
-            <motion.div
-              variants={fadeUp}
-              className="sl-card grid grid-cols-3 gap-px overflow-hidden bg-border"
-            >
-              {[
-                { label: "Jogos", value: `${report.played}` },
-                {
-                  label: "Golos por jogo",
-                  value: report.goals.total_avg?.toFixed(2) ?? "—",
-                },
-                {
-                  label: "Casa / fora",
-                  value: `${report.goals.home_avg?.toFixed(1) ?? "—"} / ${
-                    report.goals.away_avg?.toFixed(1) ?? "—"
-                  }`,
-                },
-              ].map((cell) => (
-                <div key={cell.label} className="bg-card px-3 py-3">
-                  <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
-                    {cell.label}
-                  </p>
-                  <p className="sl-figure mt-0.5 text-[15px] text-foreground">
-                    {cell.value}
-                  </p>
-                </div>
-              ))}
+            <motion.div variants={fadeUp}>
+              <Headline markets={report.markets} played={report.played} />
             </motion.div>
+
+            {/* The three numbers that frame the rest, in one line rather than
+                a card of their own: on a phone a second grid of tiles pushed
+                the markets off the first screen. */}
+            <motion.p
+              variants={fadeUp}
+              className="sl-meta flex flex-wrap items-center gap-x-2 px-1 text-[11px]"
+            >
+              <span className="font-semibold text-foreground">
+                {report.played} jogos
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {report.goals.total_avg?.toFixed(2) ?? "—"} golos por jogo
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {report.goals.home_avg?.toFixed(1) ?? "—"} casa /{" "}
+                {report.goals.away_avg?.toFixed(1) ?? "—"} fora
+              </span>
+            </motion.p>
 
             {/* Green here is not "good", it is "often": on this page nothing
                 is a bet yet, so a colour that said good or bad would be
@@ -265,12 +318,18 @@ export default function Leagues() {
 
                     return (
                       <div key={market.mercado}>
+                        {/* The percentage reads with the market's name, and
+                            the count under the bar: the other way round, the
+                            eye met "42 de 94" first and the figure that
+                            matters second. */}
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="min-w-0 truncate text-[12px] font-semibold text-foreground">
+                          <span className="min-w-0 truncate text-[12.5px] font-semibold text-foreground">
                             {MARKET_LABELS[market.mercado] ?? market.mercado}
                           </span>
-                          <span className="sl-meta flex-none text-[11px]">
-                            {market.jogos} de {report.played}
+                          <span className="sl-figure flex-none text-[14px] text-foreground">
+                            {market.pct === null
+                              ? "—"
+                              : `${market.pct.toFixed(0)}%`}
                           </span>
                         </div>
 
@@ -287,10 +346,8 @@ export default function Leagues() {
                               style={{ width: `${Math.max(pct, 1.5)}%` }}
                             />
                           </div>
-                          <span className="sl-figure w-10 flex-none text-right text-[11px] text-foreground">
-                            {market.pct === null
-                              ? "—"
-                              : `${market.pct.toFixed(0)}%`}
+                          <span className="sl-meta w-14 flex-none text-right text-[10px]">
+                            {market.jogos} de {report.played}
                           </span>
                         </div>
                       </div>

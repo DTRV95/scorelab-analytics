@@ -1,19 +1,22 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Percent, Ticket, Trophy, Wallet } from "lucide-react";
+import { BarChart3, Globe, Percent, Ticket, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Five destinations, the most a thumb row holds before the labels truncate.
 // A phone has no sidebar, so what is here is all there is: the board to find a
-// game, the challenges to bet it and follow it, how right the model has been,
-// and the bankroll. The model's record gave up its place to the loose bets:
-// a phone has no sidebar, so a page missing from here cannot be reached at
-// all, and every game these two have ever bet was one the model never saw.
+// game, the challenges to bet it and follow it, the loose bets, and what each
+// competition actually gives.
+//
+// The bankroll gave up its place to the leagues: the banca somada is already
+// in the top bar of every page, and tapping it opens the bankroll — so it
+// costs one tap from anywhere, while the leagues could not be reached from a
+// phone at all.
 const mobileItems = [
   { title: "Início", url: "/dashboard", icon: BarChart3 },
   { title: "Jogos", url: "/probability", icon: Percent },
   { title: "Desafios", url: "/desafios", icon: Trophy },
   { title: "Apostas", url: "/apostas", icon: Ticket },
-  { title: "Banca", url: "/bankroll", icon: Wallet },
+  { title: "Ligas", url: "/ligas", icon: Globe },
 ];
 
 export function MobileBottomNav() {
