@@ -116,6 +116,31 @@ export function difficultyOf(template: ChallengeTemplate): {
   return measured;
 }
 
+/**
+ * The challenges in order of how hard they are.
+ *
+ * By the measured chance of finishing, not by the stars: the stars are five
+ * bands and half the list shares one, which would leave the order inside a
+ * band to chance. The written order breaks a genuine tie.
+ *
+ * "Mais fáceis primeiro" is the order somebody choosing their first challenge
+ * wants, and the one the page opens on; the reverse is for somebody who came
+ * looking for the hardest thing on the menu.
+ */
+export function byDifficulty<T extends ChallengeTemplate>(
+  templates: T[],
+  hardestFirst = false,
+): T[] {
+  return templates
+    .map((template, index) => ({ template, index }))
+    .sort((a, b) => {
+      const gap =
+        difficultyOf(b.template).chance - difficultyOf(a.template).chance;
+      return (hardestFirst ? -gap : gap) || a.index - b.index;
+    })
+    .map((entry) => entry.template);
+}
+
 /** The difficulty in words, for the line under the stars. */
 export function describeDifficulty(chance: number): string {
   if (chance >= 0.01) {

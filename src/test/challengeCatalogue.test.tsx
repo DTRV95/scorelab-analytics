@@ -224,12 +224,32 @@ describe("seeing what everybody else is running", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("can put the busiest challenges first, or leave them in order", async () => {
+  it("opens on the easiest, and offers the other orders beside it", async () => {
     renderPage();
 
-    const toggle = await screen.findByRole("button", { name: /Mais feitos primeiro/ });
-    fireEvent.click(toggle);
+    const easiest = await screen.findByRole("button", { name: "Mais fáceis" });
+    expect(easiest).toHaveAttribute("aria-pressed", "true");
 
-    expect(screen.getByRole("button", { name: /Por ordem/ })).toBeInTheDocument();
+    const busiest = screen.getByRole("button", { name: "Mais feitos" });
+    fireEvent.click(busiest);
+
+    expect(busiest).toHaveAttribute("aria-pressed", "true");
+    expect(easiest).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Mais difíceis" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Por ordem" })).toBeInTheDocument();
+  });
+
+  it("puts the most finishable challenge at the top", async () => {
+    renderPage();
+
+    await screen.findByRole("button", { name: "Mais fáceis" });
+    const names = Array.from(
+      document.querySelectorAll("section p.text-\\[14px\\]"),
+    ).map((node) => node.textContent);
+
+    // Measured, not written: the chases are at the bottom of this order.
+    expect(names.indexOf("Plano Milhão")).toBeGreaterThan(
+      names.indexOf("Sprint de 7"),
+    );
   });
 });

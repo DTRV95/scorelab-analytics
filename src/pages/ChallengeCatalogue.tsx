@@ -16,6 +16,7 @@ import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { newsByPlan, planNews } from "@/lib/planNews";
 import { seenByPlan } from "@/lib/seenStore";
 import {
+  byDifficulty,
   describeDifficulty,
   difficultyOf,
 } from "@/lib/challengeDifficulty";
@@ -238,6 +239,15 @@ function ChallengeCard({
  * existed was to open the create form and read a row of chips. The ones being
  * played stay at the top, one tap from the day's bet.
  */
+type Order = "faceis" | "dificeis" | "feitos" | "ordem";
+
+const ORDERS: [Order, string][] = [
+  ["faceis", "Mais fáceis"],
+  ["dificeis", "Mais difíceis"],
+  ["feitos", "Mais feitos"],
+  ["ordem", "Por ordem"],
+];
+
 export default function ChallengeCatalogue() {
   const { user } = useAuth();
   const {
@@ -249,7 +259,9 @@ export default function ChallengeCatalogue() {
   const [everyone, setEveryone] = useState<PlanRecord[]>([]);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<(PlanBet & { planId: string })[]>([]);
-  const [busiestFirst, setBusiestFirst] = useState(true);
+  // Opens on the easiest, which is what somebody picking their first
+  // challenge is looking for. The other three are a tap away.
+  const [order, setOrder] = useState<Order>("faceis");
   const [token, setToken] = useState(0);
 
   // What the other players did in each challenge since this person last had
@@ -314,13 +326,11 @@ export default function ChallengeCatalogue() {
     [everyone, members],
   );
 
-  const ordered = useMemo(
-    () =>
-      busiestFirst
-        ? byPopularity([...CHALLENGE_TEMPLATES], counts)
-        : CHALLENGE_TEMPLATES,
-    [busiestFirst, counts],
-  );
+  const ordered = useMemo(() => {
+    if (order === "feitos") return byPopularity([...CHALLENGE_TEMPLATES], counts);
+    if (order === "ordem") return CHALLENGE_TEMPLATES;
+    return byDifficulty([...CHALLENGE_TEMPLATES], order === "dificeis");
+  }, [order, counts]);
 
   const tables = useMemo(() => {
     const byTemplate: Record<string, ReturnType<typeof leaderboard>> = {};
@@ -392,13 +402,26 @@ export default function ChallengeCatalogue() {
             <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
               Para começar
             </p>
-            <button
-              type="button"
-              onClick={() => setBusiestFirst((value) => !value)}
-              className="sl-tap rounded-full px-2.5 py-1 text-[11px] font-semibold text-muted-foreground ring-1 ring-border"
-            >
-              {busiestFirst ? "Mais feitos primeiro" : "Por ordem"}
-            </button>
+          </div>
+
+          {/* Four chips rather than one button that cycles: with four orders,
+              a cycle means tapping past the ones you did not want. */}
+          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden">
+            {ORDERS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={order === value}
+                onClick={() => setOrder(value)}
+                className={`sl-tap flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  order === value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground ring-1 ring-border"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           {ordered.map((template) => (
             <ChallengeCard

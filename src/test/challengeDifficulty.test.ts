@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  byDifficulty,
   completionChance,
   describeDifficulty,
   difficultyOf,
@@ -68,5 +69,47 @@ describe("measuring how hard a challenge is", () => {
     expect(describeDifficulty(0.54)).toBe("Acaba-se em 54 de cada 100 tentativas.");
     expect(describeDifficulty(0.001)).toContain("1 vez em cada");
     expect(describeDifficulty(0)).toContain("Nunca");
+  });
+});
+
+describe("putting them in order of how hard they are", () => {
+  it("opens on the one most likely to be finished", () => {
+    const easiest = byDifficulty([...CHALLENGE_TEMPLATES])[0];
+    const hardest = byDifficulty([...CHALLENGE_TEMPLATES], true)[0];
+
+    expect(difficultyOf(easiest).chance).toBeGreaterThan(
+      difficultyOf(hardest).chance,
+    );
+  });
+
+  it("never puts a lottery above a plan", () => {
+    const order = byDifficulty([...CHALLENGE_TEMPLATES]).map((t) => t.key);
+
+    // The chases live at the bottom of the easy-first list, whatever their
+    // written position.
+    expect(order.indexOf("dobrar-10")).toBeGreaterThan(order.indexOf("sprint-7"));
+    expect(order.indexOf("milhao")).toBeGreaterThan(order.indexOf("maratona-60"));
+  });
+
+  it("never goes back up, in either direction", () => {
+    // Not "the list reversed": several chases are never finished in any
+    // simulation, so they tie at zero and the written order decides between
+    // them the same way both times.
+    const chances = (hardestFirst: boolean) =>
+      byDifficulty([...CHALLENGE_TEMPLATES], hardestFirst).map(
+        (template) => difficultyOf(template).chance,
+      );
+
+    const easyFirst = chances(false);
+    expect(easyFirst).toEqual([...easyFirst].sort((a, b) => b - a));
+
+    const hardFirst = chances(true);
+    expect(hardFirst).toEqual([...hardFirst].sort((a, b) => a - b));
+  });
+
+  it("leaves nothing out and invents nothing", () => {
+    expect(byDifficulty([...CHALLENGE_TEMPLATES]).map((t) => t.key).sort()).toEqual(
+      CHALLENGE_TEMPLATES.map((t) => t.key).sort(),
+    );
   });
 });
