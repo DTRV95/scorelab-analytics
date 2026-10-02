@@ -17,6 +17,10 @@ export function TopBar() {
   // home page shows. It used to be a total built from the saved analyses, a
   // store nothing in the app writes to any more, so the bar carried a number
   // that matched nothing else on screen.
+  //
+  // Tapping it opens the bankroll page. It is the way in from a phone, where
+  // the thumb row has no room for it — and the number itself is the obvious
+  // thing to tap to see where it came from.
   const { board, loading } = usePlanBoard();
 
   const openCommandCenter = () => {
@@ -66,7 +70,7 @@ export function TopBar() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
-            to="/dashboard"
+            to="/bankroll"
             title="Banca somada"
             className="flex h-9 flex-none items-center gap-1.5 rounded-full bg-black/20 pl-1 pr-2.5 text-white transition hover:bg-black/30 sm:pr-3"
           >

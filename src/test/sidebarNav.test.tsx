@@ -30,6 +30,7 @@ vi.mock("@/lib/planStore", async () => {
 
 import { PlanBoardProvider } from "@/contexts/PlanBoardContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { markSeen } from "@/lib/seenStore";
 
 const plan = (id: string, name: string): PlanRecord => ({
@@ -148,5 +149,40 @@ describe("getting to the challenges from the sidebar", () => {
 
     await screen.findByRole("link", { name: /Desafios/ });
     expect(screen.queryByLabelText(/novidade/)).toBeNull();
+  });
+});
+
+describe("the thumb row, which on a phone is the whole menu", () => {
+  const renderRow = () =>
+    render(
+      <MemoryRouter>
+        <MobileBottomNav />
+      </MemoryRouter>,
+    );
+
+  it("carries the leagues, and gets to the bankroll from the bar instead", () => {
+    // Five places is all a thumb row holds. The bankroll's figure is in the
+    // top bar of every page and opens the page itself, so it did not need a
+    // second way in; the leagues had none at all.
+    renderRow();
+
+    expect(screen.getByRole("link", { name: "Ligas" })).toHaveAttribute(
+      "href",
+      "/ligas",
+    );
+    expect(screen.queryByRole("link", { name: "Banca" })).toBeNull();
+  });
+
+  it("keeps the four places a bet is made or followed", () => {
+    renderRow();
+
+    for (const [name, url] of [
+      ["Início", "/dashboard"],
+      ["Jogos", "/probability"],
+      ["Desafios", "/desafios"],
+      ["Apostas", "/apostas"],
+    ]) {
+      expect(screen.getByRole("link", { name })).toHaveAttribute("href", url);
+    }
   });
 });

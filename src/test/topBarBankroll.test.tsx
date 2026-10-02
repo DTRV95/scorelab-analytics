@@ -163,6 +163,18 @@ describe("the bankroll in the bar at the top of every page", () => {
     expect(await screen.findByText("10,00 €")).toBeInTheDocument();
   });
 
+  it("is the way into the bankroll page", async () => {
+    // The thumb row gave the bankroll's place to the leagues, so this figure
+    // is how a phone gets there — and it is the obvious thing to tap to see
+    // where the number came from.
+    load([plan("a")], [member("a")]);
+
+    renderBar();
+
+    const link = (await screen.findByText("10,00 €")).closest("a");
+    expect(link).toHaveAttribute("href", "/bankroll");
+  });
+
   it("follows a bet registered somewhere else in the app", async () => {
     load([plan("a")], [member("a")]);
 
