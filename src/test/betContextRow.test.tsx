@@ -2,19 +2,19 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
-import type { LeagueReport } from "@/lib/leagueReport";
+import type { LeagueRates } from "@/lib/leagueReport";
 import type { PlanBet, PlanLeg } from "@/lib/planStore";
 import type { PickedGame } from "@/components/GamePicker";
 
-const { fetchLeagueReport } = vi.hoisted(() => ({
-  fetchLeagueReport: vi.fn(async () => ({}) as unknown),
+const { fetchLeagueRates } = vi.hoisted(() => ({
+  fetchLeagueRates: vi.fn(async () => [] as unknown[]),
 }));
 
 vi.mock("@/lib/leagueReport", async () => {
   const actual = await vi.importActual<typeof import("@/lib/leagueReport")>(
     "@/lib/leagueReport",
   );
-  return { ...actual, fetchLeagueReport };
+  return { ...actual, fetchLeagueRates };
 });
 
 // The picker is a pop-up of its own with a board behind it; here it only has
@@ -30,17 +30,16 @@ vi.mock("@/components/GamePicker", () => ({
 import { BetComposer } from "@/components/BetComposer";
 import { forgetLeagueRates } from "@/hooks/useLeagueRates";
 
-const report: LeagueReport = {
-  league: "Liga Portugal",
-  played: 94,
-  markets: [
-    { mercado: "Casa", grupo: "Resultado", jogos: 42, pct: 44.7 },
-    { mercado: "Mais de 2.5 Golos", grupo: "Golos", jogos: 48, pct: 51.1 },
-  ],
-  goals: { home_avg: 1.54, away_avg: 1.19, total_avg: 2.73 },
-  form: [],
-  form_window: 5,
-};
+const rates: LeagueRates[] = [
+  {
+    league: "Liga Portugal",
+    played: 94,
+    markets: [
+      { mercado: "Casa", grupo: "Resultado", jogos: 42, pct: 44.7 },
+      { mercado: "Mais de 2.5 Golos", grupo: "Golos", jogos: 48, pct: 51.1 },
+    ],
+  },
+];
 
 const leg = (market: string): PlanLeg => ({
   match: "Casa vs Fora",
@@ -111,7 +110,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   forgetLeagueRates();
   pick = null;
-  fetchLeagueReport.mockResolvedValue(report);
+  fetchLeagueRates.mockResolvedValue(rates);
 });
 afterEach(() => cleanup());
 
@@ -130,11 +129,12 @@ describe("what the slip says about the price being taken", () => {
     expect(screen.getByText("48 de 94")).toBeInTheDocument();
   });
 
-  it("asks the competition of the game that was picked", async () => {
+  it("asks for the competitions once, not once per game", async () => {
     renderComposer();
     act(() => pick!(game()));
+    act(() => pick!(game({ fixtureId: 2, homeTeam: "Sporting CP" })));
 
-    expect(fetchLeagueReport).toHaveBeenCalledWith("Liga Portugal");
+    expect(fetchLeagueRates).toHaveBeenCalledTimes(1);
   });
 
   it("says nothing about a competition nobody covers", async () => {
@@ -147,7 +147,6 @@ describe("what the slip says about the price being taken", () => {
       target: { value: "1.47" },
     });
 
-    expect(fetchLeagueReport).not.toHaveBeenCalled();
     expect(screen.queryByText("a liga dá")).toBeNull();
   });
 

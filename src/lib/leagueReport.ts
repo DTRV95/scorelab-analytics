@@ -24,11 +24,15 @@ export interface FormRow {
   run: string;
 }
 
-export interface LeagueReport {
+/** A competition's market rates, with nothing else attached. */
+export interface LeagueRates {
   league: string;
   /** Matches already played this season, which every percentage is out of. */
   played: number;
   markets: LeagueMarket[];
+}
+
+export interface LeagueReport extends LeagueRates {
   goals: {
     home_avg: number | null;
     away_avg: number | null;
@@ -50,6 +54,24 @@ export async function fetchLeagueReport(
   }
 
   return (await response.json()) as LeagueReport;
+}
+
+/**
+ * Every covered competition's rates, in one request.
+ *
+ * The board shows games from a dozen competitions at once; asking for one
+ * report each would spend a dozen requests on arithmetic the server has
+ * already done and cached.
+ */
+export async function fetchLeagueRates(): Promise<LeagueRates[]> {
+  const response = await fetch(buildApiUrl("/data/league-rates"));
+
+  if (!response.ok) {
+    throw new Error("Não foi possível ler as competições.");
+  }
+
+  const payload = (await response.json()) as { leagues?: LeagueRates[] };
+  return payload.leagues ?? [];
 }
 
 /** The order the groups are read in, which is the order a slip is built in. */

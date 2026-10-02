@@ -16,6 +16,7 @@ import threading
 import json
 import os
 import time
+from datetime import datetime, time as dt_time, timedelta, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -292,6 +293,22 @@ def upcoming_fixtures(league_key: str, limit: int = 40) -> List[Dict[str, Any]]:
     return fixtures[:limit]
 
 
+def _end_of_day(days: int) -> float:
+    """The last second of the day N days from now, in UTC.
+
+    Counting seven times twenty-four hours from the moment of the request cut
+    the seventh day in half: asked at lunchtime, the board offered that day's
+    early kickoffs and dropped everything from the afternoon on. A day is
+    either on the board or it is not.
+    """
+    end = datetime.combine(
+        datetime.now(timezone.utc).date() + timedelta(days=days),
+        dt_time.max,
+        tzinfo=timezone.utc,
+    )
+    return end.timestamp()
+
+
 def matches_for_days(days: int = 7) -> Dict[str, Any]:
     """Every analysable fixture across the covered competitions, next N days.
 
@@ -299,7 +316,7 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
     single unavailable league never hides the rest.
     """
     now = time.time()
-    horizon = now + max(1, days) * 24 * 60 * 60
+    horizon = _end_of_day(max(1, days))
     board: List[Dict[str, Any]] = []
     unavailable: List[str] = []
 
@@ -1158,3 +1175,44 @@ def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, An
 
     _cache_put(cache_key, payload)
     return payload
+
+
+def league_rates() -> Dict[str, Any]:
+    """Every covered competition's market rates, in one answer.
+
+    The board shows games from up to a dozen competitions at once, and asking
+    for one report per competition would spend a dozen requests to say what is
+    already computed and cached. The form is left out: this exists to be read
+    against a forecast, game by game, and nobody reads a form table that way.
+
+    A competition whose season cannot be read is left out rather than failing
+    the lot — the same rule the board itself follows.
+    """
+    rates: List[Dict[str, Any]] = []
+
+    for league_key in supported_leagues():
+        try:
+            report = league_report(league_key)
+        except ProviderUnavailable:
+            continue
+
+        if report["played"] == 0:
+            continue
+
+        rates.append(
+            {
+                "league": report["league"],
+                "played": report["played"],
+                "markets": [
+                    {
+                        "mercado": market["mercado"],
+                        "grupo": market["grupo"],
+                        "jogos": market["jogos"],
+                        "pct": market["pct"],
+                    }
+                    for market in report["markets"]
+                ],
+            }
+        )
+
+    return {"leagues": rates}

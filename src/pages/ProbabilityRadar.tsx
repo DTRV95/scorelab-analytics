@@ -11,6 +11,7 @@ import {
   Loader2,
   RefreshCw,
   Sliders,
+  Sparkles,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
@@ -33,6 +34,8 @@ import {
   writeCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
+import { matchTips, type MatchTip } from "@/lib/matchTips";
+import { useLeagueRates } from "@/hooks/useLeagueRates";
 
 const stagger = {
   hidden: {},
@@ -100,13 +103,46 @@ function kickoffTime(kickoff: string | null) {
   return timeLabel(date);
 }
 
+/**
+ * What this game has that an ordinary game of its league does not.
+ *
+ * Read while browsing, not while betting: the forecast was already on the row
+ * and the league's own rate was on another page, so a 62% had no scale to be
+ * read against.
+ */
+function Tips({ tips, league }: { tips: MatchTip[]; league: string }) {
+  if (tips.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-[hsl(var(--sl-green))]/5 px-4 py-2">
+      <Sparkles className="h-3 w-3 flex-none text-[hsl(var(--sl-green))]" />
+      {tips.map((tip) => (
+        <span
+          key={tip.market}
+          className="text-[11px] leading-5 text-foreground"
+          title={`${league}: ${tip.leaguePct}% dos jogos`}
+        >
+          <span className="font-semibold">
+            {MARKET_LABELS[tip.market] ?? tip.market}
+          </span>{" "}
+          <span className="sl-figure">{tip.modelPct}%</span>
+          <span className="sl-meta"> · a liga dá {tip.leaguePct}%</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function BoardMatchRow({
   match,
+  tips,
   isExpanded,
   onToggle,
   onContinue,
 }: {
   match: BoardMatch;
+  /** Where this game stands out from its own competition. */
+  tips: MatchTip[];
   isExpanded: boolean;
   onToggle: () => void;
   onContinue: () => void;
@@ -148,6 +184,8 @@ function BoardMatchRow({
           </p>
         </div>
       </button>
+
+      <Tips tips={tips} league={match.league} />
 
       <AnimatePresence initial={false}>
         {isExpanded && (
@@ -219,6 +257,9 @@ export default function ProbabilityRadar() {
   const [boardError, setBoardError] = useState("");
   const [unavailableLeagues, setUnavailableLeagues] = useState<string[]>([]);
   const [skippedCount, setSkippedCount] = useState(0);
+  // What each competition has given this season, to read every forecast on
+  // this page against. One request for all of them, held for the session.
+  const rates = useLeagueRates();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
@@ -617,6 +658,10 @@ export default function ProbabilityRadar() {
                             <BoardMatchRow
                               key={match.fixture_id}
                               match={match}
+                              tips={matchTips(
+                                match.mercados,
+                                rates.get(match.league),
+                              )}
                               isExpanded={expandedId === match.fixture_id}
                               onToggle={() =>
                                 setExpandedId(

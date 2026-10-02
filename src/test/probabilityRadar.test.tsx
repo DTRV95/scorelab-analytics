@@ -13,6 +13,7 @@ vi.mock("@/components/layout/AppLayout", () => ({
 }));
 
 import ProbabilityRadar from "@/pages/ProbabilityRadar";
+import { forgetLeagueRates } from "@/hooks/useLeagueRates";
 import {
   readCachedBoard,
   writeCachedBoard,
@@ -80,6 +81,19 @@ const boardPayload = {
   skipped: 2,
 };
 
+/** What the competitions have given this season, for the board to read a
+ *  forecast against. */
+const ratesPayload = [
+  {
+    league: "Liga Portugal",
+    played: 94,
+    markets: [
+      { mercado: "Casa", grupo: "Resultado", jogos: 42, pct: 44.7 },
+      { mercado: "Mais de 2.5 Golos", grupo: "Golos", jogos: 48, pct: 51.1 },
+    ],
+  },
+];
+
 function mockFetchSequence() {
   vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
     const url = String(input);
@@ -93,6 +107,12 @@ function mockFetchSequence() {
       return Promise.resolve({
         ok: true,
         json: async () => boardPayload,
+      } as Response);
+    }
+    if (url.includes("/data/league-rates")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ leagues: ratesPayload }),
       } as Response);
     }
     return Promise.reject(new Error(`unexpected fetch: ${url}`));
@@ -109,6 +129,8 @@ function renderPage() {
 
 beforeEach(() => {
   localStorage.clear();
+  // The rates are held for the session, which would outlive one test.
+  forgetLeagueRates();
 });
 
 afterEach(() => {
@@ -196,6 +218,9 @@ describe("ProbabilityRadar board", () => {
       if (url.includes("/data/probability-board")) {
         return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
       }
+      if (url.includes("/data/league-rates")) {
+        return Promise.resolve({ ok: true, json: async () => ({ leagues: ratesPayload }) } as Response);
+      }
       return Promise.reject(new Error(`unexpected fetch: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -222,6 +247,9 @@ describe("ProbabilityRadar board", () => {
       }
       if (url.includes("/data/probability-board")) {
         return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
+      }
+      if (url.includes("/data/league-rates")) {
+        return Promise.resolve({ ok: true, json: async () => ({ leagues: ratesPayload }) } as Response);
       }
       return Promise.reject(new Error(`unexpected fetch: ${url}`));
     });

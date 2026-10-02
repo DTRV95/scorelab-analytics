@@ -3,7 +3,7 @@ import { Loader2, Plus, X } from "lucide-react";
 import { GamePicker, type BoardAccess, type PickedGame } from "@/components/GamePicker";
 import { LegContextRow } from "@/components/LegContext";
 import { Button } from "@/components/ui/button";
-import { legContext, leaguesOnSlip } from "@/lib/betContext";
+import { legContext } from "@/lib/betContext";
 import type { PlayerStyle } from "@/lib/bettingStyle";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
 import {
@@ -68,7 +68,7 @@ export function LooseComposer({
   const [legs, setLegs] = useState<Draft[]>([]);
   const [stakeInput, setStakeInput] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const rates = useLeagueRates(useMemo(() => leaguesOnSlip(legs), [legs]));
+  const rates = useLeagueRates();
 
   const chosenIds = useMemo(
     () =>
