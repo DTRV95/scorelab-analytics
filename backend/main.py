@@ -167,6 +167,26 @@ def data_calibration(request: Request):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/data/league-report")
+@limiter.limit("10/minute")
+def data_league_report(request: Request, league: str, season: Optional[int] = None):
+    """How often each market has landed in a competition, and who is in form.
+
+    Arithmetic over the season already cached for the board and the forecasts,
+    so it costs nothing at the provider however often it is asked for.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    if league not in football_data.supported_leagues():
+        raise HTTPException(status_code=404, detail="Competição não coberta.")
+
+    try:
+        return football_data.league_report(league, season=season)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/model-accuracy")
 @limiter.limit("10/minute")
 def data_model_accuracy(request: Request, league: str, season: Optional[int] = None):

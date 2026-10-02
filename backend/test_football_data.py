@@ -603,6 +603,96 @@ def test_competitions_report_says_which_ones_the_board_already_uses():
     assert rows["NL"]["area"] == "Europe"
 
 
+def _season(scores):
+    """A season of finished matches, five teams playing in a ring."""
+    teams = ["A", "B", "C", "D", "E"]
+    return [
+        {
+            "id": index,
+            "status": "FINISHED",
+            "utcDate": f"2026-09-{10 + index:02d}T18:00:00Z",
+            "homeTeam": {"id": index % 5, "name": teams[index % 5]},
+            "awayTeam": {"id": (index + 1) % 5, "name": teams[(index + 1) % 5]},
+            "score": {"fullTime": {"home": home, "away": away}},
+        }
+        for index, (home, away) in enumerate(scores)
+    ]
+
+
+SEASON = [(2, 0), (1, 1), (0, 3), (3, 2), (1, 0), (2, 2), (0, 0), (4, 1), (1, 2), (2, 1)]
+
+
+def test_league_report_counts_every_market_off_the_scores():
+    football_data._cache.clear()
+    matches = _season(SEASON)
+    football_data._cache_put("matches:SA:current", matches)
+
+    report = football_data.league_report("Serie A")
+    pct = {row["mercado"]: row["pct"] for row in report["markets"]}
+
+    assert report["played"] == 10
+    # Counted by hand off the ten scores above.
+    assert pct["Casa"] == 50.0
+    assert pct["Empate"] == 30.0
+    assert pct["Fora"] == 20.0
+    # The double chances are the halves added, and cannot drift from them.
+    assert pct["1X"] == pct["Casa"] + pct["Empate"]
+    assert pct["2X"] == pct["Fora"] + pct["Empate"]
+    assert pct["Mais de 2.5 Golos"] == 60.0
+    # A line and its opposite are the whole of it.
+    assert pct["Mais de 2.5 Golos"] + pct["Menos de 2.5 Golos"] == 100.0
+    assert pct["Ambas Marcam"] == 60.0
+    assert pct["Ambas Marcam"] + pct["BTTS No"] == 100.0
+
+
+def test_league_report_carries_the_goal_averages():
+    football_data._cache.clear()
+    football_data._cache_put("matches:SA:current", _season(SEASON))
+
+    goals = football_data.league_report("Serie A")["goals"]
+
+    # 16 at home and 12 away over ten games.
+    assert goals["home_avg"] == 1.6
+    assert goals["away_avg"] == 1.2
+    assert goals["total_avg"] == 2.8
+
+
+def test_form_ranks_on_points_then_goal_difference():
+    rows = football_data._form_table(_season(SEASON))
+    best = rows[0]
+
+    assert best["points"] >= rows[1]["points"]
+    assert len(best["run"]) == best["played"]
+    assert best["points"] == best["won"] * 3 + best["drawn"]
+    # Points first, then goal difference, in the order a table is read.
+    for first, second in zip(rows, rows[1:]):
+        assert (first["points"], first["scored"] - first["conceded"]) >= (
+            second["points"],
+            second["scored"] - second["conceded"],
+        )
+
+
+def test_form_uses_the_last_five_a_team_played_not_the_last_five_rounds():
+    # Twelve games in a ring: every team has played more than five.
+    rows = football_data._form_table(_season(SEASON + [(1, 1), (3, 0)]))
+
+    for row in rows:
+        assert row["played"] <= football_data.FORM_WINDOW
+        assert len(row["run"]) == row["played"]
+
+
+def test_league_report_survives_a_competition_with_nothing_played():
+    football_data._cache.clear()
+    football_data._cache_put("matches:SA:current", [])
+
+    report = football_data.league_report("Serie A")
+
+    assert report["played"] == 0
+    assert report["form"] == []
+    # No percentage is invented out of no games.
+    assert all(row["pct"] is None for row in report["markets"])
+
+
 class _FakeBody:
     def __init__(self, data):
         self._data = data
