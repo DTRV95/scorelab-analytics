@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Gauge,
+  Globe,
   Trophy,
   Ticket,
   Percent,
@@ -52,6 +53,7 @@ const navGroups: NavGroup[] = [
     title: "Jogos",
     items: [
       { title: "Quadro de jogos", url: "/probability", icon: Percent },
+      { title: "Ligas", url: "/ligas", icon: Globe },
       { title: "Acerto do modelo", url: "/accuracy", icon: Gauge },
     ],
   },

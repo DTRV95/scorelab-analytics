@@ -1005,3 +1005,157 @@ def model_accuracy(league_key: str, season: Optional[int] = None) -> Dict[str, A
 
     _cache_put(cache_key, payload)
     return payload
+
+
+REPORT_TTL = 6 * 60 * 60
+FORM_WINDOW = 5
+
+
+def _form_table(played: List[Dict[str, Any]], window: int = FORM_WINDOW) -> List[Dict[str, Any]]:
+    """Every team's last N games, in points.
+
+    Three for a win and one for a draw, over the last five each team actually
+    played — not the last five rounds, because a team with a game in hand has
+    played four of them and would otherwise be ranked on less football than
+    everybody else.
+    """
+    by_team: Dict[int, Dict[str, Any]] = {}
+
+    for match in sorted(played, key=lambda item: item.get("utcDate") or ""):
+        home_goals, away_goals = _full_time_goals(match)
+        if home_goals is None or away_goals is None:
+            continue
+
+        for side, scored, conceded in (
+            ("homeTeam", home_goals, away_goals),
+            ("awayTeam", away_goals, home_goals),
+        ):
+            team = match.get(side) or {}
+            team_id = team.get("id")
+            if team_id is None:
+                continue
+
+            entry = by_team.setdefault(
+                team_id,
+                {"team": team.get("name") or "?", "games": []},
+            )
+            entry["team"] = team.get("name") or entry["team"]
+            entry["games"].append({"scored": scored, "conceded": conceded})
+
+    rows: List[Dict[str, Any]] = []
+    for entry in by_team.values():
+        recent = entry["games"][-window:]
+        if not recent:
+            continue
+
+        points = 0
+        won = drawn = lost = 0
+        scored = conceded = 0
+        run = ""
+
+        for game in recent:
+            scored += game["scored"]
+            conceded += game["conceded"]
+            if game["scored"] > game["conceded"]:
+                points += 3
+                won += 1
+                run += "V"
+            elif game["scored"] == game["conceded"]:
+                points += 1
+                drawn += 1
+                run += "E"
+            else:
+                lost += 1
+                run += "D"
+
+        rows.append(
+            {
+                "team": entry["team"],
+                "played": len(recent),
+                "points": points,
+                "won": won,
+                "drawn": drawn,
+                "lost": lost,
+                "scored": scored,
+                "conceded": conceded,
+                "run": run,
+            }
+        )
+
+    # Points first, then goal difference, then goals scored: the order a table
+    # is read in, so nobody has to be told what broke a tie.
+    rows.sort(
+        key=lambda row: (
+            row["points"],
+            row["scored"] - row["conceded"],
+            row["scored"],
+        ),
+        reverse=True,
+    )
+    return rows
+
+
+def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, Any]:
+    """How often each market has landed in a competition, and who is in form.
+
+    Arithmetic over the season already in the cache, so it costs nothing at
+    the provider: the same matches the board and the forecasts are built from.
+
+    The markets are settled by the very function that scores the model, which
+    reads the masks the simulation sums over — so a market cannot mean one
+    thing on this page and another when it is forecast.
+    """
+    from model import PROBABILITY_MARKETS, settle_markets
+
+    cache_key = f"report:{league_key}:{season or 'current'}"
+    cached = _cache_get(cache_key, REPORT_TTL)
+    if cached is not None:
+        return cached
+
+    matches = get_season_matches(league_key, season)
+    played = [
+        match
+        for match in matches
+        if _is_finished(match) and None not in _full_time_goals(match)
+    ]
+
+    hits: Dict[str, int] = {name: 0 for name, _ in PROBABILITY_MARKETS}
+    goals_home = 0
+    goals_away = 0
+
+    for match in played:
+        home_goals, away_goals = _full_time_goals(match)
+        goals_home += home_goals
+        goals_away += away_goals
+
+        settled = settle_markets(home_goals, away_goals)
+        for name in hits:
+            if settled.get(name):
+                hits[name] += 1
+
+    total = len(played)
+    markets = [
+        {
+            "mercado": name,
+            "grupo": grupo,
+            "jogos": hits[name],
+            "pct": round(100 * hits[name] / total, 1) if total else None,
+        }
+        for name, grupo in PROBABILITY_MARKETS
+    ]
+
+    payload = {
+        "league": league_key,
+        "played": total,
+        "markets": markets,
+        "goals": {
+            "home_avg": round(goals_home / total, 2) if total else None,
+            "away_avg": round(goals_away / total, 2) if total else None,
+            "total_avg": round((goals_home + goals_away) / total, 2) if total else None,
+        },
+        "form": _form_table(played),
+        "form_window": FORM_WINDOW,
+    }
+
+    _cache_put(cache_key, payload)
+    return payload

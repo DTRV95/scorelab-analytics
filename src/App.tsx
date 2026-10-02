@@ -22,6 +22,7 @@ const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis"));
 const ProbabilityRadar = lazy(() => import("./pages/ProbabilityRadar"));
 const ModelLab = lazy(() => import("./pages/ModelLab"));
 const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
+const Leagues = lazy(() => import("./pages/Leagues"));
 const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const ChallengeCatalogue = lazy(() => import("./pages/ChallengeCatalogue"));
@@ -103,6 +104,7 @@ const App = () => {
                     {/* The tab was "Plano" before it held more than one challenge. */}
                     <Route path="/plano" element={<Navigate to="/desafios" replace />} />
                     <Route path="/match/:fixtureId" element={<ProtectedRoute><MatchDeepDive /></ProtectedRoute>} />
+                    <Route path="/ligas" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
                     <Route path="/accuracy" element={<ProtectedRoute><ModelAccuracy /></ProtectedRoute>} />
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />
                     <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
