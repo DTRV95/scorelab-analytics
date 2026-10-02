@@ -377,8 +377,15 @@
     color: hsl(var(--primary-foreground));
   }
 
-  .sl-bottomnav {
+  /* The bar used to be a slab painted across the bottom of the screen. It is
+     now a pill that floats above the page, so the colour moves off the strip
+     and onto the pill itself — the strip has to stay see-through for the
+     content to show under it. */
+  .sl-bottomnav-pill {
     background: hsl(var(--sl-nav));
+    box-shadow:
+      0 12px 28px -12px hsl(var(--sl-nav) / 0.65),
+      0 2px 10px hsl(var(--sl-nav) / 0.22);
   }
 
   .sl-bottomnav-item[data-active="true"] {
