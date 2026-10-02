@@ -42,10 +42,13 @@ describe("the record, grouped by the price taken", () => {
     ]);
   });
 
-  it("holds a percentage back until there are enough days to mean one", () => {
-    // One win of one is 100%, and says nothing at all.
+  it("marks a band as thin rather than refusing to divide", () => {
+    // One win of one really is 100%, and says nothing at all. Printing "1 de
+    // 1" beside a dash made the page look like it could not divide, and the
+    // reader did the division anyway — so the rate is shown with a warning.
     const [thin] = byOddsBand([bet({ odds: 1.4 })]);
-    expect(thin.winPct).toBeNull();
+    expect(thin.winPct).toBe(100);
+    expect(thin.enough).toBe(false);
 
     const [enough] = byOddsBand([
       bet({ odds: 1.4 }),
@@ -53,6 +56,7 @@ describe("the record, grouped by the price taken", () => {
       bet({ odds: 1.4, status: "red", profitLoss: -10 }),
     ]);
     expect(enough.winPct).toBe(67);
+    expect(enough.enough).toBe(true);
   });
 
   it("starts the week on Monday", () => {
