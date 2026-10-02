@@ -19,7 +19,8 @@ export const COVERED_LEAGUES = [
   "Eredivisie",
   "Liga dos Campeões",
   "Campeonato da Europa",
-  "Mundial",
+  // Sem o Mundial: a edição de 2026 já acabou e a competição ficava no quadro
+  // e nas ligas a dizer zero jogos o ano inteiro.
   "Brasileirão",
 ] as const;
 

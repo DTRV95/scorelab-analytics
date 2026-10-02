@@ -432,7 +432,7 @@ describe("building the day's bet", () => {
     renderPage();
     await openPicker();
 
-    for (const league of ["Campeonato da Europa", "Mundial", "Liga dos Campeões"]) {
+    for (const league of ["Campeonato da Europa", "Liga dos Campeões"]) {
       expect(
         await screen.findByRole("button", { name: `${league}, 0 jogos` }),
       ).toBeInTheDocument();

@@ -43,7 +43,6 @@ SUPPORTED_LEAGUES: Dict[str, str] = {
     # ever on it, and the model sat idle while the bets were typed by hand.
     "Liga dos Campeões": "CL",
     "Campeonato da Europa": "EC",
-    "Mundial": "WC",
     "Brasileirão": "BSA",
 }
 
