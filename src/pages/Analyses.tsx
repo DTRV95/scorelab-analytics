@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { byOddsBand, byWeekday, summarise, type Band } from "@/lib/betAnalytics";
 import { buildPlayerStyle, MIN_DECIDED } from "@/lib/bettingStyle";
 import { canonicalMarket } from "@/lib/marketNames";
+import { fetchLooseBets } from "@/lib/looseBets";
 import {
   fetchBetsOfPlans,
   fetchPlans,
@@ -125,10 +126,16 @@ export default function Analyses() {
     if (!user) return;
     let cancelled = false;
 
-    fetchPlans()
-      .then((plans) => fetchBetsOfPlans(plans.map((plan) => plan.id)))
-      .then((placed) => {
-        if (!cancelled) setBets(placed.filter((bet) => bet.userId === user.id));
+    // The challenges and the loose ones together: this page is about how
+    // somebody bets, and a bet outside a challenge was still their judgement.
+    Promise.all([
+      fetchPlans()
+        .then((plans) => fetchBetsOfPlans(plans.map((plan) => plan.id)))
+        .then((placed) => placed.filter((bet) => bet.userId === user.id)),
+      fetchLooseBets().catch(() => [] as PlanBet[]),
+    ])
+      .then(([planned, loose]) => {
+        if (!cancelled) setBets([...planned, ...loose]);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -211,7 +218,8 @@ export default function Analyses() {
           <div className="min-w-0">
             <h1 className="sl-section-title text-[15px]">Análises</h1>
             <p className="sl-meta mt-0.5 text-[11px]">
-              O que as tuas apostas dizem, vistas de vários lados.
+              Todas as tuas apostas, dos desafios e de fora deles, vistas de
+              vários lados.
             </p>
           </div>
         </motion.div>
