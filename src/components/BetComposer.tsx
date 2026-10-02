@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ListPlus, Plus, X } from "lucide-react";
 import {
   GamePicker,
@@ -97,8 +97,16 @@ export function BetComposer({
   /** The picker lives in a pop-up: the slip is what the page is for. */
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Only a bump after this card is on screen opens the picker. Reacting to
+  // the value itself meant that changing challenge — which takes this card
+  // down and puts a new one up while the other challenge loads — arrived at a
+  // signal that was already non-zero and opened the pop-up on its own, in
+  // front of somebody who had asked for nothing.
+  const lastSignal = useRef(openSignal);
   useEffect(() => {
-    if (openSignal) setPickerOpen(true);
+    if (openSignal === lastSignal.current) return;
+    lastSignal.current = openSignal;
+    setPickerOpen(true);
   }, [openSignal]);
 
   const suggested = plannedStake;
@@ -226,11 +234,20 @@ export function BetComposer({
                 <p className="truncate text-[13px] font-semibold text-foreground">
                   {leg.homeTeam} vs {leg.awayTeam}
                 </p>
-                <p className="sl-meta truncate text-[11px]">
-                  {MARKET_LABELS[leg.market] ?? leg.market}
-                  {leg.fixtureId === null
-                    ? " · à mão"
-                    : ` · modelo ${leg.modelProb.toFixed(0)}%`}
+                {/* Wraps rather than truncates: the market is the long part
+                    and the points are the part worth reading, so cutting the
+                    line at its end cut the only number on it that says
+                    whether the price is worth taking. */}
+                <p className="sl-meta flex flex-wrap items-baseline gap-x-1 text-[11px]">
+                  <span className="min-w-0 break-words">
+                    {MARKET_LABELS[leg.market] ?? leg.market}
+                  </span>
+                  <span>
+                    ·{" "}
+                    {leg.fixtureId === null
+                      ? "à mão"
+                      : `modelo ${leg.modelProb.toFixed(0)}%`}
+                  </span>
                   {(() => {
                     // What the odd typed is paying for, against what the model
                     // thinks. The only number on this row that says whether
@@ -238,14 +255,17 @@ export function BetComposer({
                     const points = edgePoints(leg.modelProb, toOdds(leg.odds));
                     if (points === null) return null;
                     return (
+                      // A chip rather than more text with a dot in front: it
+                      // is the piece most likely to end up on a line of its
+                      // own, and a line that opens with "·" reads as broken.
                       <span
-                        className={
+                        className={`rounded px-1 py-px text-[10px] font-bold ${
                           points > 0
-                            ? " font-semibold text-[hsl(var(--sl-green))]"
-                            : " font-semibold text-destructive"
-                        }
+                            ? "bg-[hsl(var(--sl-green))]/10 text-[hsl(var(--sl-green))]"
+                            : "bg-destructive/10 text-destructive"
+                        }`}
                       >
-                        {` · ${points > 0 ? "+" : ""}${points} pts`}
+                        {`${points > 0 ? "+" : ""}${points} pts`}
                       </span>
                     );
                   })()}

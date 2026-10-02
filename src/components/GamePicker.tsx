@@ -74,6 +74,27 @@ function dayKey(kickoff: string | null): string {
 }
 
 /**
+ * The same day, short enough for a tab: "sáb, 04/10".
+ *
+ * The heading above a list has the room for "sábado, 04/10"; a row of tabs on
+ * a phone does not, and a tab wide enough to need scrolling to read is a tab
+ * nobody taps.
+ */
+function dayTabLabel(kickoff: string | null): string {
+  const long = dayLabel(kickoff);
+  if (long === "Hoje" || long === "Amanhã" || long === "Sem data") return long;
+
+  const date = new Date(kickoff as string);
+  return new Intl.DateTimeFormat("pt-PT", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  })
+    .format(date)
+    .replace(".", "");
+}
+
+/**
  * The day a game is played, named the way somebody would say it.
  *
  * "Hoje" and "Amanhã" rather than a date, because those are the two that
@@ -218,6 +239,14 @@ export function GamePicker({
   const [manualOpen, setManualOpen] = useState(false);
   /** Which competition the list is narrowed to, or all of them. */
   const [league, setLeague] = useState<string | null>(null);
+  /**
+   * Which day the list is showing: a day key, "todos" for every day at once,
+   * or null for "nothing chosen yet", which the first board to arrive fills
+   * in. The three are different on purpose — without the third, choosing
+   * "todos" was indistinguishable from never having chosen, and the list
+   * jumped straight back to the first day.
+   */
+  const [day, setDay] = useState<string | "todos" | null>(null);
   const [health, setHealth] = useState<LeagueHealthReport | null>(null);
   const [healthOpen, setHealthOpen] = useState(false);
   const [healthError, setHealthError] = useState(false);
@@ -252,7 +281,8 @@ export function GamePicker({
 
   const counts = useMemo(() => leagueCounts(board), [board]);
 
-  const matches = useMemo(() => {
+  /** The games of the chosen competition, whatever day they fall on. */
+  const inLeague = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return [...board]
       .filter((match) => !league || match.league === league)
@@ -274,9 +304,72 @@ export function GamePicker({
         const right = stamp(b.kickoff);
         if (left !== right) return left - right;
         return b.headline_pct - a.headline_pct;
-      })
-      .slice(0, LIST_LIMIT);
+      });
   }, [board, league, search]);
+
+  /** The days with games in them, in the order they are played. */
+  const days = useMemo(() => {
+    const rows: { key: string; label: string; count: number }[] = [];
+    for (const match of inLeague) {
+      const key = dayKey(match.kickoff);
+      const found = rows.find((row) => row.key === key);
+      if (found) found.count += 1;
+      else rows.push({ key, label: dayTabLabel(match.kickoff), count: 1 });
+    }
+    return rows;
+  }, [inLeague]);
+
+  // Opens on the first day that has games, which is the one somebody
+  // registering today's bet is looking at. A day that empties out — the games
+  // played, or the competition changed — hands the list back to the next one
+  // rather than showing nothing.
+  useEffect(() => {
+    if (days.length === 0) return;
+    if (day === "todos") return;
+    if (day !== null && days.some((row) => row.key === day)) return;
+    setDay(days[0].key);
+  }, [days, day]);
+
+  // A search spans every day: hiding a match because it is on Sunday would be
+  // answering a question nobody asked.
+  const searching = search.trim().length > 0;
+
+  /**
+   * The list on screen: one day, by competition.
+   *
+   * Seven days of a dozen competitions at once was the wall. With a day
+   * chosen the list is short enough to be grouped by competition, which is
+   * the shape anybody who has opened a results site already knows. The
+   * competitions keep the order of their first kickoff, so the one playing
+   * next is still the one on top.
+   *
+   * Searching, or asking for every day, hands back the plain chronological
+   * list: a search that hid Sunday would be answering a question nobody
+   * asked.
+   */
+  const byLeague = !searching && day !== null && day !== "todos";
+
+  const matches = useMemo(() => {
+    const picked = inLeague.filter(
+      (match) =>
+        searching || !day || day === "todos" || dayKey(match.kickoff) === day,
+    );
+
+    if (!byLeague) return picked.slice(0, LIST_LIMIT);
+
+    const order = new Map<string, number>();
+    picked.forEach((match) => {
+      if (!order.has(match.league)) order.set(match.league, order.size);
+    });
+
+    return [...picked]
+      .sort(
+        (a, b) =>
+          (order.get(a.league) ?? 0) - (order.get(b.league) ?? 0) ||
+          stamp(a.kickoff) - stamp(b.kickoff),
+      )
+      .slice(0, LIST_LIMIT);
+  }, [inLeague, day, searching, byLeague]);
 
   const addFromBoard = (match: BoardMatch, market: string, prob: number) => {
     onPick({
@@ -417,6 +510,40 @@ export function GamePicker({
               </button>
             ))}
           </div>
+
+          {/* One day at a time, because seven days of a dozen competitions is
+              a list nobody reads to the end. */}
+          {days.length > 1 && (
+            <div className="-mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {days.map((row) => (
+                <button
+                  key={row.key}
+                  type="button"
+                  onClick={() => setDay(row.key)}
+                  aria-pressed={!searching && day === row.key}
+                  className={`sl-tap flex-none rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    !searching && day === row.key
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground ring-1 ring-border"
+                  }`}
+                >
+                  {row.label} {row.count}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDay("todos")}
+                aria-pressed={!searching && day === "todos"}
+                className={`sl-tap flex-none rounded-full px-3 py-1 text-[11px] font-semibold ${
+                  !searching && day === "todos"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground ring-1 ring-border"
+                }`}
+              >
+                Todos {inLeague.length}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-3">
@@ -523,18 +650,23 @@ export function GamePicker({
           {matches.map((match, index) => {
             const already = chosenIds.has(match.fixture_id);
             const used = usedFixtures.has(match.fixture_id);
-            // A line whenever the day changes, so the order is something you
-            // can see rather than something you have to work out from the
-            // kickoff times.
-            const opensDay =
-              index === 0 ||
-              dayKey(match.kickoff) !== dayKey(matches[index - 1].kickoff);
+            // A heading whenever the group changes: the competition when a
+            // day is chosen, the day itself when they are all on screen.
+            const previous = matches[index - 1];
+            const heading =
+              byLeague
+                ? index === 0 || previous.league !== match.league
+                  ? match.league
+                  : null
+                : index === 0 || dayKey(previous.kickoff) !== dayKey(match.kickoff)
+                  ? dayLabel(match.kickoff)
+                  : null;
 
             return (
               <div key={match.fixture_id}>
-                {opensDay && (
+                {heading && (
                   <p className="sl-meta bg-[hsl(var(--sl-surface))] px-4 py-1.5 text-[10px] uppercase tracking-[0.13em]">
-                    {dayLabel(match.kickoff)}
+                    {heading}
                   </p>
                 )}
                 <button
