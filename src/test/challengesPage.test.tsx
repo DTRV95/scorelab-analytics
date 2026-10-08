@@ -1201,36 +1201,40 @@ describe("correcting a bet that was typed wrong", () => {
 });
 
 describe("managing challenges", () => {
-  it("tells two challenges of the same name apart by what is in them", async () => {
-    // Two made from the same model are identical on screen — same name, same
-    // bankroll, same target, same dates. Deleting the wrong one costs
-    // somebody their history, so the chips say how many bets each holds.
+  it("shows the challenge in the address, and not a list of the others", async () => {
+    // The chips that switched between challenges lived here, under the
+    // title, and on a long name ran into it. Desafios is the page that lists
+    // them; this page is one challenge, and the address says which.
     const twin = {
       id: "empty",
-      name: "Plano Milhão",
+      name: "Mil euros em 10",
       starting_bankroll: 10,
-      target: 1000000,
+      target: 1000,
       created_by: "david",
       start_date: null,
-      days: 38,
+      days: 10,
       rules: MILLION_PLAN_RULES,
       visible: false,
-      template_key: "milhao",
+      template_key: "mil-10",
       ended_at: null,
       ended_by: null,
     };
     vi.mocked(fetchPlans).mockResolvedValueOnce([
-      { ...twin, id: "plan" },
+      {
+        ...twin,
+        id: "plan",
+        name: "Plano Milhão",
+        target: 1000000,
+        days: 38,
+        template_key: "milhao",
+      },
       twin,
     ]);
 
     renderPage();
 
-    const chips = await screen.findAllByRole("button", { name: /Plano Milhão/ });
-    expect(chips.map((chip) => chip.textContent)).toEqual([
-      "Plano Milhão4",
-      "Plano Milhão0",
-    ]);
+    expect(await screen.findByText("Plano Milhão")).toBeInTheDocument();
+    expect(screen.queryByText("Mil euros em 10")).toBeNull();
   });
 
   it("offers deleting the challenge from the top of the page", async () => {

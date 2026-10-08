@@ -1149,27 +1149,11 @@ export default function Challenges() {
           <motion.div variants={fadeUp}>{inviteBanner}</motion.div>
         )}
 
-        {plans.length > 1 && (
-          <motion.div variants={fadeUp} className="flex flex-wrap gap-1.5">
-            {plans.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setPlanId(item.id)}
-                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
-                  item.id === plan.id
-                    ? "bg-primary text-white"
-                    : "border border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {item.name}
-                <span className="ml-1.5 opacity-70">
-                  {betCounts[item.id] ?? 0}
-                </span>
-              </button>
-            ))}
-          </motion.div>
-        )}
+        {/* The other challenges used to be listed here as chips, under the
+            title. This page is one challenge — the address says which one —
+            and Desafios is the page that lists them, now with the ones that
+            are over on a shelf of their own. Two lists of the same thing, and
+            on a long name the chips ran into the title. */}
 
         {move && !ended && (
           <motion.div variants={fadeUp}>
