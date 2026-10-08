@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Wallet,
-  Settings,
+  User,
   BarChart3,
   ChevronLeft,
   Gauge,
@@ -47,7 +47,7 @@ const navItems: NavItem[] = [
   { title: "Ligas", url: "/ligas", icon: Globe },
   { title: "Análises", url: "/dashboard/analises", icon: BarChart3 },
   { title: "Acerto do modelo", url: "/accuracy", icon: Gauge },
-  { title: "Definições", url: "/settings", icon: Settings },
+  { title: "Perfil", url: "/settings", icon: User },
 ];
 
 export function AppSidebar() {

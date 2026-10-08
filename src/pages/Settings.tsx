@@ -1,3 +1,16 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Check,
+  Loader2,
+  Lock,
+  LogOut,
+  RotateCcw,
+  Trophy,
+  User,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,101 +25,187 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
-import { motion } from "framer-motion";
-import {
-  User,
-  Mail,
-  Lock,
-  CreditCard,
-  Sliders,
-  RotateCcw,
-} from "lucide-react";
-import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { summarise } from "@/lib/betAnalytics";
 import { resetAllScorelabData } from "@/lib/persistenceSync";
+import { fetchMyProfile, saveDisplayName, type MyProfile } from "@/lib/planStore";
 
-function SettingsSection({
+const eur = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
+
+const field =
+  "h-10 w-full rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30";
+
+/** The two letters a name comes down to, for the round mark. */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function since(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function Card({
   title,
   icon: Icon,
-  children,
   tone = "default",
+  children,
 }: {
   title: string;
   icon: React.ElementType;
-  children: React.ReactNode;
   tone?: "default" | "danger";
+  children: React.ReactNode;
 }) {
   return (
-    <div
+    <section
       className={
         tone === "danger"
-          ? " rounded-xl border border-red-500/20 bg-red-500/[0.04] p-6"
-          : " rounded-xl bg-card ring-surface p-6 card-shadow"
+          ? "rounded-2xl border border-destructive/25 bg-destructive/[0.04] p-4"
+          : "sl-card p-4"
       }
     >
-      <div className="mb-5 flex items-center gap-2">
-        <Icon
-          className={tone === "danger" ? "h-4 w-4 text-red-700" : "h-4 w-4 text-muted-foreground"}
-          strokeWidth={1.5}
-        />
-        <h2
-          className={
-            tone === "danger"
-              ? "text-sm font-semibold uppercase tracking-wider text-red-700"
-              : "text-sm font-semibold uppercase tracking-wider text-muted-foreground"
-          }
-        >
-          {title}
-        </h2>
-      </div>
+      <h2
+        className={`mb-3 flex items-center gap-2 text-[13px] font-bold ${
+          tone === "danger" ? "text-destructive" : "text-foreground"
+        }`}
+      >
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+        {title}
+      </h2>
       {children}
-    </div>
+    </section>
   );
 }
 
-function SettingsField({
-  label,
-  type = "text",
-  defaultValue,
-  placeholder,
-}: {
-  label: string;
-  type?: string;
-  defaultValue?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs text-muted-foreground">{label}</label>
-      <input
-        type={type}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        className="h-10 w-full rounded-lg input-surface px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-      />
-    </div>
-  );
-}
-
+/**
+ * Who this person is, in the app.
+ *
+ * This page was the template's: "John Analyst", "john@example.com", a Pro
+ * Plan at $29 a month, default Kelly fractions — all of it in English, none
+ * of it wired to anything, including the buttons. What an account actually
+ * has is a name that the other players see, an email, a password, and a
+ * record built out of its own bets.
+ */
 export default function Settings() {
+  const { user, signOut, updatePassword } = useAuth();
+  const { bets, plans, loading } = usePlanBoard();
+
+  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [name, setName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [savedName, setSavedName] = useState(false);
+
+  const [password, setPassword] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
   const [isResetting, setIsResetting] = useState(false);
 
-  const handleStartFresh = async () => {
-    setIsResetting(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyProfile()
+      .then((found) => {
+        if (cancelled || !found) return;
+        setProfile(found);
+        setName(found.display_name);
+      })
+      .catch(() => undefined);
 
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  // Built from the bets themselves, like everywhere else in the app.
+  const record = useMemo(() => summarise(bets), [bets]);
+  const running = plans.filter((plan) => !plan.ended_at).length;
+
+  const changeName = async () => {
+    const wanted = name.trim();
+    if (!wanted || wanted === profile?.display_name) return;
+
+    setSavingName(true);
+    setSavedName(false);
+    try {
+      const saved = await saveDisplayName(wanted);
+      setName(saved);
+      setProfile((current) =>
+        current ? { ...current, display_name: saved } : current,
+      );
+      setSavedName(true);
+    } catch {
+      toast({
+        title: "O nome não ficou guardado",
+        description: "Tenta outra vez daqui a pouco.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const changePassword = async () => {
+    if (password.length < 8) {
+      toast({
+        title: "Palavra-passe curta de mais",
+        description: "Pelo menos oito caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (password !== repeat) {
+      toast({
+        title: "As duas não são iguais",
+        description: "Escreve a mesma palavra-passe nos dois campos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingPassword(true);
+    const { error } = await updatePassword(password);
+    setSavingPassword(false);
+
+    if (error) {
+      toast({
+        title: "A palavra-passe não foi mudada",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPassword("");
+    setRepeat("");
+    toast({ title: "Palavra-passe mudada" });
+  };
+
+  const startFresh = async () => {
+    setIsResetting(true);
     try {
       await resetAllScorelabData();
       toast({
-        title: "ScoreLab reset",
-        description: "All saved analyses, bankroll, roadmap, and multiples were cleared.",
+        title: "Dados deste browser apagados",
+        description:
+          "Os desafios e as apostas continuam na tua conta — isto limpou só o que estava guardado aqui.",
       });
-
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 250);
+      window.setTimeout(() => window.location.reload(), 250);
     } catch {
       toast({
-        title: "Reset failed",
-        description: "The reset could not be completed right now.",
+        title: "Não deu para apagar",
+        description: "Tenta outra vez daqui a pouco.",
         variant: "destructive",
       });
       setIsResetting(false);
@@ -118,146 +217,200 @@ export default function Settings() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-3"
       >
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your account, preferences, and workspace controls.
-          </p>
+        <div className="-mt-3 md:-mt-[1rem]">
+          <h1 className="sl-section-title text-[15px]">O teu perfil</h1>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SettingsSection title="Profile" icon={User}>
-            <div className="space-y-4">
-              <SettingsField label="Full Name" defaultValue="John Analyst" />
-              <SettingsField label="Username" defaultValue="john_analyst" />
-              <Button variant="outline" size="sm">
-                Update Profile
-              </Button>
+        {/* Who the other players see, and what this account has done. */}
+        <section className="sl-card overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-4">
+            <span className="sl-figure flex h-12 w-12 flex-none items-center justify-center rounded-2xl text-[15px] text-white [background:var(--sl-gradient)]">
+              {initials(profile?.display_name ?? name ?? "")}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-bold text-foreground">
+                {profile?.display_name ?? "—"}
+              </p>
+              {/* Wrapping, not truncated: an email cut off mid-domain and a
+                  date cut off mid-year are two facts nobody can read. */}
+              <p className="sl-meta text-[11.5px] leading-5">
+                {profile?.email ?? user?.email ?? ""}
+                {profile?.joined_at ? ` · desde ${since(profile.joined_at)}` : ""}
+              </p>
             </div>
-          </SettingsSection>
+          </div>
 
-          <SettingsSection title="Email" icon={Mail}>
-            <div className="space-y-4">
-              <SettingsField
-                label="Email Address"
-                type="email"
-                defaultValue="john@example.com"
-              />
-              <Button variant="outline" size="sm">
-                Update Email
-              </Button>
-            </div>
-          </SettingsSection>
-
-          <SettingsSection title="Password" icon={Lock}>
-            <div className="space-y-4">
-              <SettingsField
-                label="Current Password"
-                type="password"
-                placeholder="********"
-              />
-              <SettingsField
-                label="New Password"
-                type="password"
-                placeholder="********"
-              />
-              <Button variant="outline" size="sm">
-                Change Password
-              </Button>
-            </div>
-          </SettingsSection>
-
-          <SettingsSection title="Subscription" icon={CreditCard}>
-            <div className="mb-4 rounded-lg bg-[hsl(var(--sl-surface))] p-4 ring-1 ring-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Pro Plan</p>
-                  <p className="text-xs text-muted-foreground">
-                    $29/month · Renews Mar 28, 2026
+          {!loading && (
+            <div className="grid grid-cols-3 gap-px border-t border-border bg-border">
+              {[
+                {
+                  label: "Desafios",
+                  value: String(running),
+                },
+                {
+                  label: "Apostas fechadas",
+                  value: String(record.settled),
+                },
+                {
+                  label: "Das apostas",
+                  value: `${record.profit >= 0 ? "+" : ""}${eur.format(record.profit)}`,
+                  tone:
+                    record.profit > 0
+                      ? "text-[hsl(var(--sl-green))]"
+                      : record.profit < 0
+                        ? "text-destructive"
+                        : "",
+                },
+              ].map((cell) => (
+                <div key={cell.label} className="bg-card px-3 py-2.5">
+                  <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
+                    {cell.label}
+                  </p>
+                  <p
+                    className={`sl-figure mt-0.5 text-[14px] ${cell.tone ?? "text-foreground"}`}
+                  >
+                    {cell.value}
                   </p>
                 </div>
-                <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
-                  Active
-                </span>
-              </div>
+              ))}
             </div>
-            <Button variant="outline" size="sm">
-              Manage Subscription
+          )}
+
+          <Link
+            to="/dashboard/analises"
+            className="sl-tap flex items-center gap-2 border-t border-border px-4 py-2.5"
+          >
+            <Trophy className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+            <span className="sl-meta min-w-0 flex-1 text-[12px]">
+              O teu registo, por mercado e por preço
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+          </Link>
+        </section>
+
+        <Card title="O teu nome" icon={User}>
+          <p className="sl-meta mb-2 text-[11.5px] leading-5">
+            É este que aparece aos outros jogadores, nos desafios e nas
+            classificações. Mudá-lo muda-o também nos desafios que já tens.
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSavedName(false);
+              }}
+              maxLength={40}
+              aria-label="O teu nome"
+              className={field}
+            />
+            <Button
+              className="sl-btn-primary h-10 flex-none px-4 text-xs disabled:opacity-40"
+              disabled={
+                savingName || !name.trim() || name.trim() === profile?.display_name
+              }
+              onClick={changeName}
+            >
+              {savingName ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : savedName ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                "Guardar"
+              )}
             </Button>
-          </SettingsSection>
+          </div>
+        </Card>
 
-          <SettingsSection title="Defaults" icon={Sliders}>
-            <div className="space-y-4">
-              <SettingsField label="Default Bankroll ($)" defaultValue="5000" />
-              <SettingsField label="Default Kelly Fraction" defaultValue="0.25" />
-              <div>
-                <label className="mb-1.5 block text-xs text-muted-foreground">
-                  Preferred Markets
-                </label>
-                <select className="h-10 w-full rounded-lg input-surface bg-transparent px-3 text-sm text-foreground focus:outline-none">
-                  <option>Over 2.5</option>
-                  <option>Under 2.5</option>
-                  <option>BTTS</option>
-                  <option>Over 3.5</option>
-                  <option>1X</option>
-                  <option>2X</option>
-                  <option>1X + Under 3.5</option>
-                  <option>2X + Under 3.5</option>
-                </select>
-              </div>
-              <Button variant="outline" size="sm">
-                Save Defaults
+        <Card title="Palavra-passe" icon={Lock}>
+          <div className="space-y-2">
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Nova palavra-passe"
+              aria-label="Nova palavra-passe"
+              className={field}
+            />
+            <input
+              type="password"
+              value={repeat}
+              onChange={(event) => setRepeat(event.target.value)}
+              placeholder="Outra vez"
+              aria-label="Repetir a palavra-passe"
+              className={field}
+            />
+            <Button
+              className="sl-btn-primary h-10 w-full text-xs disabled:opacity-40"
+              disabled={savingPassword || !password || !repeat}
+              onClick={changePassword}
+            >
+              {savingPassword ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Mudar a palavra-passe"
+              )}
+            </Button>
+          </div>
+        </Card>
+
+        <Card title="Sessão" icon={LogOut}>
+          <Button
+            variant="outline"
+            className="h-10 w-full text-xs"
+            onClick={() => void signOut()}
+          >
+            Terminar sessão
+          </Button>
+        </Card>
+
+        <Card title="Dados guardados neste browser" icon={RotateCcw} tone="danger">
+          <p className="text-[12px] leading-6 text-muted-foreground">
+            Limpa as análises guardadas, as definições de banca e as cópias
+            locais deste dispositivo.{" "}
+            <span className="font-semibold text-foreground">
+              Os desafios e as apostas ficam na tua conta
+            </span>{" "}
+            — isto não apaga nada do que está no servidor.
+          </p>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="mt-3 h-10 w-full text-xs"
+                disabled={isResetting}
+              >
+                {isResetting ? "A apagar..." : "Apagar os dados deste browser"}
               </Button>
-            </div>
-          </SettingsSection>
-
-        </div>
-
-        <div className="mt-6">
-          <SettingsSection title="Start Fresh" icon={RotateCcw} tone="danger">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Reset ScoreLab workspace
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  This clears your bankroll, dashboard state, simple bets, multiples,
-                  roadmap, and saved local backups so you can begin from zero.
-                </p>
-              </div>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" disabled={isResetting}>
-                    {isResetting ? "Resetting..." : "Start From Scratch"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Start fresh in ScoreLab?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently remove the current bankroll, saved analyses,
-                      multiples, roadmap history, and local backup snapshot from this
-                      workspace.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={handleStartFresh}
-                      disabled={isResetting}
-                    >
-                      {isResetting ? "Resetting..." : "Yes, clear everything"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </SettingsSection>
-        </div>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apagar o que está guardado aqui?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Análises guardadas, definições de banca e cópias locais deste
+                  dispositivo. Os desafios, as apostas e a tua conta não são
+                  tocados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isResetting}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={startFresh}
+                  disabled={isResetting}
+                >
+                  {isResetting ? "A apagar..." : "Apagar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Card>
       </motion.div>
     </AppLayout>
   );
