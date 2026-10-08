@@ -297,6 +297,16 @@ describe("the shelf of challenges that are over", () => {
     ]);
   }
 
+  it("counts the bets in each one, to tell two of the same name apart", async () => {
+    // Two made from the same model are identical on screen — same name, same
+    // bankroll, same target — and opening the wrong one wastes the trip.
+    load();
+    renderPage();
+
+    const card = await screen.findByRole("link", { name: /Plano Milhão/ });
+    expect(within(card).getByText(/0 apostas/)).toBeInTheDocument();
+  });
+
   it("keeps the two apart, and opens on the ones running", async () => {
     load();
     renderPage();

@@ -331,6 +331,22 @@ export default function ChallengeCatalogue() {
     [everyone, members],
   );
 
+  /**
+   * How many bets each running challenge holds.
+   *
+   * Two challenges made from the same model are identical on screen — same
+   * name, same bankroll, same target — and opening or deleting the wrong one
+   * costs somebody their history. This is the one thing that tells them
+   * apart.
+   */
+  const betsIn = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const bet of allBets) {
+      counts[bet.planId] = (counts[bet.planId] ?? 0) + 1;
+    }
+    return counts;
+  }, [allBets]);
+
   const running = useMemo(
     // Missing, not null, when a row comes from somewhere older than this
     // column: absent means it was never ended.
@@ -456,7 +472,9 @@ export default function ChallengeCatalogue() {
                       </span>
                     )}
                     {eur.format(Number(plan.starting_bankroll))} →{" "}
-                    {eur.format(Number(plan.target))} · {plan.days} níveis
+                    {eur.format(Number(plan.target))} · {plan.days} níveis ·{" "}
+                    {betsIn[plan.id] ?? 0}{" "}
+                    {(betsIn[plan.id] ?? 0) === 1 ? "aposta" : "apostas"}
                   </span>
                 </span>
                 <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
