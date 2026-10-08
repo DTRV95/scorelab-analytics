@@ -329,7 +329,7 @@ export function BetComposer({
         <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
           Odd {legs.length > 1 ? `· ${legs.length} jogos` : ""}
         </p>
-        <p className="sl-figure text-[1.35rem] leading-7 text-foreground">
+        <p className="sl-figure sl-hero-figure text-[1.35rem] leading-7 text-foreground">
           {priced && combined > 1 ? combined.toFixed(2) : "—"}
           {targetOdds > 1 && (
             <span className="sl-meta ml-1.5 text-[10px] font-normal">

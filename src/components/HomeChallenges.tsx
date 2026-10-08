@@ -26,7 +26,7 @@ function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
   return (
     <Link
       to={`/desafios/${plan.id}`}
-      className="sl-card sl-tap block overflow-hidden"
+      className="sl-card sl-card-interactive sl-tap block overflow-hidden"
     >
       <div className="flex items-start gap-3 px-4 py-3.5">
         <span

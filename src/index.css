@@ -137,7 +137,22 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Instrument Sans', system-ui, sans-serif;
     letter-spacing: -0.005em;
-    background-image: var(--scorelab-body-bg);
+    /* A breath of the brand's own orange at the top of the canvas, under the
+       bar, and a cool one at the bottom. Flat paper under floating white
+       cards is what made the app read as a form rather than a screen; this
+       is faint enough (3% and 2.5%) that nothing on top of it shifts. */
+    background-image:
+      radial-gradient(
+        1100px 420px at 50% -220px,
+        hsla(18, 100%, 54%, 0.07),
+        transparent 70%
+      ),
+      radial-gradient(
+        900px 500px at 100% 100%,
+        hsla(222, 47%, 30%, 0.035),
+        transparent 72%
+      ),
+      var(--scorelab-body-bg);
     background-attachment: fixed;
   }
 
@@ -375,6 +390,26 @@
   .sl-topbar {
     background: var(--sl-gradient);
     color: hsl(var(--primary-foreground));
+    position: relative;
+    /* The bar is on every page, so a little depth here is depth everywhere:
+       a sheen across the top, a darker hairline at the bottom to separate it
+       from the canvas, and a shadow the cards can sit under. */
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.22),
+      inset 0 -1px 0 hsla(14, 90%, 28%, 0.4),
+      0 10px 24px -16px hsla(14, 100%, 40%, 0.9);
+  }
+
+  .sl-topbar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      120% 180% at 85% -40%,
+      hsla(42, 100%, 62%, 0.22),
+      transparent 60%
+    );
   }
 
   /* The bar used to be a slab painted across the bottom of the screen. It is
@@ -1029,7 +1064,12 @@
       padding: 0.875rem !important;
     }
 
-    .scorelab-mobile-compact :where(h1) {
+    /* Herança do layout antigo: isto obrigava QUALQUER h1 a 8vw — 31px num
+       telemóvel — por cima de tudo o que a página pedisse. Era por isso que
+       "PROBABILIDADES" passava por cima do botão de atualizar, e porque
+       baixar a classe do título não mudava nada. Os títulos da aplicação têm
+       o seu próprio tamanho e ficam de fora. */
+    .scorelab-mobile-compact :where(h1:not(.sl-section-title)) {
       font-size: clamp(1.45rem, 8vw, 2rem) !important;
       line-height: 1.02 !important;
       margin-top: 0.5rem !important;
@@ -1416,5 +1456,118 @@
     animation: none;
     width: 100%;
     opacity: 0.5;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Realce, brilho e movimento.
+
+   A camada que faz a aplicação parecer viva sem lhe acrescentar informação:
+   um halo por trás dos números que interessam, um realce no topo dos cartões,
+   e esqueletos em vez de rodinhas enquanto as coisas chegam. Nada aqui muda o
+   que está escrito — e tudo aqui desaparece para quem pediu menos movimento.
+--------------------------------------------------------------------------- */
+@layer components {
+  /* O número que manda num cartão: um halo quente por trás dele, em vez de
+     texto colorido, que seria menos legível. */
+  .sl-hero-figure {
+    position: relative;
+    isolation: isolate;
+    /* Only as wide as the number. As a block it stretched the halo across
+       the whole card, which on a desktop read as a smudge rather than a
+       light behind the figure. */
+    display: inline-block;
+  }
+
+  .sl-hero-figure::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -0.45em -0.9em -0.55em -0.9em;
+    background: radial-gradient(
+      closest-side,
+      hsla(18, 100%, 54%, 0.16),
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* O mesmo, em verde, para uma percentagem que é a razão de a linha existir. */
+  .sl-hero-figure-green::before {
+    background: radial-gradient(
+      closest-side,
+      hsla(152, 72%, 36%, 0.18),
+      transparent 100%
+    );
+  }
+
+  /* Um traço de cor antes do título, que dá uma âncora à página. */
+  .sl-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .sl-section-title::before {
+    content: "";
+    width: 4px;
+    height: 1em;
+    flex: none;
+    border-radius: 999px;
+    background: var(--sl-gradient);
+  }
+
+  /* O esqueleto do que está a chegar, com a forma certa: uma rodinha diz que
+     se espera, isto diz pelo quê. */
+  .sl-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--sl-surface));
+    border-radius: 12px;
+  }
+
+  .sl-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsla(0, 0%, 100%, 0.75),
+      transparent
+    );
+    animation: sl-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes sl-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Um número que acabou de mudar pisca uma vez, para o olho ir lá ter. */
+  @keyframes sl-figure-changed {
+    0% {
+      color: hsl(var(--primary));
+    }
+    100% {
+      color: inherit;
+    }
+  }
+
+  .sl-figure-changed {
+    animation: sl-figure-changed 900ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-skeleton::after,
+  .sl-figure-changed {
+    animation: none;
+  }
+
+  .sl-card-interactive:hover {
+    transform: none;
   }
 }
