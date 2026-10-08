@@ -217,6 +217,38 @@ export async function fetchPlanInvites(planId: string): Promise<PlanInvite[]> {
   return (data ?? []) as PlanInvite[];
 }
 
+export interface MyProfile {
+  id: string;
+  /** What everybody else sees. Falls back to the part of the email before @. */
+  display_name: string;
+  email: string;
+  joined_at: string;
+}
+
+/** This account, as it is known to the rest of the app. */
+export async function fetchMyProfile(): Promise<MyProfile | null> {
+  const { data, error } = await client().rpc("my_profile");
+  if (error) throw error;
+  const rows = (data ?? []) as MyProfile[];
+  return rows[0] ?? null;
+}
+
+/**
+ * Changes the name, everywhere it is written.
+ *
+ * Each challenge keeps its own copy of the name of whoever is in it, so the
+ * server writes both: without that, changing the name changed it nowhere
+ * anybody would ever look.
+ */
+export async function saveDisplayName(name: string): Promise<string> {
+  const { data, error } = await client().rpc("set_display_name", {
+    new_name: name,
+  });
+  if (error) throw error;
+  announceChange();
+  return (data as string) ?? name;
+}
+
 /** Plans this account has been asked to join and has not answered yet. */
 export async function fetchMyPendingInvites(): Promise<PendingInvite[]> {
   const { data, error } = await client().rpc("my_pending_plan_invites");

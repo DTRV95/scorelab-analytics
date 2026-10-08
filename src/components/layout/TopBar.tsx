@@ -102,7 +102,7 @@ export function TopBar() {
             <Download className="h-[18px] w-[18px]" strokeWidth={2} />
           </button>
 
-          <Link to="/settings" title="Definições" className={iconButton}>
+          <Link to="/settings" title="O teu perfil" className={iconButton}>
             <User className="h-[18px] w-[18px]" strokeWidth={2} />
           </Link>
 
