@@ -255,3 +255,91 @@ describe("seeing what everybody else is running", () => {
     );
   });
 });
+
+describe("the shelf of challenges that are over", () => {
+  const ended = {
+    id: "plan-1",
+    name: "Dobrar a banca",
+    starting_bankroll: 10,
+    target: 20,
+    created_by: "david",
+    start_date: null,
+    days: 14,
+    rules: {},
+    visible: false,
+    template_key: "dobrar",
+    ended_at: "2026-10-02T18:00:00.000Z",
+    ended_by: "david",
+  };
+
+  const running = { ...ended, id: "plan-2", name: "Plano Milhão", ended_at: null, ended_by: null };
+
+  function load() {
+    fetchPlans.mockResolvedValue([ended, running]);
+    fetchMembersOfPlans.mockResolvedValue([
+      { plan_id: "plan-1", user_id: "david", display_name: "David", starting_bankroll: 10 },
+      { plan_id: "plan-2", user_id: "david", display_name: "David", starting_bankroll: 10 },
+    ]);
+    fetchBetsOfPlans.mockResolvedValue([
+      {
+        planId: "plan-1",
+        id: "b1",
+        userId: "david",
+        legs: [],
+        odds: 1.9,
+        stake: 5,
+        day: 1,
+        status: "green",
+        profitLoss: 4.5,
+        placedAt: "2026-09-22T10:00:00.000Z",
+        settledAt: "2026-09-22T20:00:00.000Z",
+      },
+    ]);
+  }
+
+  it("keeps the two apart, and opens on the ones running", async () => {
+    load();
+    renderPage();
+
+    const decorrer = await screen.findByRole("button", { name: "A decorrer 1" });
+    expect(decorrer).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: "Terminados 1" }),
+    ).toBeInTheDocument();
+
+    // The one still running is the one on screen.
+    expect(screen.getByRole("link", { name: /Plano Milhão/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Dobrar a banca/ })).toBeNull();
+  });
+
+  it("shows what a finished challenge did, with a way back into it", async () => {
+    load();
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Terminados 1" }));
+
+    const card = await screen.findByRole("link", { name: /Dobrar a banca/ });
+    expect(card).toHaveAttribute("href", "/desafios/plan-1");
+    // The money, what the betting did, and the record behind it.
+    expect(within(card).getByText("14,50 €")).toBeInTheDocument();
+    expect(within(card).getByText("+4,50 €")).toBeInTheDocument();
+    expect(within(card).getByText(/1 aposta fechada/)).toBeInTheDocument();
+    // 14,50 € de 20 €: não chegou ao alvo, e não finge que chegou.
+    expect(within(card).queryByText("Alvo")).toBeNull();
+  });
+
+  it("says so plainly when nothing has been finished yet", async () => {
+    fetchPlans.mockResolvedValue([running]);
+    fetchMembersOfPlans.mockResolvedValue([
+      { plan_id: "plan-2", user_id: "david", display_name: "David", starting_bankroll: 10 },
+    ]);
+    fetchBetsOfPlans.mockResolvedValue([]);
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Terminados 0" }));
+    expect(
+      await screen.findByText(/Ainda não terminaste nenhum desafio/),
+    ).toBeInTheDocument();
+  });
+});

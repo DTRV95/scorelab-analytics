@@ -22,6 +22,8 @@ import {
   difficultyOf,
 } from "@/lib/challengeDifficulty";
 import { challengeLines, challengePitch } from "@/lib/challengePitch";
+import { FinishedChallenges } from "@/components/FinishedChallenges";
+import { finishedChallenges } from "@/lib/finishedChallenges";
 import {
   ASSUMED_WIN_RATE,
   CHALLENGE_TEMPLATES,
@@ -263,6 +265,8 @@ export default function ChallengeCatalogue() {
   // Opens on the easiest, which is what somebody picking their first
   // challenge is looking for. The other three are a tap away.
   const [order, setOrder] = useState<Order>("faceis");
+  /** Which shelf is on screen: the ones running, or the ones already over. */
+  const [shelf, setShelf] = useState<"decorrer" | "terminados">("decorrer");
   const [token, setToken] = useState(0);
 
   // What the other players did in each challenge since this person last had
@@ -327,6 +331,22 @@ export default function ChallengeCatalogue() {
     [everyone, members],
   );
 
+  const running = useMemo(
+    // Missing, not null, when a row comes from somewhere older than this
+    // column: absent means it was never ended.
+    () => plans.filter((plan) => !plan.ended_at),
+    [plans],
+  );
+
+  // Everything the finished ones did, read back off the bets rather than
+  // stored: a figure written down at the end stops agreeing with the bets
+  // behind it the first time one is corrected.
+  const finished = useMemo(
+    () =>
+      finishedChallenges(user?.id ?? "", plans, myMembers, allBets, funds),
+    [user?.id, plans, myMembers, allBets, funds],
+  );
+
   const ordered = useMemo(() => {
     if (order === "feitos") return byPopularity([...CHALLENGE_TEMPLATES], counts);
     if (order === "ordem") return CHALLENGE_TEMPLATES;
@@ -359,21 +379,44 @@ export default function ChallengeCatalogue() {
           </p>
         </motion.div>
 
-        {plans.length > 0 && (
+        {(running.length > 0 || finished.length > 0) && (
           <motion.div variants={fadeUp} className="space-y-2">
-            {/* Finished ones keep their place in the list, under a heading of
-                their own: they are a record, not something to continue. */}
-            <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-              {plans.some((plan) => plan.ended_at === null)
-                ? "A decorrer"
-                : "Terminados"}
-            </p>
-            {[...plans]
-              .sort(
-                (a, b) =>
-                  Number(a.ended_at !== null) - Number(b.ended_at !== null),
-              )
-              .map((plan) => (
+            {/* Two shelves, not one list: a challenge that is over is a record
+                to look back at, and one that is running is something to go
+                and do. Mixed together, the second kind gets buried under the
+                first as the months pass. */}
+            <div className="flex gap-1.5">
+              {([
+                ["decorrer", "A decorrer", running.length],
+                ["terminados", "Terminados", finished.length],
+              ] as const).map(([value, label, count]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={shelf === value}
+                  onClick={() => setShelf(value)}
+                  className={`sl-tap flex-none rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    shelf === value
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground ring-1 ring-border"
+                  }`}
+                >
+                  {label} {count}
+                </button>
+              ))}
+            </div>
+
+            {shelf === "terminados" && <FinishedChallenges entries={finished} />}
+
+            {shelf === "decorrer" && running.length === 0 && (
+              <p className="sl-card px-4 py-4 text-[12px] leading-6 text-muted-foreground">
+                Não tens nenhum desafio a decorrer. Escolhe um aqui em baixo,
+                ou vê os que já terminaste.
+              </p>
+            )}
+
+            {shelf === "decorrer" &&
+              running.map((plan) => (
               <Link
                 key={plan.id}
                 to={`/desafios/${plan.id}`}
@@ -381,12 +424,12 @@ export default function ChallengeCatalogue() {
               >
                 <span
                   className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${
-                    plan.ended_at === null
+                    !plan.ended_at
                       ? "bg-primary/10 text-primary"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {plan.ended_at === null ? (
+                  {!plan.ended_at ? (
                     <Trophy className="h-4 w-4" />
                   ) : (
                     <Flag className="h-4 w-4" />
@@ -407,7 +450,7 @@ export default function ChallengeCatalogue() {
                     )}
                   </span>
                   <span className="sl-meta block text-[11px]">
-                    {plan.ended_at !== null && (
+                    {plan.ended_at && (
                       <span className="font-semibold text-foreground">
                         Terminado ·{" "}
                       </span>

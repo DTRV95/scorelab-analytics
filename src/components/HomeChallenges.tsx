@@ -19,7 +19,7 @@ const eur = new Intl.NumberFormat("pt-PT", {
 
 function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
   const { plan, standing, move } = entry;
-  const ended = plan.ended_at !== null;
+  const ended = Boolean(plan.ended_at);
   const waiting = !ended && standing.openBets > 0;
   const playable = !ended && move.state === "play" && !waiting;
 
