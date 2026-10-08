@@ -281,21 +281,44 @@ function renderPage() {
  */
 async function openPicker() {
   fireEvent.click(
-    await screen.findByRole("button", { name: /Inserir (os jogos do nível \d+|outro jogo)/ })
+    await screen.findByRole("button", {
+      name: /Inserir (os jogos do nível \d+|jogos|outro jogo)/,
+    })
   );
 }
 
-/** Picks a board game and the market being backed, the way a person would. */
-async function pickFromBoard(name: string, market = /Apostar em Vitória Casa/) {
+/**
+ * Picks a board game, the way a person would.
+ *
+ * The tap on the game is the whole choice: it goes on with the market the
+ * model likes best. A different market is a tap on the chevron first — which
+ * is the trade, since the headline market is what gets backed nine times out
+ * of ten.
+ */
+async function pickFromBoard(name: string, market?: RegExp) {
   await openPicker();
-  fireEvent.click(await screen.findByText(new RegExp(`${name} vs Rival`)));
-  fireEvent.click(screen.getByRole("button", { name: market }));
+
+  if (market) {
+    fireEvent.click(
+      await screen.findByLabelText(
+        new RegExp(`Outros mercados de ${name} vs Rival`)
+      )
+    );
+    fireEvent.click(screen.getByRole("button", { name: market }));
+  } else {
+    fireEvent.click(
+      await screen.findByLabelText(new RegExp(`Juntar ${name} vs Rival em `))
+    );
+  }
+
   closePicker();
 }
 
-/** The pop-up now stays open after a game goes in, so leaving it is a step. */
+/** The slip can be registered from inside the pop-up; this is the way back. */
 function closePicker() {
-  const done = screen.queryByRole("button", { name: /Concluído/ });
+  const done = screen.queryByRole("button", {
+    name: /Fechar e ver o boletim/,
+  });
   if (done) fireEvent.click(done);
 }
 
@@ -321,7 +344,9 @@ describe("a challenge's standings", () => {
     // bet has not moved anything yet.
     expect((await screen.findAllByText("David")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("15,00 €").length).toBeGreaterThan(0);
-    expect(screen.getByText("20,00 €")).toBeInTheDocument();
+    // The two bankrolls added up, which is the one figure no card of a single
+    // player can show.
+    expect(screen.getByText("20,00 € somados")).toBeInTheDocument();
   });
 
   it("puts each player on the day their money reaches", async () => {
@@ -349,9 +374,11 @@ describe("a challenge's standings", () => {
 
     // The odds of the whole run, beside the ladder itself rather than in a
     // card of their own: a schedule that is really a parlay has to say so.
-    expect(await screen.findByText(/Chegar do nível \d+ ao fim/)).toBeInTheDocument();
+    expect(await screen.findByText(/Daqui ao fim/)).toBeInTheDocument();
     expect(screen.getByText(/1 em/)).toBeInTheDocument();
-    expect(screen.getByText(/Perder hoje deixa-te em/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/perder hoje deixa-te em/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -460,8 +487,9 @@ describe("building the day's bet", () => {
     fireEvent.change(await screen.findByPlaceholderText("Procurar equipa ou liga..."), {
       target: { value: "Equipa 2" },
     });
-    fireEvent.click(screen.getByText(/Equipa 2 vs Rival/));
-    fireEvent.click(screen.getByRole("button", { name: /Apostar em Vitória Casa/ }));
+    fireEvent.click(
+      screen.getByLabelText(/Juntar Equipa 2 vs Rival em /),
+    );
 
     expect(screen.getByLabelText("Odd de Equipa 2 vs Rival")).toBeInTheDocument();
   });
@@ -497,10 +525,13 @@ describe("building the day's bet", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
 
-    // Still open, the form empty and waiting, and the slip counted.
+    // Still open, the form empty and waiting, and the game on the slip strip
+    // at the bottom with its price already typed.
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Equipa casa")).toHaveValue("");
-    expect(screen.getByText("1 jogo no boletim")).toBeInTheDocument();
+    expect(screen.getByLabelText("Odd de Bélgica vs França")).toHaveValue(
+      "1.85",
+    );
 
     fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
       target: { value: "Noruega" },
@@ -516,9 +547,14 @@ describe("building the day's bet", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
 
-    expect(screen.getByText("2 jogos no boletim")).toBeInTheDocument();
+    // Two games on the strip, the odd of the pair worked out, and the bet
+    // registrable without the pop-up ever being closed.
+    expect(screen.getByText("Odd · 2 jogos")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Registar o nível \d+/ }),
+    ).toBeEnabled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Concluído/ }));
+    closePicker();
     expect(screen.getByLabelText("Odd de Noruega vs Portugal")).toBeInTheDocument();
   });
 
@@ -533,9 +569,8 @@ describe("building the day's bet", () => {
 
     // 1.30 × 1.50: two short prices making the challenge's line between them.
     // Read from the slip, since 1.95 is also one of the table's own odds.
-    const slip = screen.getByText("Odd total").closest("div")!.parentElement!;
-    expect(within(slip).getByText("1.95")).toBeInTheDocument();
-    expect(screen.getByText("2 jogos multiplicados")).toBeInTheDocument();
+    const slip = screen.getByText("Odd · 2 jogos").closest("div")!;
+    expect(within(slip).getByText(/1\.95/)).toBeInTheDocument();
   });
 
   it("stakes the challenge's share of the real bankroll", async () => {
@@ -740,9 +775,10 @@ describe("what the person's own record says, while they build the bet", () => {
     renderPage();
     await pickFromBoard("Equipa 0");
 
-    expect(await screen.findByText("O teu registo")).toBeInTheDocument();
+    // In the slip itself, as a line rather than a card with a heading: the
+    // heading said less than the sentence under it.
     expect(
-      screen.getByText("Vitória Casa: entraram 4 de 4 que fizeste."),
+      await screen.findByText("Vitória Casa: entraram 4 de 4 que fizeste."),
     ).toBeInTheDocument();
   });
 
@@ -1303,7 +1339,7 @@ describe("managing challenges", () => {
     renderPage();
 
     const link = await screen.findByRole("link", {
-      name: /Abrir análise de apostador/,
+      name: /Análise de apostador/,
     });
     expect(link).toHaveAttribute("href", "/desafios/plan/analise");
   });

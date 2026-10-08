@@ -513,11 +513,15 @@ export default function ProbabilityRadar() {
       >
         <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="sl-section-title">Probabilidades</h1>
-            <p className="sl-meta mt-1">
-              O que o modelo espera que aconteça em cada jogo dos próximos 7
-              dias — sem odds, sem stake.
-            </p>
+            {/* Fourteen wide letters at 21px do not fit beside a button on a
+                phone: the word ran under the refresh icon. */}
+            <h1 className="sl-section-title text-[17px] sm:text-[21px]">
+              Probabilidades
+            </h1>
+            {/* One line, so the first game is on screen without scrolling.
+                The two-line version plus the how-to card put four hundred
+                pixels of explanation above the thing being explained. */}
+            <p className="sl-meta mt-1">Os próximos 7 dias, sem odds nem stake.</p>
           </div>
           <Button
             variant="ghost"
@@ -530,40 +534,6 @@ export default function ProbabilityRadar() {
           >
             <RefreshCw className={`h-4 w-4 ${boardLoading ? "animate-spin" : ""}`} />
           </Button>
-        </motion.div>
-
-        <motion.div variants={fadeUp} className="sl-card">
-          <button
-            type="button"
-            onClick={() => setInfoOpen((open) => !open)}
-            className="flex w-full items-center gap-3 p-4 text-left"
-          >
-            <Info className="h-4 w-4 flex-none text-primary" strokeWidth={2} />
-            <p className="flex-1 text-[13px] font-semibold text-foreground">
-              Como usar isto de forma profissional
-            </p>
-            <ChevronDown
-              className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${infoOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          <AnimatePresence initial={false}>
-            {infoOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <p className="px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
-                  1. Olha primeiro para a probabilidade, nunca para a odd. 2. Compara com o preço do
-                  bookmaker — só há valor quando a tua probabilidade é claramente maior do que a implícita
-                  na odd. 3. Aposta pouco por jogo e só em mercados onde a amostra é sólida (evita os
-                  marcados como "Baixa").
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
 
         {enabled === null && (
@@ -693,6 +663,40 @@ export default function ProbabilityRadar() {
               )}
           </motion.div>
         )}
+
+        <motion.div variants={fadeUp} className="sl-card">
+          <button
+            type="button"
+            onClick={() => setInfoOpen((open) => !open)}
+            className="flex w-full items-center gap-3 p-4 text-left"
+          >
+            <Info className="h-4 w-4 flex-none text-primary" strokeWidth={2} />
+            <p className="flex-1 text-[13px] font-semibold text-foreground">
+              Como usar isto de forma profissional
+            </p>
+            <ChevronDown
+              className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${infoOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          <AnimatePresence initial={false}>
+            {infoOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <p className="px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
+                  1. Olha primeiro para a probabilidade, nunca para a odd. 2. Compara com o preço do
+                  bookmaker — só há valor quando a tua probabilidade é claramente maior do que a implícita
+                  na odd. 3. Aposta pouco por jogo e só em mercados onde a amostra é sólida (evita os
+                  marcados como "Baixa").
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         <motion.div variants={fadeUp}>
           <button

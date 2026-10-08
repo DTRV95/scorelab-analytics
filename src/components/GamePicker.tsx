@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Check, Info, PenLine, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Info,
+  PenLine,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { MarketField } from "@/components/MarketField";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
@@ -131,37 +139,28 @@ function kickoffTime(kickoff: string | null) {
   }).format(date);
 }
 
-/** The markets of one board game, to pick which one is being backed. */
+/**
+ * The other markets of one board game.
+ *
+ * The market the model likes best goes in with the tap on the game itself — it
+ * is what gets backed nine times out of ten, and asking "em que apostas?"
+ * every single time cost a second tap per game on every bet ever registered.
+ * This is for the tenth time, and it leaves out the one already on the row.
+ */
 function MarketPicker({
   match,
   onPick,
-  onClose,
 }: {
   match: BoardMatch;
   onPick: (market: string, prob: number) => void;
-  onClose: () => void;
 }) {
-  const markets = [...(match.mercados ?? [])].sort(
-    (a, b) => b.probabilidade_pct - a.probabilidade_pct,
-  );
+  const markets = [...(match.mercados ?? [])]
+    .filter((market) => market.mercado !== match.headline_market)
+    .sort((a, b) => b.probabilidade_pct - a.probabilidade_pct);
 
   return (
     <div className="border-t border-border bg-[hsl(var(--sl-surface))] px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Em que apostas?
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="sl-meta text-[11px]"
-          aria-label="Fechar mercados"
-        >
-          Fechar
-        </button>
-      </div>
-
-      <div className="mt-2 grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {markets.map((market) => (
           <button
             key={market.mercado}
@@ -180,7 +179,7 @@ function MarketPicker({
         ))}
         {markets.length === 0 && (
           <p className="sl-meta col-span-2 text-[11px]">
-            Este jogo não trouxe mercados. Adiciona-o à mão com a tua aposta.
+            Este jogo não trouxe outros mercados.
           </p>
         )}
       </div>
@@ -546,6 +545,150 @@ export function GamePicker({
           )}
         </div>
 
+        {/* One scrolling region, not two.
+            A list with its own height and its own overflow, inside a fixed
+            pop-up that also scrolls, is the arrangement iOS Safari is known to
+            refuse to scroll with a finger — and it was never worth much
+            anyway: two nested scrollers on a phone means the drag that works
+            depends on where it starts. The pop-up scrolls; the list is just a
+            list. */}
+        <div className="divide-y divide-border border-y border-border">
+          {matches.map((match, index) => {
+            const already = chosenIds.has(match.fixture_id);
+            const used = usedFixtures.has(match.fixture_id);
+            // A heading whenever the group changes: the competition when a
+            // day is chosen, the day itself when they are all on screen.
+            const previous = matches[index - 1];
+            const heading =
+              byLeague
+                ? index === 0 || previous.league !== match.league
+                  ? match.league
+                  : null
+                : index === 0 || dayKey(previous.kickoff) !== dayKey(match.kickoff)
+                  ? dayLabel(match.kickoff)
+                  : null;
+
+            return (
+              <div key={match.fixture_id}>
+                {heading && (
+                  <p className="sl-meta bg-[hsl(var(--sl-surface))] px-4 py-1.5 text-[10px] uppercase tracking-[0.13em]">
+                    {heading}
+                  </p>
+                )}
+                <div className="flex items-stretch">
+                  {/* The tap on the game is the whole choice: it goes onto the
+                      slip with the market the model likes best, priced in the
+                      strip at the bottom without this list moving. */}
+                  <button
+                    type="button"
+                    disabled={already || used}
+                    onClick={() =>
+                      addFromBoard(
+                        match,
+                        match.headline_market,
+                        match.headline_pct,
+                      )
+                    }
+                    aria-label={`Juntar ${match.home_name} vs ${match.away_name} em ${
+                      MARKET_LABELS[match.headline_market] ??
+                      match.headline_market
+                    }`}
+                    className="sl-tap flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-foreground">
+                        {match.home_name} vs {match.away_name}
+                      </p>
+                      <p className="sl-meta truncate text-[11px]">
+                        {MARKET_LABELS[match.headline_market] ??
+                          match.headline_market}{" "}
+                        {match.headline_pct.toFixed(0)}% ·{" "}
+                        {kickoffTime(match.kickoff)}
+                      </p>
+                    </div>
+                    <span
+                      className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
+                        already || used
+                          ? "text-[hsl(var(--sl-green))]"
+                          : "border border-primary/40 text-primary"
+                      }`}
+                    >
+                      {already || used ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                    </span>
+                  </button>
+
+                  {/* The other fourteen markets, for the bet that is not the
+                      obvious one. */}
+                  {!already && !used && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPicking((current) =>
+                          current === match.fixture_id
+                            ? null
+                            : match.fixture_id,
+                        )
+                      }
+                      aria-expanded={picking === match.fixture_id}
+                      aria-label={`Outros mercados de ${match.home_name} vs ${match.away_name}`}
+                      className="sl-tap flex w-10 flex-none items-center justify-center border-l border-border text-muted-foreground hover:bg-[hsl(var(--sl-surface))]"
+                    >
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform ${
+                          picking === match.fixture_id ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  )}
+                </div>
+
+                {picking === match.fixture_id && (
+                  <MarketPicker
+                    match={match}
+                    onPick={(market, prob) =>
+                      addFromBoard(match, market, prob)
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {matches.length === 0 && (
+            <div className="px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                {search
+                  ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
+                  : league
+                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
+                    : "Sem jogos no quadro neste momento. Pode ser só a fonte de dados a não responder agora."}
+              </p>
+
+              {/* An empty list is the one moment the button is actually
+                  needed, and the icon beside the search box is small and
+                  easy to miss. Say it in words, here. */}
+              {!search && (
+                <Button
+                  className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs"
+                  disabled={boardLoading}
+                  onClick={onRefreshBoard}
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
+                  />
+                  {boardLoading
+                    ? "A procurar jogos..."
+                    : "Procurar jogos outra vez"}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="px-4 pb-3">
           {manualOpen ? (
             <div className="space-y-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] p-3">
@@ -636,116 +779,6 @@ export function GamePicker({
               <PenLine className="h-3.5 w-3.5" />
               Adicionar um jogo à mão
             </button>
-          )}
-        </div>
-
-        {/* One scrolling region, not two.
-            A list with its own height and its own overflow, inside a fixed
-            pop-up that also scrolls, is the arrangement iOS Safari is known to
-            refuse to scroll with a finger — and it was never worth much
-            anyway: two nested scrollers on a phone means the drag that works
-            depends on where it starts. The pop-up scrolls; the list is just a
-            list. */}
-        <div className="divide-y divide-border border-y border-border">
-          {matches.map((match, index) => {
-            const already = chosenIds.has(match.fixture_id);
-            const used = usedFixtures.has(match.fixture_id);
-            // A heading whenever the group changes: the competition when a
-            // day is chosen, the day itself when they are all on screen.
-            const previous = matches[index - 1];
-            const heading =
-              byLeague
-                ? index === 0 || previous.league !== match.league
-                  ? match.league
-                  : null
-                : index === 0 || dayKey(previous.kickoff) !== dayKey(match.kickoff)
-                  ? dayLabel(match.kickoff)
-                  : null;
-
-            return (
-              <div key={match.fixture_id}>
-                {heading && (
-                  <p className="sl-meta bg-[hsl(var(--sl-surface))] px-4 py-1.5 text-[10px] uppercase tracking-[0.13em]">
-                    {heading}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={already || used}
-                  onClick={() =>
-                    setPicking((current) =>
-                      current === match.fixture_id ? null : match.fixture_id,
-                    )
-                  }
-                  className="sl-tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-foreground">
-                      {match.home_name} vs {match.away_name}
-                    </p>
-                    <p className="sl-meta truncate text-[11px]">
-                      {MARKET_LABELS[match.headline_market] ??
-                        match.headline_market}{" "}
-                      {match.headline_pct.toFixed(0)}% ·{" "}
-                      {kickoffTime(match.kickoff)}
-                    </p>
-                  </div>
-                  <span
-                    className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
-                      already || used
-                        ? "text-[hsl(var(--sl-green))]"
-                        : "border border-primary/40 text-primary"
-                    }`}
-                  >
-                    {already || used ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      <Plus className="h-3.5 w-3.5" />
-                    )}
-                  </span>
-                </button>
-
-                {picking === match.fixture_id && (
-                  <MarketPicker
-                    match={match}
-                    onClose={() => setPicking(null)}
-                    onPick={(market, prob) =>
-                      addFromBoard(match, market, prob)
-                    }
-                  />
-                )}
-              </div>
-            );
-          })}
-
-          {matches.length === 0 && (
-            <div className="px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                {search
-                  ? "Nenhum jogo do quadro com esse nome. Podes adicioná-lo à mão."
-                  : league
-                    ? `Sem jogos do ${league} nos próximos dias. Vê "Que ligas estão a dar jogos?" para saber porquê.`
-                    : "Sem jogos no quadro neste momento. Pode ser só a fonte de dados a não responder agora."}
-              </p>
-
-              {/* An empty list is the one moment the button is actually
-                  needed, and the icon beside the search box is small and
-                  easy to miss. Say it in words, here. */}
-              {!search && (
-                <Button
-                  className="sl-btn-primary sl-tap mt-3 h-10 w-full text-xs"
-                  disabled={boardLoading}
-                  onClick={onRefreshBoard}
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${boardLoading ? "animate-spin" : ""}`}
-                  />
-                  {boardLoading
-                    ? "A procurar jogos..."
-                    : "Procurar jogos outra vez"}
-                </Button>
-              )}
-            </div>
           )}
         </div>
 
