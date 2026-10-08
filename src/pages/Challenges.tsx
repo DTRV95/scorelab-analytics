@@ -6,6 +6,8 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Flag,
+  RotateCcw,
   Settings2,
   Swords,
   Trash2,
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import type { BoardAccess } from "@/components/GamePicker";
+import { EndChallenge } from "@/components/EndChallenge";
 import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
@@ -109,6 +112,18 @@ const fadeUp = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
+
+/** The day a challenge was given as over, as somebody would say it. */
+function endedOn(at: string | null): string {
+  if (!at) return "";
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -310,6 +325,7 @@ export default function Challenges() {
   const [invitesOpen, setInvitesOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
   const [openBet, setOpenBet] = useState<{
     bet: PlanBet;
     player: string;
@@ -461,6 +477,8 @@ export default function Challenges() {
       rules: MILLION_PLAN_RULES,
       visible: false,
       template_key: "milhao",
+      ended_at: null,
+      ended_by: null,
     }),
     [user?.id],
   );
@@ -473,6 +491,8 @@ export default function Challenges() {
   );
   const saved = Boolean(plan && plan.id);
   const ownsPlan = plan?.created_by === user?.id;
+  /** A terminated challenge is read-only: it keeps everything and asks for nothing. */
+  const ended = Boolean(plan?.ended_at);
   const rules = useMemo(
     () => parseRules(plan?.rules, plan?.days),
     [plan?.rules, plan?.days],
@@ -1051,6 +1071,23 @@ export default function Challenges() {
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
 
+          {saved && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              title={ended ? "Reabrir este desafio" : "Terminar este desafio"}
+              aria-label={ended ? "Reabrir este desafio" : "Terminar este desafio"}
+              onClick={() => setEndOpen(true)}
+            >
+              {ended ? (
+                <RotateCcw className="h-3.5 w-3.5" />
+              ) : (
+                <Flag className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+
           {/* Apart from the others, and last. It is the one destructive
               thing up here, and a trash can a thumb away from the refresh
               button is how somebody gets a fright. Deleting still asks for
@@ -1069,6 +1106,35 @@ export default function Challenges() {
           )}
           </div>
         </motion.div>
+
+        {ended && plan && (
+          <motion.div
+            variants={fadeUp}
+            className="sl-card flex items-start gap-2.5 px-4 py-3"
+          >
+            <Flag className="mt-0.5 h-3.5 w-3.5 flex-none text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-foreground">
+                Desafio terminado
+              </p>
+              <p className="sl-meta mt-0.5 text-[11px] leading-5">
+                Dado como acabado a {endedOn(plan.ended_at)}. Fica tudo como
+                estava — as apostas, o quadro e as contas — e deixa de aceitar
+                apostas novas.
+                {ownsPlan ? " Podes reabri-lo quando quiseres." : ""}
+              </p>
+            </div>
+            {ownsPlan && (
+              <button
+                type="button"
+                onClick={() => setEndOpen(true)}
+                className="sl-tap flex-none rounded-lg px-2.5 py-1 text-[11px] font-semibold text-primary ring-1 ring-border"
+              >
+                Reabrir
+              </button>
+            )}
+          </motion.div>
+        )}
 
         {error && (
           <motion.p
@@ -1105,7 +1171,7 @@ export default function Challenges() {
           </motion.div>
         )}
 
-        {move && (
+        {move && !ended && (
           <motion.div variants={fadeUp}>
             <NextMoveCard
               move={move}
@@ -1298,7 +1364,7 @@ export default function Challenges() {
           ))}
         </motion.div>
 
-        {me && saved && (
+        {me && saved && !ended && (
           <motion.div variants={fadeUp}>
             <AddFunds
               added={me.added}
@@ -1308,7 +1374,7 @@ export default function Challenges() {
           </motion.div>
         )}
 
-        {me && (
+        {me && !ended && (
           <motion.div variants={fadeUp}>
             <BetComposer
               /* A slip belongs to the challenge it was being built in. */
@@ -1631,6 +1697,38 @@ export default function Challenges() {
                 onChanged={() => setToken((value) => value + 1)}
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={endOpen} onOpenChange={setEndOpen}>
+          <DialogContent className="gap-0 p-0 sm:max-w-md">
+            <DialogHeader className="border-b border-border px-4 py-3 text-left">
+              <DialogTitle className="text-sm font-bold">
+                {ended ? "Reabrir este desafio" : "Terminar este desafio"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-4">
+              {saved && (
+                <EndChallenge
+                  plan={plan}
+                  isOwner={Boolean(ownsPlan)}
+                  summary={{
+                    bankroll: me?.bankroll ?? 0,
+                    profit: me?.profit ?? 0,
+                    day: me?.day ?? 1,
+                    days: rules.days,
+                    openBets: standings.reduce(
+                      (total, standing) => total + standing.openBets,
+                      0,
+                    ),
+                  }}
+                  onDone={() => {
+                    setEndOpen(false);
+                    setToken((value) => value + 1);
+                  }}
+                />
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 

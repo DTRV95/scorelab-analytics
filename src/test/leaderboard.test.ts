@@ -15,6 +15,8 @@ function plan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     rules: MILLION_PLAN_RULES,
     visible: true,
     template_key: "dobrar",
+  ended_at: null,
+  ended_by: null,
     ...overrides,
   };
 }
