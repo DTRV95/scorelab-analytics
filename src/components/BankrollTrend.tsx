@@ -41,7 +41,8 @@ function Detail({
         {eur.format(point.bankroll)}
       </p>
       <p className="sl-meta text-[11px]">
-        Nível {point.step} · {when(point.at)} ·{" "}
+        {point.step === 0 ? "No início" : `Nível ${point.step}`} ·{" "}
+        {when(point.at)} ·{" "}
         <span
           className={
             point.change >= 0
