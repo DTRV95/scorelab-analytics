@@ -14,6 +14,7 @@ vi.mock("@/components/layout/AppLayout", () => ({
 
 import ProbabilityRadar from "@/pages/ProbabilityRadar";
 import { forgetLeagueRates } from "@/hooks/useLeagueRates";
+import { forgetPrefill } from "@/components/MatchForm";
 import {
   readCachedBoard,
   writeCachedBoard,
@@ -94,6 +95,27 @@ const ratesPayload = [
   },
 ];
 
+/** The season behind one fixture, as /data/prefill sends it. */
+const prefillPayload = {
+  jogos_casa: 9,
+  golos_marcados_casa: 21,
+  golos_sofridos_casa: 6,
+  jogos_casa_rec: 5,
+  golos_marcados_casa_rec: 12,
+  golos_sofridos_casa_rec: 3,
+  jogos_fora: 8,
+  golos_marcados_fora: 7,
+  golos_sofridos_fora: 14,
+  jogos_fora_rec: 5,
+  golos_marcados_fora_rec: 4,
+  golos_sofridos_fora_rec: 9,
+  league_averages: {
+    league_home_goals_avg: 1.55,
+    league_away_goals_avg: 1.12,
+    sample_matches: 94,
+  },
+};
+
 function mockFetchSequence() {
   vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
     const url = String(input);
@@ -107,6 +129,12 @@ function mockFetchSequence() {
       return Promise.resolve({
         ok: true,
         json: async () => boardPayload,
+      } as Response);
+    }
+    if (url.includes("/data/prefill")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => prefillPayload,
       } as Response);
     }
     if (url.includes("/data/league-rates")) {
@@ -129,8 +157,9 @@ function renderPage() {
 
 beforeEach(() => {
   localStorage.clear();
-  // The rates are held for the session, which would outlive one test.
+  // Both of these are held for the session, which would outlive one test.
   forgetLeagueRates();
+  forgetPrefill();
 });
 
 afterEach(() => {
@@ -218,7 +247,13 @@ describe("ProbabilityRadar board", () => {
       if (url.includes("/data/probability-board")) {
         return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
       }
-      if (url.includes("/data/league-rates")) {
+      if (url.includes("/data/prefill")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => prefillPayload,
+      } as Response);
+    }
+    if (url.includes("/data/league-rates")) {
         return Promise.resolve({ ok: true, json: async () => ({ leagues: ratesPayload }) } as Response);
       }
       return Promise.reject(new Error(`unexpected fetch: ${url}`));
@@ -248,7 +283,13 @@ describe("ProbabilityRadar board", () => {
       if (url.includes("/data/probability-board")) {
         return Promise.resolve({ ok: true, json: async () => boardPayload } as Response);
       }
-      if (url.includes("/data/league-rates")) {
+      if (url.includes("/data/prefill")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => prefillPayload,
+      } as Response);
+    }
+    if (url.includes("/data/league-rates")) {
         return Promise.resolve({ ok: true, json: async () => ({ leagues: ratesPayload }) } as Response);
       }
       return Promise.reject(new Error(`unexpected fetch: ${url}`));
@@ -319,5 +360,64 @@ describe("ProbabilityRadar board", () => {
     );
 
     expect(readCachedBoard(7)).toBeNull();
+  });
+});
+
+describe("what opening a game shows", () => {
+  it("opens on the form the number was built from", async () => {
+    // A probability nobody can look behind is a number to be believed. This
+    // used to be two taps and a page away.
+    mockFetchSequence();
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Porto vs Nacional"));
+
+    expect(
+      await screen.findByText("A forma por trás do número"),
+    ).toBeInTheDocument();
+    // Goals per game, per side: 21 in 9 at home, 7 in 8 away.
+    expect(await screen.findByText(/2\.33 marcados/)).toBeInTheDocument();
+    expect(screen.getByText(/0\.88 marcados/)).toBeInTheDocument();
+    // And what the model made of it, against the league's own average.
+    expect(screen.getByText(/liga: 1.55/)).toBeInTheDocument();
+  });
+
+  it("leaves the per-market value to the advanced analysis", async () => {
+    // Typing odds into fifteen markets is a different job from reading the
+    // forecast, and it is the one thing that page has that this does not.
+    mockFetchSequence();
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Porto vs Nacional"));
+    await screen.findByText("A forma por trás do número");
+
+    expect(screen.queryByText("Valor por mercado")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /análise avançada/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for the season only when a row is opened", async () => {
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+    const before = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.filter((call) => String(call[0]).includes("/data/prefill"));
+    expect(before).toHaveLength(0);
+
+    fireEvent.click(screen.getByText("Porto vs Nacional"));
+    await screen.findByText("A forma por trás do número");
+
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(globalThis.fetch)
+          .mock.calls.filter((call) =>
+            String(call[0]).includes("/data/prefill"),
+          ),
+      ).toHaveLength(1),
+    );
   });
 });
