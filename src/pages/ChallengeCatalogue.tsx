@@ -23,6 +23,8 @@ import {
 } from "@/lib/challengeDifficulty";
 import { challengeLines, challengePitch } from "@/lib/challengePitch";
 import { FinishedChallenges } from "@/components/FinishedChallenges";
+import { PublicBets } from "@/components/PublicBets";
+import { publicBets } from "@/lib/publicBets";
 import { finishedChallenges } from "@/lib/finishedChallenges";
 import {
   ASSUMED_WIN_RATE,
@@ -265,8 +267,10 @@ export default function ChallengeCatalogue() {
   // Opens on the easiest, which is what somebody picking their first
   // challenge is looking for. The other three are a tap away.
   const [order, setOrder] = useState<Order>("faceis");
-  /** Which shelf is on screen: the ones running, or the ones already over. */
-  const [shelf, setShelf] = useState<"decorrer" | "terminados">("decorrer");
+  /** Which shelf is on screen: mine running, mine finished, or everybody's. */
+  const [shelf, setShelf] = useState<"decorrer" | "terminados" | "todos">(
+    "decorrer",
+  );
   const [token, setToken] = useState(0);
 
   // What the other players did in each challenge since this person last had
@@ -363,6 +367,14 @@ export default function ChallengeCatalogue() {
     [user?.id, plans, myMembers, allBets, funds],
   );
 
+  // What everybody else is betting, from the challenges they opened up. The
+  // standings of those challenges were already being read for the rankings;
+  // the bets were coming with them and had nowhere to be seen.
+  const others = useMemo(
+    () => publicBets(user?.id ?? "", everyone, members, bets),
+    [user?.id, everyone, members, bets],
+  );
+
   const ordered = useMemo(() => {
     if (order === "feitos") return byPopularity([...CHALLENGE_TEMPLATES], counts);
     if (order === "ordem") return CHALLENGE_TEMPLATES;
@@ -395,8 +407,10 @@ export default function ChallengeCatalogue() {
           </p>
         </motion.div>
 
-        {(running.length > 0 || finished.length > 0) && (
-          <motion.div variants={fadeUp} className="space-y-2">
+        {/* Always on screen, even with nothing of one's own yet: the way to
+            see what other people are betting cannot be hidden behind having
+            started a challenge first. */}
+        <motion.div variants={fadeUp} className="space-y-2">
             {/* Two shelves, not one list: a challenge that is over is a record
                 to look back at, and one that is running is something to go
                 and do. Mixed together, the second kind gets buried under the
@@ -405,6 +419,7 @@ export default function ChallengeCatalogue() {
               {([
                 ["decorrer", "A decorrer", running.length],
                 ["terminados", "Terminados", finished.length],
+                ["todos", "De toda a gente", others.length],
               ] as const).map(([value, label, count]) => (
                 <button
                   key={value}
@@ -423,6 +438,13 @@ export default function ChallengeCatalogue() {
             </div>
 
             {shelf === "terminados" && <FinishedChallenges entries={finished} />}
+
+            {shelf === "todos" && (
+              <PublicBets
+                entries={others}
+                mineArePrivate={plans.every((plan) => !plan.visible)}
+              />
+            )}
 
             {shelf === "decorrer" && running.length === 0 && (
               <p className="sl-card px-4 py-4 text-[12px] leading-6 text-muted-foreground">
@@ -480,8 +502,7 @@ export default function ChallengeCatalogue() {
                 <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
               </Link>
             ))}
-          </motion.div>
-        )}
+        </motion.div>
 
         <motion.div variants={fadeUp} className="space-y-2 pt-1">
           <div className="flex items-center justify-between gap-2">
