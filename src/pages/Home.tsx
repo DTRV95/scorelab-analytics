@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, CalendarClock, Percent } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarClock,
+  Gauge,
+  Globe,
+  Percent,
+  Trophy,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
@@ -42,6 +50,57 @@ function kickoff(iso: string | null): string {
   }).format(date);
 }
 
+/** Where else there is to go, for the pages nothing above leads to. */
+const DOORS = [
+  {
+    to: "/desafios",
+    icon: Trophy,
+    title: "Desafios",
+    detail: "Começar outro",
+  },
+  // Short on purpose: two to a row on a phone, and a title cut off mid-word
+  // is a door with no sign on it.
+  { to: "/ligas", icon: Globe, title: "Ligas", detail: "O que dão" },
+  {
+    to: "/accuracy",
+    icon: Gauge,
+    title: "Acerto",
+    detail: "Do modelo",
+  },
+  {
+    to: "/dashboard/analises",
+    icon: BarChart3,
+    title: "Análises",
+    detail: "Guardadas",
+  },
+];
+
+function HomeDoors() {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {DOORS.map((door) => (
+        <Link
+          key={door.to}
+          to={door.to}
+          className="sl-card sl-tap flex items-center gap-2.5 px-3 py-2.5"
+        >
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
+            <door.icon className="h-3.5 w-3.5 text-muted-foreground" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12.5px] font-semibold text-foreground">
+              {door.title}
+            </span>
+            <span className="sl-meta block truncate text-[10.5px]">
+              {door.detail}
+            </span>
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** The next few games the model has an opinion about. */
 function NextGames({ board }: { board: BoardMatch[] }) {
   const soon = useMemo(
@@ -72,9 +131,13 @@ function NextGames({ board }: { board: BoardMatch[] }) {
 
       <div className="divide-y divide-border">
         {soon.map((match) => (
-          <div
+          // Into the game itself, with its fifteen markets: the row carried
+          // the one number the model is most sure of and no way to ask it
+          // anything else.
+          <Link
             key={match.fixture_id}
-            className="flex items-center gap-3 px-4 py-2.5"
+            to={`/match/${match.fixture_id}`}
+            className="sl-tap flex items-center gap-3 px-4 py-2.5"
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-semibold text-foreground">
@@ -92,7 +155,7 @@ function NextGames({ board }: { board: BoardMatch[] }) {
                 {MARKET_LABELS[match.headline_market] ?? match.headline_market}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -272,19 +335,14 @@ export default function Home() {
         </motion.div>
 
 
+        {/* The rest of the app, from the page it opens on.
+            Everything above is a door to the page that holds the whole of it;
+            these are the four that nothing above leads to. A phone's bottom
+            bar holds five destinations and no more, so without this the
+            leagues, the model's record and the saved analyses could only be
+            reached on a computer. */}
         <motion.div variants={fadeUp}>
-          <Link
-            to="/dashboard/analises"
-            className="sl-card sl-tap flex items-center gap-3 px-4 py-3"
-          >
-            <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </span>
-            <span className="sl-meta min-w-0 flex-1 text-[12px]">
-              Análises guardadas, sinais e gráficos
-            </span>
-            <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />
-          </Link>
+          <HomeDoors />
         </motion.div>
       </motion.div>
     </AppLayout>
