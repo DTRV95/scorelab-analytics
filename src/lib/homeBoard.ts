@@ -46,6 +46,11 @@ export function homeBoard(
   const challenges: HomeChallenge[] = [];
 
   for (const plan of plans) {
+    // A challenge that is over belongs to the shelf of finished ones, not to
+    // the page that says what is going on. Its money is not in play, its
+    // ladder is not moving, and nothing about it is for today.
+    if (plan.ended_at) continue;
+
     const me = members.find(
       (entry) => entry.plan_id === plan.id && entry.user_id === userId
     );
@@ -76,11 +81,8 @@ export function homeBoard(
   // A day to close comes before a day to play: the ladder cannot move until
   // the last one is settled, so telling somebody to bet first would be telling
   // them to do the thing that is not yet possible.
-  // A challenge given as over asks for nothing: it keeps its place in the
-  // list and its money in the total, and stays out of both queues.
-  const running = challenges.filter((entry) => !entry.plan.ended_at);
-  const toClose = running.filter((entry) => entry.standing.openBets > 0);
-  const toPlay = running.filter(
+  const toClose = challenges.filter((entry) => entry.standing.openBets > 0);
+  const toPlay = challenges.filter(
     (entry) => entry.move.state === "play" && entry.standing.openBets === 0
   );
 
