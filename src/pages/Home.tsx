@@ -202,9 +202,49 @@ export default function Home() {
   // Read once for the whole app, so the figure here and the one in the bar at
   // the top of every page are the same figure rather than two answers to the
   // same question.
-  const { board, bets, started, plans, members, allBets, funds } =
-    usePlanBoard();
+  const { board, bets, plans, members, allBets, funds } = usePlanBoard();
   const [games, setGames] = useState<BoardMatch[]>([]);
+
+  /**
+   * Only what is still being played.
+   *
+   * This page answers "o que está a decorrer, e o que falta fazer hoje", and a
+   * challenge given as over has no answer to either. It keeps everything it
+   * had — in Desafios, on the shelf of finished ones — and stops being news,
+   * a rival, a line on the bankroll and a euro in the total.
+   */
+  const running = useMemo(
+    () => new Set(plans.filter((plan) => !plan.ended_at).map((plan) => plan.id)),
+    [plans],
+  );
+
+  const livePlans = useMemo(
+    () => plans.filter((plan) => running.has(plan.id)),
+    [plans, running],
+  );
+  const liveMembers = useMemo(
+    () => members.filter((entry) => running.has(entry.plan_id)),
+    [members, running],
+  );
+  const liveAllBets = useMemo(
+    () => allBets.filter((bet) => running.has(bet.planId)),
+    [allBets, running],
+  );
+  const liveFunds = useMemo(
+    () => funds.filter((entry) => running.has(entry.planId)),
+    [funds, running],
+  );
+  const liveBets = useMemo(
+    () => bets.filter((bet) => running.has(bet.planId)),
+    [bets, running],
+  );
+  const liveStarted = useMemo(
+    () =>
+      liveMembers
+        .filter((entry) => entry.user_id === user?.id)
+        .reduce((sum, entry) => sum + Number(entry.starting_bankroll), 0),
+    [liveMembers, user?.id],
+  );
 
   // Read once per visit to this page. Leaving a challenge unmounts the home
   // page and coming back mounts it again, so a challenge opened a moment ago
@@ -215,17 +255,17 @@ export default function Home() {
     () =>
       planNews({
         userId: user?.id ?? "",
-        members,
-        bets: allBets,
-        funds,
+        members: liveMembers,
+        bets: liveAllBets,
+        funds: liveFunds,
         since,
       }),
-    [user?.id, members, allBets, funds, since],
+    [user?.id, liveMembers, liveAllBets, liveFunds, since],
   );
 
   const rivals = useMemo(
-    () => rivalries(user?.id ?? "", plans, members, allBets, funds),
-    [user?.id, plans, members, allBets, funds],
+    () => rivalries(user?.id ?? "", livePlans, liveMembers, liveAllBets, liveFunds),
+    [user?.id, livePlans, liveMembers, liveAllBets, liveFunds],
   );
 
   const newsCounts = useMemo(() => newsByPlan(news), [news]);
@@ -277,9 +317,9 @@ export default function Home() {
           </motion.div>
         )}
 
-        {bets.length > 0 && (
+        {liveBets.length > 0 && (
           <motion.div variants={fadeUp}>
-            <BankrollTrend startingBankroll={started} bets={bets} />
+            <BankrollTrend startingBankroll={liveStarted} bets={liveBets} />
           </motion.div>
         )}
 
@@ -287,9 +327,9 @@ export default function Home() {
           <NextGames board={games} />
         </motion.div>
 
-        {bets.length > 0 && (
+        {liveBets.length > 0 && (
           <motion.div variants={fadeUp}>
-            <YourRecord userId={user?.id ?? ""} bets={bets} />
+            <YourRecord userId={user?.id ?? ""} bets={liveBets} />
           </motion.div>
         )}
 

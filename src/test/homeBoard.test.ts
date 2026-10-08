@@ -178,22 +178,25 @@ describe("money put into a bankroll, on the home page", () => {
 });
 
 describe("a challenge that is over", () => {
-  it("asks for nothing, and still counts its money", () => {
+  it("is not on the page at all", () => {
+    // The page says what is going on and what is left to do today, and a
+    // challenge given as over has no answer to either. It keeps everything it
+    // had on the shelf of finished ones, in Desafios.
     const board = homeBoard(
       "david",
       [plan({ id: "a" }), plan({ id: "b", ended_at: "2026-10-02T18:00:00.000Z" })],
       [member("a"), member("b")],
-      [],
+      [bet("a", "green", 5), bet("b", "green", 40)],
     );
 
-    // Both are still on the page, and the total is still the total.
-    expect(board.challenges.map((entry) => entry.plan.id)).toEqual(["a", "b"]);
-    expect(board.bankroll).toBe(20);
-    // Only the one still running is asked to bet.
+    expect(board.challenges.map((entry) => entry.plan.id)).toEqual(["a"]);
     expect(board.toPlay.map((entry) => entry.plan.id)).toEqual(["a"]);
+    // Its money is not in play either: the sum is the one still running.
+    expect(board.bankroll).toBe(15);
+    expect(board.profit).toBe(5);
   });
 
-  it("stays out of the queue to close, whatever it is carrying", () => {
+  it("takes its open bets out of the queue with it", () => {
     // Ending needs every bet settled, so this should not happen — and if a
     // row ever does survive, the home page still must not send somebody to a
     // challenge that is over.
@@ -205,5 +208,6 @@ describe("a challenge that is over", () => {
     );
 
     expect(board.toClose).toEqual([]);
+    expect(board.challenges).toEqual([]);
   });
 });
