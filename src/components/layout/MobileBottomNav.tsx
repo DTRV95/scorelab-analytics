@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { BarChart3, Globe, Percent, Ticket, Trophy } from "lucide-react";
+import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { cn } from "@/lib/utils";
 
 // Five destinations, the most a thumb row holds before the labels truncate.
@@ -26,11 +27,14 @@ const HOME = { title: "Início", url: "/dashboard", icon: BarChart3 };
 
 export function MobileBottomNav() {
   const location = useLocation();
+  // Somebody waiting for an answer, on the one bar a phone always has.
+  const { invites } = usePlanBoard();
   const onHome =
     location.pathname === HOME.url || location.pathname === "/";
 
   const item = (entry: (typeof mobileItems)[number]) => {
     const isActive = location.pathname === entry.url;
+    const asking = entry.url === "/desafios" ? invites.length : 0;
 
     return (
       <Link
@@ -38,11 +42,19 @@ export function MobileBottomNav() {
         to={entry.url}
         data-active={isActive}
         className={cn(
-          "sl-bottomnav-item flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition",
+          "sl-bottomnav-item relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition",
           isActive ? "" : "text-white/55 hover:text-white/85",
         )}
       >
         <entry.icon className="h-[18px] w-[18px]" strokeWidth={2} />
+        {asking > 0 && (
+          <span
+            className="absolute right-1.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground"
+            aria-label={`${asking} ${asking === 1 ? "convite" : "convites"}`}
+          >
+            {asking}
+          </span>
+        )}
         <span className="max-w-full truncate">{entry.title}</span>
       </Link>
     );

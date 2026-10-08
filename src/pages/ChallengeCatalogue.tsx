@@ -22,6 +22,7 @@ import {
   difficultyOf,
 } from "@/lib/challengeDifficulty";
 import { challengeLines, challengePitch } from "@/lib/challengePitch";
+import { PlanInvites } from "@/components/PlanInvites";
 import { FinishedChallenges } from "@/components/FinishedChallenges";
 import { PublicBets } from "@/components/PublicBets";
 import { publicBets } from "@/lib/publicBets";
@@ -264,6 +265,8 @@ export default function ChallengeCatalogue() {
     members: myMembers,
     allBets,
     funds,
+    invites,
+    reload,
   } = usePlanBoard();
   const [plans, setPlans] = useState<PlanRecord[]>([]);
   const [everyone, setEveryone] = useState<PlanRecord[]>([]);
@@ -411,6 +414,14 @@ export default function ChallengeCatalogue() {
             Escolhe um, ou continua o que já começaste.
           </p>
         </motion.div>
+
+        {/* An answer somebody is waiting for comes before a new challenge to
+            start. */}
+        {invites.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <PlanInvites invites={invites} onAnswered={reload} />
+          </motion.div>
+        )}
 
         {/* Always on screen, even with nothing of one's own yet: the way to
             see what other people are betting cannot be hidden behind having

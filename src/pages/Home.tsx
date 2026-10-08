@@ -14,6 +14,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
 import { HomeInsights } from "@/components/HomeInsights";
+import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
@@ -189,7 +190,8 @@ export default function Home() {
   // Read once for the whole app, so the figure here and the one in the bar at
   // the top of every page are the same figure rather than two answers to the
   // same question.
-  const { board, bets, plans, members, allBets, funds } = usePlanBoard();
+  const { board, bets, plans, members, allBets, funds, invites, reload } =
+    usePlanBoard();
   const [games, setGames] = useState<BoardMatch[]>([]);
 
   /**
@@ -340,6 +342,15 @@ export default function Home() {
         <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
           <h1 className="sl-section-title text-[15px]">Início</h1>
         </motion.div>
+
+        {/* Before anything of their own: somebody is waiting for an answer.
+            This used to be buried inside a challenge's page, which is a page
+            about challenges they are already in. */}
+        {invites.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <PlanInvites invites={invites} onAnswered={reload} />
+          </motion.div>
+        )}
 
         {/* The three questions somebody arrives with, in the order they ask
             them: quanto tenho, o que tenho em mãos, e como é que isto está a

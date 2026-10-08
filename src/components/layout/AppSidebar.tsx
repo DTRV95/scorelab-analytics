@@ -56,7 +56,7 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   // Read from the app's own copy of the challenges rather than fetched again
   // here: the sidebar is on every page, and so was its own extra query.
-  const { members, allBets, funds } = usePlanBoard();
+  const { members, allBets, funds, invites } = usePlanBoard();
 
   // Everything the other players did, across every challenge, since this
   // person last looked at each of them.
@@ -100,6 +100,9 @@ export function AppSidebar() {
                 location.pathname === item.url ||
                 (item.challenges && location.pathname.startsWith("/desafios"));
               const unseen = item.challenges ? waiting : 0;
+              // An invitation is somebody waiting for an answer, which is
+              // louder than a bet registered while this person was away.
+              const asking = item.challenges ? invites.length : 0;
               return (
                 <Link
                   key={item.url}
@@ -117,7 +120,15 @@ export function AppSidebar() {
                       in the app. It used to mean "you are here", on a row
                       already saying that in colour and background — which
                       read as a notification that was never one. */}
-                  {unseen > 0 && !collapsed && (
+                  {asking > 0 && !collapsed && (
+                    <span
+                      className="ml-auto flex-none rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground"
+                      aria-label={`${asking} ${asking === 1 ? "convite" : "convites"}`}
+                    >
+                      {asking === 1 ? "1 convite" : `${asking} convites`}
+                    </span>
+                  )}
+                  {asking === 0 && unseen > 0 && !collapsed && (
                     <span
                       className="ml-auto flex-none rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary"
                       aria-label={`${unseen} ${unseen === 1 ? "novidade" : "novidades"}`}

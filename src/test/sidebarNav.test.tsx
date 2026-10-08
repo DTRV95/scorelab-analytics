@@ -158,7 +158,9 @@ describe("the thumb row, which on a phone is the whole menu", () => {
   const renderRow = () =>
     render(
       <MemoryRouter>
-        <MobileBottomNav />
+        <PlanBoardProvider>
+          <MobileBottomNav />
+        </PlanBoardProvider>
       </MemoryRouter>,
     );
 
@@ -210,7 +212,9 @@ describe("the thumb row, which on a phone is the whole menu", () => {
     // aqui", and something else has to.
     render(
       <MemoryRouter initialEntries={["/probability"]}>
-        <MobileBottomNav />
+        <PlanBoardProvider>
+          <MobileBottomNav />
+        </PlanBoardProvider>
       </MemoryRouter>,
     );
 
@@ -222,7 +226,9 @@ describe("the thumb row, which on a phone is the whole menu", () => {
 
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
-        <MobileBottomNav />
+        <PlanBoardProvider>
+          <MobileBottomNav />
+        </PlanBoardProvider>
       </MemoryRouter>,
     );
 
