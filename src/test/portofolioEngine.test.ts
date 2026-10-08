@@ -15,26 +15,25 @@ function makeAnalysis(
     homeTeam: "Home",
     awayTeam: "Away",
     summary: {
+      homeXg: 1.2,
+      awayXg: 0.8,
       totalXg: 2,
-      avgPossession: 50,
-      totalShots: 20,
-      totalShotsOnTarget: 8,
-      avgPassAccuracy: 80,
-      disciplineScore: 0,
+      confidence: 70,
     },
     results: [
       {
         market: "Over 2.5",
         odds: 2,
-        probability: 55,
-        impliedProbability: 50,
+        modelProb: 55,
+        impliedProb: 50,
         valueBet: 5,
+        kelly: 0.05,
+        stake: 10,
         confidence: 7,
-        tier: "bet",
         risk: "Medium",
         edgeLowerBound: 2,
         robustness: 70,
-        decision: "bet",
+        decision: "Bet",
       },
     ],
     tracking: {
@@ -59,7 +58,7 @@ function makeAnalysis(
       notes: "",
     },
     extraBets: [],
-  } as SavedAnalysis;
+  };
 }
 
 describe("portofolioEngine", () => {
