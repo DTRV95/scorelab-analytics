@@ -657,7 +657,10 @@ export function describeRules(rules: ChallengeRules): string {
   if (rules.oddsMin !== null || rules.oddsMax !== null) {
     parts.push(
       rules.oddsMin !== null && rules.oddsMax !== null
-        ? `odds ${rules.oddsMin.toFixed(2)}–${rules.oddsMax.toFixed(2)}`
+        ? // A band of one price is a price, not a band.
+          rules.oddsMin === rules.oddsMax
+          ? `odd ${rules.oddsMin.toFixed(2)}`
+          : `odds ${rules.oddsMin.toFixed(2)}–${rules.oddsMax.toFixed(2)}`
         : rules.oddsMin !== null
         ? `odd mínima ${rules.oddsMin.toFixed(2)}`
         : `odd máxima ${rules.oddsMax!.toFixed(2)}`
