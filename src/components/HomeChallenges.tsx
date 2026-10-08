@@ -147,36 +147,31 @@ export function HomeChallenges({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-3"
     >
-      <div className="sl-card grid grid-cols-3 gap-px overflow-hidden bg-border">
-        {[
-          { label: "Banca somada", value: eur.format(board.bankroll) },
-          {
-            label: "Das apostas",
-            value: `${board.profit >= 0 ? "+" : ""}${eur.format(board.profit)}`,
-            tone:
+      {/* The money, on one line.
+          This was three cells of a grid, and one of them counted the
+          challenges listed immediately below it. */}
+      <div className="sl-card flex items-center justify-between gap-3 px-4 py-2.5">
+        <p className="sl-meta text-[11px]">
+          Banca somada{" "}
+          <span className="sl-figure text-[15px] text-foreground">
+            {eur.format(board.bankroll)}
+          </span>
+        </p>
+        <p className="sl-meta text-[11px]">
+          das apostas{" "}
+          <span
+            className={`sl-figure text-[15px] ${
               board.profit > 0
                 ? "text-[hsl(var(--sl-green))]"
                 : board.profit < 0
                   ? "text-destructive"
-                  : "",
-          },
-          {
-            label: "A pedir atenção",
-            value: `${urgent.length}`,
-            tone: urgent.length > 0 ? "text-primary" : "",
-          },
-        ].map((cell) => (
-          <div key={cell.label} className="bg-card px-3 py-3">
-            <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
-              {cell.label}
-            </p>
-            <p
-              className={`sl-figure mt-0.5 text-[15px] ${cell.tone ?? "text-foreground"}`}
-            >
-              {cell.value}
-            </p>
-          </div>
-        ))}
+                  : "text-foreground"
+            }`}
+          >
+            {board.profit >= 0 ? "+" : ""}
+            {eur.format(board.profit)}
+          </span>
+        </p>
       </div>
 
       {urgent.length > 0 && (

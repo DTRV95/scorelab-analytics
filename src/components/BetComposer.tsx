@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { ListPlus, Plus, X } from "lucide-react";
 import {
   GamePicker,
@@ -42,13 +48,114 @@ function toOdds(raw: string): number {
   return Number.isFinite(value) && value > 1 ? value : 0;
 }
 
+const oddsField =
+  "sl-figure h-10 w-[72px] flex-none rounded-xl border-0 bg-[hsl(var(--sl-surface))] px-2 text-center text-[15px] text-foreground ring-1 ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/50";
+
+/**
+ * One game on the slip: what is being backed, and what it pays.
+ *
+ * The price is typed here, beside the game, the moment the game goes on —
+ * which is the only reason a bet no longer needs the pop-up closed, the page
+ * scrolled and every odd filled in afterwards from memory.
+ */
+function LegRow({
+  leg,
+  index,
+  /** True for the strip inside the pop-up, where there is no room to explain. */
+  compact,
+  takeFocus,
+  onOdds,
+  onRemove,
+  children,
+}: {
+  leg: Draft;
+  index: number;
+  compact?: boolean;
+  takeFocus: boolean;
+  onOdds: (value: string) => void;
+  onRemove: () => void;
+  children?: ReactNode;
+}) {
+  const points = edgePoints(leg.modelProb, toOdds(leg.odds));
+
+  return (
+    <div className={compact ? "px-4 py-1.5" : "px-4 py-2.5"}>
+      <div className="flex items-center gap-2.5">
+        {!compact && (
+          <span className="font-mono-data w-4 flex-none text-[11px] text-muted-foreground">
+            {index + 1}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-foreground">
+            {leg.homeTeam} vs {leg.awayTeam}
+          </p>
+          {/* Wraps rather than truncates: the market is the long part and the
+              points are the part worth reading, so cutting the line at its end
+              cut the only number on it that says whether the price is worth
+              taking. */}
+          <p className="sl-meta flex flex-wrap items-baseline gap-x-1 text-[11px]">
+            <span className="min-w-0 break-words">
+              {MARKET_LABELS[leg.market] ?? leg.market}
+            </span>
+            {!compact && (
+              <span>
+                ·{" "}
+                {leg.fixtureId === null
+                  ? "à mão"
+                  : `modelo ${leg.modelProb.toFixed(0)}%`}
+              </span>
+            )}
+            {points !== null && (
+              // A chip rather than more text with a dot in front: it is the
+              // piece most likely to end up on a line of its own, and a line
+              // that opens with "·" reads as broken.
+              <span
+                className={`rounded px-1 py-px text-[10px] font-bold ${
+                  points > 0
+                    ? "bg-[hsl(var(--sl-green))]/10 text-[hsl(var(--sl-green))]"
+                    : "bg-destructive/10 text-destructive"
+                }`}
+              >
+                {`${points > 0 ? "+" : ""}${points} pts`}
+              </span>
+            )}
+          </p>
+        </div>
+        <input
+          inputMode="decimal"
+          // The keyboard lands on the game that just went in, so the price is
+          // typed without reaching for anything.
+          autoFocus={takeFocus}
+          value={leg.odds}
+          onChange={(event) => onOdds(event.target.value)}
+          placeholder="1.85"
+          aria-label={`Odd de ${leg.homeTeam} vs ${leg.awayTeam}`}
+          className={oddsField}
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Tirar ${leg.homeTeam} vs ${leg.awayTeam}`}
+          className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-muted-foreground hover:text-destructive"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {children}
+    </div>
+  );
+}
+
 /**
  * Building the day's bet.
  *
- * The slip itself: the games already on it, their prices, what the rules make
- * of the whole thing, and the amount. Choosing the games is the picker's job,
- * which lives apart from this so that a bet already registered can be sent to
- * the same pop-up.
+ * The slip is the bet: the games on it, their prices, the amount, and what the
+ * rules make of the whole thing. It lives in two places at once — in the strip
+ * at the bottom of the games pop-up while games are being chosen, and on the
+ * page once the pop-up is shut — so a bet can be registered from either,
+ * whichever one somebody happens to be looking at.
  */
 export function BetComposer({
   access,
@@ -94,8 +201,10 @@ export function BetComposer({
 }) {
   const [legs, setLegs] = useState<Draft[]>([]);
   const [stakeInput, setStakeInput] = useState<string | null>(null);
-  /** The picker lives in a pop-up: the slip is what the page is for. */
+  /** The games pop-up, which carries the slip while it is open. */
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** The game that just went on, whose price is what gets typed next. */
+  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // Only a bump after this card is on screen opens the picker. Reacting to
   // the value itself meant that changing challenge — which takes this card
@@ -133,11 +242,7 @@ export function BetComposer({
   const tips = useMemo(
     () =>
       style
-        ? betTips(
-            style,
-            legs,
-            (market) => MARKET_LABELS[market] ?? market,
-          )
+        ? betTips(style, legs, (market) => MARKET_LABELS[market] ?? market)
         : [],
     [style, legs],
   );
@@ -161,16 +266,25 @@ export function BetComposer({
       })
     : [];
 
-  /** A game chosen in the pop-up, onto the slip. The price is typed here. */
-  const addGame = (game: PickedGame) =>
-    setLegs((previous) => [
-      ...previous,
-      {
-        ...game,
-        key:
-          game.fixtureId === null ? `m${Date.now()}` : `f${game.fixtureId}`,
-      },
-    ]);
+  const value = slipValue(
+    legs.map((leg) => ({ modelProb: leg.modelProb, odds: toOdds(leg.odds) })),
+  );
+
+  /** A game chosen in the pop-up, onto the slip. */
+  const addGame = (game: PickedGame) => {
+    const key =
+      game.fixtureId === null ? `m${Date.now()}` : `f${game.fixtureId}`;
+    setLegs((previous) => [...previous, { ...game, key }]);
+    setFocusKey(key);
+  };
+
+  const setOdds = (key: string, odds: string) =>
+    setLegs((previous) =>
+      previous.map((leg) => (leg.key === key ? { ...leg, odds } : leg)),
+    );
+
+  const remove = (key: string) =>
+    setLegs((previous) => previous.filter((leg) => leg.key !== key));
 
   const place = () => {
     if (!ready) return;
@@ -192,13 +306,86 @@ export function BetComposer({
     );
     setLegs([]);
     setStakeInput(null);
+    setFocusKey(null);
+    // Registered from inside the pop-up, the pop-up has done its job.
+    setPickerOpen(false);
   };
+
+  /** The breach worth one line of space: the rest is on the rules card. */
+  const breach = violations.find(
+    (violation) => violation.severity === "breach",
+  );
+
+  /**
+   * Odd, amount and return, on one line.
+   *
+   * These were three cards and a fourth saying what the bankroll would be
+   * afterwards — four blocks of chrome for three numbers, one of which was the
+   * other two multiplied.
+   */
+  const totals = (
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+          Odd {legs.length > 1 ? `· ${legs.length} jogos` : ""}
+        </p>
+        <p className="sl-figure text-[1.35rem] leading-7 text-foreground">
+          {priced && combined > 1 ? combined.toFixed(2) : "—"}
+          {targetOdds > 1 && (
+            <span className="sl-meta ml-1.5 text-[10px] font-normal">
+              de {targetOdds.toFixed(2)}
+            </span>
+          )}
+        </p>
+      </div>
+
+      <label className="flex-none rounded-xl bg-[hsl(var(--sl-surface))] px-2.5 py-1.5">
+        <span className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+          A apostar
+        </span>
+        <div className="flex items-baseline gap-0.5">
+          <input
+            inputMode="decimal"
+            value={stakeInput ?? suggested.toFixed(2)}
+            onChange={(event) => setStakeInput(event.target.value)}
+            aria-label="Valor a apostar"
+            className="w-[58px] min-w-0 bg-transparent font-mono-data text-[15px] font-bold text-foreground focus:outline-none"
+          />
+          <span className="font-mono-data flex-none text-[13px] font-bold text-muted-foreground">
+            €
+          </span>
+        </div>
+      </label>
+
+      <div className="flex-none text-right">
+        <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+          Se entrar
+        </p>
+        <p className="font-mono-data text-[15px] font-bold text-[hsl(var(--sl-green))]">
+          {ready ? eur.format(stake * combined) : "—"}
+        </p>
+      </div>
+    </div>
+  );
+
+  const registerButton = (
+    <Button
+      className="sl-btn-primary h-11 w-full text-sm disabled:opacity-40"
+      disabled={!ready || saving}
+      onClick={place}
+    >
+      <ListPlus className="mr-1.5 h-4 w-4" />
+      {saving ? "A guardar..." : `Registar o nível ${day}`}
+    </Button>
+  );
 
   // Empty, this card would repeat what the card at the top of the page already
   // says, and put a second button beside its button. So it stays out of the way
   // until there is a slip to show — but only while that other button exists:
   // when the top card is saying something else, this is the only way in.
   const slipOnly = legs.length === 0 && Boolean(entryElsewhere);
+  /** While the pop-up is up it holds the slip, so the page does not repeat it. */
+  const slipHere = !pickerOpen && legs.length > 0;
 
   return (
     <section className={slipOnly ? "contents" : "sl-card overflow-hidden"}>
@@ -219,88 +406,17 @@ export function BetComposer({
         </div>
       </div>
 
-      {/* The slip comes first: once there is something in it, it is what the
-          person is looking at, and burying it under the search would mean
-          scrolling past the whole board to check the odd. */}
-      {legs.length > 0 && (
+      {slipHere && (
         <div className="divide-y divide-border border-b border-border">
           {legs.map((leg, index) => (
-            <div key={leg.key} className="px-4 py-2.5">
-              <div className="flex items-center gap-2.5">
-              <span className="font-mono-data w-4 flex-none text-[11px] text-muted-foreground">
-                {index + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-foreground">
-                  {leg.homeTeam} vs {leg.awayTeam}
-                </p>
-                {/* Wraps rather than truncates: the market is the long part
-                    and the points are the part worth reading, so cutting the
-                    line at its end cut the only number on it that says
-                    whether the price is worth taking. */}
-                <p className="sl-meta flex flex-wrap items-baseline gap-x-1 text-[11px]">
-                  <span className="min-w-0 break-words">
-                    {MARKET_LABELS[leg.market] ?? leg.market}
-                  </span>
-                  <span>
-                    ·{" "}
-                    {leg.fixtureId === null
-                      ? "à mão"
-                      : `modelo ${leg.modelProb.toFixed(0)}%`}
-                  </span>
-                  {(() => {
-                    // What the odd typed is paying for, against what the model
-                    // thinks. The only number on this row that says whether
-                    // backing it is a good idea.
-                    const points = edgePoints(leg.modelProb, toOdds(leg.odds));
-                    if (points === null) return null;
-                    return (
-                      // A chip rather than more text with a dot in front: it
-                      // is the piece most likely to end up on a line of its
-                      // own, and a line that opens with "·" reads as broken.
-                      <span
-                        className={`rounded px-1 py-px text-[10px] font-bold ${
-                          points > 0
-                            ? "bg-[hsl(var(--sl-green))]/10 text-[hsl(var(--sl-green))]"
-                            : "bg-destructive/10 text-destructive"
-                        }`}
-                      >
-                        {`${points > 0 ? "+" : ""}${points} pts`}
-                      </span>
-                    );
-                  })()}
-                </p>
-              </div>
-              <input
-                inputMode="decimal"
-                value={leg.odds}
-                onChange={(event) =>
-                  setLegs((previous) =>
-                    previous.map((entry) =>
-                      entry.key === leg.key
-                        ? { ...entry, odds: event.target.value }
-                        : entry,
-                    ),
-                  )
-                }
-                placeholder="1.85"
-                aria-label={`Odd de ${leg.homeTeam} vs ${leg.awayTeam}`}
-                className="sl-figure h-10 w-[72px] flex-none rounded-xl border-0 bg-[hsl(var(--sl-surface))] px-2 text-center text-[15px] text-foreground ring-1 ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setLegs((previous) =>
-                    previous.filter((entry) => entry.key !== leg.key),
-                  )
-                }
-                aria-label={`Tirar ${leg.homeTeam} vs ${leg.awayTeam}`}
-                className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-muted-foreground hover:text-destructive"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-              </div>
-
+            <LegRow
+              key={leg.key}
+              leg={leg}
+              index={index}
+              takeFocus={false}
+              onOdds={(odds) => setOdds(leg.key, odds)}
+              onRemove={() => remove(leg.key)}
+            >
               {/* The competition, the price and this person's own record, at
                   the one moment they could change what gets registered. */}
               <LegContextRow
@@ -311,7 +427,7 @@ export function BetComposer({
                   style,
                 })}
               />
-            </div>
+            </LegRow>
           ))}
         </div>
       )}
@@ -324,203 +440,157 @@ export function BetComposer({
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 py-3 text-xs font-semibold text-primary transition hover:bg-primary/5"
           >
             <Plus className="h-4 w-4" />
-            Inserir outro jogo
+            {legs.length === 0 ? "Inserir jogos" : "Inserir outro jogo"}
           </button>
         </div>
       )}
 
       <GamePicker
         open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          // The slip moves to the page when the pop-up shuts, and a field that
+          // grabs the keyboard there would scroll the page out from under
+          // whoever just closed it.
+          if (!open) setFocusKey(null);
+        }}
         access={access}
         memory={memory}
         chosenIds={chosenIds}
         onPick={addGame}
         footer={
-          /* The slip itself lives behind this pop-up, so with the pop-up
-             staying open there was nothing on screen to say a game had gone
-             in. This is that, and the way out. */
+          /* The slip, inside the pop-up: the games chosen, their prices and
+             the button that registers the bet. Everything a bet needs is on
+             this strip, so choosing a game and backing it is one visit. */
           legs.length > 0 ? (
-            <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-semibold text-foreground">
-                  {legs.length === 1
-                    ? "1 jogo no boletim"
-                    : `${legs.length} jogos no boletim`}
-                </p>
-                <p className="sl-meta truncate text-[11px]">
-                  {priced && combined > 1
-                    ? `odd total ${combined.toFixed(2)}`
-                    : "falta a odd de algum jogo"}
-                </p>
+            <div className="sticky bottom-0 border-t border-border bg-card">
+              <div className="max-h-[38vh] divide-y divide-border overflow-y-auto">
+                {legs.map((leg, index) => (
+                  <LegRow
+                    key={leg.key}
+                    leg={leg}
+                    index={index}
+                    compact
+                    takeFocus={leg.key === focusKey}
+                    onOdds={(odds) => setOdds(leg.key, odds)}
+                    onRemove={() => remove(leg.key)}
+                  />
+                ))}
               </div>
-              <Button
-                className="sl-btn-primary sl-tap h-10 flex-none px-5 text-xs"
-                onClick={() => setPickerOpen(false)}
-              >
-                Concluído
-              </Button>
+
+              <div className="space-y-2 border-t border-border px-4 py-2.5">
+                {totals}
+
+                {/* Whether the price is worth taking, where the bet is now
+                    being registered from. */}
+                {value && (
+                  <p
+                    className={`flex items-center justify-between gap-2 text-[11px] font-bold ${
+                      value.edge > 0
+                        ? "text-[hsl(var(--sl-green))]"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {value.edge > 0 ? "Tem valor" : "Sem valor"}
+                    <span className="sl-figure text-[12px]">
+                      {value.edge > 0 ? "+" : ""}
+                      {value.edge} pts
+                    </span>
+                  </p>
+                )}
+
+                {!priced && (
+                  <p className="sl-meta text-[11px]">
+                    Falta a odd de algum jogo.
+                  </p>
+                )}
+                {breach && (
+                  <p className="text-[11px] leading-5 text-destructive">
+                    {breach.message}
+                  </p>
+                )}
+
+                {registerButton}
+
+                {/* The way back to the page, where the slip carries what each
+                    competition gives and what this person's own record says
+                    about these markets. */}
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(false)}
+                  className="sl-meta w-full text-center text-[11px] underline"
+                >
+                  Fechar e ver o boletim
+                </button>
+              </div>
             </div>
           ) : null
         }
       />
 
-      {legs.length > 0 && (
+      {slipHere && (
         <div className="space-y-2 border-t border-border bg-[hsl(var(--sl-surface))] p-4">
-          <div className="flex items-center justify-between rounded-2xl bg-card px-3.5 py-3 ring-1 ring-primary/25">
-            <div className="min-w-0">
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                Odd total
-              </p>
-              <p className="sl-meta mt-0.5 truncate text-[11px]">
-                {legs.length === 1
-                  ? "1 jogo"
-                  : `${legs.length} jogos multiplicados`}
-              </p>
-            </div>
-            <div className="flex-none text-right">
-              <span className="sl-figure text-[1.9rem] leading-8 text-foreground">
-                {priced && combined > 1 ? combined.toFixed(2) : "—"}
-              </span>
-              {targetOdds > 1 && (
-                <p className="sl-meta text-[10px]">
-                  a apontar {targetOdds.toFixed(2)}
-                </p>
-              )}
-            </div>
+          <div className="rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-primary/25">
+            {totals}
           </div>
 
           {/* Every other number here says what happens if it lands. This one
               says whether it is worth backing at the price, which is the only
               one that decides whether a season ends up or down. It blocks
-              nothing: it puts the comparison on screen. */}
-          {(() => {
-            const value = slipValue(
-              legs.map((leg) => ({
-                modelProb: leg.modelProb,
-                odds: toOdds(leg.odds),
-              })),
-            );
-
-            if (!value) {
-              const blind = legs.some(
-                (leg) => leg.fixtureId === null && toOdds(leg.odds) > 1,
-              );
-              if (!blind) return null;
-              return (
-                <p className="sl-meta rounded-2xl bg-card px-3.5 py-2.5 text-[11px] leading-5 ring-1 ring-border">
-                  Um jogo metido à mão não tem previsão do modelo, por isso não
-                  dá para dizer se esta aposta vale a odd que estás a apanhar.
-                </p>
-              );
-            }
-
-            const good = value.edge > 0;
-            return (
-              <div
-                className={`rounded-2xl px-3.5 py-2.5 ring-1 ${
-                  good
-                    ? "bg-[hsl(var(--sl-green))]/8 ring-[hsl(var(--sl-green))]/25"
-                    : "bg-destructive/5 ring-destructive/25"
+              nothing: it puts the comparison on screen, in one line. */}
+          {value && (
+            <div
+              className={`rounded-2xl px-3.5 py-2 ring-1 ${
+                value.edge > 0
+                  ? "bg-[hsl(var(--sl-green))]/8 ring-[hsl(var(--sl-green))]/25"
+                  : "bg-destructive/5 ring-destructive/25"
+              }`}
+            >
+              <p
+                className={`flex items-center justify-between gap-2 text-[12px] font-bold ${
+                  value.edge > 0
+                    ? "text-[hsl(var(--sl-green))]"
+                    : "text-destructive"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`text-[12px] font-bold ${
-                      good
-                        ? "text-[hsl(var(--sl-green))]"
-                        : "text-destructive"
-                    }`}
-                  >
-                    {good ? "Tem valor" : "Sem valor"}
-                  </span>
-                  <span
-                    className={`sl-figure text-sm ${
-                      good
-                        ? "text-[hsl(var(--sl-green))]"
-                        : "text-destructive"
-                    }`}
-                  >
-                    {value.edge > 0 ? "+" : ""}
-                    {value.edge} pts
-                  </span>
-                </div>
-                <p className="sl-meta mt-1 text-[11px] leading-5">
-                  {describeValue(value)}
-                </p>
-              </div>
-            );
-          })()}
+                {value.edge > 0 ? "Tem valor" : "Sem valor"}
+                <span className="sl-figure text-[13px]">
+                  {value.edge > 0 ? "+" : ""}
+                  {value.edge} pts
+                </span>
+              </p>
+              {/* The two percentages the verdict is made of. Without them it
+                  is a word and a number nobody can check. */}
+              <p className="sl-meta mt-0.5 text-[11px] leading-5">
+                {describeValue(value)}
+              </p>
+            </div>
+          )}
+
+          {!value && legs.some((leg) => leg.fixtureId === null) && (
+            <p className="sl-meta text-[11px] leading-5">
+              Um jogo metido à mão não tem previsão do modelo, por isso não dá
+              para dizer se vale a odd que estás a apanhar.
+            </p>
+          )}
 
           {/* The app knew all of this already and only ever said it on a page
               nobody opens while deciding. Same numbers, at the one moment they
               could change something. */}
-          {tips.length > 0 && (
-            <div className="space-y-1 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-border">
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                O teu registo
-              </p>
-              {tips.map((tip) => (
-                <p
-                  key={tip.id}
-                  className={`text-[11px] leading-5 ${
-                    tip.tone === "good"
-                      ? "text-[hsl(var(--sl-green))]"
-                      : tip.tone === "bad"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {tip.text}
-                </p>
-              ))}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <label className="rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
-              <span className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                A apostar
-              </span>
-              <div className="mt-0.5 flex items-baseline gap-1">
-                <input
-                  inputMode="decimal"
-                  value={stakeInput ?? suggested.toFixed(2)}
-                  onChange={(event) => setStakeInput(event.target.value)}
-                  aria-label="Valor a apostar"
-                  className="w-full min-w-0 bg-transparent font-mono-data text-sm font-bold text-foreground focus:outline-none"
-                />
-                <span className="font-mono-data flex-none text-sm font-bold text-muted-foreground">
-                  €
-                </span>
-              </div>
-            </label>
-            <div className="rounded-2xl bg-[hsl(var(--sl-green))]/8 px-3 py-2 ring-1 ring-[hsl(var(--sl-green))]/20">
-              <span className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                Se entrar
-              </span>
-              <p className="mt-0.5 font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
-                {ready ? eur.format(stake * combined) : "—"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
-            <span className="sl-meta text-[11px]">Banca depois, se entrar</span>
-            <span className="sl-figure text-[15px] text-foreground">
-              {ready ? eur.format(bankroll + stake * (combined - 1)) : "—"}
-            </span>
-          </div>
-
-          {stakeInput !== null && Math.abs(stake - suggested) > 0.01 && (
-            <button
-              type="button"
-              onClick={() => setStakeInput(null)}
-              className="sl-meta text-[11px] underline"
+          {tips.map((tip) => (
+            <p
+              key={tip.id}
+              className={`text-[11px] leading-5 ${
+                tip.tone === "good"
+                  ? "text-[hsl(var(--sl-green))]"
+                  : tip.tone === "bad"
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+              }`}
             >
-              Voltar ao valor do quadro ({eur.format(suggested)})
-            </button>
-          )}
+              {tip.text}
+            </p>
+          ))}
 
           {!priced && (
             <p className="sl-meta text-[11px]">Falta a odd de algum jogo.</p>
@@ -537,14 +607,17 @@ export function BetComposer({
             </p>
           ))}
 
-          <Button
-            className="sl-btn-primary h-11 w-full text-sm disabled:opacity-40"
-            disabled={!ready || saving}
-            onClick={place}
-          >
-            <ListPlus className="mr-1.5 h-4 w-4" />
-            {saving ? "A guardar..." : `Registar o nível ${day}`}
-          </Button>
+          {stakeInput !== null && Math.abs(stake - suggested) > 0.01 && (
+            <button
+              type="button"
+              onClick={() => setStakeInput(null)}
+              className="sl-meta text-[11px] underline"
+            >
+              Voltar ao valor do quadro ({eur.format(suggested)})
+            </button>
+          )}
+
+          {registerButton}
         </div>
       )}
     </section>

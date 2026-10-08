@@ -300,20 +300,21 @@ export default function Home() {
          */}
         <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
           <h1 className="sl-section-title text-[15px]">Início</h1>
-          <p className="sl-meta mt-1 text-[11px]">
-            O que está a decorrer, e o que falta fazer hoje.
-          </p>
         </motion.div>
+
+        {/* What to do, before how it is going.
+            The duel card came first and pushed the day's bet under the fold,
+            so the page opened on a scoreboard instead of on the one thing
+            that cannot wait. */}
+        {board && (
+          <motion.div variants={fadeUp}>
+            <HomeChallenges board={board} news={newsCounts} />
+          </motion.div>
+        )}
 
         {rivals.length > 0 && (
           <motion.div variants={fadeUp}>
             <HomeRivals rivalries={rivals} news={news} />
-          </motion.div>
-        )}
-
-        {board && (
-          <motion.div variants={fadeUp}>
-            <HomeChallenges board={board} news={newsCounts} />
           </motion.div>
         )}
 

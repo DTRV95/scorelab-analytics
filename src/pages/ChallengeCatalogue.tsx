@@ -122,9 +122,6 @@ function ChallengeCard({
               </span>
             )}
           </div>
-          <p className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
-            {challengePitch(template)}
-          </p>
         </div>
         <ChevronRight
           className={`mt-0.5 h-4 w-4 flex-none text-muted-foreground transition-transform ${
@@ -135,6 +132,14 @@ function ChallengeCard({
 
       {open && (
         <div className="border-t border-border px-4 py-3">
+          {/* What this kind of challenge is, once somebody has asked about
+              this one. On the closed row it was three lines of the same text
+              on half the cards in the list, which is what turned eleven
+              choices into a page nobody reads to the end. */}
+          <p className="mb-3 text-[12px] leading-5 text-muted-foreground">
+            {challengePitch(template)}
+          </p>
+
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
             {lines.map((line) => (
               <div

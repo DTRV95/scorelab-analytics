@@ -1309,38 +1309,40 @@ export default function Challenges() {
           </motion.section>
         )}
 
-        <motion.section variants={fadeUp} className="sl-card px-4 py-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                {standings.length > 1 ? "Banca somada" : "A caminho de"}
-              </p>
-              {/* Solo, the money is already the headline of the card above and
-                  of the player card below; repeating it a third time is what
-                  makes a phone screen feel like a wall. What is missing there
-                  is the distance left to go, so that is what this says. */}
-              <p className="sl-figure mt-1 text-[1.7rem] leading-8 text-foreground">
-                {standings.length > 1
-                  ? eur.format(combined)
-                  : eur.format(Number(plan.target))}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-                {standings.length > 1 ? "Objetivo" : "Faltam"}
-              </p>
-              <p className="sl-figure mt-1 text-sm text-foreground">
-                {standings.length > 1
-                  ? eur.format(Number(plan.target))
-                  : eur.format(Math.max(0, Number(plan.target) - combined))}
-              </p>
-            </div>
+        {/* Where the challenge stands, on one line and a bar.
+            This was a card with two big figures, a bar and a line of small
+            print — four ways of saying the same thing on a screen where the
+            card above already has the money and the cards below have it
+            again. */}
+        <motion.section variants={fadeUp} className="sl-card px-4 py-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+            {/* The level is on the card above and on the player card below;
+                what neither of them says is the two players added up, and how
+                far the whole thing is from where it started. */}
+            <p className="text-[12.5px] font-semibold text-foreground">
+              {standings.length > 1
+                ? `${eur.format(combined)} somados`
+                : `Faltam ${eur.format(
+                    Math.max(0, Number(plan.target) - combined),
+                  )}`}
+            </p>
+            <p
+              className={`sl-meta text-[11px] ${
+                combined > startedWith + 0.005
+                  ? "font-semibold text-[hsl(var(--sl-green))]"
+                  : combined < startedWith - 0.005
+                    ? "font-semibold text-destructive"
+                    : ""
+              }`}
+            >
+              {sinceStart(combined, startedWith)}
+            </p>
           </div>
 
           {/* The bar tracks the days, not the money: a ladder that multiplies
               leaves the bankroll at 0.002% of a million for thirty of the
               thirty-eight days, and a bar that never moves says nothing. */}
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
             <motion.div
               className="h-full rounded-full [background:var(--sl-gradient)]"
               initial={{ width: 0 }}
@@ -1348,21 +1350,6 @@ export default function Challenges() {
               transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
             />
           </div>
-          <p className="sl-meta mt-1.5 text-[11px]">
-            Nível {day} de {rules.days} ·{" "}
-            <span
-              className={
-                combined > startedWith + 0.005
-                  ? "font-semibold text-[hsl(var(--sl-green))]"
-                  : combined < startedWith - 0.005
-                    ? "font-semibold text-destructive"
-                    : ""
-              }
-            >
-              {sinceStart(combined, startedWith)}
-            </span>
-            {standings.length > 1 ? "" : ` · ${eur.format(combined)} na banca`}
-          </p>
         </motion.section>
 
         <motion.div variants={fadeUp} className="grid gap-2 md:grid-cols-2">
@@ -1411,45 +1398,37 @@ export default function Challenges() {
           </motion.div>
         )}
 
+        {/* Two ways out of this page, side by side.
+            They were two full-width cards with an icon, a title and a line of
+            explanation each — a third of a phone screen to say "there is more
+            over there". */}
         {saved && (
-          <motion.div variants={fadeUp}>
+          <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2">
             {standings.length > 1 && (
               <button
                 type="button"
                 onClick={() => setDuelOpen(true)}
-                className="sl-card sl-tap mb-3 flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                className="sl-card sl-tap flex items-center gap-2 px-3 py-2.5 text-left"
               >
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
-                  <Swords className="h-4 w-4 text-primary" />
+                <Swords className="h-4 w-4 flex-none text-primary" />
+                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
+                  Frente a frente
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-foreground">
-                    Frente a frente
-                  </span>
-                  <span className="sl-meta block text-[11px]">
-                    Quem está à frente, e em quê
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+                <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
               </button>
             )}
 
             <Link
               to={`/desafios/${plan?.id ?? ""}/analise`}
-              className="sl-card sl-tap flex items-center gap-3 px-4 py-3.5"
+              className={`sl-card sl-tap flex items-center gap-2 px-3 py-2.5 ${
+                standings.length > 1 ? "" : "col-span-2"
+              }`}
             >
-              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
-                <BarChart3 className="h-4 w-4 text-primary" />
+              <BarChart3 className="h-4 w-4 flex-none text-primary" />
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
+                Análise de apostador
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold text-foreground">
-                  Abrir análise de apostador
-                </span>
-                <span className="sl-meta block text-[11px]">
-                  Em que mercados apostam e quais é que acertam
-                </span>
-              </span>
-              <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+              <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
             </Link>
           </motion.div>
         )}
@@ -1546,36 +1525,28 @@ export default function Challenges() {
             </span>
           </div>
 
-          {/* What the ladder costs, in the same card as the ladder. Two cards
-              about the same thing is one card too many on a phone — and a
-              bankroll tool that buries this is not doing its job. */}
-          <div className="space-y-2 border-b border-border p-4">
-            <div className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-              <span className="sl-meta min-w-0 flex-1 text-[11px]">
-                Chegar do nível {me?.day ?? 1} ao fim
-              </span>
-              <span className="font-mono-data flex-none text-sm font-bold text-foreground">
-                {chance < 0.0001
-                  ? `1 em ${Math.round(1 / chance).toLocaleString("pt-PT")}`
-                  : `${(chance * 100).toFixed(2)}%`}
-              </span>
-            </div>
+          {/* What the ladder costs, in the same card as the ladder, on one
+              line: the odds of finishing from here, and what one loss does.
+              Two boxes with four labels said no more than this. */}
+          <p className="sl-meta border-b border-border px-4 py-2.5 text-[11px] leading-5">
+            Daqui ao fim:{" "}
+            <span className="font-mono-data font-bold text-foreground">
+              {chance < 0.0001
+                ? `1 em ${Math.round(1 / chance).toLocaleString("pt-PT")}`
+                : `${(chance * 100).toFixed(2)}%`}
+            </span>
             {loss && (
-              <div className="rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-3 py-2">
-                <p className="sl-meta text-[11px]">Perder hoje deixa-te em</p>
-                <p className="mt-0.5 font-mono-data text-sm font-bold text-foreground">
+              <>
+                {" · perder hoje deixa-te em "}
+                <span className="font-mono-data font-bold text-foreground">
                   {eur.format(loss.bankrollAfter)}
-                  <span className="sl-meta font-normal">
-                    {loss.dayAfter === loss.dayBefore
-                      ? " · e ainda no nível 1"
-                      : ` · de volta ao nível ${loss.dayAfter}, que pede ${eur.format(
-                          ladder[loss.dayAfter - 1]?.stake ?? 0,
-                        )}`}
-                  </span>
-                </p>
-              </div>
+                </span>
+                {loss.dayAfter === loss.dayBefore
+                  ? ", ainda no nível 1"
+                  : `, de volta ao nível ${loss.dayAfter}`}
+              </>
             )}
-          </div>
+          </p>
 
           {/* The document's own columns, in its order, so the sheet on the
               table and the screen can be read side by side. */}
