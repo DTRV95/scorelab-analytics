@@ -364,60 +364,34 @@ describe("ProbabilityRadar board", () => {
 });
 
 describe("what opening a game shows", () => {
-  it("opens on the form the number was built from", async () => {
-    // A probability nobody can look behind is a number to be believed. This
-    // used to be two taps and a page away.
+  it("opens on the markets, and leaves the rest to the advanced analysis", async () => {
+    // The form behind the number was tried here and taken back out: the row
+    // is for reading the forecast, and the page built for the whole game is
+    // one tap away.
     mockFetchSequence();
     renderPage();
 
     fireEvent.click(await screen.findByText("Porto vs Nacional"));
 
-    expect(
-      await screen.findByText("A forma por trás do número"),
-    ).toBeInTheDocument();
-    // Goals per game, per side: 21 in 9 at home, 7 in 8 away.
-    expect(await screen.findByText(/2\.33 marcados/)).toBeInTheDocument();
-    expect(screen.getByText(/0\.88 marcados/)).toBeInTheDocument();
-    // And what the model made of it, against the league's own average.
-    expect(screen.getByText(/liga: 1.55/)).toBeInTheDocument();
-  });
-
-  it("leaves the per-market value to the advanced analysis", async () => {
-    // Typing odds into fifteen markets is a different job from reading the
-    // forecast, and it is the one thing that page has that this does not.
-    mockFetchSequence();
-    renderPage();
-
-    fireEvent.click(await screen.findByText("Porto vs Nacional"));
-    await screen.findByText("A forma por trás do número");
-
+    expect(await screen.findByText("Empate")).toBeInTheDocument();
+    expect(screen.queryByText("A forma por trás do número")).toBeNull();
     expect(screen.queryByText("Valor por mercado")).toBeNull();
     expect(
       screen.getByRole("button", { name: /análise avançada/i }),
     ).toBeInTheDocument();
   });
 
-  it("asks for the season only when a row is opened", async () => {
+  it("asks nothing extra of the engine when a row opens", async () => {
     mockFetchSequence();
     renderPage();
 
-    await screen.findByText("Porto vs Nacional");
-    const before = vi
-      .mocked(globalThis.fetch)
-      .mock.calls.filter((call) => String(call[0]).includes("/data/prefill"));
-    expect(before).toHaveLength(0);
+    fireEvent.click(await screen.findByText("Porto vs Nacional"));
+    await screen.findByText("Empate");
 
-    fireEvent.click(screen.getByText("Porto vs Nacional"));
-    await screen.findByText("A forma por trás do número");
-
-    await waitFor(() =>
-      expect(
-        vi
-          .mocked(globalThis.fetch)
-          .mock.calls.filter((call) =>
-            String(call[0]).includes("/data/prefill"),
-          ),
-      ).toHaveLength(1),
-    );
+    expect(
+      vi
+        .mocked(globalThis.fetch)
+        .mock.calls.filter((call) => String(call[0]).includes("/data/prefill")),
+    ).toHaveLength(0);
   });
 });
