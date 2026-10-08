@@ -1201,6 +1201,18 @@ describe("correcting a bet that was typed wrong", () => {
 });
 
 describe("managing challenges", () => {
+  it("says what the challenge is, every time it is opened", async () => {
+    // The table of rules is behind an icon, and somebody coming back after
+    // two weeks met a name and a ladder with nothing saying what it was for.
+    renderPage();
+
+    expect(
+      await screen.findByText(/Não é um plano, é uma perseguição/),
+    ).toBeInTheDocument();
+    // And its terms as they actually stand, in one line.
+    expect(screen.getByText(/38 níveis ·/)).toBeInTheDocument();
+  });
+
   it("shows the challenge in the address, and not a list of the others", async () => {
     // The chips that switched between challenges lived here, under the
     // title, and on a long name ran into it. Desafios is the page that lists

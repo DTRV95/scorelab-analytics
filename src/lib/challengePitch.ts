@@ -1,7 +1,10 @@
 import {
   ASSUMED_WIN_RATE,
+  CHALLENGE_TEMPLATES,
+  describeRules,
   expectedGrowth,
   ladderFor,
+  type ChallengeRules,
   type ChallengeTemplate,
 } from "@/lib/challengeRules";
 
@@ -99,4 +102,50 @@ export function challengePitch(template: ChallengeTemplate): string {
   }
 
   return `Multiplicar por ${multiple} em ${template.rules.days} níveis.`;
+}
+
+export interface ChallengeIntro {
+  /** What this challenge is, in a sentence. */
+  sentence: string;
+  /** Its terms in one line: the money, the levels, the stake, the odds. */
+  terms: string;
+}
+
+/**
+ * What somebody is getting into, said on the way in.
+ *
+ * Read off the challenge as it actually stands and not off the model it was
+ * copied from: the bankroll, the target and the rules can all be changed
+ * after it starts, and a description that kept advertising the model would be
+ * describing a challenge nobody is playing.
+ *
+ * The model is still asked one thing — whether it is a chase rather than a
+ * plan — because that is a judgement about the shape of the thing, not a
+ * figure that can be read off it.
+ */
+export function challengeIntro({
+  startingBankroll,
+  target,
+  rules,
+  templateKey,
+}: {
+  startingBankroll: number;
+  target: number;
+  rules: ChallengeRules;
+  templateKey?: string | null;
+}): ChallengeIntro {
+  const template = CHALLENGE_TEMPLATES.find((entry) => entry.key === templateKey);
+
+  return {
+    sentence: challengePitch({
+      key: templateKey ?? "proprio",
+      name: "",
+      blurb: "",
+      startingBankroll,
+      target,
+      rules,
+      longShot: template?.longShot,
+    }),
+    terms: `${eur.format(startingBankroll)} → ${eur.format(target)} · ${describeRules(rules)}`,
+  };
 }

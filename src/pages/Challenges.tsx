@@ -49,6 +49,7 @@ import {
   type ChallengeRules,
 } from "@/lib/challengeRules";
 import { nextMove, sinceStart } from "@/lib/challengeGuidance";
+import { challengeIntro } from "@/lib/challengePitch";
 import { planSchedule } from "@/lib/challengeSchedule";
 import { NextMoveCard } from "@/components/NextMoveCard";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
@@ -511,6 +512,22 @@ export default function Challenges() {
             },
           ],
     [saved, members, user, preview.starting_bankroll],
+  );
+
+  // What this challenge is, said every time somebody opens it: the rules
+  // card is behind an icon, and a challenge somebody comes back to after two
+  // weeks is a name and a ladder with nothing saying what it was for.
+  const intro = useMemo(
+    () =>
+      plan
+        ? challengeIntro({
+            startingBankroll: Number(plan.starting_bankroll),
+            target: Number(plan.target),
+            rules,
+            templateKey: plan.template_key,
+          })
+        : null,
+    [plan, rules],
   );
 
   const standings = useMemo(
@@ -1106,6 +1123,18 @@ export default function Challenges() {
           )}
           </div>
         </motion.div>
+
+        {/* Under the header and above everything that asks for something:
+            what this challenge is, before what to do about it today. The
+            whole table of rules stays one tap away, behind the icon. */}
+        {intro && (
+          <motion.div variants={fadeUp} className="sl-card px-4 py-3">
+            <p className="text-[12.5px] leading-6 text-foreground">
+              {intro.sentence}
+            </p>
+            <p className="sl-meta mt-1 text-[11px] leading-5">{intro.terms}</p>
+          </motion.div>
+        )}
 
         {ended && plan && (
           <motion.div
