@@ -355,6 +355,9 @@ export function updateTrackedBet(
             {
               ...bet,
               ...updates,
+              // Spreading a partial over it would make the type forget that
+              // an extra bet always has one.
+              id: bet.id,
             },
             bet.betPlaced && !bet.placedAt ? analysis.createdAt : undefined
           )
@@ -521,6 +524,7 @@ export function applyFixtureResults({
             ? recalculateTracking(
                 {
                   ...bet,
+                  id: bet.id,
                   resultStatus: settlement.resultStatus,
                   settledAt,
                 },
@@ -553,10 +557,17 @@ export function clearAnalysisModelAudit(analysisId: string): SavedAnalysis[] {
   return updated;
 }
 
-function recalculateTracking(
-  tracking: SavedAnalysis["tracking"],
+/**
+ * Works out what a bet is worth, keeping the shape it came in as.
+ *
+ * Generic on purpose: an extra bet carries an id and the main one does not,
+ * and a signature that flattened both to the looser of the two is what made
+ * every caller's array stop fitting where it was going.
+ */
+function recalculateTracking<T extends SavedAnalysis["tracking"]>(
+  tracking: T,
   fallbackPlacedAt?: string
-): SavedAnalysis["tracking"] {
+): T {
   let profitLoss = 0;
 
   if (!tracking.betPlaced) {

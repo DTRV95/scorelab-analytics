@@ -245,10 +245,13 @@ describe("the games on the home page", () => {
   it("asks for the board itself when nothing has stored one", async () => {
     // Somebody who opens the app and goes no further than Início never saw a
     // game: the stored copy is written by the pages they had not opened.
-    const asked = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
-    }));
+    const asked = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return {
+        ok: true,
+        json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
+      };
+    });
     vi.stubGlobal("fetch", asked);
 
     setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "green")]);

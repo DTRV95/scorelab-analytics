@@ -37,7 +37,19 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
 
-
+/** When the game is played, written out under its name. */
+function kickoffLabel(kickoff: string | null) {
+  if (!kickoff) return "";
+  const date = new Date(kickoff);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
 
 // Only the deviations get a line. "The model has been right here" repeated
 // down fifteen markets is noise that hides the two that matter.
