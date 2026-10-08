@@ -1,6 +1,7 @@
+import { AuthAside } from "@/components/AuthAside";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { BarChart3, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -32,46 +33,30 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 gradient-hero relative items-center justify-center p-12">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.06)_0%,_transparent_70%)]" />
-        <div className="relative max-w-md">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" strokeWidth={1.5} />
-            </div>
-            <span className="font-bold text-2xl text-foreground">ScoreLab</span>
-          </div>
-          <h2 className="text-3xl font-bold text-foreground mb-4">
-            Bem-vindo de volta ao teu <span className="text-primary">edge</span>.
-          </h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Acede às tuas análises, acompanha as oportunidades diárias e mantém a tua banca otimizada.
-          </p>
-          <div className="mt-12 grid grid-cols-2 gap-4">
-            {[
-              { label: "Mercados por Jogo", value: "15" },
-              { label: "Simulações por Análise", value: "10 000" },
-              { label: "Ligas Calibradas", value: "30+" },
-              { label: "Modelo", value: "Dixon-Coles" },
-            ].map((s) => (
-              <div key={s.label} className="rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-lg font-bold font-mono-data text-foreground mt-1">{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <AuthAside
+        title="Continua de onde ficaste."
+        lead="Os desafios a decorrer, o nível a que vais e a aposta que falta registar hoje."
+        points={[
+          "Onze competições com jogos, previsões e resultados automáticos",
+          "Cada aposta comparada com o que a liga costuma dar",
+          "O teu registo, por mercado e por faixa de odd",
+        ]}
+      />
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-primary-foreground" strokeWidth={1.5} />
-            </div>
-            <span className="font-bold text-lg text-foreground">ScoreLab</span>
-          </div>
+          <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-black text-white"
+              style={{ background: "var(--sl-gradient)" }}
+            >
+              SL
+            </span>
+            <span className="text-[15px] font-black tracking-[-0.02em] text-foreground">
+              ScoreLab
+            </span>
+          </Link>
 
           <h1 className="text-2xl font-bold text-foreground">Entrar</h1>
           <p className="text-sm text-muted-foreground mt-1">Introduz as tuas credenciais para continuar.</p>
