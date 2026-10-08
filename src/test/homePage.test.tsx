@@ -103,6 +103,8 @@ function setBoard(plans: PlanRecord[], bets: (PlanBet & { planId: string })[]) {
     members,
     allBets: bets,
     funds: [],
+    invites: [],
+    reload: () => {},
   };
 }
 

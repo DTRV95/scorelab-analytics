@@ -174,6 +174,18 @@ export interface PendingInvite {
   plan_name: string;
   invited_by_name: string;
   created_at: string;
+  /**
+   * What the challenge is, so it can be read before it is accepted.
+   *
+   * Somebody invited is not a member yet, so they cannot read the plan's own
+   * row — the invitation used to be a name and nothing else, and saying yes
+   * was the only way to find out what it was.
+   */
+  starting_bankroll: number;
+  target: number;
+  days: number;
+  template_key: string | null;
+  players: number;
 }
 
 /**

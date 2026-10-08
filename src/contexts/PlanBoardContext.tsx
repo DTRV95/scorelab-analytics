@@ -7,8 +7,10 @@ import {
   fetchBetsOfPlans,
   fetchFundsOfPlans,
   fetchMembersOfPlans,
+  fetchMyPendingInvites,
   fetchPlans,
   PLANS_CHANGED_EVENT,
+  type PendingInvite,
   type PlanBet,
   type PlanFunds,
   type PlanMember,
@@ -22,6 +24,7 @@ interface Loaded {
   allBets: (PlanBet & { planId: string })[];
   funds: (PlanFunds & { planId: string })[];
   started: number;
+  invites: PendingInvite[];
   loading: boolean;
 }
 
@@ -33,6 +36,7 @@ const EMPTY: Loaded = {
   allBets: [],
   funds: [],
   started: 0,
+  invites: [],
   loading: true,
 };
 
@@ -65,6 +69,15 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setState((current) => ({ ...current, loading: true }));
 
+    // Read beside the challenges, not inside one of them: an invitation is
+    // for a challenge this person is not in yet, so no page about their own
+    // challenges would ever have shown it.
+    fetchMyPendingInvites()
+      .then((invites) => {
+        if (!cancelled) setState((current) => ({ ...current, invites }));
+      })
+      .catch(() => undefined);
+
     fetchPlans()
       .then(async (plans) => {
         const ids = plans.map((plan) => plan.id);
@@ -82,7 +95,8 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
         ]);
         if (cancelled) return;
 
-        setState({
+        setState((current) => ({
+          ...current,
           board: homeBoard(userId, plans, members, placed, moved),
           bets: placed.filter((bet) => bet.userId === userId),
           plans,
@@ -93,7 +107,7 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
             .filter((entry) => entry.user_id === userId)
             .reduce((sum, entry) => sum + Number(entry.starting_bankroll), 0),
           loading: false,
-        });
+        }));
       })
       .catch(() => {
         // A figure that cannot be read is left unsaid rather than guessed at.

@@ -1,6 +1,7 @@
 import { createContext } from "react";
 import type { HomeBoard } from "@/lib/homeBoard";
 import type {
+  PendingInvite,
   PlanBet,
   PlanFunds,
   PlanMember,
@@ -25,6 +26,13 @@ export interface PlanBoardValue {
   funds: (PlanFunds & { planId: string })[];
   /** What they put on the table to start with, summed across challenges. */
   started: number;
+  /**
+   * Challenges somebody asked them to join and they have not answered.
+   *
+   * Read here rather than on one page, because an invitation that can only
+   * be seen inside a challenge is an invitation nobody sees.
+   */
+  invites: PendingInvite[];
   /** True until the first load finishes, so a figure is never guessed at. */
   loading: boolean;
   /** Read the challenges again. Mutations announce themselves, so this is
