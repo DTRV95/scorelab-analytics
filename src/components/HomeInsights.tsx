@@ -23,8 +23,11 @@ export function HomeInsights({
         <h2 className="text-[13px] font-bold text-foreground">
           O que os teus números dizem
         </h2>
+        {/* Análises is the long form of exactly these lines: the same bets,
+            by market, by price, by day of the week. Apostas is where a bet
+            outside a challenge gets registered, which is another job. */}
         <Link
-          to="/apostas"
+          to="/dashboard/analises"
           className="sl-meta flex flex-none items-center gap-1 text-[11px]"
         >
           Ver tudo <ArrowRight className="h-3 w-3" />
