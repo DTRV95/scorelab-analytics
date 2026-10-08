@@ -353,3 +353,91 @@ describe("the shelf of challenges that are over", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("as apostas de toda a gente", () => {
+  const open = {
+    id: "deles",
+    name: "Dobrar a banca",
+    starting_bankroll: 20,
+    target: 40,
+    created_by: "irmao",
+    start_date: null,
+    days: 14,
+    rules: {},
+    visible: true,
+    template_key: "dobrar",
+    ended_at: null,
+    ended_by: null,
+  };
+
+  function load() {
+    fetchPlans.mockResolvedValue([]);
+    fetchVisiblePlans.mockResolvedValue([open]);
+    fetchMembersOfPlans.mockResolvedValue([
+      { plan_id: "deles", user_id: "irmao", display_name: "Vilagreen", starting_bankroll: 20 },
+    ]);
+    fetchBetsOfPlans.mockResolvedValue([
+      {
+        planId: "deles",
+        id: "b1",
+        userId: "irmao",
+        legs: [
+          {
+            match: "FC Porto vs Rio Ave",
+            homeTeam: "FC Porto",
+            awayTeam: "Rio Ave",
+            league: "Liga Portugal",
+            market: "1X",
+            odds: 1.35,
+            modelProb: 78,
+            fixtureId: 1,
+            kickoff: null,
+            status: "green",
+          },
+        ],
+        odds: 1.35,
+        stake: 5,
+        day: 3,
+        status: "green",
+        profitLoss: 1.75,
+        placedAt: "2026-10-08T10:00:00.000Z",
+        settledAt: "2026-10-08T20:00:00.000Z",
+      },
+    ]);
+  }
+
+  it("mostra o que os outros apostaram, e onde", async () => {
+    load();
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "De toda a gente 1" }),
+    );
+
+    expect(await screen.findByText("Vilagreen")).toBeInTheDocument();
+    expect(screen.getByText("FC Porto vs Rio Ave")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Casa ou Empate \(1X\) · Liga Portugal/),
+    ).toBeInTheDocument();
+    // O resultado, e a odd a que foi.
+    expect(screen.getByText("+1,75 €")).toBeInTheDocument();
+    expect(screen.getAllByText("1.35").length).toBeGreaterThan(0);
+  });
+
+  it("explica o vazio, e como deixar de o ter", async () => {
+    fetchPlans.mockResolvedValue([]);
+    fetchVisiblePlans.mockResolvedValue([]);
+    fetchMembersOfPlans.mockResolvedValue([]);
+    fetchBetsOfPlans.mockResolvedValue([]);
+
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "De toda a gente 0" }),
+    );
+
+    expect(
+      await screen.findByText(/Ainda não há apostas de mais ninguém/),
+    ).toBeInTheDocument();
+  });
+});
