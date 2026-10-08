@@ -19,6 +19,8 @@ const plan = (id: string, name = "Plano Milhão"): PlanRecord => ({
   rules: MILLION_PLAN_RULES,
   visible: false,
   template_key: "milhao",
+  ended_at: null,
+  ended_by: null,
 });
 
 const member = (planId: string, userId: string, name: string): PlanMember => ({

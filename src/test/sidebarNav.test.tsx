@@ -44,6 +44,8 @@ const plan = (id: string, name: string): PlanRecord => ({
   rules: {},
   visible: false,
   template_key: "dobrar",
+  ended_at: null,
+  ended_by: null,
 });
 
 const member = (planId: string, userId: string, name: string): PlanMember => ({

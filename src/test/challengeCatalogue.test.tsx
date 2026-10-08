@@ -168,6 +168,8 @@ describe("seeing what everybody else is running", () => {
     rules: {},
     visible: true,
     template_key: "dobrar",
+  ended_at: null,
+  ended_by: null,
   };
 
   it("counts how many people are on each challenge", async () => {

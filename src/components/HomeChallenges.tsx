@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   Clock,
+  Flag,
   Plus,
   Target,
   Trophy,
@@ -18,8 +19,9 @@ const eur = new Intl.NumberFormat("pt-PT", {
 
 function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
   const { plan, standing, move } = entry;
-  const waiting = standing.openBets > 0;
-  const playable = move.state === "play" && !waiting;
+  const ended = plan.ended_at !== null;
+  const waiting = !ended && standing.openBets > 0;
+  const playable = !ended && move.state === "play" && !waiting;
 
   return (
     <Link
@@ -36,7 +38,9 @@ function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
                 : "bg-muted text-muted-foreground"
           }`}
         >
-          {waiting ? (
+          {ended ? (
+            <Flag className="h-4 w-4" />
+          ) : waiting ? (
             <Clock className="h-4 w-4" />
           ) : playable ? (
             <Zap className="h-4 w-4" />
@@ -75,9 +79,11 @@ function Row({ entry, news = 0 }: { entry: HomeChallenge; news?: number }) {
                   : "text-muted-foreground"
             }`}
           >
-            {waiting
-              ? `Fecha o nível ${standing.day} — ${standing.openBets === 1 ? "1 aposta" : `${standing.openBets} apostas`} por decidir`
-              : move.action}
+            {ended
+              ? "Terminado"
+              : waiting
+                ? `Fecha o nível ${standing.day} — ${standing.openBets === 1 ? "1 aposta" : `${standing.openBets} apostas`} por decidir`
+                : move.action}
           </p>
         </div>
 

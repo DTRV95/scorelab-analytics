@@ -33,6 +33,20 @@ export interface PlanRecord {
   visible: boolean;
   /** The ready-made model it was started from, for counting and ranking. */
   template_key: string | null;
+  /**
+   * When the challenge was given as over. Null while it is running.
+   *
+   * A challenge can end before its ladder does — desistiu-se, chegou-se ao
+   * alvo, ou deixou de fazer sentido. Until now the only way out was deleting
+   * it, which takes both players' record with it.
+   */
+  ended_at: string | null;
+  ended_by: string | null;
+}
+
+/** Whether a challenge still takes bets. */
+export function isPlanOpen(plan: { ended_at: string | null }): boolean {
+  return plan.ended_at === null;
 }
 
 export interface PlanTerms {
@@ -47,7 +61,7 @@ export interface PlanTerms {
 }
 
 const PLAN_COLUMNS =
-  "id, name, starting_bankroll, target, created_by, start_date, days, rules, visible, template_key";
+  "id, name, starting_bankroll, target, created_by, start_date, days, rules, visible, template_key, ended_at, ended_by";
 
 export interface PlanMember {
   plan_id: string;
@@ -305,6 +319,29 @@ export async function setPlanVisible(
     make_visible: visible,
   });
   if (error) throw error;
+}
+
+/**
+ * Gives a challenge as over, or puts it back on.
+ *
+ * The server refuses while a bet is still open — a challenge whose last bet
+ * nobody ever settled would freeze with a figure that is not the real one —
+ * and refuses to anybody but whoever created it, exactly as deleting and
+ * opening it to the public already do.
+ *
+ * Nothing is deleted: the bets, the ladder and the standings stay where they
+ * are, and reopening puts the challenge back exactly as it was.
+ */
+export async function setPlanEnded(
+  planId: string,
+  finish: boolean
+): Promise<void> {
+  const { error } = await client().rpc("set_plan_ended", {
+    plan: planId,
+    finish,
+  });
+  if (error) throw error;
+  announceChange();
 }
 
 /**

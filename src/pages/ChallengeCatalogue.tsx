@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Check,
   ChevronRight,
+  Flag,
   Star,
   Trophy,
   TriangleAlert,
@@ -360,17 +361,36 @@ export default function ChallengeCatalogue() {
 
         {plans.length > 0 && (
           <motion.div variants={fadeUp} className="space-y-2">
+            {/* Finished ones keep their place in the list, under a heading of
+                their own: they are a record, not something to continue. */}
             <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-              A decorrer
+              {plans.some((plan) => plan.ended_at === null)
+                ? "A decorrer"
+                : "Terminados"}
             </p>
-            {plans.map((plan) => (
+            {[...plans]
+              .sort(
+                (a, b) =>
+                  Number(a.ended_at !== null) - Number(b.ended_at !== null),
+              )
+              .map((plan) => (
               <Link
                 key={plan.id}
                 to={`/desafios/${plan.id}`}
                 className="sl-card sl-tap flex items-center gap-3 px-4 py-3.5"
               >
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
-                  <Trophy className="h-4 w-4 text-primary" />
+                <span
+                  className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${
+                    plan.ended_at === null
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {plan.ended_at === null ? (
+                    <Trophy className="h-4 w-4" />
+                  ) : (
+                    <Flag className="h-4 w-4" />
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
@@ -387,6 +407,11 @@ export default function ChallengeCatalogue() {
                     )}
                   </span>
                   <span className="sl-meta block text-[11px]">
+                    {plan.ended_at !== null && (
+                      <span className="font-semibold text-foreground">
+                        Terminado ·{" "}
+                      </span>
+                    )}
                     {eur.format(Number(plan.starting_bankroll))} →{" "}
                     {eur.format(Number(plan.target))} · {plan.days} níveis
                   </span>

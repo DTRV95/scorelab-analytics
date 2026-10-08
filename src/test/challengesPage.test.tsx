@@ -86,6 +86,8 @@ vi.mock("@/lib/planStore", async () => {
         rules: MILLION_PLAN_RULES,
         visible: false,
         template_key: "milhao",
+        ended_at: null,
+        ended_by: null,
       },
     ]),
     fetchPlanBetCounts: vi.fn(async () => ({ plan: 4, empty: 0 })),
@@ -1214,6 +1216,8 @@ describe("managing challenges", () => {
       rules: MILLION_PLAN_RULES,
       visible: false,
       template_key: "milhao",
+      ended_at: null,
+      ended_by: null,
     };
     vi.mocked(fetchPlans).mockResolvedValueOnce([
       { ...twin, id: "plan" },
@@ -1402,5 +1406,70 @@ describe("managing challenges", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Aceitar$/ }));
     expect(acceptInvite).toHaveBeenCalledWith("outro-plano");
+  });
+});
+
+describe("a challenge given as over", () => {
+  const ended = {
+    id: "plan",
+    name: "Plano Milhão",
+    starting_bankroll: 10,
+    target: 1000000,
+    created_by: "david",
+    start_date: null,
+    days: 38,
+    rules: MILLION_PLAN_RULES,
+    visible: false,
+    template_key: "milhao",
+    ended_at: "2026-10-02T18:00:00.000Z",
+    ended_by: "david",
+  };
+
+  it("says so, and stops asking for the next bet", async () => {
+    vi.mocked(fetchPlans).mockResolvedValueOnce([ended]);
+
+    renderPage();
+
+    expect(await screen.findByText("Desafio terminado")).toBeInTheDocument();
+    expect(screen.getByText(/02\/10\/2026/)).toBeInTheDocument();
+
+    // Nothing on the page asks for a bet any more: no slip, no next move, no
+    // money going in.
+    expect(screen.queryByRole("button", { name: /Registar o nível/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Inserir os jogos do nível/ }),
+    ).toBeNull();
+  });
+
+  it("keeps the record where it is", async () => {
+    vi.mocked(fetchPlans).mockResolvedValueOnce([ended]);
+
+    renderPage();
+
+    await screen.findByText("Desafio terminado");
+    // The bets, the players and the ladder are all still there.
+    expect(screen.getAllByText(/Nível \d+/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/David/).length).toBeGreaterThan(0);
+  });
+
+  it("offers to put it back on, to whoever created it", async () => {
+    vi.mocked(fetchPlans).mockResolvedValueOnce([ended]);
+
+    renderPage();
+
+    await screen.findByText("Desafio terminado");
+    expect(screen.getByRole("button", { name: "Reabrir" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reabrir este desafio" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers terminar while it is running", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Terminar este desafio" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Desafio terminado")).toBeNull();
   });
 });

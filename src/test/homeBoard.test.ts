@@ -20,6 +20,8 @@ function plan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     rules: MILLION_PLAN_RULES,
     visible: false,
     template_key: "milhao",
+    ended_at: null,
+    ended_by: null,
     ...overrides,
   };
 }
@@ -172,5 +174,36 @@ describe("money put into a bankroll, on the home page", () => {
     );
 
     expect(board.bankroll).toBe(10);
+  });
+});
+
+describe("a challenge that is over", () => {
+  it("asks for nothing, and still counts its money", () => {
+    const board = homeBoard(
+      "david",
+      [plan({ id: "a" }), plan({ id: "b", ended_at: "2026-10-02T18:00:00.000Z" })],
+      [member("a"), member("b")],
+      [],
+    );
+
+    // Both are still on the page, and the total is still the total.
+    expect(board.challenges.map((entry) => entry.plan.id)).toEqual(["a", "b"]);
+    expect(board.bankroll).toBe(20);
+    // Only the one still running is asked to bet.
+    expect(board.toPlay.map((entry) => entry.plan.id)).toEqual(["a"]);
+  });
+
+  it("stays out of the queue to close, whatever it is carrying", () => {
+    // Ending needs every bet settled, so this should not happen — and if a
+    // row ever does survive, the home page still must not send somebody to a
+    // challenge that is over.
+    const board = homeBoard(
+      "david",
+      [plan({ id: "b", ended_at: "2026-10-02T18:00:00.000Z" })],
+      [member("b")],
+      [bet("b", "pending")],
+    );
+
+    expect(board.toClose).toEqual([]);
   });
 });
