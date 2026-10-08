@@ -203,6 +203,14 @@ export interface Summary {
   /** The biggest single day, up and down. */
   best: number;
   worst: number;
+  /**
+   * The hit rate these prices demanded before a cent of profit.
+   *
+   * Carried up from the band so that the record can be read as a verdict
+   * rather than a number: 68% looks healthy until the prices behind it wanted
+   * 72%. Null when nothing is decided.
+   */
+  breakEven: number | null;
 }
 
 /** The whole record in one row of figures. */
@@ -226,5 +234,6 @@ export function summarise(bets: PlanBet[]): Summary {
     worst: decided.length
       ? round(Math.min(...decided.map((bet) => bet.profitLoss)))
       : 0,
+    breakEven: all.breakEven,
   };
 }

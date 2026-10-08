@@ -58,18 +58,19 @@ function Detail({
 }
 
 /**
- * The line the betting drew.
+ * The line itself, without a card around it.
  *
- * One series, so no legend: the heading names it. Days still open are not on
- * it and neither is money put into the bankroll — both would draw the line
- * somewhere it has not actually been.
+ * Apart from the card so that the home page can put it under the bankroll it
+ * belongs to, instead of drawing the same money twice on the same screen.
  */
-export function BankrollTrend({
+export function TrendChart({
   startingBankroll,
   bets,
+  height = 132,
 }: {
   startingBankroll: number;
   bets: PlanBet[];
+  height?: number;
 }) {
   const points = bankrollTrend(startingBankroll, bets);
 
@@ -78,32 +79,9 @@ export function BankrollTrend({
   if (points.length < 2) return null;
 
   const { low, high } = trendRange(points, startingBankroll);
-  const last = points[points.length - 1];
-  const moved = last.bankroll - startingBankroll;
 
   return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-end justify-between gap-3 px-4 pb-1 pt-3.5">
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold text-foreground">
-            A banca, nível a nível
-          </h2>
-          <p className="sl-meta text-[11px]">
-            {points.length} níveis fechados, desde{" "}
-            {eur.format(startingBankroll)}
-          </p>
-        </div>
-        <p
-          className={`sl-figure flex-none text-[17px] ${
-            moved >= 0 ? "text-[hsl(var(--sl-green))]" : "text-destructive"
-          }`}
-        >
-          {moved >= 0 ? "+" : ""}
-          {eur.format(moved)}
-        </p>
-      </div>
-
-      <div className="h-[132px] w-full px-1 pb-2">
+    <div className="w-full px-1 pb-2" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
@@ -142,7 +120,52 @@ export function BankrollTrend({
             />
           </AreaChart>
         </ResponsiveContainer>
+    </div>
+  );
+}
+
+/**
+ * The line the betting drew.
+ *
+ * One series, so no legend: the heading names it. Days still open are not on
+ * it and neither is money put into the bankroll — both would draw the line
+ * somewhere it has not actually been.
+ */
+export function BankrollTrend({
+  startingBankroll,
+  bets,
+}: {
+  startingBankroll: number;
+  bets: PlanBet[];
+}) {
+  const points = bankrollTrend(startingBankroll, bets);
+  if (points.length < 2) return null;
+
+  const moved = points[points.length - 1].bankroll - startingBankroll;
+
+  return (
+    <section className="sl-card overflow-hidden">
+      <div className="flex items-end justify-between gap-3 px-4 pb-1 pt-3.5">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold text-foreground">
+            A banca, nível a nível
+          </h2>
+          <p className="sl-meta text-[11px]">
+            {points.length} níveis fechados, desde{" "}
+            {eur.format(startingBankroll)}
+          </p>
+        </div>
+        <p
+          className={`sl-figure flex-none text-[17px] ${
+            moved >= 0 ? "text-[hsl(var(--sl-green))]" : "text-destructive"
+          }`}
+        >
+          {moved >= 0 ? "+" : ""}
+          {eur.format(moved)}
+        </p>
       </div>
+
+      <TrendChart startingBankroll={startingBankroll} bets={bets} />
     </section>
   );
 }
