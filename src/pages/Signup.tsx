@@ -1,3 +1,4 @@
+import { AuthAside } from "@/components/AuthAside";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { BarChart3, ArrowRight, MailCheck } from "lucide-react";
@@ -41,32 +42,29 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <div className="hidden lg:flex lg:w-1/2 gradient-hero relative items-center justify-center p-12">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsla(142,71%,45%,0.06)_0%,_transparent_70%)]" />
-        <div className="relative max-w-md">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" strokeWidth={1.5} />
-            </div>
-            <span className="font-bold text-2xl text-foreground">ScoreLab</span>
-          </div>
-          <h2 className="text-3xl font-bold text-foreground mb-4">
-            Começa hoje a encontrar o teu <span className="text-primary">edge</span>.
-          </h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Uma bancada de análise orientada por dados: probabilidades, deteção de valor e disciplina de banca num só lugar. Grátis.
-          </p>
-        </div>
-      </div>
+      <AuthAside
+        title="Dez euros e um desafio."
+        lead="Escolhes um modelo, a aplicação diz-te quanto apostar e a que odd em cada nível, e fecha os resultados sozinha."
+        points={[
+          "Conta gratuita, sem cartão e sem casa de apostas ligada",
+          "Dez desafios prontos, do mais fácil ao que quase nunca sai",
+          "Joga sozinho, ou convida alguém para o mesmo desafio",
+        ]}
+      />
 
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-primary-foreground" strokeWidth={1.5} />
-            </div>
-            <span className="font-bold text-lg text-foreground">ScoreLab</span>
-          </div>
+          <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-black text-white"
+              style={{ background: "var(--sl-gradient)" }}
+            >
+              SL
+            </span>
+            <span className="text-[15px] font-black tracking-[-0.02em] text-foreground">
+              ScoreLab
+            </span>
+          </Link>
 
           {awaitingConfirmation ? (
             <div className="text-center">

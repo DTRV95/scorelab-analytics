@@ -1,796 +1,535 @@
-﻿import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Link } from "react-router-dom";
-import { motion, useMotionValue, useTransform, useInView } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
-  BarChart3,
-  TrendingUp,
-  Target,
-  Shield,
-  Zap,
-  Clock,
-  Download,
-  BookmarkCheck,
   ArrowRight,
-  ChevronRight,
-  Radar,
-  Crosshair,
+  BarChart3,
+  Check,
+  Globe,
+  Percent,
+  Swords,
+  Ticket,
+  Trophy,
 } from "lucide-react";
+import { PublicBoard } from "@/components/PublicBoard";
+import { COVERED_LEAGUES } from "@/lib/boardLeagues";
 
-const fadeIn = {
+/**
+ * The page everybody meets before signing in.
+ *
+ * It used to be a dark page advertising a product that no longer exists —
+ * Poisson engines, Kelly calculators, saved analyses — while the app behind
+ * the login had become something else: challenges climbed level by level, a
+ * board of games with each competition's own rates beside them, and a record
+ * of every bet.
+ *
+ * It is the same app now, in the same clothes, and it opens with the thing
+ * the app is for: the probabilities of the games being played, readable
+ * without an account. Asking somebody to sign up to see a number that is the
+ * same for everybody is asking for trust before giving any.
+ */
+
+const ease = [0.22, 0.61, 0.36, 1] as const;
+
+const rise = {
   hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] as const },
-  }),
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
 };
 
-const features = [
-  { icon: BarChart3, title: "Motor Probabilístico Poisson", desc: "Modela os desfechos do jogo com distribuições estatísticas avançadas." },
-  { icon: TrendingUp, title: "Deteção de Apostas de Valor", desc: "Compara as probabilidades do modelo com as odds do mercado para encontrar edge." },
-  { icon: Target, title: "Calculadora de Stake (Kelly)", desc: "Dimensiona a entrada ideal com base no edge e na tua banca." },
-  { icon: Shield, title: "Índice de Confiança", desc: "Medidor de confiança 0–10 sustentado em sinais de qualidade dos dados." },
-  { icon: Clock, title: "Histórico de Análises", desc: "Acompanha e revê todas as análises que fizeste." },
-  { icon: Zap, title: "Construtor de Múltiplas", desc: "Combina seleções e acompanha as tuas apostas múltiplas." },
-  { icon: Download, title: "Exportação de Dados", desc: "Descarrega as tuas análises num ficheiro para backup ou análise externa." },
-  { icon: BookmarkCheck, title: "Análises Guardadas", desc: "Guarda e organiza as tuas análises mais importantes." },
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+
+const SHOW = { once: true, amount: 0.3 } as const;
+
+/** What the app does, in the order somebody scrolling would ask it. */
+const WHAT: {
+  icon: typeof Trophy;
+  tag: string;
+  title: string;
+  text: string;
+  points: string[];
+}[] = [
+  {
+    icon: Percent,
+    tag: "Jogos",
+    title: "A probabilidade de cada mercado, já calculada",
+    text: "Os jogos das competições cobertas chegam sozinhos, com quinze mercados cada um: resultado, golos, ambas marcam e as combinações. Por baixo de cada jogo, os mercados em que ele foge à própria liga.",
+    points: [
+      "Sete dias, um dia de cada vez, agrupados por competição",
+      "«Ambas Marcam 57% · a liga dá 49%» — a escala ao lado do número",
+      "Nenhuma odd pelo meio: aqui é só o que costuma acontecer",
+    ],
+  },
+  {
+    icon: Trophy,
+    tag: "Desafios",
+    title: "Uma escada que diz quanto apostar",
+    text: "Escolhes um desafio e ele faz as contas, nível a nível: quanto entra e a que odd. Ganhas, sobes um degrau; perdes, desces — e a conta refaz-se a partir da banca que tens mesmo, não da que estava no papel.",
+    points: [
+      "Dez modelos prontos, do mais fácil ao que quase nunca sai",
+      "A dificuldade de cada um medida por simulação, não por opinião",
+      "Terminar guarda tudo numa prateleira, com o que deu",
+    ],
+  },
+  {
+    icon: Globe,
+    tag: "Ligas",
+    title: "O que cada competição costuma dar",
+    text: "A época inteira contada, mercado a mercado: quantas vezes a casa ganha, quantas vezes há mais de 2.5, quantas vezes marcam as duas — sempre com o número de jogos por trás da percentagem.",
+    points: [
+      "Golos por jogo, e a média em casa e fora",
+      "Top 3 por forma, com o V-E-D à vista",
+      "Onze competições, sem escrever nada",
+    ],
+  },
+  {
+    icon: BarChart3,
+    tag: "Análises",
+    title: "O teu registo, sem conversa",
+    text: "Cada aposta fica contada por mercado, por faixa de odd e por número de jogos no boletim. Ao lado de cada taxa está o que o preço exigia para se pagar, que é a comparação que decide se o ano acaba acima ou abaixo.",
+    points: [
+      "Uma percentagem só aparece quando há apostas que cheguem",
+      "Verde é bom, vermelho é mau, cinzento é cedo demais",
+      "As apostas de fora dos desafios contam na mesma",
+    ],
+  },
+  {
+    icon: Swords,
+    tag: "A dois",
+    title: "O mesmo desafio, dois jogadores",
+    text: "Cada um com a sua banca, os dois a ver as apostas um do outro. O Início conta o que aconteceu desde a última vez que lá foste, e diz quem está à frente e por quanto.",
+    points: [
+      "Convites por email, e cada um sai quando quiser",
+      "Frente a frente: lucro, eficácia e melhor série",
+      "Ou sozinho, que funciona exactamente na mesma",
+    ],
+  },
 ];
 
-const steps = [
-  { num: "01", title: "Introduz os Dados do Jogo", desc: "Estatísticas das equipas, forma recente e odds do mercado." },
-  { num: "02", title: "Corre o Modelo", desc: "O motor Poisson + Monte Carlo corre 10 000 simulações do jogo." },
-  { num: "03", title: "Deteta o Valor", desc: "Compara modelo e mercado para encontrar odds mal avaliadas." },
-  { num: "04", title: "Dimensiona a Stake", desc: "O critério de Kelly otimiza a tua entrada." },
+const STEPS = [
+  {
+    num: "01",
+    title: "Vê os jogos",
+    text: "A lista aqui em cima é a mesma de lá dentro. Sem conta, sem nada.",
+  },
+  {
+    num: "02",
+    title: "Escolhe um desafio",
+    text: "Ele diz quanto apostar e a que odd em cada nível, a partir da tua banca.",
+  },
+  {
+    num: "03",
+    title: "Regista e deixa andar",
+    text: "Os resultados dos jogos cobertos fecham-se sozinhos. A escada anda.",
+  },
 ];
 
-const radarPreview: Array<{ home: string; away: string; league: string; market: string; odds: number; modelProb: number; edge: number; conf: number; decision: "Apostar" | "Cautela" | "Não Apostar"; tag?: string; best?: boolean }> = [
-  { home: "Arsenal", away: "Chelsea", league: "Premier League", market: "Mais de 2.5", odds: 1.80, modelProb: 67.4, edge: 11.8, conf: 9, decision: "Apostar", tag: "Expetativa de muitos golos", best: true },
-  { home: "Liverpool", away: "Man City", league: "Premier League", market: "Ambas Marcam", odds: 1.75, modelProb: 62.1, edge: 5.0, conf: 7, decision: "Apostar", tag: "Forte concordância do modelo" },
-  { home: "Barcelona", away: "Real Madrid", league: "La Liga", market: "Mais de 3.5", odds: 2.80, modelProb: 42.3, edge: 6.6, conf: 7, decision: "Apostar" },
-  { home: "Bayern", away: "Dortmund", league: "Bundesliga", market: "Mais de 2.5", odds: 1.55, modelProb: 72.8, edge: 8.3, conf: 8, decision: "Apostar", tag: "Forte concordância do modelo" },
-  { home: "PSG", away: "Lyon", league: "Ligue 1", market: "Ambas Marcam", odds: 1.90, modelProb: 58.4, edge: 5.8, conf: 6, decision: "Cautela" },
-  { home: "Juventus", away: "AC Milan", league: "Serie A", market: "Menos de 2.5", odds: 1.95, modelProb: 54.2, edge: 2.9, conf: 5, decision: "Cautela" },
-];
+function Mark() {
+  return (
+    <span
+      className="flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-black text-white"
+      style={{ background: "var(--sl-gradient)" }}
+    >
+      SL
+    </span>
+  );
+}
 
-const whyDifferent = [
-  "Não são previsões — são probabilidades",
-  "Não é adivinhar — são decisões com dados",
-  "Comparação real com o mercado",
-  "Construído para edge a longo prazo",
-];
-
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!isInView) return;
-    let start = 0;
-    const duration = 1500;
-    const increment = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start * 10) / 10);
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [isInView, target]);
-
-  const formatted =
-    target % 1 !== 0
-      ? count.toFixed(1)
-      : Math.round(count).toLocaleString("pt-PT");
-  return <span ref={ref} className="font-mono-data">{formatted}{suffix}</span>;
+/**
+ * One screen of the app, in the frame it was taken on.
+ *
+ * Only the top of the screen is shown, fading into the frame: a phone at full
+ * height would set the height of everything beside it.
+ */
+function Phone({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.8rem] bg-[hsl(var(--sl-nav))] p-1.5 shadow-[0_30px_60px_-24px_hsla(222,47%,11%,0.45),0_12px_24px_-12px_hsla(222,47%,11%,0.25)]">
+      <div className="relative max-h-[15rem] overflow-hidden rounded-[1.4rem]">
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          width={390}
+          height={844}
+          className="block w-full"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[hsl(var(--sl-nav))] to-transparent"
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function Landing() {
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const glowX = useTransform(mouseX, [0, 1400], [-120, 120]);
-  const glowY = useTransform(mouseY, [0, 900], [-80, 80]);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  };
-
   return (
-    <div className="sl-dark-scope relative min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
-      <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_15%_12%,rgba(34,211,238,0.14),transparent_20%),radial-gradient(circle_at_82%_10%,rgba(34,197,94,0.12),transparent_18%),radial-gradient(circle_at_18%_42%,rgba(34,211,238,0.08),transparent_24%),radial-gradient(circle_at_76%_58%,rgba(34,197,94,0.07),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(34,211,238,0.07),transparent_24%),linear-gradient(180deg,rgba(6,11,20,1)_0%,rgba(7,17,31,1)_30%,rgba(6,13,24,1)_64%,rgba(5,12,21,1)_100%)]" />
-      <div className="fixed inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:88px_88px] opacity-40" />
-      {/* Nav */}
-      <nav className="fixed top-0 z-50 w-full border-b border-white/8 bg-background/66 backdrop-blur-2xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_10px_30px_rgba(34,211,238,0.18)]">
-              <div className="absolute inset-[1px] rounded-[11px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
-              <BarChart3 className="relative w-4 h-4 text-cyan-100" strokeWidth={1.7} />
-            </div>
-            <div>
-              <span className="block bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-lg font-black tracking-[-0.04em] text-transparent">ScoreLab</span>
-              <span className="-mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-white/34 sm:block">Estatística de Futebol</span>
-            </div>
+    <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(60rem_40rem_at_80%_-10%,hsla(14,100%,50%,0.16),transparent_60%),radial-gradient(45rem_30rem_at_0%_20%,hsla(152,72%,30%,0.10),transparent_55%),linear-gradient(180deg,hsl(var(--sl-surface))_0%,hsl(var(--background))_45%)]" />
+
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+          <Link to="/" className="flex items-center gap-2.5">
+            <Mark />
+            <span className="text-[15px] font-black tracking-[-0.02em] text-foreground">
+              ScoreLab
+            </span>
           </Link>
-          <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] p-1 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] md:flex">
-            <a href="#features" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Funcionalidades</a>
-            <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-white/[0.06] hover:text-foreground">Como Funciona</a>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Entrar</Button></Link>
-            <Link to="/signup"><Button variant="hero" size="sm">Começar Grátis</Button></Link>
-          </div>
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 md:pb-24 md:pt-32" onMouseMove={handleMouseMove}>
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <motion.div
-          className="absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
-          style={{ x: glowX, y: glowY }}
-        />
-        <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            className="absolute w-[600px] h-[600px] rounded-full"
-            style={{
-              background: "radial-gradient(circle, hsla(142,71%,45%,0.04) 0%, transparent 70%)",
-              top: "10%",
-              left: "60%",
-            }}
-            animate={{
-              x: [0, 30, -20, 0],
-              y: [0, -20, 30, 0],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute w-[400px] h-[400px] rounded-full"
-            style={{
-              background: "radial-gradient(circle, hsla(222,47%,20%,0.15) 0%, transparent 70%)",
-              top: "50%",
-              left: "20%",
-            }}
-            animate={{
-              x: [0, -30, 20, 0],
-              y: [0, 20, -30, 0],
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-
-        <div className="relative mx-auto max-w-7xl lg:grid lg:grid-cols-[1fr_0.84fr] lg:items-start lg:gap-10">
-          <motion.div
-            className="max-w-3xl relative z-10 lg:-mt-6"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.1 } },
-            }}
-          >
-            <motion.div variants={fadeIn} custom={0} className="mb-6">
-              <Badge variant="outline" className="gap-2 border-primary/18 bg-[linear-gradient(90deg,rgba(34,211,238,0.09),rgba(34,197,94,0.08))] py-1.5 text-muted-foreground shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Análise Estatística de Futebol — Grátis
-              </Badge>
-            </motion.div>
-            <motion.h1 variants={fadeIn} custom={1} className="max-w-4xl text-4xl sm:text-5xl font-black leading-[0.98] sm:leading-[0.96] tracking-[-0.05em] sm:tracking-[-0.065em] text-foreground md:text-7xl xl:text-[5.65rem]">
-              O Mercado{" "}
-              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_45%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Erra
-              </span>
-              .{" "}
-              <span className="text-gradient-primary">Aproveita.</span>
-            </motion.h1>
-            <motion.p variants={fadeIn} custom={2} className="mt-5 sm:mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-muted-foreground md:text-xl">
-              Simulamos cada jogo 10 000 vezes para encontrar o valor que as odds escondem. Grátis.
-            </motion.p>
-            <motion.div variants={fadeIn} custom={3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link to="/signup"><Button variant="hero" size="xl">Começar Grátis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
-              <a href="#radar"><Button variant="hero-outline" size="xl"><Radar className="w-4 h-4 mr-1" /> Ver Exemplo de Análise</Button></a>
-            </motion.div>
-
-            {/* Animated Stats */}
-            <motion.div variants={fadeIn} custom={4} className="mt-8 sm:mt-10 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3">
-              {[
-                { value: 15, suffix: "", label: "Mercados por Jogo" },
-                { value: 10000, suffix: "", label: "Simulações por Análise" },
-                { value: 30, suffix: "+", label: "Ligas Calibradas" },
-              ].map(s => (
-                <Card key={s.label} className="rounded-2xl border-white/8 bg-[linear-gradient(180deg,rgba(34,211,238,0.055),rgba(255,255,255,0.025))] text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-                  <CardContent className="p-2.5 sm:p-4">
-                    <p className="text-lg sm:text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} suffix={s.suffix} /></p>
-                    <p className="mt-0.5 text-[10px] leading-tight sm:text-xs text-muted-foreground">{s.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* Hero Dashboard Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="relative mt-4 hidden lg:block lg:mt-[3.5rem] lg:max-w-[520px] lg:justify-self-end"
-          >
-            <div className="relative">
-              <div className="absolute -inset-[1px] rounded-[30px] bg-[linear-gradient(135deg,rgba(34,211,238,0.35),rgba(34,197,94,0.2),rgba(34,211,238,0.1))] opacity-80 blur-[2px]" />
-              <div className="absolute inset-0 rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.14),transparent_34%)]" />
-              <div className="absolute left-5 top-5 h-8 w-8 rounded-tl-[18px] border-l border-t border-cyan-300/25" />
-              <div className="absolute bottom-5 right-5 h-8 w-8 rounded-br-[18px] border-b border-r border-emerald-300/25" />
-              <div className="rounded-[28px] border border-primary/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.94),rgba(9,16,27,0.96))] p-4 shadow-[0_24px_64px_rgba(0,0,0,0.36)] backdrop-blur-xl">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
-                  <h3 className="mt-1.5 text-lg font-semibold text-foreground">Visão de valor ao vivo</h3>
-                </div>
-                <div className="rounded-full bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary ring-1 ring-primary/20">
-                  Live
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2.5">
-                {[
-                  { label: "Confiança", value: "8.6", sub: "Alta" },
-                  { label: "Edge", value: "+11.8%", sub: "Premium" },
-                  { label: "Risco", value: "Baixo", sub: "Controlado" },
-                  { label: "Stake", value: "2.4%", sub: "Kelly" },
-                ].map((item, i) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 + i * 0.06 }}
-                    className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-3"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                    <p className="mt-1 text-lg font-bold font-mono-data text-foreground">{item.value}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{item.sub}</p>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">Tendência</p>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">7D</p>
-                  </div>
-                  <div className="mt-4 flex h-16 items-end gap-1.5">
-                    {[34, 56, 48, 72, 68, 84, 79, 92].map((height, i) => (
-                      <motion.div
-                        key={`${height}-${i}`}
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: `${height}%`, opacity: 1 }}
-                        transition={{ delay: 1 + i * 0.05, duration: 0.4 }}
-                        className={`flex-1 rounded-t-xl ${i > 5 ? "bg-[linear-gradient(180deg,#34d399,#22d3ee)]" : "bg-white/15"}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/5 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">Melhor Sinal</p>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Hoje</p>
-                  </div>
-                  <div className="mt-3 space-y-2.5">
-                    {[
-                      { match: "Arsenal vs Chelsea", market: "Mais de 2.5", tone: "bg-primary/10 text-primary" },
-                      { match: "Liverpool vs Man City", market: "Ambas Marcam", tone: "bg-emerald-500/10 text-emerald-300" },
-                    ].map((row) => (
-                      <div key={row.match} className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
-                        <div>
-                          <p className="text-sm font-medium leading-tight text-foreground">{row.match}</p>
-                          <p className="text-[11px] text-muted-foreground">{row.market}</p>
-                        </div>
-                        <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${row.tone}`}>
-                          Sinal
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Value Radar Preview */}
-      <section id="radar" className="relative scroll-mt-16 border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Radar className="w-3 h-3" /> Exemplo do Radar
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-              O Teu{" "}
-              <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Value Radar
-              </span>
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Analisa jogos e o radar ordena as tuas melhores oportunidades por edge e confiança. Um exemplo:</p>
-          </div>
-
-          <div className="mb-6 hidden gap-4 md:grid md:grid-cols-3">
+          <nav className="hidden items-center gap-1 md:flex">
             {[
-              { label: "Oportunidades no exemplo", value: "6 picks", hint: "Ordenadas por edge e confiança" },
-              { label: "Melhor confiança", value: "9 / 10", hint: "O cartão mais forte do quadro" },
-              { label: "Maior diferença de valor", value: "+11.8%", hint: "Diferença entre modelo e mercado" },
-            ].map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              ["#jogos", "Jogos de hoje"],
+              ["#o-que-faz", "O que faz"],
+              ["#ligas", "Ligas"],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="rounded-lg px-3 py-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-              </motion.div>
+                {label}
+              </a>
             ))}
-          </div>
+          </nav>
 
-          {/* Sort controls */}
-          <div className="flex items-center gap-2 mb-4 justify-end">
-            <span className="text-xs text-muted-foreground mr-1">Ordenar:</span>
-            <button
-              onClick={() => {/* static preview, no-op */}}
-              className="px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary ring-1 ring-primary/20"
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="rounded-lg px-3 py-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
-              Edge %
-            </button>
-            <button
-              onClick={() => {/* static preview, no-op */}}
-              className="px-3 py-1 rounded-lg text-xs font-medium bg-white/5 text-muted-foreground ring-1 ring-white/10 hover:bg-white/10 transition-colors"
+              Entrar
+            </Link>
+            <Link
+              to="/signup"
+              className="sl-btn-primary inline-flex h-9 items-center gap-1.5 px-4 text-[13px]"
             >
-              Confiança
-            </button>
-          </div>
-
-          {/* Scanner table */}
-          <div className="overflow-hidden rounded-[32px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] shadow-[0_28px_80px_-26px_rgba(34,211,238,0.20)] backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-white/6 px-5 py-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Quadro de oportunidades</p>
-                <p className="mt-1 text-sm font-medium text-foreground">Exemplo do quadro que vais ter depois de analisares jogos</p>
-              </div>
-              <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Pré-visualização
-              </div>
-            </div>
-            {/* Header */}
-            <div className="hidden md:grid grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 px-5 py-3 border-b border-white/5">
-              {["Jogo", "Mercado", "Odd", "Modelo %", "Edge", "Confiança", "Decisão"].map(h => (
-                <span key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{h}</span>
-              ))}
-            </div>
-
-            {/* Rows */}
-            {radarPreview.map((item, i) => (
-              <motion.div
-                key={`${item.home}-${item.away}`}
-                initial={{ opacity: 0, x: -12 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.06 }}
-                className={`
-                  ${i > 2 ? "hidden md:grid" : "grid"} grid-cols-1 md:grid-cols-[2fr_1fr_0.7fr_0.8fr_0.8fr_0.8fr_0.8fr] gap-2 md:gap-2 items-center px-4 md:px-5 py-4
-                  border-b border-white/5 last:border-b-0
-                  hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group
-                  ${item.best ? "bg-[linear-gradient(90deg,rgba(34,211,238,0.08),rgba(34,197,94,0.06))]" : ""}
-                `}
-              >
-                {/* Match Info */}
-                <div>
-                  {item.best && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[linear-gradient(90deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] text-primary ring-1 ring-primary/30 mb-1.5 shadow-[0_0_16px_rgba(34,211,238,0.12)]">
-                      🔥 Melhor Valor do Quadro
-                    </span>
-                  )}
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {item.home} vs {item.away}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">{item.league}</span>
-                    {item.tag && (
-                      <span className="text-[10px] text-primary/70 italic">· {item.tag}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mobile compact summary */}
-                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 md:hidden">
-                  <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground ring-1 ring-white/10">{item.market}</span>
-                  <span className="font-mono-data text-[13px] font-medium text-foreground">@{item.odds.toFixed(2)}</span>
-                  <span className={`font-mono-data text-[13px] font-bold ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
-                    {item.edge > 0 ? "+" : ""}{item.edge.toFixed(1)}%
-                  </span>
-                  <span className={`ml-auto inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider
-                    ${item.decision === "Apostar" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
-                    ${item.decision === "Cautela" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
-                    ${item.decision === "Não Apostar" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
-                  `}>
-                    {item.decision}
-                  </span>
-                </div>
-
-                {/* Market */}
-                <span className="hidden text-xs text-muted-foreground md:block md:text-sm">{item.market}</span>
-
-                {/* Odds */}
-                <span className="hidden font-mono-data text-sm font-medium text-foreground md:block">{item.odds.toFixed(2)}</span>
-
-                {/* Model % */}
-                <span className="hidden font-mono-data text-sm text-foreground md:block">{item.modelProb.toFixed(1)}%</span>
-
-                {/* Edge */}
-                <span className={`hidden font-mono-data text-sm font-bold md:block ${item.edge > 0 ? "text-primary" : "text-destructive"}`}>
-                  {item.edge > 0 ? "+" : ""}{item.edge.toFixed(1)}%
-                </span>
-
-                {/* Confidence */}
-                <div className="hidden items-center gap-2 md:flex">
-                  <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden max-w-[60px]">
-                    <motion.div
-                      className={`h-full rounded-full ${item.conf >= 7 ? "bg-primary" : item.conf >= 4 ? "bg-warning" : "bg-destructive"}`}
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${item.conf * 10}%` }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.8, delay: 0.2 + i * 0.06 }}
-                    />
-                  </div>
-                  <span className="font-mono-data text-xs text-muted-foreground">{item.conf}</span>
-                </div>
-
-                {/* Decision */}
-                <span className={`hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider w-fit
-                  ${item.decision === "Apostar" ? "bg-primary/10 text-primary ring-1 ring-primary/20" : ""}
-                  ${item.decision === "Cautela" ? "bg-warning/10 text-warning ring-1 ring-warning/20" : ""}
-                  ${item.decision === "Não Apostar" ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20" : ""}
-                `}>
-                  {item.decision}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <Link to="/signup">
-              <Button variant="hero-outline" size="lg">
-                Criar Conta e Ver Mais <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+              Criar conta
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* Features */}
-      <section id="features" className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Target className="h-3.5 w-3.5" />
-              Funcionalidades
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-              Quantifica o{" "}
-              <span className="bg-[linear-gradient(90deg,#ffffff_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
-                Relvado
-              </span>
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-lg mx-auto">Todas as ferramentas para decidir com dados, numa só plataforma — sem pagar nada.</p>
-          </div>
-          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
-            {[
-              { label: "Camadas de análise", value: "Jogo + Mercado + Risco", hint: "Um fluxo único, dos dados à decisão" },
-              { label: "Camada de decisão", value: "Confiança primeiro", hint: "Sinais estruturados e comparáveis" },
-              { label: "Ciclo de registo", value: "Atento ao desempenho", hint: "Feito para aprender com resultados reais" },
-            ].map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+      <main>
+        {/* The probabilities are the shop window, so they are in it. */}
+        <section id="jogos" className="px-4 pb-10 pt-10 sm:px-6 md:pb-16 md:pt-14">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={stagger}
+            className="mx-auto grid max-w-6xl items-center gap-9 lg:grid-cols-2 lg:gap-12"
+          >
+            <div className="max-w-xl">
+              <motion.span
+                variants={rise}
+                className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-[11px] font-semibold text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-border"
               >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-50px" }}
-                variants={fadeIn}
-                custom={i}
-                whileHover={{ y: -6, scale: 1.02 }}
-                className="group cursor-default rounded-[22px] sm:rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-4 sm:p-6 shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)] backdrop-blur-xl"
-              >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)] transition-colors group-hover:bg-primary/20">
-                  <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
-                </div>
-                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{f.title}</h3>
-                <p className="hidden text-sm text-muted-foreground leading-relaxed sm:block">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+                <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--sl-green))]" />
+                Probabilidades abertas a toda a gente
+              </motion.span>
 
-      {/* Why ScoreLab is Different */}
-      <section className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative max-w-5xl mx-auto">
-          <div className="mb-10 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Crosshair className="h-3.5 w-3.5" />
-              Filosofia
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Porque é que o ScoreLab é Diferente</h2>
-            <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
-              Feito para quem quer estrutura e não ruído — um método que continua útil ao longo do tempo.
-            </p>
-          </div>
-          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
-            {[
-              { label: "Mentalidade", value: "Probabilidade acima do ruído", hint: "Desenhado para apoiar o julgamento, não o impulso." },
-              { label: "Método", value: "Análise atenta ao mercado", hint: "Cada recomendação vive em contexto, contra preço e risco." },
-              { label: "Resultado", value: "Disciplina a longo prazo", hint: "Registo e gestão de banca fazem parte do mesmo ciclo." },
-            ].map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+              <motion.h1
+                variants={rise}
+                className="mt-5 text-[2.5rem] font-black leading-[1.03] tracking-[-0.03em] text-foreground sm:text-[3.4rem]"
               >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
+                O que é provável{" "}
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "var(--sl-gradient)" }}
+                >
+                  acontecer
+                </span>{" "}
+                nos jogos de hoje.
+              </motion.h1>
+
+              <motion.p
+                variants={rise}
+                className="mt-5 text-[15px] leading-7 text-muted-foreground"
+              >
+                Quinze mercados por jogo, calculados a partir da época inteira
+                de cada competição. É a mesma lista que a aplicação usa, e está
+                aqui de graça, sem conta nenhuma.
+              </motion.p>
+
+              <motion.div variants={rise} className="mt-7 flex flex-wrap gap-2.5">
+                <Link
+                  to="/signup"
+                  className="sl-btn-primary inline-flex h-12 items-center gap-2 px-6 text-sm"
+                >
+                  Criar conta
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a
+                  href="#o-que-faz"
+                  className="inline-flex h-12 items-center rounded-2xl bg-card px-6 text-sm font-semibold text-foreground shadow-[var(--shadow-card)] ring-1 ring-border transition hover:bg-muted"
+                >
+                  Ver o que faz
+                </a>
               </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="space-y-4">
-                {whyDifferent.map((point, i) => (
-                  <motion.div
-                    key={point}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3 rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.78)_0%,rgba(8,19,33,0.92)_100%)] px-4 py-3 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.14)]"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.24)]">
-                      <Crosshair className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                    </div>
-                    <p className="text-foreground font-medium">{point}</p>
-                  </motion.div>
-                ))}
-              </div>
             </div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-8 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)]"
-            >
-              <div className="space-y-6">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Apostar por Intuição</p>
-                  <div className="h-3 rounded-full bg-destructive/20 overflow-hidden">
-                    <div className="h-full w-[35%] rounded-full bg-destructive/50" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Decisões inconsistentes, impossíveis de medir</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Método ScoreLab</p>
-                  <div className="h-3 rounded-full bg-primary/20 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full gradient-primary"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: "67%" }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.3 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Probabilidades calibradas e decisões que podes medir</p>
-                </div>
-              </div>
+
+            <motion.div variants={rise}>
+              <PublicBoard />
             </motion.div>
-          </div>
-        </div>
-      </section>
+          </motion.div>
+        </section>
 
-      {/* How it Works */}
-      <section id="how-it-works" className="relative border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),radial-gradient(circle_at_48%_78%,rgba(34,211,238,0.07),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <ChevronRight className="h-3.5 w-3.5" />
-              Processo
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Como Funciona o ScoreLab</h2>
-            <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
-              Um fluxo limpo: dos dados do jogo à deteção de valor e à disciplina de stake, fácil de confiar.
-            </p>
-          </div>
-          <div className="mb-8 hidden gap-4 md:grid md:grid-cols-3">
-            {[
-              { label: "Entrada", value: "Contexto do jogo primeiro", hint: "Começa com as estatísticas, odds e a competição certa." },
-              { label: "Motor", value: "Modelo e depois mercado", hint: "O sistema compara a visão probabilística com os preços reais." },
-              { label: "Saída", value: "Decisão com disciplina", hint: "Termina com stake dimensionada e recomendação rastreável." },
-            ].map((item) => (
+        <section id="o-que-faz" className="px-4 py-8 sm:px-6 md:py-14">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={SHOW}
+            variants={stagger}
+            className="mx-auto max-w-6xl"
+          >
+            <motion.p
+              variants={rise}
+              className="sl-meta text-[11px] uppercase tracking-[0.18em]"
+            >
+              O que faz
+            </motion.p>
+            <motion.h2
+              variants={rise}
+              className="mt-2 max-w-2xl text-3xl font-black tracking-[-0.025em] text-foreground sm:text-4xl"
+            >
+              Das probabilidades à aposta, e da aposta ao registo.
+            </motion.h2>
+            <motion.p
+              variants={rise}
+              className="mt-3 max-w-2xl text-[15px] leading-7 text-muted-foreground"
+            >
+              Com conta, isto passa a ser o sítio onde as apostas ficam a fazer
+              sentido: desafios que dizem quanto apostar nível a nível, cada
+              mercado comparado com o que a liga costuma dar, e um registo que
+              no fim diz se valeu a pena.
+            </motion.p>
+
+            <div className="mt-8 grid gap-3 md:grid-cols-2">
+              {WHAT.map((block) => (
+                <motion.article
+                  key={block.tag}
+                  variants={rise}
+                  className="sl-card sl-card-interactive flex flex-col px-5 py-5 md:px-6 md:py-6"
+                >
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+                    <block.icon className="h-3 w-3" />
+                    {block.tag}
+                  </span>
+                  <h3 className="mt-3 text-[19px] font-black leading-tight tracking-[-0.02em] text-foreground">
+                    {block.title}
+                  </h3>
+                  <p className="mt-2.5 text-[13.5px] leading-7 text-muted-foreground">
+                    {block.text}
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    {block.points.map((point) => (
+                      <li
+                        key={point}
+                        className="flex items-start gap-2.5 text-[12.5px] leading-6 text-foreground"
+                      >
+                        <span className="mt-1 flex h-4 w-4 flex-none items-center justify-center rounded-full bg-[hsl(var(--sl-green))]/12 text-[hsl(var(--sl-green))]">
+                          <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                        </span>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.article>
+              ))}
+
+              {/* The odd one out of the grid: one screen, because at some point
+                  somebody wants to see the thing rather than read about it. */}
               <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-[24px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(13,30,47,0.84)_0%,rgba(8,21,35,0.92)_100%)] px-5 py-4 shadow-[0_18px_48px_-20px_rgba(34,211,238,0.20)] backdrop-blur-xl"
+                variants={rise}
+                className="sl-card flex items-center gap-4 overflow-hidden px-5 py-6 md:px-6"
               >
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.num}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeIn}
-                custom={i}
-                whileHover={{ y: -4, scale: 1.01 }}
-                className="relative rounded-[28px] border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] p-5 transition-all duration-300 backdrop-blur-xl shadow-[0_24px_72px_-24px_rgba(34,211,238,0.16)] hover:-translate-y-1 hover:shadow-[0_28px_80px_-24px_rgba(34,211,238,0.24)]"
-              >
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(34,197,94,0.16))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(34,211,238,0.30)]">
-                  <span className="text-sm font-bold font-mono-data text-primary">{step.num}</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[19px] font-black leading-tight tracking-[-0.02em] text-foreground">
+                    É isto, no telemóvel
+                  </h3>
+                  <p className="mt-2.5 text-[13.5px] leading-7 text-muted-foreground">
+                    Feito para ser usado de pé, com uma mão, a dois minutos de
+                    o jogo começar.
+                  </p>
+                  <Link
+                    to="/signup"
+                    className="sl-btn-primary mt-4 inline-flex h-10 items-center gap-1.5 px-4 text-[13px]"
+                  >
+                    Criar conta
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
-                <div className="mb-3 h-px w-full bg-[linear-gradient(90deg,rgba(34,211,238,0.25),rgba(34,197,94,0.0))]" />
-                <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 sm:mb-2">{step.title}</h3>
-                <p className="hidden text-sm text-muted-foreground sm:block">{step.desc}</p>
-                {i < steps.length - 1 && (
-                  <ChevronRight className="hidden md:block absolute top-8 -right-3 w-5 h-5 text-white/10" />
-                )}
+                <div className="relative w-[42%] max-w-[9.5rem] flex-none sm:max-w-[10.5rem]">
+                  <div
+                    aria-hidden
+                    className="absolute -inset-8 -z-10 rounded-full bg-[radial-gradient(50%_40%_at_50%_35%,hsla(14,100%,50%,0.28),transparent_70%)]"
+                  />
+                  <Phone
+                    src="/prints/app-desafio.jpg"
+                    alt="A página de um desafio, com o nível a que vai e o que apostar a seguir"
+                  />
+                </div>
               </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="relative scroll-mt-16 border-t border-white/5 px-4 py-14 sm:px-6 sm:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_32%,rgba(34,211,238,0.10),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.09),transparent_22%),linear-gradient(180deg,rgba(7,17,31,0.90)_0%,rgba(8,22,38,0.94)_45%,rgba(6,16,28,0.96)_100%)]" />
-        <div className="relative mx-auto max-w-3xl">
-          <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-primary/20 bg-[linear-gradient(90deg,rgba(34,211,238,0.14),rgba(34,197,94,0.12))] px-4 py-1.5 text-xs text-primary mb-4 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-              <Shield className="h-3.5 w-3.5" />
-              Perguntas Frequentes
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Antes de Começares</h2>
-          </div>
-          <Accordion type="single" collapsible className="space-y-3">
-            {[
-              {
-                q: "É mesmo grátis?",
-                a: "Sim. Todas as funcionalidades, sem cartão de crédito e sem limites escondidos. Cria a conta e usa tudo.",
-              },
-              {
-                q: "Preciso de perceber de estatística?",
-                a: "Não. Introduzes os dados do jogo e o modelo trata dos cálculos — recebes probabilidades claras e uma recomendação por mercado.",
-              },
-              {
-                q: "O que é o “edge”?",
-                a: "É a diferença entre a probabilidade calculada pelo modelo e a que está implícita na odd. Quando é positiva, a odd está a pagar acima do risco real — é aí que existe valor.",
-              },
-              {
-                q: "O ScoreLab diz-me em que apostar?",
-                a: "Mostra-te probabilidades, valor e um nível de confiança — a decisão é sempre tua. Joga com responsabilidade e apenas se tiveres mais de 18 anos.",
-              },
-            ].map((item, i) => (
-              <AccordionItem
-                key={item.q}
-                value={`faq-${i}`}
-                className="rounded-2xl border border-cyan-200/10 bg-[linear-gradient(180deg,rgba(10,25,41,0.92)_0%,rgba(8,19,33,0.97)_100%)] px-5 backdrop-blur-xl"
+          </motion.div>
+        </section>
+
+        <section className="px-4 py-8 sm:px-6 md:py-12">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={SHOW}
+            variants={stagger}
+            className="mx-auto max-w-6xl"
+          >
+            <motion.h2
+              variants={rise}
+              className="max-w-2xl text-3xl font-black tracking-[-0.025em] text-foreground sm:text-4xl"
+            >
+              Três passos, e depois é só futebol.
+            </motion.h2>
+
+            <div className="mt-7 grid gap-3 md:grid-cols-3">
+              {STEPS.map((step) => (
+                <motion.div
+                  key={step.num}
+                  variants={rise}
+                  className="sl-card sl-card-interactive px-5 py-5"
+                >
+                  <span
+                    className="sl-figure text-[13px] text-transparent"
+                    style={{
+                      backgroundImage: "var(--sl-gradient)",
+                      WebkitBackgroundClip: "text",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    {step.num}
+                  </span>
+                  <h3 className="mt-2 text-[15px] font-bold text-foreground">
+                    {step.title}
+                  </h3>
+                  <p className="sl-meta mt-1.5 text-[12.5px] leading-6">
+                    {step.text}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </section>
+
+        <section id="ligas" className="px-4 py-8 sm:px-6 md:py-12">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={SHOW}
+            variants={stagger}
+            className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-[hsl(var(--sl-nav))] px-6 py-9 text-white sm:px-10"
+          >
+            <motion.h2
+              variants={rise}
+              className="text-2xl font-black tracking-[-0.025em] sm:text-3xl"
+            >
+              As competições que entram sozinhas
+            </motion.h2>
+            <motion.p
+              variants={rise}
+              className="mt-2 max-w-xl text-[13.5px] leading-7 text-white/60"
+            >
+              Jogos, previsões e resultados vêm da fonte de dados sem ninguém
+              escrever nada. O que ela não cobre entra à mão, e a aplicação diz
+              quando é o caso.
+            </motion.p>
+            <motion.div variants={rise} className="mt-6 flex flex-wrap gap-2">
+              {COVERED_LEAGUES.map((league) => (
+                <span
+                  key={league}
+                  className="rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/85"
+                >
+                  {league}
+                </span>
+              ))}
+            </motion.div>
+          </motion.div>
+        </section>
+
+        <section className="px-4 py-12 sm:px-6 md:py-20">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={SHOW}
+            variants={stagger}
+            className="mx-auto max-w-3xl text-center"
+          >
+            <motion.h2
+              variants={rise}
+              className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl"
+            >
+              Começa com dez euros e um desafio.
+            </motion.h2>
+            <motion.p
+              variants={rise}
+              className="mx-auto mt-4 max-w-xl text-[15px] leading-7 text-muted-foreground"
+            >
+              Conta gratuita. Sem cartão, sem casa de apostas ligada: as
+              apostas são tuas, isto é o sítio onde elas ficam a fazer sentido.
+            </motion.p>
+            <motion.div
+              variants={rise}
+              className="mt-7 flex flex-wrap justify-center gap-2.5"
+            >
+              <Link
+                to="/signup"
+                className="sl-btn-primary inline-flex h-12 items-center gap-2 px-7 text-sm"
               >
-                <AccordionTrigger className="text-left text-sm sm:text-base font-semibold text-foreground hover:no-underline">
-                  {item.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                  {item.a}
-                </AccordionContent>
-              </AccordionItem>
+                Criar conta
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/login"
+                className="inline-flex h-12 items-center rounded-2xl bg-card px-6 text-sm font-semibold text-foreground shadow-[var(--shadow-card)] ring-1 ring-border transition hover:bg-muted"
+              >
+                Entrar
+              </Link>
+            </motion.div>
+          </motion.div>
+        </section>
+      </main>
+
+      <footer className="border-t border-border px-4 py-8 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <Mark />
+            <div>
+              <p className="text-[13px] font-bold text-foreground">ScoreLab</p>
+              <p className="sl-meta text-[11px]">
+                Probabilidades, desafios de banca e registo de apostas.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {[
+              [<Percent key="p" className="h-3 w-3" />, "Jogos"],
+              [<Trophy key="t" className="h-3 w-3" />, "Desafios"],
+              [<Ticket key="a" className="h-3 w-3" />, "Apostas"],
+            ].map(([icon, label]) => (
+              <span
+                key={String(label)}
+                className="sl-meta flex items-center gap-1.5 text-[11px]"
+              >
+                {icon}
+                {label}
+              </span>
             ))}
-          </Accordion>
-        </div>
-      </section>
-
-      {/* CTA Footer */}
-      <section className="relative border-t border-white/5 px-4 py-20 sm:px-6 md:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,var(--scorelab-accent-a-soft),transparent_28%),radial-gradient(circle_at_50%_80%,var(--scorelab-accent-b-soft),transparent_34%),linear-gradient(180deg,rgba(7,17,31,0.84),rgba(5,12,21,0.98))]" />
-        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[36px] border border-cyan-100/10 bg-[linear-gradient(135deg,rgba(13,30,47,0.92),rgba(8,19,33,0.98))] px-6 py-12 text-center shadow-[0_34px_96px_-40px_rgba(34,211,238,0.32)] backdrop-blur-xl md:px-12 md:py-16">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.055),transparent)] opacity-70" />
-          <Badge variant="outline" className="relative mb-5 border-primary/18 text-primary">Pronto para o pontapé de saída</Badge>
-          <h2 className="relative text-3xl font-black tracking-[-0.045em] text-foreground md:text-5xl">
-            Pronto para Encontrar o teu{" "}
-            <span className="bg-[linear-gradient(90deg,hsl(var(--primary))_0%,hsl(var(--primary-glow))_55%,#8be9ff_100%)] bg-clip-text text-transparent">
-              Edge?
-            </span>
-          </h2>
-          <p className="relative mx-auto mt-4 max-w-2xl text-muted-foreground">Análise probabilística de jogos, deteção de valor e disciplina de banca — com dados, não com palpites. Grátis para todos.</p>
-          <div className="relative mt-8 flex justify-center gap-4">
-            <Link to="/signup"><Button variant="hero" size="xl">Criar Conta Grátis <ArrowRight className="w-4 h-4 ml-1" /></Button></Link>
           </div>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-white/8 px-4 py-10 sm:px-6">
-        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr] md:items-start">
-          <div>
-            <div className="flex items-center gap-2">
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-primary/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,197,94,0.18))] shadow-[0_8px_22px_rgba(34,211,238,0.14)]">
-              <div className="absolute inset-[1px] rounded-[7px] bg-[linear-gradient(180deg,rgba(7,17,31,0.92),rgba(12,27,40,0.82))]" />
-              <BarChart3 className="relative w-3 h-3 text-cyan-100" strokeWidth={1.6} />
-            </div>
-            <span className="text-sm font-semibold bg-[linear-gradient(90deg,#ffffff_0%,#9fe8ff_40%,#8ef0c2_100%)] bg-clip-text text-transparent">ScoreLab</span>
-            </div>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Onde a estatística do futebol, a disciplina de mercado e a gestão de banca se tornam um só sistema.</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Produto</p>
-            <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-              <a href="#features" className="transition-colors hover:text-foreground">Funcionalidades</a>
-              <a href="#how-it-works" className="transition-colors hover:text-foreground">Como Funciona</a>
-              <a href="#faq" className="transition-colors hover:text-foreground">Perguntas Frequentes</a>
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/42">Começar</p>
-            <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-              <Link to="/login" className="transition-colors hover:text-foreground">Entrar</Link>
-              <Link to="/signup" className="transition-colors hover:text-foreground">Criar Conta</Link>
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-white/8 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 ScoreLab. Todos os direitos reservados.</p>
-          <p>Análise estatística, não aconselhamento financeiro. Joga com responsabilidade. +18 · jogaresponsavelmente.pt</p>
-        </div>
+        <p className="sl-meta mx-auto mt-6 max-w-6xl text-[11px] leading-5">
+          Aposta com o que podes perder. Isto é uma ferramenta de registo e
+          análise: não faz apostas, não as coloca por ti e não promete lucro
+          nenhum.
+        </p>
       </footer>
     </div>
   );
