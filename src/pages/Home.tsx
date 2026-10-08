@@ -18,18 +18,14 @@ import { HomeRivals } from "@/components/HomeRivals";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
-import { buildApiUrl } from "@/lib/apiConfig";
 import { homeInsights } from "@/lib/homeInsights";
 import { canonicalMarket } from "@/lib/marketNames";
 import { newsByPlan, planNews } from "@/lib/planNews";
 import { rivalries } from "@/lib/rivals";
 import { seenByPlan } from "@/lib/seenStore";
 import { type PlanBet } from "@/lib/planStore";
-import {
-  readCachedBoard,
-  writeCachedBoard,
-  type BoardMatch,
-} from "@/lib/probabilityBoardCache";
+import { loadBoard } from "@/lib/boardSource";
+import { type BoardMatch } from "@/lib/probabilityBoardCache";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -305,24 +301,12 @@ export default function Home() {
    * going to spend.
    */
   useEffect(() => {
-    const cached = readCachedBoard(7);
-    if (cached) {
-      setGames(cached.matches);
-      return;
-    }
-
     let cancelled = false;
-    fetch(buildApiUrl("/data/probability-board?days=7"))
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { matches?: BoardMatch[]; unavailable?: string[]; skipped?: number } | null) => {
-        if (cancelled || !data?.matches) return;
-        setGames(data.matches);
-        writeCachedBoard({
-          days: 7,
-          matches: data.matches,
-          unavailable: data.unavailable ?? [],
-          skipped: data.skipped ?? 0,
-        });
+    // The stored copy, then the board last night's job left in the database,
+    // and only then the engine.
+    loadBoard(7)
+      .then((data) => {
+        if (!cancelled) setGames(data.matches);
       })
       .catch(() => undefined);
 

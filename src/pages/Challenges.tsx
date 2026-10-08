@@ -38,7 +38,6 @@ import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { buildApiUrl } from "@/lib/apiConfig";
 import {
   chanceOfCompleting,
   costOfOneLoss,
@@ -97,11 +96,8 @@ import {
   type PlanRecord,
   type PlayerStanding,
 } from "@/lib/planStore";
-import {
-  readCachedBoard,
-  writeCachedBoard,
-  type BoardMatch,
-} from "@/lib/probabilityBoardCache";
+import { loadBoard as loadBoard7 } from "@/lib/boardSource";
+import { type BoardMatch } from "@/lib/probabilityBoardCache";
 
 const BOARD_DAYS = 7;
 
@@ -425,32 +421,15 @@ export default function Challenges() {
    * something anybody should have to do.
    */
   const loadBoard = useCallback((force: boolean) => {
-    if (!force) {
-      const cached = readCachedBoard(BOARD_DAYS);
-      if (cached) {
-        setBoard(cached.matches);
-        setUnavailable(cached.unavailable ?? []);
-        setSkipped(cached.skipped ?? 0);
-        setBoardAt(cached.fetchedAt);
-        return;
-      }
-    }
-
     setBoardLoading(true);
-    fetch(buildApiUrl(`/data/probability-board?days=${BOARD_DAYS}`))
-      .then((response) => (response.ok ? response.json() : null))
+    // The stored copy, then last night's board from the database, then the
+    // engine itself. Only a deliberate refresh goes straight to the engine.
+    loadBoard7(BOARD_DAYS, { force })
       .then((data) => {
-        if (!data) return;
-        setBoard(data.matches ?? []);
-        setUnavailable(data.unavailable ?? []);
-        setSkipped(data.skipped ?? 0);
-        setBoardAt(Date.now());
-        writeCachedBoard({
-          days: BOARD_DAYS,
-          matches: data.matches ?? [],
-          unavailable: data.unavailable ?? [],
-          skipped: data.skipped ?? 0,
-        });
+        setBoard(data.matches);
+        setUnavailable(data.unavailable);
+        setSkipped(data.skipped);
+        setBoardAt(data.at);
       })
       .catch(() => undefined)
       .finally(() => setBoardLoading(false));
