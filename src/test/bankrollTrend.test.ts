@@ -28,7 +28,8 @@ describe("the line the betting drew", () => {
       bet("2026-09-22T20:00:00.000Z", -3),
     ]);
 
-    expect(points.map((point) => point.bankroll)).toEqual([15, 12]);
+    // Starting at the money that was actually put in, then each decided day.
+    expect(points.map((point) => point.bankroll)).toEqual([10, 15, 12]);
   });
 
   it("draws them in the order they were decided, not the order they arrived", () => {
@@ -37,7 +38,7 @@ describe("the line the betting drew", () => {
       bet("2026-09-21T20:00:00.000Z", 5),
     ]);
 
-    expect(points.map((point) => point.change)).toEqual([5, 1]);
+    expect(points.map((point) => point.change)).toEqual([0, 5, 1]);
   });
 
   it("leaves an open day off it", () => {
@@ -48,7 +49,16 @@ describe("the line the betting drew", () => {
       bet(null, 0, "pending"),
     ]);
 
-    expect(points).toHaveLength(1);
+    // The start, and the one day that was decided.
+    expect(points).toHaveLength(2);
+  });
+
+  it("draws a line from one decided day, which is a challenge's first week", () => {
+    // One point is a dot: the chart read as broken for everybody who had just
+    // started, which is everybody at the moment they most want to see it.
+    const points = bankrollTrend(10, [bet("2026-09-21T20:00:00.000Z", 3.29)]);
+
+    expect(points.map((point) => point.bankroll)).toEqual([10, 13.29]);
   });
 
   it("has no line to draw before anything is decided", () => {

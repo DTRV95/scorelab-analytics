@@ -9,9 +9,14 @@ import type { Insight } from "@/lib/homeInsights";
  * on, so none of it has to be taken on trust. A finding with too little behind
  * it never gets here, which is why this card can be two lines long.
  */
-export function HomeInsights({ insights }: { insights: Insight[] }) {
-  if (insights.length === 0) return null;
-
+export function HomeInsights({
+  insights,
+  settled,
+}: {
+  insights: Insight[];
+  /** How many bets of theirs are decided, which is what all of this rests on. */
+  settled: number;
+}) {
   return (
     <section className="sl-card overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
@@ -25,6 +30,19 @@ export function HomeInsights({ insights }: { insights: Insight[] }) {
           Ver tudo <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
+
+      {/* Nothing to say is said out loud.
+          The card used to disappear, which from the outside is identical to
+          the app having nothing to offer — and somebody who has just placed
+          their first bets is exactly the person wondering whether this is
+          worth using. */}
+      {insights.length === 0 && (
+        <p className="px-4 py-3 text-[12px] leading-5 text-muted-foreground">
+          {settled === 0
+            ? "Ainda não fechaste nenhuma aposta. Assim que fechares, começa a aparecer aqui o que o teu próprio registo diz."
+            : `${settled === 1 ? "Uma aposta fechada" : `${settled} apostas fechadas`} ainda não chegam para dizer nada que se aguente. A partir de cinco começa.`}
+        </p>
+      )}
 
       <div className="divide-y divide-border">
         {insights.map((insight) => (
@@ -58,6 +76,15 @@ export function HomeInsights({ insights }: { insights: Insight[] }) {
           </div>
         ))}
       </div>
+
+      {/* Where the numbers come from, because the money above this card is
+          only the challenges still running and these are every bet ever
+          made — including the ones in challenges already finished. */}
+      {insights.length > 0 && (
+        <p className="sl-meta border-t border-border px-4 py-2 text-[11px]">
+          De {settled} apostas fechadas, em todos os teus desafios.
+        </p>
+      )}
     </section>
   );
 }

@@ -18,6 +18,7 @@ import { HomeRivals } from "@/components/HomeRivals";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { buildApiUrl } from "@/lib/apiConfig";
 import { homeInsights } from "@/lib/homeInsights";
 import { canonicalMarket } from "@/lib/marketNames";
 import { newsByPlan, planNews } from "@/lib/planNews";
@@ -26,6 +27,7 @@ import { seenByPlan } from "@/lib/seenStore";
 import { type PlanBet } from "@/lib/planStore";
 import {
   readCachedBoard,
+  writeCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
 
@@ -101,16 +103,30 @@ function HomeDoors() {
   );
 }
 
-/** The next few games the model has an opinion about. */
+/**
+ * The three games the model is surest about.
+ *
+ * It used to be the next four by kick-off, which is a clock, not a finding —
+ * the whole point of the app is which games it has an opinion about, and the
+ * strongest three are that opinion. Still only games yet to be played: a 92%
+ * on something that finished last night is a fact, not a tip.
+ */
 function NextGames({ board }: { board: BoardMatch[] }) {
-  const soon = useMemo(
-    () =>
-      [...board]
-        .filter((match) => match.kickoff)
-        .sort((a, b) => (a.kickoff ?? "").localeCompare(b.kickoff ?? ""))
-        .slice(0, 4),
-    [board],
-  );
+  const soon = useMemo(() => {
+    const now = Date.now();
+    return [...board]
+      .filter((match) => {
+        if (!match.kickoff) return false;
+        const at = new Date(match.kickoff).getTime();
+        return !Number.isNaN(at) && at > now;
+      })
+      .sort(
+        (a, b) =>
+          b.headline_pct - a.headline_pct ||
+          (a.kickoff ?? "").localeCompare(b.kickoff ?? ""),
+      )
+      .slice(0, 3);
+  }, [board]);
 
   if (soon.length === 0) return null;
 
@@ -119,7 +135,7 @@ function NextGames({ board }: { board: BoardMatch[] }) {
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
           <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-          A seguir
+          Os mais prováveis
         </h2>
         <Link
           to="/probability"
@@ -250,25 +266,69 @@ export default function Home() {
   );
 
   // What their own settled bets say, read off the record rather than stored.
+  /**
+   * The record is every bet, not only the ones still running.
+   *
+   * The money on this page is the challenges in play — a finished one holds
+   * no money and belongs on its own shelf. But what somebody's betting says
+   * about them does not stop being true when a challenge ends, and reading
+   * only the live ones meant that whoever had just started a new challenge
+   * saw a blank page with twenty-seven settled bets sitting behind it.
+   */
+  const settled = useMemo(
+    () => bets.filter((bet) => bet.status !== "pending").length,
+    [bets],
+  );
+
   const insights = useMemo(
     () =>
       board
         ? homeInsights({
-            bets: liveBets,
+            bets,
             challenges: board.challenges,
             label: (market) =>
               MARKET_LABELS[market] ?? canonicalMarket(market),
           })
         : [],
-    [board, liveBets],
+    [board, bets],
   );
 
-  // The games the challenge page already fetched. Reading the stored copy
-  // rather than asking again keeps the home page off the provider's ten
-  // requests a minute, which the board is already close to spending.
+  /**
+   * The board of games, from the copy the app already holds — or asked for.
+   *
+   * It used to only read the stored copy, to stay off the provider's ten
+   * requests a minute. The effect was that somebody who opened the app and
+   * went no further than Início never saw a single game: the copy is written
+   * by the pages they had not opened. The request is the same one those pages
+   * make, the answer is held for six hours at the server and stored here for
+   * everything else, so asking once on arrival costs nothing anybody else was
+   * going to spend.
+   */
   useEffect(() => {
     const cached = readCachedBoard(7);
-    if (cached) setGames(cached.matches);
+    if (cached) {
+      setGames(cached.matches);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(buildApiUrl("/data/probability-board?days=7"))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { matches?: BoardMatch[]; unavailable?: string[]; skipped?: number } | null) => {
+        if (cancelled || !data?.matches) return;
+        setGames(data.matches);
+        writeCachedBoard({
+          days: 7,
+          matches: data.matches,
+          unavailable: data.unavailable ?? [],
+          skipped: data.skipped ?? 0,
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -318,11 +378,9 @@ export default function Home() {
           </motion.div>
         )}
 
-        {insights.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <HomeInsights insights={insights} />
-          </motion.div>
-        )}
+        <motion.div variants={fadeUp}>
+          <HomeInsights insights={insights} settled={settled} />
+        </motion.div>
 
         {rivals.length > 0 && (
           <motion.div variants={fadeUp}>

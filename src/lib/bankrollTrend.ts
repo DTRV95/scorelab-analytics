@@ -1,7 +1,7 @@
 import type { PlanBet } from "@/lib/planStore";
 
 export interface TrendPoint {
-  /** Which settled day this is, counting from the first. */
+  /** Which settled day this is. Step 0 is where the money started. */
   step: number;
   /** When it was decided, for the tooltip. */
   at: string;
@@ -29,17 +29,37 @@ export function bankrollTrend(
     .filter((bet) => bet.status !== "pending" && bet.settledAt)
     .sort((a, b) => (a.settledAt ?? "").localeCompare(b.settledAt ?? ""));
 
+  if (settled.length === 0) return [];
+
   let running = startingBankroll;
 
-  return settled.map((bet, index) => {
+  // Where the money started is the first point on the line.
+  //
+  // Without it the line only began after the first day was decided, so one
+  // decided day was a single dot and drew nothing at all — which is exactly
+  // what a challenge looks like in its first week. It also made the line
+  // start wherever the first bet happened to leave it, rather than at the
+  // figure somebody actually put in.
+  const points: TrendPoint[] = [
+    {
+      step: 0,
+      at: settled[0].placedAt ?? settled[0].settledAt ?? "",
+      bankroll: Number(startingBankroll.toFixed(2)),
+      change: 0,
+    },
+  ];
+
+  settled.forEach((bet, index) => {
     running = Number((running + bet.profitLoss).toFixed(2));
-    return {
+    points.push({
       step: index + 1,
       at: bet.settledAt ?? "",
       bankroll: running,
       change: Number(bet.profitLoss.toFixed(2)),
-    };
+    });
   });
+
+  return points;
 }
 
 /** The best and the worst the bankroll has been, for an honest y-axis. */
