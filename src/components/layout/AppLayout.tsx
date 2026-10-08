@@ -22,9 +22,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="sticky top-0 z-30">
           <TopBar />
         </div>
-        {/* The thumb row floats over the page, and Início now stands proud of
-            it, so the last card needs the height of both to clear them. */}
-        <main className="flex-1 px-3 pb-32 pt-4 sm:px-5 md:px-7 md:pb-12 md:pt-6 xl:px-8">
+        {/* Two numbers, each said once. The air under the bar belongs here
+            rather than to each page: some pages had four pixels of it and
+            others thirty-two, because half of them carried a negative margin
+            to fight a forced one that no longer exists. And the thumb row
+            floats over the page with Início standing proud of it, so the
+            last card needs the height of both to clear them. */}
+        <main className="flex-1 px-3 pb-32 pt-8 sm:px-5 md:px-7 md:pb-12 md:pt-9 xl:px-8">
           <div className="mx-auto max-w-[1280px]">
             {/* The per-route class that used to go here only fed a rule that
                 hid whole sections on phones. Nothing styles a route by name

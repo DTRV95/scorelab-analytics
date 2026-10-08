@@ -192,3 +192,26 @@ describe("what a competition actually does", () => {
     expect((await screen.findAllByText("46 de 100")).length).toBeGreaterThan(0);
   });
 });
+
+describe("an answer that comes back the wrong shape", () => {
+  it("lands in the page's own error state instead of blanking the screen", async () => {
+    // A proxy error page, or a server mid-deploy, used to be cast to a report
+    // and read for its markets — and the exception took the whole screen
+    // down. A page should never go blank because an answer was odd.
+    const { fetchLeagueReport: real } = await vi.importActual<
+      typeof import("@/lib/leagueReport")
+    >("@/lib/leagueReport");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ configured: true }),
+      })),
+    );
+
+    await expect(real("Liga Portugal")).rejects.toThrow(
+      "Não foi possível ler esta competição.",
+    );
+  });
+});

@@ -220,7 +220,7 @@ export default function Settings() {
         transition={{ duration: 0.3 }}
         className="space-y-3"
       >
-        <div className="-mt-3 md:-mt-[1rem]">
+        <div>
           <h1 className="sl-section-title text-[15px]">O teu perfil</h1>
         </div>
 

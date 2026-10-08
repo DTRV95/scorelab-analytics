@@ -325,7 +325,7 @@ export default function Home() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6"
+        className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         {/*
          * The title sat 45px under the header bar and 6px above its own line,
@@ -339,7 +339,7 @@ export default function Home() {
          * matches any class containing "mt-4" and would turn this into a
          * positive margin.
          */}
-        <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
+        <motion.div variants={fadeUp}>
           <h1 className="sl-section-title text-[15px]">Início</h1>
         </motion.div>
 
