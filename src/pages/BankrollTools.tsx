@@ -247,9 +247,9 @@ export default function BankrollTools() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6"
+        className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
-        <motion.div variants={fadeUp} className="-mt-3 md:-mt-[1rem]">
+        <motion.div variants={fadeUp}>
           <h1 className="sl-section-title text-[15px]">Banca</h1>
           <p className="sl-meta mt-1 text-[11px]">
             Onde está o dinheiro, e o que o fez mexer.

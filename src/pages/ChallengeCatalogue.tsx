@@ -406,7 +406,7 @@ export default function ChallengeCatalogue() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-3 p-4 sm:p-5 md:p-6"
+        className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
           <h1 className="sl-section-title text-[15px]">Desafios</h1>

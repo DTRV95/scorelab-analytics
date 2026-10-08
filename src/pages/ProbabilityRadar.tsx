@@ -624,7 +624,7 @@ export default function ProbabilityRadar() {
         initial="hidden"
         animate="visible"
         variants={stagger}
-        className="space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6"
+        className="space-y-4 p-4 pt-0 sm:space-y-6 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
           <div className="min-w-0">

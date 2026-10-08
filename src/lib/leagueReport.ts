@@ -53,7 +53,17 @@ export async function fetchLeagueReport(
     throw new Error("Não foi possível ler esta competição.");
   }
 
-  return (await response.json()) as LeagueReport;
+  const body = (await response.json().catch(() => null)) as LeagueReport | null;
+
+  // A page should not go blank because an answer came back the wrong shape.
+  // Casting whatever arrives and reading .markets off it is how a proxy
+  // error page, or a server mid-deploy, takes the whole screen down instead
+  // of landing in the error state this page already has.
+  if (!body || !Array.isArray(body.markets) || !Array.isArray(body.form)) {
+    throw new Error("Não foi possível ler esta competição.");
+  }
+
+  return body;
 }
 
 /**
