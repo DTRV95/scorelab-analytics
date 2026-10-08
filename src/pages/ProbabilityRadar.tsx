@@ -214,7 +214,7 @@ function BoardMatchRow({
           <p className="sl-meta text-[11px] leading-snug">
             {MARKET_LABELS[match.headline_market] ?? match.headline_market}
           </p>
-          <p className="font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
+          <p className="sl-hero-figure sl-hero-figure-green font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
             {match.headline_pct.toFixed(1)}%
           </p>
         </div>
@@ -628,9 +628,11 @@ export default function ProbabilityRadar() {
       >
         <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            {/* Fourteen wide letters at 21px do not fit beside a button on a
-                phone: the word ran under the refresh icon. */}
-            <h1 className="sl-section-title text-[17px] sm:text-[21px]">
+            {/* Fourteen wide letters do not fit beside a button on a phone,
+                and the accent bar in front of them takes a little more: the
+                word ran under the refresh icon. Same size as every other
+                page's title. */}
+            <h1 className="sl-section-title text-[15px] sm:text-[21px]">
               Probabilidades
             </h1>
             {/* One line, so the first game is on screen without scrolling.
@@ -677,10 +679,23 @@ export default function ProbabilityRadar() {
         {enabled === true && (
           <motion.div variants={fadeUp} className="space-y-4">
             {boardLoading && board.length === 0 && (
-              <p className="sl-card flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> A calcular
-                probabilidades para todos os jogos dos próximos 7 dias...
-              </p>
+              <div className="space-y-2" aria-label="A carregar os jogos">
+                <p className="sl-meta text-[11px]">
+                  A calcular as probabilidades dos próximos 7 dias...
+                </p>
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} className="sl-card flex items-center gap-3 px-4 py-3.5">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="sl-skeleton h-3.5 w-[55%]" />
+                      <div className="sl-skeleton h-2.5 w-[28%]" />
+                    </div>
+                    <div className="space-y-1.5 text-right">
+                      <div className="sl-skeleton ml-auto h-2.5 w-20" />
+                      <div className="sl-skeleton ml-auto h-4 w-12" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
 
             {boardError && (

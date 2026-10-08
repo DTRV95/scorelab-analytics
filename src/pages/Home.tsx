@@ -83,7 +83,7 @@ function HomeDoors() {
         <Link
           key={door.to}
           to={door.to}
-          className="sl-card sl-tap flex items-center gap-2.5 px-3 py-2.5"
+          className="sl-card sl-card-interactive sl-tap flex items-center gap-2.5 px-3 py-2.5"
         >
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
             <door.icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -152,7 +152,7 @@ function NextGames({ board }: { board: BoardMatch[] }) {
           <Link
             key={match.fixture_id}
             to={`/match/${match.fixture_id}`}
-            className="sl-tap flex items-center gap-3 px-4 py-2.5"
+            className="sl-tap flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[hsl(var(--sl-surface))]"
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-semibold text-foreground">
@@ -163,7 +163,7 @@ function NextGames({ board }: { board: BoardMatch[] }) {
               </p>
             </div>
             <div className="flex-none text-right">
-              <p className="sl-figure text-[13px] text-foreground">
+              <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[13px] text-foreground">
                 {match.headline_pct.toFixed(0)}%
               </p>
               <p className="sl-meta text-[10px]">

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { TrendChart } from "@/components/BankrollTrend";
+import { useChanged } from "@/hooks/useChanged";
 import type { PlanBet } from "@/lib/planStore";
 
 const eur = new Intl.NumberFormat("pt-PT", {
@@ -37,6 +38,8 @@ export function BankrollHero({
   /** Bets placed and not yet settled, which this figure cannot include. */
   openBets: number;
 }) {
+  // A bet settled two pages away moves this; the figure says so once.
+  const moved = useChanged(bankroll);
   const up = profit > 0;
   const down = profit < 0;
   // Against what was put in, not against the last reading: the percentage
@@ -54,7 +57,11 @@ export function BankrollHero({
           <p className="sl-meta text-[10px] uppercase tracking-[0.14em]">
             A tua banca
           </p>
-          <p className="sl-figure mt-0.5 text-[1.9rem] leading-9 text-foreground">
+          <p
+            className={`sl-figure sl-hero-figure mt-0.5 text-[1.9rem] leading-9 text-foreground ${
+              moved ? "sl-figure-changed" : ""
+            }`}
+          >
             {eur.format(bankroll)}
           </p>
           <p className="sl-meta mt-0.5 text-[11px]">
