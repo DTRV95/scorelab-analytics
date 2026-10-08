@@ -152,6 +152,27 @@ describe("the record on the page the app opens on", () => {
     expect(screen.getByText(/6 apostas fechadas/)).toBeInTheDocument();
   });
 
+  it("sends somebody who wants the whole of it to the analyses", async () => {
+    // These lines are the short form of that page: the same bets, by market,
+    // by price, by day. Apostas is where a bet outside a challenge gets
+    // registered, which is another job entirely.
+    setBoard(
+      [plan("p2", "Um mês perfeito", null)],
+      [
+        bet("p2", "green"),
+        bet("p2", "red"),
+        bet("p2", "green"),
+        bet("p2", "green"),
+        bet("p2", "red"),
+      ],
+    );
+
+    renderHome();
+
+    const link = await screen.findByRole("link", { name: /Ver tudo/ });
+    expect(link).toHaveAttribute("href", "/dashboard/analises");
+  });
+
   it("says why there is nothing to say, instead of showing nothing", async () => {
     setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "green")]);
 

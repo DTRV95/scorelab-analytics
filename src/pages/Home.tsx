@@ -68,8 +68,10 @@ const DOORS = [
   {
     to: "/dashboard/analises",
     icon: BarChart3,
+    // "Guardadas" was left over from when this page held saved analyses.
+    // What it holds is every bet, by market, by price and by day.
     title: "Análises",
-    detail: "Guardadas",
+    detail: "Em detalhe",
   },
 ];
 
