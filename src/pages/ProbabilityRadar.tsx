@@ -29,6 +29,11 @@ import {
   LEAGUE_PRESETS,
   LEAGUE_PRESET_MAP,
 } from "@/lib/leaguePresets";
+import {
+  fetchPrefill,
+  MatchForm,
+  type PrefillForm,
+} from "@/components/MatchForm";
 import { loadBoard } from "@/lib/boardSource";
 import {
   readCachedBoard,
@@ -147,6 +152,36 @@ function BoardMatchRow({
   onToggle: () => void;
   onContinue: () => void;
 }) {
+  /** The form behind the number, for whoever asks for it. */
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [prefill, setPrefill] = useState<PrefillForm | null>(null);
+  const [asking, setAsking] = useState(false);
+
+  // Asked for when somebody opens it, and not a moment before: fifteen rows
+  // on screen would be fifteen requests nobody wanted, and most people only
+  // want the forecast. Held for the session afterwards, so closing and
+  // reopening is instant.
+  useEffect(() => {
+    if (!moreOpen || prefill) return;
+
+    let cancelled = false;
+    setAsking(true);
+    fetchPrefill(match.league, match.fixture_id)
+      .then((data) => {
+        if (!cancelled && data) setPrefill(data);
+      })
+      .finally(() => {
+        if (!cancelled) setAsking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Deliberately not watching `asking`: it is set inside this effect, and
+    // reacting to it re-ran the effect, whose cleanup then cancelled the
+    // request it had just made.
+  }, [moreOpen, prefill, match.league, match.fixture_id]);
+
   return (
     <article className="sl-card sl-card-interactive overflow-hidden">
       {/* One number per row on purpose. An earlier version also showed a
@@ -199,11 +234,73 @@ function BoardMatchRow({
             <div className="space-y-4 border-t border-border bg-[hsl(var(--sl-surface))] px-3.5 py-4 sm:px-4">
               <ProbabilityBreakdown data={match} />
 
+              {/* What the forecast was built from, for whoever wants to look
+                  behind the number. Behind a tap, because most people are
+                  here for the forecast and this is a wall of goals per game
+                  under every single row. */}
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((open) => !open)}
+                  aria-expanded={moreOpen}
+                  className="sl-tap flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+                >
+                  <Info className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+                  <span className="min-w-0 flex-1 text-[12px] font-semibold text-foreground">
+                    Mais informações
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 flex-none text-muted-foreground transition-transform ${
+                      moreOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {moreOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-border px-3.5 py-3">
+                        <p className="text-[12px] font-bold text-foreground">
+                          A forma por trás do número
+                        </p>
+                        <p className="sl-meta mt-0.5 text-[11px] leading-5">
+                          Golos por jogo, por lado, na época e nos últimos
+                          jogos.
+                        </p>
+
+                        <div className="mt-2.5">
+                          {prefill ? (
+                            <MatchForm prefill={prefill} match={match} />
+                          ) : (
+                            <p className="sl-meta flex items-center gap-2 text-[11px]">
+                              {asking ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" />A
+                                  ler a época destas equipas...
+                                </>
+                              ) : (
+                                "A época destas equipas não veio desta vez."
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <div className="rounded-xl border border-border bg-card p-3.5">
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   Queres ver o jogo todo? A análise avançada abre-o numa página
-                  só dele: onde está o valor a cada odd, a forma por trás do
-                  número e como o modelo se tem portado nestes mercados.
+                  só dele, com as tuas odds em cada mercado para dizer onde
+                  está o valor, e como o modelo se tem portado nestes mercados.
                 </p>
                 <Button
                   className="sl-btn-primary mt-3 h-10 w-full gap-2 text-xs"

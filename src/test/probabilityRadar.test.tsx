@@ -364,34 +364,54 @@ describe("ProbabilityRadar board", () => {
 });
 
 describe("what opening a game shows", () => {
-  it("opens on the markets, and leaves the rest to the advanced analysis", async () => {
-    // The form behind the number was tried here and taken back out: the row
-    // is for reading the forecast, and the page built for the whole game is
-    // one tap away.
+  it("opens on the markets, with the rest behind a tap", async () => {
     mockFetchSequence();
     renderPage();
 
     fireEvent.click(await screen.findByText("Porto vs Nacional"));
 
     expect(await screen.findByText("Empate")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Mais informações/ }),
+    ).toBeInTheDocument();
+    // Not until somebody asks for it.
     expect(screen.queryByText("A forma por trás do número")).toBeNull();
     expect(screen.queryByText("Valor por mercado")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: /análise avançada/i }),
-    ).toBeInTheDocument();
   });
 
-  it("asks nothing extra of the engine when a row opens", async () => {
+  it("asks the engine for the season only when that tap happens", async () => {
+    // Fifteen rows on screen would be fifteen requests nobody wanted.
     mockFetchSequence();
     renderPage();
 
     fireEvent.click(await screen.findByText("Porto vs Nacional"));
     await screen.findByText("Empate");
 
-    expect(
+    const prefills = () =>
       vi
         .mocked(globalThis.fetch)
-        .mock.calls.filter((call) => String(call[0]).includes("/data/prefill")),
-    ).toHaveLength(0);
+        .mock.calls.filter((call) => String(call[0]).includes("/data/prefill"));
+    expect(prefills()).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/ }));
+
+    expect(
+      await screen.findByText("A forma por trás do número"),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(prefills()).toHaveLength(1));
+  });
+
+  it("shows the goals per game behind the forecast once opened", async () => {
+    mockFetchSequence();
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Porto vs Nacional"));
+    await screen.findByText("Empate");
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/ }));
+
+    // 21 goals in 9 games at home, 7 in 8 away, against the league's average.
+    expect(await screen.findByText(/2\.33 marcados/)).toBeInTheDocument();
+    expect(screen.getByText(/0\.88 marcados/)).toBeInTheDocument();
+    expect(screen.getByText(/liga: 1.55/)).toBeInTheDocument();
   });
 });
