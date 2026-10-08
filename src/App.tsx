@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { hydrateStorageFromServer } from "@/lib/persistenceSync";
 import { routeLoaders, warmRoutes } from "@/lib/routeLoaders";
+import { OpenOnHome } from "@/components/OpenOnHome";
 import { PageTransition } from "@/components/PageTransition";
 import { RouteProgress } from "@/components/RouteProgress";
 import { ScoreLabCommandCenter } from "@/components/ScoreLabCommandCenter";
@@ -62,6 +63,7 @@ const App = () => {
             <AuthProvider>
             <PlanBoardProvider>
             <ScoreLabDataProvider>
+              <OpenOnHome />
               <ScoreLabCommandCenter />
               <Suspense fallback={<RouteProgress />}>
                 <PageTransition>
