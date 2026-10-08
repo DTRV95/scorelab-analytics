@@ -1,76 +1,56 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AnimatePresence } from "framer-motion";
 import { hydrateStorageFromServer } from "@/lib/persistenceSync";
+import { routeLoaders, warmRoutes } from "@/lib/routeLoaders";
+import { PageTransition } from "@/components/PageTransition";
+import { RouteProgress } from "@/components/RouteProgress";
 import { ScoreLabCommandCenter } from "@/components/ScoreLabCommandCenter";
 import { ScoreLabDataProvider } from "@/contexts/ScoreLabDataContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PlanBoardProvider } from "@/contexts/PlanBoardContext";
 import { FrontDoor, ProtectedRoute, OwnerRoute } from "@/components/ProtectedRoute";
 
-const Landing = lazy(() => import("./pages/Landing"));
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const Home = lazy(() => import("./pages/Home"));
-const Analyses = lazy(() => import("./pages/Analyses"));
-const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis"));
-const ProbabilityRadar = lazy(() => import("./pages/ProbabilityRadar"));
-const ModelLab = lazy(() => import("./pages/ModelLab"));
-const ModelAccuracy = lazy(() => import("./pages/ModelAccuracy"));
-const Leagues = lazy(() => import("./pages/Leagues"));
-const MatchDeepDive = lazy(() => import("./pages/MatchDeepDive"));
-const Challenges = lazy(() => import("./pages/Challenges"));
-const ChallengeCatalogue = lazy(() => import("./pages/ChallengeCatalogue"));
-const BettorAnalysis = lazy(() => import("./pages/BettorAnalysis"));
-const BankrollTools = lazy(() => import("./pages/BankrollTools"));
-const LooseBets = lazy(() => import("./pages/LooseBets"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Settings = lazy(() => import("./pages/Settings"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-
-function AppLoadingState() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="sl-card px-6 py-5 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          ScoreLab Sync
-        </p>
-        <p className="mt-3 text-sm text-foreground">
-          Loading your workspace...
-        </p>
-      </div>
-    </div>
-  );
-}
+const Landing = lazy(routeLoaders.landing);
+const Login = lazy(routeLoaders.login);
+const Signup = lazy(routeLoaders.signup);
+const ForgotPassword = lazy(routeLoaders.forgotPassword);
+const Home = lazy(routeLoaders.home);
+const Analyses = lazy(routeLoaders.analyses);
+const MatchAnalysis = lazy(routeLoaders.matchAnalysis);
+const ProbabilityRadar = lazy(routeLoaders.probability);
+const ModelLab = lazy(routeLoaders.modelLab);
+const ModelAccuracy = lazy(routeLoaders.accuracy);
+const Leagues = lazy(routeLoaders.leagues);
+const MatchDeepDive = lazy(routeLoaders.matchDeepDive);
+const Challenges = lazy(routeLoaders.challenge);
+const ChallengeCatalogue = lazy(routeLoaders.challenges);
+const BettorAnalysis = lazy(routeLoaders.bettorAnalysis);
+const BankrollTools = lazy(routeLoaders.bankroll);
+const LooseBets = lazy(routeLoaders.looseBets);
+const ResetPassword = lazy(routeLoaders.resetPassword);
+const Settings = lazy(routeLoaders.settings);
+const NotFound = lazy(routeLoaders.notFound);
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isHydrating, setIsHydrating] = useState(true);
-
   useEffect(() => {
-    let isMounted = true;
+    // In the background, not in the way.
+    //
+    // This used to hold the entire app behind a loading card for as long as
+    // two and a half seconds on every single visit, to copy some stored
+    // analyses down from the server. Everything that reads them already
+    // listens for the event it fires when it lands, so the app can be on
+    // screen while it happens.
+    void hydrateStorageFromServer().catch(() => undefined);
 
-    const run = async () => {
-      // Never hold first paint hostage to a slow connection: after 2.5s we
-      // render with the local cache and let the sync finish in background.
-      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2500));
-      await Promise.race([hydrateStorageFromServer(), timeout]);
-      if (isMounted) {
-        setIsHydrating(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      isMounted = false;
-    };
+    // And the pages one tap away are fetched while nothing is happening, so
+    // the tap itself has nothing left to wait for.
+    warmRoutes();
   }, []);
 
   return (
@@ -78,16 +58,13 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        {isHydrating ? (
-          <AppLoadingState />
-        ) : (
           <BrowserRouter>
             <AuthProvider>
             <PlanBoardProvider>
             <ScoreLabDataProvider>
               <ScoreLabCommandCenter />
-              <Suspense fallback={<AppLoadingState />}>
-                <AnimatePresence mode="wait">
+              <Suspense fallback={<RouteProgress />}>
+                <PageTransition>
                   <Routes>
                     <Route path="/" element={<FrontDoor><Landing /></FrontDoor>} />
                     <Route path="/login" element={<Login />} />
@@ -112,13 +89,12 @@ const App = () => {
                     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </AnimatePresence>
+                </PageTransition>
               </Suspense>
             </ScoreLabDataProvider>
             </PlanBoardProvider>
             </AuthProvider>
           </BrowserRouter>
-        )}
       </TooltipProvider>
     </QueryClientProvider>
   );

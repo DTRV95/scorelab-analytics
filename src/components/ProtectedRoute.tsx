@@ -1,18 +1,13 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
+import { RouteProgress } from "@/components/RouteProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOwnerEmail } from "@/lib/ownerAccess";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Checking session...</p>
-      </div>
-    );
-  }
+  if (loading) return <RouteProgress />;
 
   if (!session) {
     return <Navigate to="/login" replace />;
@@ -35,13 +30,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 export function FrontDoor({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Checking session...</p>
-      </div>
-    );
-  }
+  if (loading) return <RouteProgress />;
 
   if (session) {
     return <Navigate to="/dashboard" replace />;
