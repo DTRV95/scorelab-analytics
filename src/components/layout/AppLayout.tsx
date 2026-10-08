@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -12,9 +11,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const isAnalysisPage = location.pathname === "/analysis";
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [location.pathname]);
+  // Scrolling a new page back to the top is the router's job now, and it
+  // leaves the browser's own restoration alone when somebody goes back. This
+  // copy did not, so going back landed at the top of the page it returned to.
 
   return (
     <div className="relative flex min-h-screen w-full overflow-x-hidden bg-background text-foreground antialiased">
@@ -23,7 +22,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="sticky top-0 z-30">
           <TopBar />
         </div>
-        <main className="flex-1 px-3 pb-28 pt-4 sm:px-5 md:px-7 md:pb-12 md:pt-6 xl:px-8">
+        {/* The thumb row floats over the page, and Início now stands proud of
+            it, so the last card needs the height of both to clear them. */}
+        <main className="flex-1 px-3 pb-32 pt-4 sm:px-5 md:px-7 md:pb-12 md:pt-6 xl:px-8">
           <div className="mx-auto max-w-[1280px]">
             {/* The per-route class that used to go here only fed a rule that
                 hid whole sections on phones. Nothing styles a route by name

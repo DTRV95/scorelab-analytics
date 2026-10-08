@@ -187,4 +187,48 @@ describe("the thumb row, which on a phone is the whole menu", () => {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", url);
     }
   });
+
+  it("puts Início in the middle, where a thumb lands without aiming", () => {
+    renderRow();
+
+    const names = screen
+      .getAllByRole("link")
+      .map((link) => link.textContent?.trim());
+
+    expect(names).toEqual([
+      "Jogos",
+      "Desafios",
+      "Início",
+      "Apostas",
+      "Ligas",
+    ]);
+  });
+
+  it("marks Início as the page in view only when it is", () => {
+    // It is orange on every page, being the way back rather than one
+    // destination among five — so the colour cannot be what says "estás
+    // aqui", and something else has to.
+    render(
+      <MemoryRouter initialEntries={["/probability"]}>
+        <MobileBottomNav />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Início" })).not.toHaveAttribute(
+      "aria-current",
+    );
+
+    cleanup();
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <MobileBottomNav />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Início" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
 });
