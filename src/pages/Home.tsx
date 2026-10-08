@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart3, CalendarClock, Percent } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { BankrollTrend } from "@/components/BankrollTrend";
+import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
+import { HomeInsights } from "@/components/HomeInsights";
 import { HomeRivals } from "@/components/HomeRivals";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
-import { buildPlayerStyle, MIN_DECIDED } from "@/lib/bettingStyle";
+import { homeInsights } from "@/lib/homeInsights";
 import { canonicalMarket } from "@/lib/marketNames";
 import { newsByPlan, planNews } from "@/lib/planNews";
 import { rivalries } from "@/lib/rivals";
@@ -98,97 +99,6 @@ function NextGames({ board }: { board: BoardMatch[] }) {
   );
 }
 
-/** What this person's own settled bets say, in two lines. */
-function YourRecord({ userId, bets }: { userId: string; bets: PlanBet[] }) {
-  // The id is passed through rather than every bet being relabelled as mine.
-  // Relabelling worked only because the caller had already filtered, and left
-  // the brother's bets one careless change away from counting as this record.
-  const style = useMemo(
-    () => buildPlayerStyle(userId, "", bets),
-    [userId, bets],
-  );
-
-  if (!style.sharpest && !style.weakest) return null;
-
-  const rows = [
-    style.sharpest && {
-      tone: "good" as const,
-      label: "Acertas mais em",
-      market: style.sharpest.market,
-      value: `${style.sharpest.hitPct?.toFixed(0)}%`,
-      detail: `${style.sharpest.landed} de ${
-        style.sharpest.landed + style.sharpest.failed
-      }`,
-    },
-    style.weakest &&
-      style.weakest.market !== style.sharpest?.market && {
-        tone: "bad" as const,
-        label: "Falhas mais em",
-        market: style.weakest.market,
-        value: `${style.weakest.hitPct?.toFixed(0)}%`,
-        detail: `${style.weakest.landed} de ${
-          style.weakest.landed + style.weakest.failed
-        }`,
-      },
-  ].filter(Boolean) as {
-    tone: "good" | "bad";
-    label: string;
-    market: string;
-    value: string;
-    detail: string;
-  }[];
-
-  return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-          <Percent className="h-3.5 w-3.5 text-muted-foreground" />O teu registo
-        </h2>
-        {/* All of this person's bets, which is what this block is a summary
-            of. The per-challenge analysis answers a narrower question and
-            lives inside each challenge. */}
-        <Link
-          to="/dashboard/analises"
-          className="sl-meta flex items-center gap-1 text-[11px]"
-        >
-          Ver tudo <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-
-      <div className="divide-y divide-border">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center gap-3 px-4 py-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
-                {row.label}
-              </p>
-              <p className="truncate text-[12px] font-semibold text-foreground">
-                {MARKET_LABELS[row.market] ?? canonicalMarket(row.market)}
-              </p>
-            </div>
-            <div className="flex-none text-right">
-              <p
-                className={`sl-figure text-[14px] ${
-                  row.tone === "good"
-                    ? "text-[hsl(var(--sl-green))]"
-                    : "text-destructive"
-                }`}
-              >
-                {row.value}
-              </p>
-              <p className="sl-meta text-[10px]">{row.detail}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p className="sl-meta border-t border-border px-4 py-2 text-[11px]">
-        Só mercados com pelo menos {MIN_DECIDED} jogos decididos.
-      </p>
-    </section>
-  );
-}
-
 /**
  * The page the app opens on.
  *
@@ -270,6 +180,26 @@ export default function Home() {
 
   const newsCounts = useMemo(() => newsByPlan(news), [news]);
 
+  /** Bets placed and not yet settled, which no total can account for yet. */
+  const openBets = useMemo(
+    () => liveBets.filter((bet) => bet.status === "pending").length,
+    [liveBets],
+  );
+
+  // What their own settled bets say, read off the record rather than stored.
+  const insights = useMemo(
+    () =>
+      board
+        ? homeInsights({
+            bets: liveBets,
+            challenges: board.challenges,
+            label: (market) =>
+              MARKET_LABELS[market] ?? canonicalMarket(market),
+          })
+        : [],
+    [board, liveBets],
+  );
+
   // The games the challenge page already fetched. Reading the stored copy
   // rather than asking again keeps the home page off the provider's ten
   // requests a minute, which the board is already close to spending.
@@ -302,13 +232,32 @@ export default function Home() {
           <h1 className="sl-section-title text-[15px]">Início</h1>
         </motion.div>
 
-        {/* What to do, before how it is going.
-            The duel card came first and pushed the day's bet under the fold,
-            so the page opened on a scoreboard instead of on the one thing
-            that cannot wait. */}
+        {/* The three questions somebody arrives with, in the order they ask
+            them: quanto tenho, o que tenho em mãos, e como é que isto está a
+            correr. The duel used to come first and pushed the day's bet under
+            the fold, so the page opened on a scoreboard. */}
+        {board && (
+          <motion.div variants={fadeUp}>
+            <BankrollHero
+              bankroll={board.bankroll}
+              profit={board.profit}
+              startingBankroll={liveStarted}
+              bets={liveBets}
+              challenges={board.challenges.length}
+              openBets={openBets}
+            />
+          </motion.div>
+        )}
+
         {board && (
           <motion.div variants={fadeUp}>
             <HomeChallenges board={board} news={newsCounts} />
+          </motion.div>
+        )}
+
+        {insights.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <HomeInsights insights={insights} />
           </motion.div>
         )}
 
@@ -318,21 +267,10 @@ export default function Home() {
           </motion.div>
         )}
 
-        {liveBets.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <BankrollTrend startingBankroll={liveStarted} bets={liveBets} />
-          </motion.div>
-        )}
-
         <motion.div variants={fadeUp}>
           <NextGames board={games} />
         </motion.div>
 
-        {liveBets.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <YourRecord userId={user?.id ?? ""} bets={liveBets} />
-          </motion.div>
-        )}
 
         <motion.div variants={fadeUp}>
           <Link

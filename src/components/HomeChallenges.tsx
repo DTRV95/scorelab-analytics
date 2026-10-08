@@ -147,33 +147,8 @@ export function HomeChallenges({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-3"
     >
-      {/* The money, on one line.
-          This was three cells of a grid, and one of them counted the
-          challenges listed immediately below it. */}
-      <div className="sl-card flex items-center justify-between gap-3 px-4 py-2.5">
-        <p className="sl-meta text-[11px]">
-          Banca somada{" "}
-          <span className="sl-figure text-[15px] text-foreground">
-            {eur.format(board.bankroll)}
-          </span>
-        </p>
-        <p className="sl-meta text-[11px]">
-          das apostas{" "}
-          <span
-            className={`sl-figure text-[15px] ${
-              board.profit > 0
-                ? "text-[hsl(var(--sl-green))]"
-                : board.profit < 0
-                  ? "text-destructive"
-                  : "text-foreground"
-            }`}
-          >
-            {board.profit >= 0 ? "+" : ""}
-            {eur.format(board.profit)}
-          </span>
-        </p>
-      </div>
-
+      {/* The money is the card above this one, where it is the headline and
+          not a line of small print with two labels in it. */}
       {urgent.length > 0 && (
         <div className="space-y-2">
           <p className="sl-meta flex items-center gap-1.5 text-[10px] uppercase tracking-[0.13em]">
