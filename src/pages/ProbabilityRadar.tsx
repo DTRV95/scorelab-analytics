@@ -29,9 +29,9 @@ import {
   LEAGUE_PRESETS,
   LEAGUE_PRESET_MAP,
 } from "@/lib/leaguePresets";
+import { loadBoard } from "@/lib/boardSource";
 import {
   readCachedBoard,
-  writeCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
 import { matchTips, type MatchTip } from "@/lib/matchTips";
@@ -295,7 +295,31 @@ export default function ProbabilityRadar() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 90_000);
 
-    fetch(buildApiUrl("/data/status"), { signal: controller.signal })
+    // Last night's board, from the database, settles the question without
+    // waking anything: a board that exists is proof enough that the engine
+    // is set up, and asking it to confirm that cost the page a minute of
+    // "A ligar ao motor de dados..." every time it had been left alone.
+    if (!isManualRefresh) {
+      void loadBoard(BOARD_DAYS)
+        .then((data) => {
+          if (cancelled) return;
+          if (data.matches.length > 0) {
+            setEnabled(true);
+            window.clearTimeout(timeout);
+            return;
+          }
+          probeStatus();
+        })
+        .catch(() => {
+          if (!cancelled) probeStatus();
+        });
+    } else {
+      probeStatus();
+    }
+
+    function probeStatus() {
+      if (cancelled) return;
+      fetch(buildApiUrl("/data/status"), { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!cancelled) setEnabled(Boolean(data?.configured));
@@ -304,6 +328,7 @@ export default function ProbabilityRadar() {
         if (!cancelled) setEnabled(false);
       })
       .finally(() => window.clearTimeout(timeout));
+    }
 
     return () => {
       cancelled = true;
@@ -319,6 +344,9 @@ export default function ProbabilityRadar() {
     // whole browser, within the cache window) shows the same board
     // instantly instead of recomputing it. Only an explicit refresh, or the
     // cache going stale, triggers a real fetch again.
+    // The stored copy is read on the spot, not through a promise: reopening
+    // the tab should paint the board in the same breath, with no frame of
+    // emptiness in between.
     if (!isManualRefresh) {
       const cached = readCachedBoard(BOARD_DAYS);
       if (cached) {
@@ -338,25 +366,15 @@ export default function ProbabilityRadar() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 90_000);
 
-    fetch(buildApiUrl(`/data/probability-board?days=${BOARD_DAYS}`), {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(body?.detail || "Falha ao calcular as probabilidades.");
-        }
-        return body;
-      })
+    // Then the board last night's job left in the database, and only then
+    // the engine — which sleeps, takes a minute to wake, and is what this
+    // page used to wait for every single day.
+    loadBoard(BOARD_DAYS, { force: isManualRefresh, signal: controller.signal })
       .then((data) => {
         if (cancelled) return;
-        const matches = data.matches ?? [];
-        const unavailable = data.unavailable ?? [];
-        const skipped = data.skipped ?? 0;
-        setBoard(matches);
-        setUnavailableLeagues(unavailable);
-        setSkippedCount(skipped);
-        writeCachedBoard({ days: BOARD_DAYS, matches, unavailable, skipped });
+        setBoard(data.matches);
+        setUnavailableLeagues(data.unavailable);
+        setSkippedCount(data.skipped);
       })
       .catch((err: Error) => {
         if (!cancelled) setBoardError(err.message);

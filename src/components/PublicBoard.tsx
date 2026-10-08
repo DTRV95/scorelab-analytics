@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { buildApiUrl } from "@/lib/apiConfig";
+import { loadBoard } from "@/lib/boardSource";
 import {
   readCachedBoard,
-  writeCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
 
@@ -69,29 +68,12 @@ export function PublicBoard({ limit = 10 }: { limit?: number }) {
   const load = useCallback(() => {
     setFailed(false);
 
-    return fetch(buildApiUrl(`/data/probability-board?days=${DAYS}`))
-      .then((response) => {
-        if (!response.ok) throw new Error("sem resposta");
-        return response.json();
-      })
-      .then(
-        (data: {
-          matches?: BoardMatch[];
-          unavailable?: string[];
-          skipped?: number;
-        }) => {
-          const found = data.matches ?? [];
-          setMatches(found);
-          // The same cache the app uses, so somebody who signs up after
-          // reading this does not pay for the same request twice.
-          writeCachedBoard({
-            days: DAYS,
-            matches: found,
-            unavailable: data.unavailable ?? [],
-            skipped: data.skipped ?? 0,
-          });
-        },
-      )
+    // Last night's board, from the database, before the engine — which
+    // sleeps, and which somebody who has not even signed up should never be
+    // left waiting for. The same cache the app itself uses, so signing up
+    // after reading this does not pay for the request twice.
+    return loadBoard(DAYS)
+      .then((data) => setMatches(data.matches))
       .catch(() => setFailed(true));
   }, []);
 

@@ -10,7 +10,7 @@ export interface BoardMatch extends ProbabilityResult {
   headline_pct: number;
 }
 
-interface CachedBoard {
+export interface CachedBoard {
   days: number;
   fetchedAt: number;
   matches: BoardMatch[];
