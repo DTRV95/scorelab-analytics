@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -9,99 +9,144 @@ import {
 } from "@/lib/probabilityBoardCache";
 
 /**
- * The games, with their probabilities, before anybody signs in.
+ * The day's games, with their probabilities, before anybody signs in.
  *
  * The whole point of the app is on this list, and asking for an account to
  * see a number that is the same for everybody was asking for trust before
  * giving any. It is the same board the app itself shows — same request, same
- * cache, same figures — only shorter.
+ * cache, same figures — cut to the day being played and rolled over at
+ * midnight, so somebody who leaves the page open overnight does not wake up
+ * to yesterday.
  */
 
 const DAYS = 7;
 
-function kickoff(at: string | null): string {
-  if (!at) return "";
-  const date = new Date(at);
-  if (Number.isNaN(date.getTime())) return "";
+function startOfDay(value: Date): number {
+  return new Date(
+    value.getFullYear(),
+    value.getMonth(),
+    value.getDate(),
+  ).getTime();
+}
 
-  const midnight = (value: Date) =>
-    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  const days = Math.round((midnight(date) - midnight(new Date())) / 86400000);
-  const time = new Intl.DateTimeFormat("pt-PT", {
+/** Which day a kickoff falls on, counted from today. */
+function dayOffset(kickoff: string | null, now: number): number | null {
+  if (!kickoff) return null;
+  const date = new Date(kickoff);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.round((startOfDay(date) - now) / 86400000);
+}
+
+function hour(kickoff: string | null): string {
+  if (!kickoff) return "—";
+  const date = new Date(kickoff);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-PT", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-
-  if (days === 0) return `hoje ${time}`;
-  if (days === 1) return `amanhã ${time}`;
-  return new Intl.DateTimeFormat("pt-PT", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-  })
-    .format(date)
-    .replace(".", "");
 }
 
-export function PublicBoard({ limit = 6 }: { limit?: number }) {
+function dayName(offset: number, kickoff: string | null): string {
+  if (offset === 0) return "Hoje";
+  if (offset === 1) return "Amanhã";
+  if (!kickoff) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(kickoff));
+}
+
+export function PublicBoard({ limit = 10 }: { limit?: number }) {
   const [matches, setMatches] = useState<BoardMatch[] | null>(
     () => readCachedBoard(DAYS)?.matches ?? null,
   );
   const [failed, setFailed] = useState(false);
+  /** Midnight of the day being shown. Moves on its own when the day turns. */
+  const [today, setToday] = useState(() => startOfDay(new Date()));
 
-  useEffect(() => {
-    if (matches) return;
+  const load = useCallback(() => {
+    setFailed(false);
 
-    let live = true;
-    const controller = new AbortController();
-
-    fetch(buildApiUrl(`/data/probability-board?days=${DAYS}`), {
-      signal: controller.signal,
-    })
+    return fetch(buildApiUrl(`/data/probability-board?days=${DAYS}`))
       .then((response) => {
         if (!response.ok) throw new Error("sem resposta");
         return response.json();
       })
-      .then((data: { matches?: BoardMatch[]; unavailable?: string[]; skipped?: number }) => {
-        if (!live) return;
-        const found = data.matches ?? [];
-        setMatches(found);
-        // The same cache the app uses, so somebody who signs up after
-        // reading this does not pay for the same request twice.
-        writeCachedBoard({
-          days: DAYS,
-          matches: found,
-          unavailable: data.unavailable ?? [],
-          skipped: data.skipped ?? 0,
-        });
-      })
-      .catch(() => {
-        if (live) setFailed(true);
-      });
+      .then(
+        (data: {
+          matches?: BoardMatch[];
+          unavailable?: string[];
+          skipped?: number;
+        }) => {
+          const found = data.matches ?? [];
+          setMatches(found);
+          // The same cache the app uses, so somebody who signs up after
+          // reading this does not pay for the same request twice.
+          writeCachedBoard({
+            days: DAYS,
+            matches: found,
+            unavailable: data.unavailable ?? [],
+            skipped: data.skipped ?? 0,
+          });
+        },
+      )
+      .catch(() => setFailed(true));
+  }, []);
 
-    return () => {
-      live = false;
-      controller.abort();
-    };
-  }, [matches]);
+  useEffect(() => {
+    if (matches) return;
+    void load();
+  }, [matches, load]);
 
-  const shown = (matches ?? []).slice(0, limit);
+  // At midnight the day changes under the page: the list is asked again and
+  // the heading moves on by itself.
+  useEffect(() => {
+    const wait = today + 86400000 + 1000 - Date.now();
+    const timer = window.setTimeout(() => {
+      setToday(startOfDay(new Date()));
+      void load();
+    }, Math.max(wait, 1000));
+
+    return () => window.clearTimeout(timer);
+  }, [today, load]);
+
+  // Today's games, or — once today is over — the next day that has any. An
+  // empty list at eleven at night would be true and useless.
+  const withDay = (matches ?? [])
+    .map((match) => ({ match, offset: dayOffset(match.kickoff, today) }))
+    .filter(
+      (entry): entry is { match: BoardMatch; offset: number } =>
+        entry.offset !== null && entry.offset >= 0,
+    )
+    .sort(
+      (a, b) =>
+        a.offset - b.offset ||
+        (a.match.kickoff ?? "").localeCompare(b.match.kickoff ?? ""),
+    );
+
+  const offset = withDay[0]?.offset ?? 0;
+  const shown = withDay
+    .filter((entry) => entry.offset === offset)
+    .slice(0, limit)
+    .map((entry) => entry.match);
 
   return (
     <div className="sl-card overflow-hidden">
-      <div className="flex items-start gap-2 border-b border-border px-4 py-3">
-        <span className="relative mt-1.5 flex h-2 w-2 flex-none">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <span className="relative flex h-2 w-2 flex-none">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[hsl(var(--sl-green))] opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[hsl(var(--sl-green))]" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold text-foreground">
-            Probabilidades de agora
-          </p>
-          <p className="sl-meta text-[11px]">
-            O mercado mais provável de cada jogo, sem conta nenhuma.
-          </p>
-        </div>
+        <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-foreground">
+          {shown.length > 0
+            ? dayName(offset, shown[0].kickoff)
+            : "Jogos de hoje"}
+        </p>
+        <p className="sl-meta flex-none text-[11px]">
+          {shown.length > 0 ? "o mercado mais provável" : ""}
+        </p>
       </div>
 
       {!matches && !failed && (
@@ -112,46 +157,52 @@ export function PublicBoard({ limit = 6 }: { limit?: number }) {
 
       {(failed || (matches && shown.length === 0)) && (
         <p className="px-4 py-6 text-[12px] leading-6 text-muted-foreground">
-          Os jogos não estão a chegar neste momento — acontece quando as
-          competições estão paradas ou a fonte de dados está a descansar.
-          Dentro da aplicação é a mesma lista, com tudo o resto à volta.
+          Não há jogos a chegar neste momento — acontece quando as competições
+          estão paradas ou a fonte de dados está a descansar. Volta amanhã: a
+          lista troca sozinha à meia-noite.
         </p>
       )}
 
       {shown.length > 0 && (
-        <ul className="divide-y divide-border">
-          {shown.map((match) => (
-            <li
-              key={match.fixture_id}
-              className="flex items-center gap-3 px-4 py-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-foreground">
-                  {match.home_name} vs {match.away_name}
-                </p>
-                <p className="sl-meta truncate text-[11px]">
-                  {match.league}
-                  {match.kickoff ? ` · ${kickoff(match.kickoff)}` : ""}
-                </p>
-              </div>
-              <div className="flex-none text-right">
-                <p className="sl-meta text-[10.5px] leading-tight">
-                  {MARKET_LABELS[match.headline_market] ??
-                    match.headline_market}
-                </p>
-                <p className="font-mono-data text-[15px] font-bold leading-tight text-[hsl(var(--sl-green))]">
-                  {match.headline_pct.toFixed(0)}%
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <table className="w-full table-fixed border-collapse text-left">
+          <tbody className="divide-y divide-border">
+            {shown.map((match) => (
+              <tr key={match.fixture_id} className="align-middle">
+                <td className="sl-figure w-[4.2rem] px-3 py-2.5 text-[12px] text-muted-foreground sm:w-20 sm:px-4">
+                  {hour(match.kickoff)}
+                </td>
+                <td className="px-1 py-2.5">
+                  <p className="truncate text-[13px] font-semibold text-foreground">
+                    {match.home_name}
+                  </p>
+                  <p className="truncate text-[13px] font-semibold text-foreground">
+                    {match.away_name}
+                  </p>
+                  <p className="sl-meta truncate text-[10.5px]">
+                    {match.league}
+                  </p>
+                </td>
+                <td className="w-[7.5rem] px-3 py-2.5 text-right sm:w-44 sm:px-4">
+                  {/* Wraps rather than truncates: "Casa ou Empate (…" is the
+                      half of the row that says what the number is about. */}
+                  <p className="sl-meta text-[10.5px] leading-tight">
+                    {MARKET_LABELS[match.headline_market] ??
+                      match.headline_market}
+                  </p>
+                  <p className="font-mono-data text-[16px] font-bold leading-tight text-[hsl(var(--sl-green))]">
+                    {match.headline_pct.toFixed(0)}%
+                  </p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {shown.length > 0 && (
         <p className="sl-meta border-t border-border px-4 py-2.5 text-[11px] leading-5">
-          Dentro da aplicação são todos os jogos dos próximos sete dias, com os
-          quinze mercados de cada um e o que a liga costuma dar ao lado.
+          Dentro da aplicação são os próximos sete dias, com os quinze mercados
+          de cada jogo e o que a liga costuma dar ao lado.
         </p>
       )}
     </div>

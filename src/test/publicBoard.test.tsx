@@ -3,12 +3,26 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
 import { PublicBoard } from "@/components/PublicBoard";
 
-const match = (id: number, home: string, away: string, pct: number) => ({
+/** A kickoff N days from now, at a given hour, as the provider sends it. */
+function at(days: number, hour: number, minute = 0): string {
+  const when = new Date();
+  when.setDate(when.getDate() + days);
+  when.setHours(hour, minute, 0, 0);
+  return when.toISOString();
+}
+
+const match = (
+  id: number,
+  home: string,
+  away: string,
+  pct: number,
+  kickoff: string,
+) => ({
   fixture_id: id,
   league: "Liga Portugal",
   home_name: home,
   away_name: away,
-  kickoff: null,
+  kickoff,
   headline_market: "1X",
   headline_pct: pct,
   lambda_casa: 1.6,
@@ -19,52 +33,79 @@ const match = (id: number, home: string, away: string, pct: number) => ({
   mercados: [],
 });
 
+function answers(matches: unknown[]) {
+  return vi.fn(async (url: RequestInfo | URL) => {
+    void url;
+    return {
+      ok: true,
+      json: async () => ({ matches, unavailable: [], skipped: 0 }),
+    };
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
 });
 afterEach(() => cleanup());
 
-describe("the games anybody can see, without an account", () => {
-  it("asks the engine for them and shows what came back", async () => {
-    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
-      void url;
-      return {
-        ok: true,
-        json: async () => ({
-          matches: [
-            match(1, "FC Porto", "Rio Ave", 88.4),
-            match(2, "Benfica", "Estoril", 79.1),
-          ],
-          unavailable: [],
-          skipped: 0,
-        }),
-      };
-    });
+describe("the day's games, for anybody who has not signed in", () => {
+  it("shows today's, and leaves the rest of the week out of it", async () => {
+    const fetchMock = answers([
+      match(1, "FC Porto", "Rio Ave", 88.4, at(0, 18, 30)),
+      match(2, "Benfica", "Estoril", 79.1, at(0, 20, 45)),
+      match(3, "Sporting", "Braga", 71.0, at(2, 19)),
+    ]);
     vi.stubGlobal("fetch", fetchMock);
 
     render(<PublicBoard />);
 
-    expect(await screen.findByText("FC Porto vs Rio Ave")).toBeInTheDocument();
+    expect(await screen.findByText("FC Porto")).toBeInTheDocument();
+    expect(screen.getByText("Benfica")).toBeInTheDocument();
+    // Two days out is not today.
+    expect(screen.queryByText("Sporting")).toBeNull();
+    expect(screen.getByText("Hoje")).toBeInTheDocument();
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      "/data/probability-board",
+    );
+  });
+
+  it("says the hour and the market, which is the whole point", async () => {
+    vi.stubGlobal("fetch", answers([
+      match(1, "FC Porto", "Rio Ave", 88.4, at(0, 18, 30)),
+    ]));
+
+    render(<PublicBoard />);
+
+    await screen.findByText("FC Porto");
+    expect(screen.getByText("18:30")).toBeInTheDocument();
+    expect(screen.getByText("Casa ou Empate (1X)")).toBeInTheDocument();
     expect(screen.getByText("88%")).toBeInTheDocument();
-    expect(screen.getAllByText("Casa ou Empate (1X)").length).toBe(2);
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/data/probability-board");
+  });
+
+  it("moves on to the next day once today has nothing left", async () => {
+    // An empty list at eleven at night would be true and useless.
+    vi.stubGlobal("fetch", answers([
+      match(4, "Ajax", "PSV", 64.2, at(1, 16)),
+    ]));
+
+    render(<PublicBoard />);
+
+    expect(await screen.findByText("Ajax")).toBeInTheDocument();
+    expect(screen.getByText("Amanhã")).toBeInTheDocument();
   });
 
   it("keeps the list short, whatever came back", async () => {
-    vi.stubGlobal("fetch", async () => ({
-      ok: true,
-      json: async () => ({
-        matches: Array.from({ length: 20 }, (_, index) =>
-          match(index + 1, `Casa ${index}`, "Fora", 70),
-        ),
-      }),
-    }));
+    vi.stubGlobal("fetch", answers(
+      Array.from({ length: 30 }, (_, index) =>
+        match(index + 1, `Casa ${index}`, "Fora", 70, at(0, 12, index)),
+      ),
+    ));
 
     render(<PublicBoard limit={3} />);
 
-    await screen.findByText("Casa 0 vs Fora");
-    expect(screen.queryByText("Casa 3 vs Fora")).toBeNull();
+    await screen.findByText("Casa 0");
+    expect(screen.queryByText("Casa 3")).toBeNull();
   });
 
   it("says what is happening when the engine does not answer", async () => {
@@ -75,23 +116,24 @@ describe("the games anybody can see, without an account", () => {
     render(<PublicBoard />);
 
     await waitFor(() =>
-      expect(screen.getByText(/não estão a chegar/)).toBeInTheDocument(),
+      expect(screen.getByText(/Não há jogos a chegar/)).toBeInTheDocument(),
     );
+    // And says when it is worth coming back.
+    expect(screen.getByText(/troca sozinha à meia-noite/)).toBeInTheDocument();
   });
 
   it("does not ask twice for a board it already has", async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ matches: [match(1, "FC Porto", "Rio Ave", 88)] }),
-    }));
+    const fetchMock = answers([
+      match(1, "FC Porto", "Rio Ave", 88, at(0, 18)),
+    ]);
     vi.stubGlobal("fetch", fetchMock);
 
     const first = render(<PublicBoard />);
-    await screen.findByText("FC Porto vs Rio Ave");
+    await screen.findByText("FC Porto");
     first.unmount();
 
     render(<PublicBoard />);
-    await screen.findByText("FC Porto vs Rio Ave");
+    await screen.findByText("FC Porto");
 
     // The same cache the app itself uses: somebody who signs up after reading
     // this does not pay for the request twice.
