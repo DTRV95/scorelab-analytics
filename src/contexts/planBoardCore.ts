@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { GlobalBalance } from "@/lib/globalBalance";
 import type { HomeBoard } from "@/lib/homeBoard";
 import type {
   PendingInvite,
@@ -33,6 +34,13 @@ export interface PlanBoardValue {
    * be seen inside a challenge is an invitation nobody sees.
    */
   invites: PendingInvite[];
+  /** Bets that belong to no challenge — this person's money all the same. */
+  looseBets: PlanBet[];
+  /**
+   * Everything this account has, added up: every challenge — finished ones
+   * included — and the bets made outside them. The figure in the bar.
+   */
+  balance: GlobalBalance;
   /** True until the first load finishes, so a figure is never guessed at. */
   loading: boolean;
   /** Read the challenges again. Mutations announce themselves, so this is

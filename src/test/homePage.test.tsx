@@ -20,6 +20,7 @@ vi.mock("@/hooks/usePlanBoard", () => ({
 }));
 
 import Home from "@/pages/Home";
+import { globalBalance } from "@/lib/globalBalance";
 import { homeBoard } from "@/lib/homeBoard";
 
 const RULES = {
@@ -104,6 +105,12 @@ function setBoard(plans: PlanRecord[], bets: (PlanBet & { planId: string })[]) {
     allBets: bets,
     funds: [],
     invites: [],
+    looseBets: [],
+    started: members.reduce(
+      (sum, entry) => sum + Number(entry.starting_bankroll),
+      0,
+    ),
+    balance: globalBalance({ userId: "david", plans, members, bets }),
     reload: () => {},
   };
 }

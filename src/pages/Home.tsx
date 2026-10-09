@@ -190,8 +190,19 @@ export default function Home() {
   // Read once for the whole app, so the figure here and the one in the bar at
   // the top of every page are the same figure rather than two answers to the
   // same question.
-  const { board, bets, plans, members, allBets, funds, invites, reload } =
-    usePlanBoard();
+  const {
+    board,
+    bets,
+    plans,
+    members,
+    allBets,
+    funds,
+    invites,
+    looseBets,
+    balance,
+    started,
+    reload,
+  } = usePlanBoard();
   const [games, setGames] = useState<BoardMatch[]>([]);
 
   /**
@@ -359,11 +370,19 @@ export default function Home() {
         {board && (
           <motion.div variants={fadeUp}>
             <BankrollHero
-              bankroll={board.bankroll}
-              profit={board.profit}
-              startingBankroll={liveStarted}
-              bets={liveBets}
-              challenges={board.challenges.length}
+              // O mesmo saldo que está na barra: tudo o que esta conta tem,
+              // desafios terminados e apostas fora deles incluídos. Dois
+              // números diferentes para a mesma pergunta, no mesmo ecrã, é o
+              // que faz ninguém acreditar em nenhum dos dois.
+              bankroll={balance.total}
+              profit={balance.profit}
+              // O dinheiro posto, com os depósitos dobrados no princípio da
+              // linha: assim ela acaba onde o número acima diz, em vez de um
+              // salto que ninguém ganhou a meio.
+              startingBankroll={started + balance.added}
+              bets={[...bets, ...looseBets]}
+              challenges={balance.runningCount}
+              finished={balance.finishedCount}
               openBets={openBets}
             />
           </motion.div>

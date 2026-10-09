@@ -125,7 +125,9 @@ describe("the bankroll page", () => {
 
     renderPage();
 
-    const tiles = (await screen.findByText("Banca somada"))
+    // "Banca somada" era só os desafios a decorrer; o saldo é tudo — e
+    // aparece duas vezes, nos números do topo e na conta que os explica.
+    const tiles = (await screen.findAllByText("Saldo"))[0]
       .closest("div.grid") as HTMLElement;
 
     expect(within(tiles).getByText("72,00 €")).toBeInTheDocument();
