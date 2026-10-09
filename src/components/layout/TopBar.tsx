@@ -13,15 +13,15 @@ const eur = new Intl.NumberFormat("pt-PT", {
 export function TopBar() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  // The banca somada: every challenge's bankroll added up, the same figure the
-  // home page shows. It used to be a total built from the saved analyses, a
-  // store nothing in the app writes to any more, so the bar carried a number
-  // that matched nothing else on screen.
+  // Everything this account has: every challenge — the ones already finished
+  // included — plus what the bets made outside them returned. It used to be
+  // only the challenges still running, so money in a finished one vanished
+  // from the bar and a loose bet never reached it at all.
   //
-  // Tapping it opens the bankroll page. It is the way in from a phone, where
-  // the thumb row has no room for it — and the number itself is the obvious
-  // thing to tap to see where it came from.
-  const { board, loading } = usePlanBoard();
+  // Tapping it opens the bankroll page, which breaks the figure apart. It is
+  // the way in from a phone, where the thumb row has no room for it — and the
+  // number itself is the obvious thing to tap to see where it came from.
+  const { balance, loading } = usePlanBoard();
 
   const openCommandCenter = () => {
     window.dispatchEvent(new Event(OPEN_COMMAND_CENTER_EVENT));
@@ -71,7 +71,7 @@ export function TopBar() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
             to="/bankroll"
-            title="Banca somada"
+            title="O teu saldo, em tudo"
             className="flex h-9 flex-none items-center gap-1.5 rounded-full bg-black/20 pl-1 pr-2.5 text-white transition hover:bg-black/30 sm:pr-3"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
@@ -81,7 +81,7 @@ export function TopBar() {
               {/* A dash until it is known: a euro figure that appears as zero
                   and then jumps reads as money lost for as long as it is on
                   screen. */}
-              {loading || !board ? "—" : eur.format(board.bankroll)}
+              {loading ? "—" : eur.format(balance.total)}
             </span>
           </Link>
 

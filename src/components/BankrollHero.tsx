@@ -25,6 +25,7 @@ export function BankrollHero({
   startingBankroll,
   bets,
   challenges,
+  finished = 0,
   openBets,
 }: {
   bankroll: number;
@@ -34,7 +35,10 @@ export function BankrollHero({
   startingBankroll: number;
   /** Their bets, for the line. */
   bets: PlanBet[];
+  /** Challenges still being played. */
   challenges: number;
+  /** Challenges already given as finished, whose money is still money. */
+  finished?: number;
   /** Bets placed and not yet settled, which this figure cannot include. */
   openBets: number;
 }) {
@@ -55,7 +59,7 @@ export function BankrollHero({
       >
         <div className="min-w-0 flex-1">
           <p className="sl-meta text-[10px] uppercase tracking-[0.14em]">
-            A tua banca
+            O teu saldo
           </p>
           <p
             className={`sl-figure sl-hero-figure mt-0.5 text-[1.9rem] leading-9 text-foreground ${
@@ -83,6 +87,9 @@ export function BankrollHero({
             das apostas
             {challenges > 0
               ? ` · ${challenges === 1 ? "1 desafio" : `${challenges} desafios`}`
+              : ""}
+            {finished > 0
+              ? ` · ${finished === 1 ? "1 terminado" : `${finished} terminados`}`
               : ""}
             {openBets > 0
               ? ` · ${openBets === 1 ? "1 aposta aberta" : `${openBets} apostas abertas`}`

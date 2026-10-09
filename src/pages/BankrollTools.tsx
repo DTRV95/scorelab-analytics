@@ -227,7 +227,7 @@ function AtRisk({ staked, could, bankroll }: {
  * counts, drawn rather than described.
  */
 export default function BankrollTools() {
-  const { board, bets, started, loading } = usePlanBoard();
+  const { board, bets, started, balance, loading } = usePlanBoard();
 
   const rows = board?.challenges ?? [];
   const staked = rows.reduce((sum, row) => sum + row.standing.openStake, 0);
@@ -283,17 +283,17 @@ export default function BankrollTools() {
               className="sl-card grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4"
             >
               {[
-                { label: "Banca somada", value: eur.format(board?.bankroll ?? 0) },
+                { label: "Saldo", value: eur.format(balance.total) },
                 { label: "Dinheiro posto", value: eur.format(started + added) },
                 {
                   label: "Das apostas",
-                  value: signed(board?.profit ?? 0),
-                  tint: tone(board?.profit ?? 0),
+                  value: signed(balance.profit),
+                  tint: tone(balance.profit),
                 },
                 {
                   label: "Em jogo agora",
-                  value: eur.format(staked),
-                  tint: staked > 0 ? "text-amber-700" : "",
+                  value: eur.format(balance.atRisk),
+                  tint: balance.atRisk > 0 ? "text-amber-700" : "",
                 },
               ].map((cell) => (
                 <div key={cell.label} className="bg-card px-3 py-3">
@@ -308,6 +308,64 @@ export default function BankrollTools() {
                 </div>
               ))}
             </motion.div>
+
+            {/* De onde vem o saldo que está na barra, para o número não ser
+                um número sem origem: os desafios a decorrer, os que já
+                acabaram, e as apostas feitas fora deles. */}
+            <motion.section variants={fadeUp} className="sl-card overflow-hidden">
+              <div className="border-b border-border px-4 py-3">
+                <h2 className="text-[13px] font-semibold text-foreground">
+                  De onde vem o saldo
+                </h2>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  {
+                    label:
+                      balance.runningCount === 1
+                        ? "1 desafio a decorrer"
+                        : `${balance.runningCount} desafios a decorrer`,
+                    value: balance.running,
+                    show: balance.runningCount > 0,
+                  },
+                  {
+                    label:
+                      balance.finishedCount === 1
+                        ? "1 desafio terminado"
+                        : `${balance.finishedCount} desafios terminados`,
+                    value: balance.finished,
+                    show: balance.finishedCount > 0,
+                  },
+                  {
+                    label: "Apostas fora dos desafios",
+                    value: balance.loose,
+                    show: balance.loose !== 0,
+                  },
+                ]
+                  .filter((row) => row.show)
+                  .map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <span className="sl-meta min-w-0 flex-1 text-[12px]">
+                        {row.label}
+                      </span>
+                      <span className="sl-figure flex-none text-[13px] text-foreground">
+                        {eur.format(row.value)}
+                      </span>
+                    </div>
+                  ))}
+                <div className="flex items-center justify-between gap-3 bg-[hsl(var(--sl-surface))] px-4 py-2.5">
+                  <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-foreground">
+                    Saldo
+                  </span>
+                  <span className="sl-figure flex-none text-[15px] text-foreground">
+                    {eur.format(balance.total)}
+                  </span>
+                </div>
+              </div>
+            </motion.section>
 
             {bets.length > 0 && (
               <motion.div variants={fadeUp}>

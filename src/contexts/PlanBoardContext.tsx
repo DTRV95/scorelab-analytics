@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PlanBoardContext, type PlanBoardValue } from "@/contexts/planBoardCore";
 import { useAuth } from "@/contexts/AuthContext";
+import { globalBalance, type GlobalBalance } from "@/lib/globalBalance";
 import { homeBoard, type HomeBoard } from "@/lib/homeBoard";
+import { fetchLooseBets } from "@/lib/looseBets";
 import type { PlanRecord } from "@/lib/planStore";
 import {
   fetchBetsOfPlans,
@@ -25,6 +27,8 @@ interface Loaded {
   funds: (PlanFunds & { planId: string })[];
   started: number;
   invites: PendingInvite[];
+  looseBets: PlanBet[];
+  balance: GlobalBalance;
   loading: boolean;
 }
 
@@ -37,6 +41,8 @@ const EMPTY: Loaded = {
   funds: [],
   started: 0,
   invites: [],
+  looseBets: [],
+  balance: globalBalance({ userId: "", plans: [], members: [], bets: [] }),
   loading: true,
 };
 
@@ -81,7 +87,7 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
     fetchPlans()
       .then(async (plans) => {
         const ids = plans.map((plan) => plan.id);
-        const [members, placed, moved] = await Promise.all([
+        const [members, placed, moved, loose] = await Promise.all([
           fetchMembersOfPlans(ids).catch(() => [] as PlanMember[]),
           fetchBetsOfPlans(ids).catch(
             () => [] as (PlanBet & { planId: string })[],
@@ -92,6 +98,8 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
           fetchFundsOfPlans(ids).catch(
             () => [] as (PlanFunds & { planId: string })[],
           ),
+          // A bet outside a challenge is still this person's money.
+          fetchLooseBets().catch(() => [] as PlanBet[]),
         ]);
         if (cancelled) return;
 
@@ -106,6 +114,15 @@ export function PlanBoardProvider({ children }: { children: ReactNode }) {
           started: members
             .filter((entry) => entry.user_id === userId)
             .reduce((sum, entry) => sum + Number(entry.starting_bankroll), 0),
+          looseBets: loose,
+          balance: globalBalance({
+            userId,
+            plans,
+            members,
+            bets: placed,
+            funds: moved,
+            looseBets: loose,
+          }),
           loading: false,
         }));
       })
