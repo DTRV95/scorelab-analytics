@@ -89,6 +89,12 @@ export interface PlanLeg {
   kickoff: string | null;
   /** Set once the final score decides this game. */
   status: BetStatus;
+  /**
+   * The final score, when the provider's was what settled this game. Absent on
+   * everything settled by hand and on everything settled before the slip
+   * started keeping it, which is why nothing may depend on it being there.
+   */
+  score?: { homeGoals: number; awayGoals: number } | null;
 }
 
 /** A game typed by hand has no fixture behind it, so no result can be fetched. */
@@ -801,7 +807,9 @@ export function settleFromScores(
       continue;
     }
 
-    legs.push({ ...leg, status: green ? "green" : "red" });
+    // The score is kept, not only the verdict: "falhou" and "falhou num 2-2"
+    // are the same money and very different memories.
+    legs.push({ ...leg, status: green ? "green" : "red", score });
   }
 
   const lost = legs.some((leg) => leg.status === "red");

@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import { BetSlip } from "@/components/BetSlip";
 import type { BoardAccess } from "@/components/GamePicker";
 import { EndChallenge } from "@/components/EndChallenge";
 import { HeadToHead } from "@/components/HeadToHead";
@@ -1179,84 +1180,53 @@ export default function Challenges() {
           </motion.div>
         )}
 
+        {/* One slip per bet, each with its own edges. Stacked inside a single
+            card with a hairline between them, two bets by fechar read as one
+            bet with twice the games. */}
         {openBets.length > 0 && (
           <motion.section
             ref={openDays}
             variants={fadeUp}
-            className="sl-card overflow-hidden"
+            className="space-y-2"
           >
-            <div className="border-b border-border px-4 py-3.5">
-              <h2 className="text-sm font-bold text-foreground">Por fechar</h2>
-            </div>
-            <div className="divide-y divide-border">
-              {openBets.map((bet) => {
-                const manual = bet.legs.some(isManualLeg);
-                return (
-                  <div key={bet.id} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-foreground">
-                          {bet.legs.length === 1
-                            ? bet.legs[0].match
-                            : `${bet.legs.length} jogos`}
-                        </p>
-                        <p className="sl-meta truncate text-[11px]">
-                          Nível {bet.day} · {eur.format(bet.stake)} @{" "}
-                          {bet.odds.toFixed(2)} · ganha{" "}
-                          {eur.format(bet.stake * (bet.odds - 1))}
-                        </p>
+            <h2 className="px-1 text-sm font-bold text-foreground">
+              Por fechar
+            </h2>
+            {openBets.map((bet) => {
+              const manual = bet.legs.some(isManualLeg);
+              return (
+                <BetSlip
+                  key={bet.id}
+                  bet={bet}
+                  above={`Nível ${bet.day} · ${
+                    bet.status === "red"
+                      ? "falta dizer quais falharam"
+                      : manual
+                        ? "à espera de ti"
+                        : "à espera do resultado"
+                  }`}
+                  action={
+                    losing === bet.id ? (
+                      <div className="border-t border-border px-4 pb-3">
+                        <FailedPicker
+                          bet={bet}
+                          saving={closing === bet.id}
+                          onSave={(failed) => loseWith(bet, failed)}
+                          onCancel={() => setLosing(null)}
+                        />
                       </div>
-                      <span
-                        className={`sl-pill flex-none ${
-                          bet.status === "red" ? "sl-pill-loss" : "sl-pill-open"
-                        }`}
-                      >
-                        {bet.status === "red"
-                          ? "falta dizer quais"
-                          : manual
-                            ? "à espera de ti"
-                            : "à espera do resultado"}
-                      </span>
-                    </div>
-
-                    {bet.legs.length > 1 && (
-                      <div className="mt-2 space-y-1">
-                        {bet.legs.map((leg, index) => (
-                          <p
-                            key={`${bet.id}-${index}`}
-                            className="sl-meta truncate text-[11px]"
-                          >
-                            {leg.status === "green"
-                              ? "✓ "
-                              : leg.status === "red"
-                                ? "✗ "
-                                : "· "}
-                            {leg.match} ·{" "}
-                            {MARKET_LABELS[leg.market] ??
-                              canonicalMarket(leg.market)}{" "}
-                            @ {leg.odds.toFixed(2)}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                    {losing === bet.id ? (
-                      <FailedPicker
-                        bet={bet}
-                        saving={closing === bet.id}
-                        onSave={(failed) => loseWith(bet, failed)}
-                        onCancel={() => setLosing(null)}
-                      />
                     ) : bet.status === "red" ? (
-                      <button
-                        type="button"
-                        onClick={() => setLosing(bet.id)}
-                        className="sl-tap mt-2.5 h-10 w-full rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40"
-                      >
-                        Dizer quais falharam
-                      </button>
+                      <div className="border-t border-border px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setLosing(bet.id)}
+                          className="sl-tap h-10 w-full rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40"
+                        >
+                          Dizer quais falharam
+                        </button>
+                      </div>
                     ) : (
-                      <div className="mt-2.5 flex gap-2">
+                      <div className="flex gap-2 border-t border-border px-4 py-3">
                         <button
                           type="button"
                           disabled={closing === bet.id}
@@ -1280,11 +1250,11 @@ export default function Challenges() {
                           {bet.legs.length === 1 ? "Falhou" : "Perdi o nível"}
                         </button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    )
+                  }
+                />
+              );
+            })}
           </motion.section>
         )}
 
