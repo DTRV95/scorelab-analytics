@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Clock, Plus, X } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
+import { BetSlip } from "@/components/BetSlip";
 import { LooseComposer } from "@/components/LooseComposer";
-import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useToast } from "@/hooks/use-toast";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BoardAccess } from "@/components/GamePicker";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
-import { canonicalMarket } from "@/lib/marketNames";
 import { buildApiUrl } from "@/lib/apiConfig";
 import {
   deleteLooseBet,
@@ -62,50 +61,46 @@ function when(iso: string): string {
   }).format(date);
 }
 
-const TONE = {
-  green: "text-[hsl(var(--sl-green))]",
-  red: "text-destructive",
-  pending: "text-amber-700",
-} as const;
-
-function Row({ bet, onOpen }: { bet: LooseBet; onOpen: () => void }) {
-  const Icon =
-    bet.status === "green" ? Check : bet.status === "red" ? X : Clock;
-  const names = bet.legs.map((leg) => leg.match).join(" + ");
+/**
+ * One bet, with what can be done to it under the money.
+ *
+ * The slip itself is shared with everywhere else a bet is shown; the button is
+ * the part that only makes sense here, where the bets are this person's own
+ * and there is nobody else to say how a game went.
+ */
+function Slip({
+  bet,
+  open,
+  onOpen,
+}: {
+  bet: LooseBet;
+  open: boolean;
+  onOpen: () => void;
+}) {
+  const said =
+    bet.status === "pending" ? "Dizer como correu" : "Abrir e corrigir";
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Ver a aposta de ${when(bet.placedAt)}`}
-      className="sl-tap flex w-full items-start gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
-    >
-      <Icon className={`mt-0.5 h-3.5 w-3.5 flex-none ${TONE[bet.status]}`} />
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-semibold text-foreground">
-          {names || "Aposta"}
-        </p>
-        <p className="sl-meta truncate text-[11px]">
-          {bet.legs
-            .map(
-              (leg) => MARKET_LABELS[leg.market] ?? canonicalMarket(leg.market),
-            )
-            .join(" · ")}
-        </p>
-        <p className="sl-meta text-[10px]">
-          {eur.format(bet.stake)} @ {bet.odds.toFixed(2)} · {when(bet.placedAt)}
-        </p>
-      </div>
-
-      {/* An arrow, because a return sitting in the same column as a profit
-          and a loss invites them to be read as the same kind of number. */}
-      <span className={`sl-figure flex-none text-[13px] ${TONE[bet.status]}`}>
-        {bet.status === "pending"
-          ? `→ ${eur.format(bet.stake * bet.odds)}`
-          : signed(bet.profitLoss)}
-      </span>
-    </button>
+    <BetSlip
+      bet={bet}
+      defaultOpen={open}
+      // No date above the kind: the slip already ends with the day it was
+      // registered, and twice is once too many on a card this size.
+      action={
+        <button
+          type="button"
+          onClick={onOpen}
+          // The words on the button come first, so what a screen reader says
+          // and what the button says are the same thing; the date is only
+          // there to tell two buttons with the same words apart.
+          aria-label={`${said} — aposta de ${when(bet.placedAt)}`}
+          className="sl-tap flex h-11 w-full items-center justify-center gap-1.5 border-t border-border text-[12px] font-semibold text-primary"
+        >
+          {said}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      }
+    />
   );
 }
 
@@ -402,10 +397,20 @@ export default function LooseBets() {
           </motion.p>
         )}
 
+        {/* One card per bet, with air between them. They used to be rows
+            inside a single card, which is how four bets come to look like the
+            four games of one. */}
         {bets.length > 0 && (
-          <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-            {bets.map((bet) => (
-              <Row key={bet.id} bet={bet} onOpen={() => setOpenBet(bet)} />
+          <motion.section variants={fadeUp} className="space-y-2.5">
+            {bets.map((bet, index) => (
+              <Slip
+                key={bet.id}
+                bet={bet}
+                // The recent ones and anything still undecided open as they
+                // are; a year of history does not unroll itself.
+                open={index < 3 || bet.status === "pending"}
+                onOpen={() => setOpenBet(bet)}
+              />
             ))}
           </motion.section>
         )}

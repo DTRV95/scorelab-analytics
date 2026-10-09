@@ -206,12 +206,43 @@ describe("bets that answer to no challenge", () => {
     expect(within(tiles).getByText("8,00 €")).toBeInTheDocument();
   });
 
+  it("gives each bet a slip of its own, with what it cost and what it pays", async () => {
+    // Three bets used to be nine lines of small print inside one card, which
+    // reads as one bet with six games in it.
+    fetchLooseBets.mockResolvedValue([
+      bet({ id: "a", status: "green", profitLoss: 18.5, stake: 10, odds: 2.85 }),
+      bet({
+        id: "b",
+        legs: [leg("Sporting", "Rio Ave", "Casa", 1.4)],
+        status: "red",
+        profitLoss: -5,
+        stake: 5,
+        odds: 1.4,
+      }),
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("Dupla")).toBeInTheDocument();
+    expect(screen.getByText("Simples")).toBeInTheDocument();
+    expect(screen.getAllByText("Montante apostado")).toHaveLength(2);
+    // 10 € at 2.85 comes back as 28,50 €, gross, the way a slip says it.
+    expect(screen.getByText("28,50 €")).toBeInTheDocument();
+    expect(screen.getByText("Ganhou")).toBeInTheDocument();
+    expect(screen.getByText("Perdeu")).toBeInTheDocument();
+    // The pick is the team's name, not "Casa" — and the game under it names
+    // both sides, as on the slip itself.
+    expect(screen.getAllByText("Sporting")).toHaveLength(2);
+    expect(screen.getByText("Rio Ave")).toBeInTheDocument();
+    expect(screen.queryByText("Casa")).toBeNull();
+  });
+
   it("settles itself once every game is marked", async () => {
     fetchLooseBets.mockResolvedValue([bet()]);
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Ver a aposta/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir a aposta|Dizer como correu/ }));
     const dialog = await screen.findByRole("dialog");
 
     fireEvent.click(within(dialog).getAllByRole("button", { name: /Entrou/ })[0]);
@@ -269,7 +300,7 @@ describe("bets that answer to no challenge", () => {
     fetchLooseBets.mockResolvedValue([bet()]);
 
     renderPage();
-    await screen.findByRole("button", { name: /Ver a aposta/ });
+    await screen.findByRole("button", { name: /Abrir a aposta|Dizer como correu/ });
 
     expect(fetchFixtureResults).not.toHaveBeenCalled();
     expect(updateLooseBet).not.toHaveBeenCalled();
@@ -280,7 +311,7 @@ describe("bets that answer to no challenge", () => {
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Ver a aposta/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir a aposta|Dizer como correu/ }));
     const dialog = await screen.findByRole("dialog");
 
     expect(within(dialog).getByRole("heading")).toHaveTextContent(
