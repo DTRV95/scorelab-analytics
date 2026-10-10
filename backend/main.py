@@ -154,6 +154,26 @@ def data_probability_board(request: Request, days: int = 7):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/data/board-results")
+@limiter.limit("10/minute")
+def data_board_results(request: Request, days: int = 7):
+    """The board, after the fact: what the model said on games already played.
+
+    Each played fixture is forecast again from the league as it stood before
+    its own kickoff, then the market the board led with is marked against the
+    final score. Costs no extra requests to the data provider — the season is
+    already cached for the board itself — and the answer is cached for hours,
+    because a result does not change.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        return football_data.board_results(days)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/data/calibration")
 @limiter.limit("10/minute")
 def data_calibration(request: Request):

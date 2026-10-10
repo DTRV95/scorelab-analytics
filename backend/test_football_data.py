@@ -365,6 +365,113 @@ def test_accuracy_is_cached_per_league_and_season():
     assert second is first
 
 
+def _past(days, hour=18):
+    """An ISO-8601 kickoff that many days ago, at a fixed hour UTC."""
+    day = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+    return f"{day.isoformat()}T{hour:02d}:00:00Z"
+
+
+def build_recent_season():
+    """A league where the home side always wins 2-0, played over the last
+    fortnight, plus one game still to come."""
+    season = []
+    for day in range(14, 0, -1):
+        season.append(
+            team_match(
+                len(season) + 1, 1, 2, "Home FC", "Away FC",
+                home=2, away=0, kickoff=_past(day),
+            )
+        )
+        season.append(
+            team_match(
+                len(season) + 1, 3, 4, "Casa SC", "Fora SC",
+                home=2, away=0, kickoff=_past(day),
+            )
+        )
+    season.append(
+        team_match(9100, 1, 3, "Home FC", "Casa SC", status="SCHEDULED", kickoff=_future(1))
+    )
+    return season
+
+
+def test_recent_board_scores_only_what_was_already_played():
+    with_season(build_recent_season())
+
+    report = football_data.board_results(days=7)
+
+    assert report["played"] > 0
+    assert all(row["landed"] in (True, False) for row in report["matches"])
+    # A game still to come has no result to be marked against.
+    assert 9100 not in [row["fixture_id"] for row in report["matches"]]
+    for row in report["matches"]:
+        assert row["home_goals"] == 2 and row["away_goals"] == 0
+
+
+def test_recent_board_stops_at_the_edge_of_the_window():
+    with_season(build_recent_season())
+
+    week = football_data.board_results(days=7)
+    football_data._cache.pop("board-results:14", None)
+    fortnight = football_data.board_results(days=14)
+
+    assert fortnight["played"] > week["played"]
+    oldest = min(row["kickoff"] for row in week["matches"])
+    assert oldest >= _past(6, 0)
+
+
+def test_recent_board_never_sees_the_game_it_is_scoring():
+    """A forecast built from a season that already holds the result is the
+    model marking its own homework."""
+    seen = []
+    original = football_data._prefill_for_match
+
+    def spy(matches, target, league_key, before=None):
+        seen.append((target["utcDate"], before))
+        return original(matches, target, league_key, before)
+
+    football_data._prefill_for_match = spy
+    try:
+        with_season(build_recent_season())
+        football_data.board_results(days=7)
+    finally:
+        football_data._prefill_for_match = original
+
+    assert seen
+    for kickoff, before in seen:
+        assert before == kickoff
+
+
+def test_recent_board_counts_the_hits_against_what_it_said():
+    """Every home side wins 2-0 all season, so whatever the model leads with
+    lands — and it should say it was fairly sure, not that it guessed."""
+    with_season(build_recent_season())
+
+    report = football_data.board_results(days=14)
+
+    assert report["hits"] == report["played"]
+    assert report["hit_pct"] == 100.0
+    assert report["predicted_pct"] > 50
+
+
+def test_recent_board_is_cached_per_window():
+    with_season(build_recent_season())
+
+    first = football_data.board_results(days=7)
+
+    original = football_data._prefill_for_match
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("re-scored games that were already scored")
+
+    football_data._prefill_for_match = refuse
+    try:
+        second = football_data.board_results(days=7)
+    finally:
+        football_data._prefill_for_match = original
+
+    assert second is first
+
+
 def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches
