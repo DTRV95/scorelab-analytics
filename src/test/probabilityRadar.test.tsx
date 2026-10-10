@@ -12,6 +12,18 @@ vi.mock("@/components/layout/AppLayout", () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const scoring = vi.hoisted(() => ({
+  snapshot: vi.fn(async () => null as unknown),
+}));
+
+vi.mock("@/lib/boardResults", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/boardResults")>(
+      "@/lib/boardResults",
+    );
+  return { ...actual, fetchResultsSnapshot: scoring.snapshot };
+});
+
 import ProbabilityRadar from "@/pages/ProbabilityRadar";
 import { forgetLeagueRates } from "@/hooks/useLeagueRates";
 import { forgetPrefill } from "@/components/MatchForm";
@@ -155,8 +167,40 @@ function renderPage() {
   );
 }
 
+function yesterdayScored() {
+  const when = new Date();
+  when.setDate(when.getDate() - 1);
+  when.setHours(20, 0, 0, 0);
+
+  return {
+    matches: [
+      {
+        fixture_id: 77,
+        league: "Liga Portugal",
+        home_name: "Braga",
+        away_name: "Estoril",
+        kickoff: when.toISOString(),
+        home_goals: 2,
+        away_goals: 1,
+        headline_market: "Casa",
+        headline_pct: 71,
+        landed: true,
+      },
+    ],
+    played: 1,
+    hits: 1,
+    hit_pct: 100,
+    predicted_pct: 71,
+    unavailable: [],
+    skipped: 0,
+    at: Date.now(),
+    source: "snapshot" as const,
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
+  scoring.snapshot.mockResolvedValue(null);
   // Both of these are held for the session, which would outlive one test.
   forgetLeagueRates();
   forgetPrefill();
@@ -196,6 +240,20 @@ describe("ProbabilityRadar board", () => {
     expect(await screen.findByText("Bayern vs Dortmund")).toBeInTheDocument();
     expect(screen.getByText("Bundesliga")).toBeInTheDocument();
     expect(screen.queryByText("Porto vs Nacional")).not.toBeInTheDocument();
+  });
+
+  it("puts yesterday in the same row of days, with what it got right", async () => {
+    scoring.snapshot.mockResolvedValue(yesterdayScored());
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+    fireEvent.click(screen.getByRole("button", { name: /^Ontem/ }));
+
+    expect(await screen.findByText("1 de 1")).toBeInTheDocument();
+    expect(screen.getByText(/Braga/)).toBeInTheDocument();
+    // The games still to play are out of the way while the past is open.
+    expect(screen.queryByText("Porto vs Nacional")).toBeNull();
   });
 
   it("expands a row into the full breakdown only when clicked", async () => {

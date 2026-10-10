@@ -1,18 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2, Target, X } from "lucide-react";
+import { useState } from "react";
+import { Check, Loader2, X } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import {
-  fetchResultsSnapshot,
-  hitRate,
-  loadBoardResults,
-  playedYesterday,
-  type BoardResults,
-  type ScoredMatch,
-} from "@/lib/boardResults";
+import { hitRate, type ScoredMatch } from "@/lib/boardResults";
+import type { BoardResultsState } from "@/hooks/useBoardResults";
 
 type Span = "ontem" | "semana";
 
-const SHOWN = 4;
+/** The week unrolled is a hundred rows; the day is never more than a dozen. */
+const SHOWN = 12;
 
 function when(kickoff: string | null): string {
   if (!kickoff) return "";
@@ -61,139 +56,66 @@ function Row({ match }: { match: ScoredMatch }) {
 }
 
 /**
- * Whether the model was right, on the games that have already been played.
+ * Yesterday, in the same row of days as today and tomorrow.
  *
  * The board is all forecast and no record: it says what is about to happen,
- * and by the time anybody could check, it has moved on to the next week. This
- * is the part that was missing — yesterday and the last seven days, one tick
- * or one cross per game, on the very market the board led with.
+ * and by the time anybody could check, it has moved on to the next week. The
+ * day before belongs in the same place as the days after — one tick or one
+ * cross per game, on the very market the board led with.
  *
- * It reads what the nightly job already scored. The engine is only asked when
- * there is nothing stored, and only because somebody pressed the button:
- * scoring a week means simulating every game in it again, and nobody should
- * open this page into a spinner.
+ * What is on screen was scored during the night. The engine is only asked
+ * when somebody presses for it, because scoring a week means simulating
+ * every game in it again.
  */
-export function RecentHits() {
-  const [results, setResults] = useState<BoardResults | null>(null);
+export function RecentHits({ state }: { state: BoardResultsState }) {
+  const { results, yesterday, asking, error, ask } = state;
   const [span, setSpan] = useState<Span>("ontem");
-  const [loading, setLoading] = useState(true);
-  const [asking, setAsking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState(false);
 
-  // What is already in hand, without ever waking the engine for it.
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchResultsSnapshot(7)
-      .then((stored) => {
-        if (!cancelled) setResults(stored);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const ask = useCallback(() => {
-    setAsking(true);
-    setError(null);
-
-    loadBoardResults(7, { force: true })
-      .then(setResults)
-      .catch((reason: Error) =>
-        setError(reason.message || "Não foi possível ver como correram."),
-      )
-      .finally(() => setAsking(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <section className="sl-card space-y-2 px-4 py-3.5">
-        <div className="sl-skeleton h-3.5 w-[45%]" />
-        <div className="sl-skeleton h-2.5 w-[70%]" />
-      </section>
-    );
-  }
-
-  const matches = results
-    ? span === "ontem"
-      ? playedYesterday(results.matches)
-      : results.matches
-    : [];
+  const matches = span === "ontem" ? yesterday : (results?.matches ?? []);
   const rate = hitRate(matches);
   const shown = all ? matches : matches.slice(0, SHOWN);
 
-  return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center gap-2 px-4 pb-2.5 pt-3.5">
-        <Target className="h-4 w-4 flex-none text-primary" />
-        <h2 className="flex-1 text-[13px] font-bold text-foreground">
-          Como correram
-        </h2>
-        {/* Two windows, not a date picker: yesterday is the one anybody
-            checks, and a week is enough games for the number to mean
-            something. */}
-        {/* Not the page's own chips: those are thumb-sized, and three of
-            them beside a title push it onto two lines. */}
-        {(["ontem", "semana"] as Span[]).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => {
-              setSpan(option);
-              setAll(false);
-            }}
-            className={`sl-tap flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              span === option
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground ring-1 ring-border"
-            }`}
-          >
-            {option === "ontem" ? "Ontem" : "Semana"}
-          </button>
-        ))}
-      </div>
-
-      {!results && (
-        <div className="px-4 pb-3.5">
-          <p className="sl-meta text-[11.5px] leading-5">
-            Quantas vezes o mercado que o modelo destacou em cada jogo acabou
-            por entrar. Ainda não há nada marcado hoje — pedir ao motor demora
-            um bocado, porque é cada jogo simulado outra vez.
+  if (!results) {
+    return (
+      <div className="sl-card px-4 py-4">
+        <p className="text-[12.5px] leading-6 text-foreground">
+          Quantas vezes o mercado que o modelo destacou em cada jogo acabou
+          por entrar.
+        </p>
+        <p className="sl-meta mt-1 text-[11.5px] leading-5">
+          Ainda não há nada marcado. Pedir ao motor demora um bocado, porque é
+          cada jogo simulado outra vez.
+        </p>
+        <button
+          type="button"
+          disabled={asking}
+          onClick={ask}
+          className="sl-tap mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-semibold text-primary ring-1 ring-border disabled:opacity-50"
+        >
+          {asking && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {asking ? "A marcar os jogos..." : "Ver como correram"}
+        </button>
+        {error && (
+          <p className="mt-2 text-[11px] font-medium text-destructive">
+            {error}
           </p>
-          <button
-            type="button"
-            disabled={asking}
-            onClick={ask}
-            className="sl-tap mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-semibold text-primary ring-1 ring-border disabled:opacity-50"
-          >
-            {asking && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {asking ? "A marcar os jogos..." : "Ver como correram"}
-          </button>
-          {error && (
-            <p className="mt-2 text-[11px] font-medium text-destructive">
-              {error}
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
+    );
+  }
 
-      {results && rate.pct === null && (
-        <p className="sl-meta px-4 pb-3.5 text-[11.5px] leading-5">
+  return (
+    <div className="sl-card overflow-hidden">
+      {rate.pct === null ? (
+        <p className="sl-meta px-4 py-4 text-[12.5px] leading-6">
           {span === "ontem"
             ? "Ontem não se jogou nada nas competições com dados automáticos."
             : "Nenhum jogo marcado nos últimos sete dias."}
         </p>
-      )}
-
-      {results && rate.pct !== null && (
+      ) : (
         <>
-          <div className="flex items-baseline gap-2 px-4 pb-1">
+          <div className="flex items-baseline gap-2 px-4 pt-3.5">
             <p className="sl-figure text-[22px] text-foreground">
               {rate.hits} de {rate.played}
             </p>
@@ -211,7 +133,7 @@ export function RecentHits() {
           {/* The hit rate alone cannot tell a sharp model from a timid one:
               fifteen of twenty is a different thing when it said 75% than
               when it said 95%. */}
-          <p className="sl-meta px-4 pb-3 text-[11px] leading-5">
+          <p className="sl-meta px-4 pb-3 pt-0.5 text-[11px] leading-5">
             certos {span === "ontem" ? "ontem" : "nos últimos sete dias"}, no
             mercado que o modelo destacou em cada jogo. Dizia, em média,{" "}
             {rate.said}%.
@@ -223,41 +145,52 @@ export function RecentHits() {
             ))}
           </div>
 
-          {/* What is on screen was scored during the night, so a game played
-              this afternoon is not in it yet. Saying so, and offering the
-              way to fix it, beats quietly showing yesterday's week. */}
-          <div className="flex items-center gap-3 border-t border-border px-4">
-            {matches.length > SHOWN && (
-              <button
-                type="button"
-                onClick={() => setAll((open) => !open)}
-                className="flex-1 py-2.5 text-left text-[11px] font-semibold text-primary"
-              >
-                {all
-                  ? "Mostrar só os últimos"
-                  : `Ver os ${matches.length} jogos`}
-              </button>
-            )}
+          {/* A quiet week is a dozen games and a busy one is a hundred and
+              forty. The day never needs this; the week always would. */}
+          {matches.length > shown.length && (
             <button
               type="button"
-              disabled={asking}
-              onClick={ask}
-              className={`flex items-center gap-1.5 py-2.5 text-[11px] font-semibold text-muted-foreground disabled:opacity-50 ${
-                matches.length > SHOWN ? "" : "flex-1 justify-start"
-              }`}
+              onClick={() => setAll(true)}
+              className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
             >
-              {asking && <Loader2 className="h-3 w-3 animate-spin" />}
-              {asking ? "A marcar os jogos..." : "Incluir os jogos de hoje"}
+              Ver os outros {matches.length - shown.length} jogos
             </button>
-          </div>
-
-          {error && (
-            <p className="border-t border-border px-4 py-2 text-[11px] font-medium text-destructive">
-              {error}
-            </p>
           )}
         </>
       )}
-    </section>
+
+      {/* The week lives behind yesterday rather than beside it: a day is what
+          anybody checks, and a chip for every window would be a row of
+          chips about the past in front of the games still to play. */}
+      <div className="flex items-center gap-3 border-t border-border px-4">
+        <button
+          type="button"
+          onClick={() => {
+            setSpan(span === "ontem" ? "semana" : "ontem");
+            setAll(false);
+          }}
+          className="flex-1 py-2.5 text-left text-[11px] font-semibold text-primary"
+        >
+          {span === "ontem"
+            ? "Ver os últimos sete dias"
+            : "Ver só os jogos de ontem"}
+        </button>
+        <button
+          type="button"
+          disabled={asking}
+          onClick={ask}
+          className="flex items-center gap-1.5 py-2.5 text-[11px] font-semibold text-muted-foreground disabled:opacity-50"
+        >
+          {asking && <Loader2 className="h-3 w-3 animate-spin" />}
+          {asking ? "A marcar..." : "Incluir os de hoje"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="border-t border-border px-4 py-2 text-[11px] font-medium text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
