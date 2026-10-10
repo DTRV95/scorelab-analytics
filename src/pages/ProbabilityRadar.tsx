@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { RecentHits } from "@/components/RecentHits";
 import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
 import { TodayMatches, dayKey, dayLabels, timeLabel } from "@/components/TodayMatches";
 import { LeagueCalibration } from "@/components/LeagueCalibration";
@@ -651,6 +652,13 @@ export default function ProbabilityRadar() {
           >
             <RefreshCw className={`h-4 w-4 ${boardLoading ? "animate-spin" : ""}`} />
           </Button>
+        </motion.div>
+
+        {/* What the board said last time, before what it says this time: a
+            page of forecasts with no record of how the last ones went is
+            asking to be believed on nothing. */}
+        <motion.div variants={fadeUp}>
+          <RecentHits />
         </motion.div>
 
         {enabled === null && (

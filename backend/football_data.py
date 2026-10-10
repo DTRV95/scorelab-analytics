@@ -706,6 +706,168 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
     }
 
 
+# The board, after the fact. One simulation per played fixture, at the same
+# reduced precision a whole season is scored with.
+RESULTS_ITERATIONS = 2_000
+RESULTS_TTL = 3 * 60 * 60
+MAX_RESULT_MATCHES = 140
+
+
+def _start_of_day(days_ago: int) -> float:
+    """Midnight UTC, that many days back."""
+    start = datetime.combine(
+        datetime.now(timezone.utc).date() - timedelta(days=max(0, days_ago)),
+        dt_time.min,
+        tzinfo=timezone.utc,
+    )
+    return start.timestamp()
+
+
+def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, Any]:
+    """What the model said, on the games already played in the last N days.
+
+    The board says what is about to happen and is gone by the next morning,
+    so there was never anywhere to see whether any of it came true. This is
+    that board, scored: each played fixture forecast again from the league as
+    it stood before its own kickoff — never from a season that already holds
+    the result — and the market the model picked out marked against the final
+    score.
+
+    One market per game, the one the board itself led with. A game is not a
+    prediction about fifteen markets to whoever reads it; it is the line the
+    model put at the top, and that is the line worth being held to.
+    """
+    from model import pick_headline_market, probabilidades_jogo, settle_markets
+    from schemas import ProbabilityRequest
+
+    days = max(1, min(days, 14))
+    cache_key = f"board-results:{days}"
+    cached = _cache_get(cache_key, RESULTS_TTL)
+    if cached is not None:
+        return cached
+
+    now = time.time()
+    floor = _start_of_day(days - 1)
+    unavailable: List[str] = []
+
+    def load(league_key: str):
+        try:
+            return league_key, get_season_matches(league_key), None
+        except ProviderUnavailable as exc:
+            return league_key, [], exc
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        seasons = list(pool.map(load, supported_leagues()))
+
+    recent: List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]] = []
+    for league_key, matches, failure in seasons:
+        if failure is not None:
+            unavailable.append(league_key)
+            continue
+
+        for played in matches:
+            if not _is_finished(played):
+                continue
+            home_goals, away_goals = _full_time_goals(played)
+            if home_goals is None or away_goals is None:
+                continue
+            stamp = _kickoff_stamp(played.get("utcDate") or "")
+            if stamp is None or stamp < floor or stamp > now:
+                continue
+            recent.append((league_key, matches, played))
+
+    # Newest first, and capped: the oldest game of a fortnight is the one
+    # nobody scrolls to, and every one of these costs a simulation.
+    recent.sort(key=lambda item: item[2].get("utcDate") or "", reverse=True)
+    recent = recent[:limit]
+
+    scored: List[Dict[str, Any]] = []
+    skipped = 0
+
+    for league_key, matches, played in recent:
+        kickoff = played.get("utcDate")
+        home_goals, away_goals = _full_time_goals(played)
+
+        try:
+            prefill = _prefill_for_match(matches, played, league_key, before=kickoff)
+            averages = prefill.get("league_averages") or {}
+            data = ProbabilityRequest(
+                equipa_casa=prefill["equipa_casa"],
+                equipa_fora=prefill["equipa_fora"],
+                liga=league_key,
+                jogos_casa=prefill["jogos_casa"],
+                golos_marcados_casa=prefill["golos_marcados_casa"],
+                golos_sofridos_casa=prefill["golos_sofridos_casa"],
+                jogos_casa_rec=prefill["jogos_casa_rec"],
+                golos_marcados_casa_rec=prefill["golos_marcados_casa_rec"],
+                golos_sofridos_casa_rec=prefill["golos_sofridos_casa_rec"],
+                jogos_fora=prefill["jogos_fora"],
+                golos_marcados_fora=prefill["golos_marcados_fora"],
+                golos_sofridos_fora=prefill["golos_sofridos_fora"],
+                jogos_fora_rec=prefill["jogos_fora_rec"],
+                golos_marcados_fora_rec=prefill["golos_marcados_fora_rec"],
+                golos_sofridos_fora_rec=prefill["golos_sofridos_fora_rec"],
+                **(
+                    {
+                        "league_home_goals_avg": averages["league_home_goals_avg"],
+                        "league_away_goals_avg": averages["league_away_goals_avg"],
+                    }
+                    if averages
+                    else {}
+                ),
+            )
+            forecast = probabilidades_jogo(data, iterations=RESULTS_ITERATIONS)
+            headline = pick_headline_market(forecast["mercados"])
+        except ProviderUnavailable:
+            # Nothing played before it: not a miss, simply not scoreable.
+            skipped += 1
+            continue
+        except Exception:
+            skipped += 1
+            continue
+
+        landed = settle_markets(home_goals, away_goals).get(headline["mercado"])
+        if landed is None:
+            skipped += 1
+            continue
+
+        scored.append(
+            {
+                "fixture_id": played.get("id"),
+                "league": league_key,
+                "home_name": (played.get("homeTeam") or {}).get("shortName")
+                or (played.get("homeTeam") or {}).get("name"),
+                "away_name": (played.get("awayTeam") or {}).get("shortName")
+                or (played.get("awayTeam") or {}).get("name"),
+                "kickoff": kickoff,
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+                "headline_market": headline["mercado"],
+                "headline_pct": headline["probabilidade_pct"],
+                "landed": bool(landed),
+            }
+        )
+
+    hits = sum(1 for row in scored if row["landed"])
+    said = sum(row["headline_pct"] for row in scored)
+
+    payload = {
+        "matches": scored,
+        "played": len(scored),
+        "hits": hits,
+        # What the model called, against what it said it was calling: a hit
+        # rate alone cannot tell a sharp model from a timid one.
+        "hit_pct": round(hits / len(scored) * 100, 1) if scored else 0.0,
+        "predicted_pct": round(said / len(scored), 1) if scored else 0.0,
+        "days": days,
+        "unavailable": unavailable,
+        "skipped": skipped,
+    }
+
+    _cache_put(cache_key, payload)
+    return payload
+
+
 def build_prefill(league_key: str, fixture_id: int) -> Dict[str, Any]:
     matches = get_season_matches(league_key)
 
