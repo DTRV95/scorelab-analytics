@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BarChart3,
-  CalendarClock,
   Gauge,
   Globe,
   Percent,
@@ -16,6 +15,7 @@ import { HomeChallenges } from "@/components/HomeChallenges";
 import { HomeInsights } from "@/components/HomeInsights";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
+import { TopGames } from "@/components/TopGames";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
@@ -37,17 +37,6 @@ const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.05 } },
 };
-
-function kickoff(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-PT", {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
 
 /** Where else there is to go, for the pages nothing above leads to. */
 const DOORS = [
@@ -99,81 +88,6 @@ function HomeDoors() {
         </Link>
       ))}
     </div>
-  );
-}
-
-/**
- * The three games the model is surest about.
- *
- * It used to be the next four by kick-off, which is a clock, not a finding —
- * the whole point of the app is which games it has an opinion about, and the
- * strongest three are that opinion. Still only games yet to be played: a 92%
- * on something that finished last night is a fact, not a tip.
- */
-function NextGames({ board }: { board: BoardMatch[] }) {
-  const soon = useMemo(() => {
-    const now = Date.now();
-    return [...board]
-      .filter((match) => {
-        if (!match.kickoff) return false;
-        const at = new Date(match.kickoff).getTime();
-        return !Number.isNaN(at) && at > now;
-      })
-      .sort(
-        (a, b) =>
-          b.headline_pct - a.headline_pct ||
-          (a.kickoff ?? "").localeCompare(b.kickoff ?? ""),
-      )
-      .slice(0, 3);
-  }, [board]);
-
-  if (soon.length === 0) return null;
-
-  return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-          Os mais prováveis
-        </h2>
-        <Link
-          to="/probability"
-          className="sl-meta flex items-center gap-1 text-[11px]"
-        >
-          Ver todos <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-
-      <div className="divide-y divide-border">
-        {soon.map((match) => (
-          // Into the game itself, with its fifteen markets: the row carried
-          // the one number the model is most sure of and no way to ask it
-          // anything else.
-          <Link
-            key={match.fixture_id}
-            to={`/match/${match.fixture_id}`}
-            className="sl-tap flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[hsl(var(--sl-surface))]"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold text-foreground">
-                {match.home_name} vs {match.away_name}
-              </p>
-              <p className="sl-meta truncate text-[11px]">
-                {match.league} · {kickoff(match.kickoff)}
-              </p>
-            </div>
-            <div className="flex-none text-right">
-              <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[13px] text-foreground">
-                {match.headline_pct.toFixed(0)}%
-              </p>
-              <p className="sl-meta text-[10px]">
-                {MARKET_LABELS[match.headline_market] ?? match.headline_market}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -405,7 +319,7 @@ export default function Home() {
         )}
 
         <motion.div variants={fadeUp}>
-          <NextGames board={games} />
+          <TopGames board={games} />
         </motion.div>
 
 

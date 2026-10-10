@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { BetSlip } from "@/components/BetSlip";
+import { TopGames } from "@/components/TopGames";
 import type { BoardAccess } from "@/components/GamePicker";
 import { EndChallenge } from "@/components/EndChallenge";
 import { HeadToHead } from "@/components/HeadToHead";
@@ -1177,6 +1178,15 @@ export default function Challenges() {
                 })
               }
             />
+          </motion.div>
+        )}
+
+        {/* What there is to back today, on the page where the day's bet is
+            placed. The games were a tap away in the picker, which is a tap
+            nobody takes before deciding there is something worth picking. */}
+        {!ended && board.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <TopGames board={board} />
           </motion.div>
         )}
 

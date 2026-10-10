@@ -800,6 +800,41 @@ describe("what the person's own record says, while they build the bet", () => {
 // "X2 e +1,5 golos". And the same side went in as "Gales" and "País de Gales".
 // Ranked by the model's confidence, a game on Sunday sat above one kicking
 // off in an hour, and nothing on screen said why.
+describe("what there is to back, on the challenge page", () => {
+  it("shows the three most likely games of the day without opening the picker", async () => {
+    const at = (days: number, hour: number) => {
+      const when = new Date();
+      when.setDate(when.getDate() + Math.max(1, days));
+      when.setHours(hour, 0, 0, 0);
+      return when.toISOString();
+    };
+
+    writeCachedBoard({
+      days: 7,
+      matches: [
+        boardMatch(1, "O mais certo", 91, "Liga Portugal", at(1, 18)),
+        boardMatch(2, "O menos certo", 52, "Liga Portugal", at(1, 10)),
+        boardMatch(3, "Segundo", 85, "Liga Portugal", at(1, 12)),
+        boardMatch(4, "Terceiro", 78, "Liga Portugal", at(1, 14)),
+      ],
+      unavailable: [],
+      skipped: 0,
+    });
+
+    renderPage();
+
+    // The games were a tap away inside the picker, which is a tap nobody
+    // takes before deciding there is something worth picking.
+    expect(
+      await screen.findByText("Os mais prováveis"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/O mais certo/)).toBeInTheDocument();
+    expect(screen.getByText(/Segundo/)).toBeInTheDocument();
+    expect(screen.getByText(/Terceiro/)).toBeInTheDocument();
+    expect(screen.queryByText(/O menos certo/)).toBeNull();
+  });
+});
+
 describe("the order the games come in", () => {
   it("puts them in the order they are played, soonest first", async () => {
     const today = new Date();
@@ -827,16 +862,24 @@ describe("the order the games come in", () => {
     renderPage();
     await openPicker();
 
+    // Inside the picker: the page behind it now carries its own shortlist of
+    // the same games, ranked the other way round on purpose.
+    const picker = await screen.findByRole("dialog");
+
     // The picker opens on the day being played, soonest kickoff first.
-    const openingDay = (await screen.findAllByText(/vs Rival/)).map(
+    const openingDay = (await within(picker).findAllByText(/vs Rival/)).map(
       (node) => node.textContent,
     );
     expect(openingDay).toEqual(["Hoje cedo vs Rival", "Hoje tarde vs Rival"]);
 
     // And every day at once is still in the order they are played.
-    fireEvent.click(screen.getByRole("button", { name: /^Todos 4$/ }));
+    fireEvent.click(
+      within(picker).getByRole("button", { name: /^Todos 4$/ }),
+    );
 
-    const all = screen.getAllByText(/vs Rival/).map((node) => node.textContent);
+    const all = within(picker)
+      .getAllByText(/vs Rival/)
+      .map((node) => node.textContent);
     expect(all).toEqual([
       "Hoje cedo vs Rival",
       "Hoje tarde vs Rival",
@@ -866,20 +909,23 @@ describe("the order the games come in", () => {
 
     renderPage();
     await openPicker();
+    const picker = await screen.findByRole("dialog");
 
     // One tab per day, each saying how many games it holds.
     expect(
-      await screen.findByRole("button", { name: /^Hoje 1$/ }),
+      await within(picker).findByRole("button", { name: /^Hoje 1$/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Amanhã 1$/ })).toBeInTheDocument();
+    expect(
+      within(picker).getByRole("button", { name: /^Amanhã 1$/ }),
+    ).toBeInTheDocument();
 
     // A day chosen is grouped by competition instead; every day at once keeps
     // the day headings.
-    expect(screen.getByText("Liga Portugal")).toBeInTheDocument();
+    expect(within(picker).getByText("Liga Portugal")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Todos 2$/ }));
-    expect(screen.getByText("Hoje")).toBeInTheDocument();
-    expect(screen.getByText("Amanhã")).toBeInTheDocument();
+    fireEvent.click(within(picker).getByRole("button", { name: /^Todos 2$/ }));
+    expect(within(picker).getByText("Hoje")).toBeInTheDocument();
+    expect(within(picker).getByText("Amanhã")).toBeInTheDocument();
   });
 });
 
