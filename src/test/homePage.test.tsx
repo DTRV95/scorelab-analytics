@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { PlanBet, PlanMember, PlanRecord } from "@/lib/planStore";
 
@@ -20,6 +26,7 @@ vi.mock("@/hooks/usePlanBoard", () => ({
 }));
 
 import Home from "@/pages/Home";
+import { dayLabels } from "@/components/TodayMatches";
 import { globalBalance } from "@/lib/globalBalance";
 import { homeBoard } from "@/lib/homeBoard";
 
@@ -204,40 +211,51 @@ describe("the record on the page the app opens on", () => {
 });
 
 describe("the games on the home page", () => {
-  const match = (id: number, home: string, pct: number, hours: number) => ({
-    fixture_id: id,
-    league: "Liga Portugal",
-    home_name: home,
-    away_name: "Rival",
-    kickoff: new Date(Date.now() + hours * 3600_000).toISOString(),
-    headline_market: "1X",
-    headline_pct: pct,
-    lambda_casa: 1.6,
-    lambda_fora: 1,
-    total_golos_esperados: 2.6,
-    amostra_pct: 80,
-    amostra_label: "Alta",
-    mercados: [],
-  });
+  /** A fixture on a named day, at a daytime hour: never already kicked off. */
+  const match = (
+    id: number,
+    home: string,
+    pct: number,
+    daysAhead = 1,
+    hour = 12,
+  ) => {
+    const when = new Date();
+    when.setDate(when.getDate() + Math.max(1, daysAhead));
+    when.setHours(hour, 0, 0, 0);
 
-  it("shows the three the model is surest about, not the next three to kick off", async () => {
+    return {
+      fixture_id: id,
+      league: "Liga Portugal",
+      home_name: home,
+      away_name: "Rival",
+      kickoff: when.toISOString(),
+      headline_market: "1X",
+      headline_pct: pct,
+      lambda_casa: 1.6,
+      lambda_fora: 1,
+      total_golos_esperados: 2.6,
+      amostra_pct: 80,
+      amostra_label: "Alta",
+      mercados: [],
+    };
+  };
+
+  const served = (matches: unknown[]) =>
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
         ok: true,
-        json: async () => ({
-          matches: [
-            match(1, "Quase certo", 91, 40),
-            match(2, "Daqui a pouco", 54, 1),
-            match(3, "Muito provável", 85, 30),
-            match(4, "Provável", 79, 20),
-            match(5, "Talvez", 61, 5),
-          ],
-          unavailable: [],
-          skipped: 0,
-        }),
+        json: async () => ({ matches, unavailable: [], skipped: 0 }),
       })),
     );
+
+  it("shows the three the model is surest about, not the next three to kick off", async () => {
+    served([
+      match(1, "Quase certo", 91, 1, 18),
+      match(2, "Daqui a pouco", 54, 1, 10),
+      match(3, "Muito provável", 85, 1, 12),
+      match(4, "Provável", 79, 1, 14),
+    ]);
 
     setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "green")]);
     renderHome();
@@ -247,6 +265,31 @@ describe("the games on the home page", () => {
     expect(screen.getByText(/Provável/)).toBeInTheDocument();
     // Kicking off first is not the same as being worth backing.
     expect(screen.queryByText(/Daqui a pouco/)).toBeNull();
+  });
+
+  it("keeps each day's three behind that day, instead of one list for the week", async () => {
+    // Three strongest of the whole week, on a Monday, is three games on
+    // Saturday — and nothing at all about today.
+    const later = new Date();
+    later.setDate(later.getDate() + 2);
+
+    served([
+      match(1, "Amanhã", 70, 1, 12),
+      match(2, "Noutro dia", 95, 2, 12),
+    ]);
+
+    setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "green")]);
+    renderHome();
+
+    expect(await screen.findByText(/Amanhã vs Rival/)).toBeInTheDocument();
+    expect(screen.queryByText(/Noutro dia/)).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: dayLabels(later).short }),
+    );
+
+    expect(await screen.findByText(/Noutro dia/)).toBeInTheDocument();
+    expect(screen.queryByText(/Amanhã vs Rival/)).toBeNull();
   });
 
   it("asks for the board itself when nothing has stored one", async () => {
