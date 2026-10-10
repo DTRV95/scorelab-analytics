@@ -20,6 +20,12 @@ vi.mock("@/lib/boardResults", async () => {
 });
 
 import { RecentHits } from "@/components/RecentHits";
+import { useBoardResults } from "@/hooks/useBoardResults";
+
+/** The card as the page mounts it: the hook above, the panel below. */
+function Hits() {
+  return <RecentHits state={useBoardResults()} />;
+}
 
 let id = 0;
 function scored(
@@ -90,7 +96,7 @@ describe("how the board did", () => {
       ]),
     );
 
-    render(<RecentHits />);
+    render(<Hits />);
 
     expect(await screen.findByText("2 de 3")).toBeInTheDocument();
     expect(screen.getByText("67%")).toBeInTheDocument();
@@ -98,13 +104,15 @@ describe("how the board did", () => {
     expect(screen.queryByText(/Braga/)).toBeNull();
   });
 
-  it("switches to the whole week without asking anybody again", async () => {
+  it("opens the whole week behind yesterday, without asking anybody again", async () => {
     api.snapshot.mockResolvedValue(
       results([scored(true), scored(false, { daysAgo: 4, home: "Braga" })]),
     );
 
-    render(<RecentHits />);
-    fireEvent.click(await screen.findByRole("button", { name: "Semana" }));
+    render(<Hits />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ver os últimos sete dias/ }),
+    );
 
     expect(await screen.findByText("1 de 2")).toBeInTheDocument();
     expect(screen.getByText(/Braga/)).toBeInTheDocument();
@@ -116,7 +124,7 @@ describe("how the board did", () => {
       results([scored(true, { daysAgo: 5, home: "Braga" })]),
     );
 
-    render(<RecentHits />);
+    render(<Hits />);
 
     expect(
       await screen.findByText(/Ontem não se jogou nada/),
@@ -128,7 +136,7 @@ describe("how the board did", () => {
     // takes most of a minute to get up. Nobody opens this page into that.
     api.snapshot.mockResolvedValue(null);
 
-    render(<RecentHits />);
+    render(<Hits />);
 
     expect(
       await screen.findByRole("button", { name: /Ver como correram/ }),
@@ -140,7 +148,7 @@ describe("how the board did", () => {
     api.snapshot.mockResolvedValue(null);
     api.load.mockResolvedValue(results([scored(true), scored(true)]));
 
-    render(<RecentHits />);
+    render(<Hits />);
     fireEvent.click(
       await screen.findByRole("button", { name: /Ver como correram/ }),
     );
@@ -153,7 +161,7 @@ describe("how the board did", () => {
     api.snapshot.mockResolvedValue(null);
     api.load.mockRejectedValue(new Error("Fonte de dados não configurada."));
 
-    render(<RecentHits />);
+    render(<Hits />);
     fireEvent.click(
       await screen.findByRole("button", { name: /Ver como correram/ }),
     );

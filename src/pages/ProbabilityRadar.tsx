@@ -36,6 +36,7 @@ import {
   type PrefillForm,
 } from "@/components/MatchForm";
 import { loadBoard } from "@/lib/boardSource";
+import { useBoardResults } from "@/hooks/useBoardResults";
 import {
   readCachedBoard,
   type BoardMatch,
@@ -361,6 +362,10 @@ export default function ProbabilityRadar() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
+  // Yesterday sits in the same row of chips as today and tomorrow, and is
+  // the one of them that has already happened.
+  const [yesterdayOpen, setYesterdayOpen] = useState(false);
+  const hits = useBoardResults();
   // Closed by default on phones so the actual board — the reason someone
   // opens this page — isn't pushed below the fold by an explainer paragraph.
   const [infoOpen, setInfoOpen] = useState(
@@ -654,13 +659,6 @@ export default function ProbabilityRadar() {
           </Button>
         </motion.div>
 
-        {/* What the board said last time, before what it says this time: a
-            page of forecasts with no record of how the last ones went is
-            asking to be believed on nothing. */}
-        <motion.div variants={fadeUp}>
-          <RecentHits />
-        </motion.div>
-
         {enabled === null && (
           <motion.div
             variants={fadeUp}
@@ -730,17 +728,40 @@ export default function ProbabilityRadar() {
               </div>
             )}
 
-            {dayGroups.length > 0 && (
+            {(dayGroups.length > 0 || !hits.loading) && (
                 <>
                   <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                    {/* The day before, in the same row as the days after.
+                        It is the one day on this page with an answer rather
+                        than a forecast, and it belongs where somebody is
+                        already tapping. */}
+                    <button
+                      type="button"
+                      data-active={yesterdayOpen}
+                      onClick={() => setYesterdayOpen(true)}
+                      className="sl-chip flex-none"
+                    >
+                      Ontem
+                      {hits.yesterday.length > 0 && (
+                        <span className="text-[11px] opacity-65">
+                          {hits.yesterday.length}
+                        </span>
+                      )}
+                    </button>
+
                     {dayGroups.map((day, index) => {
-                      const isActive = index === Math.min(activeDay, dayGroups.length - 1);
+                      const isActive =
+                        !yesterdayOpen &&
+                        index === Math.min(activeDay, dayGroups.length - 1);
                       return (
                         <button
                           key={day.long}
                           type="button"
                           data-active={isActive}
-                          onClick={() => setActiveDay(index)}
+                          onClick={() => {
+                            setYesterdayOpen(false);
+                            setActiveDay(index);
+                          }}
                           className="sl-chip flex-none capitalize"
                         >
                           {day.short}
@@ -752,6 +773,11 @@ export default function ProbabilityRadar() {
                     })}
                   </div>
 
+                  {yesterdayOpen ? (
+                    <div className="mt-4">
+                      <RecentHits state={hits} />
+                    </div>
+                  ) : (
                   <div className="mt-4 space-y-5">
                     {leagueGroups.map(({ league, items }) => (
                       <div key={league} className="space-y-2">
@@ -785,6 +811,7 @@ export default function ProbabilityRadar() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </>
               )}
 
