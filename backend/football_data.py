@@ -132,13 +132,20 @@ MAX_SLOT_WAIT = 8.0
 # Eleven competitions are wired and the free plan allows ten requests a
 # minute, so a board built from a cold cache is one request over the line —
 # every time, not now and then. With eight seconds of patience the eleventh
-# could never get a slot, and the eleventh is whichever sorts last: Serie A
+# could never get a slot, and the eleventh was whichever sorts last: Serie A
 # went missing from the board every single day, while its games were being
 # played and every other page could read them.
 #
-# The board is built by a job at night and read from the database all day, so
-# it can afford to wait out the minute. Nobody is watching it arrive.
-BOARD_SLOT_WAIT = 70.0
+# Waiting out the whole minute inside the request is not the way out of it:
+# tried at seventy seconds, the host cut the connection and answered 502
+# before the board was finished. No single request can outlast the
+# provider's window, so this only buys the time a window that is already
+# half spent needs to roll over.
+#
+# What closes the gap is the second pass of the night, forty minutes later:
+# the ten that got through are cached for six hours and cost nothing, so the
+# one that was left out is the only request there is to make.
+BOARD_SLOT_WAIT = 25.0
 
 _rate_lock = threading.Lock()
 _recent_calls: List[float] = []
