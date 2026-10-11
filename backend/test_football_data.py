@@ -544,6 +544,72 @@ def test_scoring_a_game_never_sees_the_rates_it_helped_make():
     assert rates[500]["Casa"] == 0.0
 
 
+def test_every_wired_competition_can_get_a_slot_for_the_board():
+    """Eleven competitions and ten requests a minute: the board is one over
+    the line on a cold cache, so the eleventh must be allowed to wait out the
+    minute instead of being refused. It was refused, and because the order
+    never changed it was always the same one — Serie A, every day."""
+    leagues = football_data.supported_leagues()
+
+    assert len(leagues) > football_data.RATE_LIMIT, (
+        "this guard only means something while there are more competitions "
+        "than the allowance"
+    )
+    missing = len(leagues) - football_data.RATE_LIMIT
+    assert football_data.BOARD_SLOT_WAIT > football_data.RATE_WINDOW, (
+        "the board has to outlast the window for the "
+        f"{missing} competition(s) the allowance cannot take at once"
+    )
+
+
+def test_the_board_waits_longer_than_a_page_does():
+    """A person watching a spinner and a job running at four in the morning
+    cannot have the same patience."""
+    asked = []
+    original = football_data._request
+
+    def spy(path, params=None, patience=football_data.MAX_SLOT_WAIT):
+        asked.append(patience)
+        raise football_data.ProviderUnavailable("sem rede nos testes")
+
+    football_data._request = spy
+    try:
+        football_data._cache.clear()
+        football_data.matches_for_days(7, patience=football_data.BOARD_SLOT_WAIT)
+        board_patience = list(asked)
+
+        asked.clear()
+        football_data._cache.clear()
+        football_data.matches_for_days(7)
+        page_patience = list(asked)
+    finally:
+        football_data._request = original
+        football_data._cache.clear()
+
+    assert board_patience and page_patience
+    assert all(wait == football_data.BOARD_SLOT_WAIT for wait in board_patience)
+    assert all(wait == football_data.MAX_SLOT_WAIT for wait in page_patience)
+
+
+def test_the_competitions_take_turns_at_being_last():
+    """Whoever the allowance cannot take should at least be a different
+    competition each time."""
+    leagues = football_data.supported_leagues()
+
+    orders = set()
+    original = time.time
+    try:
+        for hour in range(len(leagues)):
+            time.time = lambda hour=hour: hour * 3600.0
+            orders.add(tuple(football_data._rotated(leagues)))
+    finally:
+        time.time = original
+
+    assert len(orders) == len(leagues)
+    # Same competitions every time, only the starting point moves.
+    assert all(sorted(order) == sorted(leagues) for order in orders)
+
+
 def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches
@@ -605,7 +671,7 @@ def test_the_board_never_offers_a_game_already_under_way():
     game that has started."""
     original = football_data.upcoming_fixtures
 
-    def fixtures(league_key, limit=100):
+    def fixtures(league_key, limit=100, patience=None):
         if league_key != "Eredivisie":
             return []
         return [
@@ -889,7 +955,7 @@ def test_the_board_carries_the_whole_of_its_last_day():
         tzinfo=timezone.utc,
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def fixtures(league_key, limit=100):
+    def fixtures(league_key, limit=100, patience=None):
         if league_key != "Brasileirão":
             return []
         return [
@@ -937,7 +1003,7 @@ def test_league_rates_never_spends_a_request_at_the_provider():
     football_data._cache.clear()
     football_data._cache_put("matches:PPL:current", _season(SEASON))
 
-    def refuse(path, params=None):
+    def refuse(path, params=None, patience=None):
         raise AssertionError(f"asked the provider for {path}")
 
     original = football_data._request
@@ -965,7 +1031,7 @@ def test_leagues_health_reports_every_wired_competition_without_asking():
         ],
     )
 
-    def refuse(path, params=None):
+    def refuse(path, params=None, patience=None):
         raise AssertionError(f"asked the provider for {path}")
 
     original = football_data._request
@@ -990,7 +1056,7 @@ def test_leagues_health_names_the_competition_the_provider_refuses():
     """The one answer a cache cannot give: a competition that fails."""
     football_data._cache.clear()
 
-    def refuse(path, params=None):
+    def refuse(path, params=None, patience=None):
         raise football_data.ProviderUnavailable("A chave foi recusada.")
 
     original = football_data._request

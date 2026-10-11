@@ -127,8 +127,36 @@ RATE_WINDOW = 60.0
 # nobody watches a spinner for it.
 MAX_SLOT_WAIT = 8.0
 
+# What the board is allowed to wait instead.
+#
+# Eleven competitions are wired and the free plan allows ten requests a
+# minute, so a board built from a cold cache is one request over the line —
+# every time, not now and then. With eight seconds of patience the eleventh
+# could never get a slot, and the eleventh is whichever sorts last: Serie A
+# went missing from the board every single day, while its games were being
+# played and every other page could read them.
+#
+# The board is built by a job at night and read from the database all day, so
+# it can afford to wait out the minute. Nobody is watching it arrive.
+BOARD_SLOT_WAIT = 70.0
+
 _rate_lock = threading.Lock()
 _recent_calls: List[float] = []
+
+
+def _rotated(leagues: List[str]) -> List[str]:
+    """The same competitions, starting at a different one each hour.
+
+    They were always asked for in the same order, so when the allowance ran
+    out it ran out on the same competition — the one that sorts last — and it
+    was that competition, not a different one each time, that vanished from
+    the board. Whoever has to lose should at least take turns.
+    """
+    if not leagues:
+        return leagues
+
+    offset = int(time.time() // 3600) % len(leagues)
+    return leagues[offset:] + leagues[:offset]
 
 
 def _wait_for_slot(max_wait: float = MAX_SLOT_WAIT) -> bool:
@@ -151,7 +179,11 @@ def _wait_for_slot(max_wait: float = MAX_SLOT_WAIT) -> bool:
         time.sleep(min(sleep_for, remaining, 1.0))
 
 
-def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _request(
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    patience: float = MAX_SLOT_WAIT,
+) -> Dict[str, Any]:
     api_key = get_api_key()
     if not api_key:
         raise ProviderUnavailable("Fonte de dados não configurada.")
@@ -162,7 +194,7 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
 
     request = urllib.request.Request(url, headers={"X-Auth-Token": api_key})
 
-    if not _wait_for_slot():
+    if not _wait_for_slot(patience):
         raise ProviderUnavailable(
             "A fonte de dados só permite dez pedidos por minuto e esta competição "
             "ficou de fora desta vez. Volta a procurar daqui a um minuto."
@@ -183,7 +215,7 @@ def _request(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, An
                 time.sleep(wait)
                 _retrying.busy = True
                 try:
-                    return _request(path, params)
+                    return _request(path, params, patience)
                 finally:
                     _retrying.busy = False
             raise ProviderUnavailable(
@@ -238,7 +270,9 @@ def available_competitions() -> Dict[str, Any]:
 
 
 def get_season_matches(
-    league_key: str, season: Optional[int] = None
+    league_key: str,
+    season: Optional[int] = None,
+    patience: float = MAX_SLOT_WAIT,
 ) -> List[Dict[str, Any]]:
     code = _competition_code(league_key)
     cache_key = f"matches:{code}:{season or 'current'}"
@@ -248,7 +282,7 @@ def get_season_matches(
         return cached
 
     params = {"season": season} if season else None
-    payload = _request(f"/competitions/{code}/matches", params)
+    payload = _request(f"/competitions/{code}/matches", params, patience)
     matches = payload.get("matches")
     if not isinstance(matches, list):
         raise ProviderUnavailable("Resposta sem jogos para esta competição.")
@@ -266,8 +300,10 @@ def _is_finished(match: Dict[str, Any]) -> bool:
     return match.get("status") in FINISHED_STATUSES
 
 
-def upcoming_fixtures(league_key: str, limit: int = 40) -> List[Dict[str, Any]]:
-    matches = get_season_matches(league_key)
+def upcoming_fixtures(
+    league_key: str, limit: int = 40, patience: float = MAX_SLOT_WAIT
+) -> List[Dict[str, Any]]:
+    matches = get_season_matches(league_key, patience=patience)
 
     fixtures = []
     for match in matches:
@@ -309,7 +345,9 @@ def _end_of_day(days: int) -> float:
     return end.timestamp()
 
 
-def matches_for_days(days: int = 7) -> Dict[str, Any]:
+def matches_for_days(
+    days: int = 7, patience: float = MAX_SLOT_WAIT
+) -> Dict[str, Any]:
     """Every analysable fixture across the covered competitions, next N days.
 
     Competitions that fail are skipped instead of breaking the whole board, so a
@@ -322,14 +360,18 @@ def matches_for_days(days: int = 7) -> Dict[str, Any]:
 
     def load(league_key: str):
         try:
-            return league_key, upcoming_fixtures(league_key, limit=100), None
+            return (
+                league_key,
+                upcoming_fixtures(league_key, limit=100, patience=patience),
+                None,
+            )
         except ProviderUnavailable as exc:
             return league_key, [], exc
 
     # Fetch the competitions concurrently: sequentially this is 8 round trips
     # and makes the first (cold cache) load painfully slow.
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        results = list(pool.map(load, supported_leagues()))
+        results = list(pool.map(load, _rotated(supported_leagues())))
 
     for league_key, fixtures, failure in results:
         if failure is not None:
@@ -634,7 +676,7 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
     from model import pick_headline_market, probabilidades_jogo
     from schemas import ProbabilityRequest
 
-    board = matches_for_days(days)
+    board = matches_for_days(days, patience=BOARD_SLOT_WAIT)
     ranked: List[Dict[str, Any]] = []
     skipped = 0
     # One lookup per competition, not per game: the rates are arithmetic over
@@ -822,12 +864,16 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
 
     def load(league_key: str):
         try:
-            return league_key, get_season_matches(league_key), None
+            return (
+                league_key,
+                get_season_matches(league_key, patience=BOARD_SLOT_WAIT),
+                None,
+            )
         except ProviderUnavailable as exc:
             return league_key, [], exc
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        seasons = list(pool.map(load, supported_leagues()))
+        seasons = list(pool.map(load, _rotated(supported_leagues())))
 
     recent: List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]] = []
     for league_key, matches, failure in seasons:
