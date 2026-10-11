@@ -609,6 +609,23 @@ def test_the_competitions_take_turns_at_being_last():
     assert all(sorted(order) == sorted(leagues) for order in orders)
 
 
+def test_the_board_endpoint_does_not_drop_the_league_comparison():
+    """The response model is a filter: a field the schema does not declare
+    leaves the engine and never arrives, with nothing said anywhere. That is
+    how the league's own rate and the gap went missing from the board while
+    being computed correctly."""
+    from schemas import ProbabilityBoardMatch
+
+    declared = set(ProbabilityBoardMatch.model_fields)
+
+    with_season(build_board_season())
+    board = football_data.probability_board(days=14)
+    built = set(board["matches"][0])
+
+    missing = built - declared
+    assert not missing, f"the endpoint would drop: {sorted(missing)}"
+
+
 def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches

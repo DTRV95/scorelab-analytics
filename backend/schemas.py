@@ -104,6 +104,11 @@ class ProbabilityBoardMatch(BaseModel):
     kickoff: Optional[str] = None
     headline_market: str
     headline_pct: float
+    # The competition's own rate for that market, and the gap. Declared here
+    # or FastAPI drops them on the way out: a field the schema does not know
+    # about leaves the engine and never reaches the page, with nothing said.
+    league_pct: Optional[float] = None
+    edge_pp: Optional[float] = None
     amostra_pct: float
     amostra_label: str
     lambda_casa: float
