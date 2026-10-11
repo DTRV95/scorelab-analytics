@@ -81,6 +81,21 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                   ? ` · ${timeLabel(new Date(match.kickoff))}`
                   : ""}
               </p>
+              {/* What the competition gives that market anyway. Without it,
+                  "78%" reads as a finding in a league where three in four
+                  games do that by themselves. */}
+              {typeof match.edge_pp === "number" && (
+                <p
+                  className={`text-[10.5px] font-semibold ${
+                    match.edge_pp > 0
+                      ? "text-[hsl(var(--sl-green))]"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {match.edge_pp > 0 ? `+${match.edge_pp.toFixed(0)}` : match.edge_pp.toFixed(0)} pp
+                  sobre a liga
+                </p>
+              )}
             </div>
             {/* Capped, because "Casa ou Empate (1X)" is wider than some
                 team names and the game is what the row is about. */}

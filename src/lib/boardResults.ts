@@ -21,6 +21,8 @@ export interface ScoredMatch {
   away_goals: number;
   headline_market: string;
   headline_pct: number;
+  league_pct?: number | null;
+  edge_pp?: number | null;
   landed: boolean;
 }
 

@@ -472,6 +472,78 @@ def test_recent_board_is_cached_per_window():
     assert second is first
 
 
+def test_the_board_leads_with_what_the_league_does_not_already_give():
+    """A market that lands in three of four games of a competition is not a
+    finding when the model gives it 80%; it is that competition."""
+    with_season(build_board_season())
+
+    board = football_data.probability_board(days=14)
+    (leader,) = [i for i in board["matches"] if i["home_name"] == "Strong FC"]
+
+    # The league's own rate for the market it was led with, and the gap.
+    assert leader["league_pct"] is not None
+    assert leader["edge_pp"] == round(
+        leader["headline_pct"] - leader["league_pct"], 1
+    )
+    by_market = {m["mercado"]: m["probabilidade_pct"] for m in leader["mercados"]}
+    assert by_market[leader["headline_market"]] == leader["headline_pct"]
+
+
+def test_the_board_still_has_a_headline_without_the_league_rates():
+    """A competition nobody has read this session has no scale to compare
+    against, and the board must not go quiet over it."""
+    rates = football_data.league_base_rates
+    football_data.league_base_rates = lambda league_key: {}
+    try:
+        with_season(build_board_season())
+        board = football_data.probability_board(days=14)
+    finally:
+        football_data.league_base_rates = rates
+
+    (leader,) = [i for i in board["matches"] if i["home_name"] == "Strong FC"]
+    assert leader["headline_market"]
+    assert leader["league_pct"] is None
+    assert leader["edge_pp"] is None
+
+
+def test_league_rates_count_what_the_season_actually_did():
+    season = build_recent_season()
+    played = [m for m in season if m["status"] == "FINISHED"]
+
+    rates = football_data.market_base_rates(played)
+
+    # Every home side won 2-0 all season.
+    assert rates["Casa"] == 100.0
+    assert rates["Fora"] == 0.0
+    assert rates["Menos de 3.5 Golos"] == 100.0
+
+
+def test_scoring_a_game_never_sees_the_rates_it_helped_make():
+    """The market a game is led with is chosen against its league's rates. If
+    those were counted over the finished season, the choice would be made
+    with results that had not happened yet."""
+    # Goalless all season until the last two days, which are 5-0.
+    season = [
+        team_match(n, 1, 2, "A", "B", home=0, away=0, kickoff=_past(day))
+        for n, day in enumerate(range(40, 2, -1), start=1)
+    ]
+    season += [
+        team_match(500, 1, 2, "A", "B", home=5, away=0, kickoff=_past(2)),
+        team_match(501, 1, 2, "A", "B", home=5, away=0, kickoff=_past(1)),
+    ]
+
+    rates = football_data._rates_before(
+        [("Liga Portugal", season, season[-1]), ("Liga Portugal", season, season[-2])]
+    )
+
+    # The 5-0 two days ago counts for the game played yesterday, and for
+    # itself it does not: on the morning of its own kickoff, nothing in that
+    # season had gone over 2.5 goals.
+    assert rates[500]["Mais de 2.5 Golos"] == 0.0
+    assert rates[501]["Mais de 2.5 Golos"] > 0.0
+    assert rates[500]["Casa"] == 0.0
+
+
 def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches

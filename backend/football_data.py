@@ -637,6 +637,9 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
     board = matches_for_days(days)
     ranked: List[Dict[str, Any]] = []
     skipped = 0
+    # One lookup per competition, not per game: the rates are arithmetic over
+    # a season already in the cache, but a board holds eighty games.
+    base_rates: Dict[str, Dict[str, float]] = {}
 
     for fixture in board["matches"]:
         try:
@@ -668,7 +671,13 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
                 ),
             )
             result = probabilidades_jogo(data)
-            headline = pick_headline_market(result["mercados"])
+            # Against the competition's own rates, so the game is led with
+            # what the model claims to know rather than with whichever
+            # market that league makes easy.
+            rates = base_rates.setdefault(
+                fixture["league"], league_base_rates(fixture["league"])
+            )
+            headline = pick_headline_market(result["mercados"], rates)
         except ProviderUnavailable:
             skipped += 1
             continue
@@ -686,6 +695,14 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
                 "kickoff": fixture.get("kickoff"),
                 "headline_market": headline["mercado"],
                 "headline_pct": headline["probabilidade_pct"],
+                # What that market does in this competition anyway, and how
+                # far above it the model is willing to go on this game.
+                "league_pct": rates.get(headline["mercado"]),
+                "edge_pp": (
+                    round(headline["probabilidade_pct"] - rates[headline["mercado"]], 1)
+                    if rates.get(headline["mercado"]) is not None
+                    else None
+                ),
                 "amostra_pct": result["amostra_pct"],
                 "amostra_label": result["amostra_label"],
                 "lambda_casa": result["lambda_casa"],
@@ -711,6 +728,59 @@ def probability_board(days: int = 7, limit: int = 140) -> Dict[str, Any]:
 RESULTS_ITERATIONS = 2_000
 RESULTS_TTL = 3 * 60 * 60
 MAX_RESULT_MATCHES = 140
+
+
+def _rates_before(
+    recent: List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]],
+) -> Dict[int, Dict[str, float]]:
+    """Each competition's market rates as they stood before each game.
+
+    Walked once per competition, in order, snapshotting the rates on the way
+    past: counting them again from scratch for every game would settle the
+    same season a hundred times over. Using the finished season instead would
+    hand the choice of market a result that had not happened yet.
+    """
+    from model import PROBABILITY_MARKETS, settle_markets
+
+    wanted: Dict[str, Dict[str, Any]] = {}
+    for league_key, matches, played in recent:
+        entry = wanted.setdefault(league_key, {"matches": matches, "ids": set()})
+        entry["ids"].add(played.get("id"))
+
+    snapshots: Dict[int, Dict[str, float]] = {}
+
+    for entry in wanted.values():
+        ordered = sorted(
+            (
+                match
+                for match in entry["matches"]
+                if _is_finished(match) and None not in _full_time_goals(match)
+            ),
+            key=lambda match: match.get("utcDate") or "",
+        )
+
+        hits = {name: 0 for name, _ in PROBABILITY_MARKETS}
+        total = 0
+
+        for match in ordered:
+            if match.get("id") in entry["ids"]:
+                snapshots[match["id"]] = (
+                    {
+                        name: round(100 * landed / total, 1)
+                        for name, landed in hits.items()
+                    }
+                    if total >= MIN_LEAGUE_SAMPLE
+                    else {}
+                )
+
+            home_goals, away_goals = _full_time_goals(match)
+            settled = settle_markets(home_goals, away_goals)
+            for name in hits:
+                if settled.get(name):
+                    hits[name] += 1
+            total += 1
+
+    return snapshots
 
 
 def _start_of_day(days_ago: int) -> float:
@@ -781,6 +851,11 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
     recent.sort(key=lambda item: item[2].get("utcDate") or "", reverse=True)
     recent = recent[:limit]
 
+    # The competition's rates as they stood before each of these games, so the
+    # market led with is chosen the way the board chooses it — and chosen
+    # without the benefit of the games that had not been played yet.
+    rates_before = _rates_before(recent)
+
     scored: List[Dict[str, Any]] = []
     skipped = 0
 
@@ -817,7 +892,8 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
                 ),
             )
             forecast = probabilidades_jogo(data, iterations=RESULTS_ITERATIONS)
-            headline = pick_headline_market(forecast["mercados"])
+            rates = rates_before.get(played.get("id")) or {}
+            headline = pick_headline_market(forecast["mercados"], rates)
         except ProviderUnavailable:
             # Nothing played before it: not a miss, simply not scoreable.
             skipped += 1
@@ -844,6 +920,12 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
                 "away_goals": away_goals,
                 "headline_market": headline["mercado"],
                 "headline_pct": headline["probabilidade_pct"],
+                "league_pct": rates.get(headline["mercado"]),
+                "edge_pp": (
+                    round(headline["probabilidade_pct"] - rates[headline["mercado"]], 1)
+                    if rates.get(headline["mercado"]) is not None
+                    else None
+                ),
                 "landed": bool(landed),
             }
         )
@@ -1273,6 +1355,69 @@ def _form_table(played: List[Dict[str, Any]], window: int = FORM_WINDOW) -> List
     return rows
 
 
+def _market_hits(played: List[Dict[str, Any]]) -> Dict[str, int]:
+    """How many of these matches each market landed in.
+
+    Settled by the very function that scores the model, so a market cannot
+    mean one thing as a league's own rate and another when it is forecast.
+    """
+    from model import PROBABILITY_MARKETS, settle_markets
+
+    hits: Dict[str, int] = {name: 0 for name, _ in PROBABILITY_MARKETS}
+
+    for match in played:
+        home_goals, away_goals = _full_time_goals(match)
+        if home_goals is None or away_goals is None:
+            continue
+        settled = settle_markets(home_goals, away_goals)
+        for name in hits:
+            if settled.get(name):
+                hits[name] += 1
+
+    return hits
+
+
+def market_base_rates(played: List[Dict[str, Any]]) -> Dict[str, float]:
+    """What each market does in this competition without being asked.
+
+    The number a forecast has to beat to be saying anything: a league where
+    three in four games stay under 3.5 goals makes "Menos de 3.5 a 78%" a
+    remark, not a finding.
+    """
+    total = len([m for m in played if None not in _full_time_goals(m)])
+    if total == 0:
+        return {}
+
+    return {
+        name: round(100 * hits / total, 1)
+        for name, hits in _market_hits(played).items()
+    }
+
+
+def league_base_rates(league_key: str) -> Dict[str, float]:
+    """The competition's own rates, from the season already in the cache.
+
+    Served only from what is in hand: these annotate a board, and spending a
+    request on them would take it from the board itself.
+    """
+    if not is_season_cached(league_key):
+        return {}
+
+    try:
+        report = league_report(league_key)
+    except ProviderUnavailable:
+        return {}
+
+    if not report.get("played"):
+        return {}
+
+    return {
+        row["mercado"]: row["pct"]
+        for row in report["markets"]
+        if row.get("pct") is not None
+    }
+
+
 def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, Any]:
     """How often each market has landed in a competition, and who is in form.
 
@@ -1283,7 +1428,7 @@ def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, An
     reads the masks the simulation sums over — so a market cannot mean one
     thing on this page and another when it is forecast.
     """
-    from model import PROBABILITY_MARKETS, settle_markets
+    from model import PROBABILITY_MARKETS
 
     cache_key = f"report:{league_key}:{season or 'current'}"
     cached = _cache_get(cache_key, REPORT_TTL)
@@ -1297,7 +1442,7 @@ def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, An
         if _is_finished(match) and None not in _full_time_goals(match)
     ]
 
-    hits: Dict[str, int] = {name: 0 for name, _ in PROBABILITY_MARKETS}
+    hits = _market_hits(played)
     goals_home = 0
     goals_away = 0
 
@@ -1305,11 +1450,6 @@ def league_report(league_key: str, season: Optional[int] = None) -> Dict[str, An
         home_goals, away_goals = _full_time_goals(match)
         goals_home += home_goals
         goals_away += away_goals
-
-        settled = settle_markets(home_goals, away_goals)
-        for name in hits:
-            if settled.get(name):
-                hits[name] += 1
 
     total = len(played)
     markets = [

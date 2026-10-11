@@ -8,6 +8,10 @@ export interface BoardMatch extends ProbabilityResult {
   kickoff: string | null;
   headline_market: string;
   headline_pct: number;
+  /** What that market does in this competition anyway, when it is known. */
+  league_pct?: number | null;
+  /** How far above that rate the model is willing to go on this game. */
+  edge_pp?: number | null;
 }
 
 export interface CachedBoard {
