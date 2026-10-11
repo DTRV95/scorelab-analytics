@@ -11,6 +11,8 @@ from schemas import AnalyzeRequest
 import model
 from model import (
     analisar_jogo,
+    calibrate_distributions,
+    calibrate_pct,
     estimate_lambdas,
     pair_shift,
     pick_headline_market,
@@ -352,6 +354,94 @@ def test_a_cheaper_simulation_lands_on_the_same_forecast():
     full_by_market = {m["mercado"]: m["probabilidade_pct"] for m in full["mercados"]}
     for market in cheap["mercados"]:
         assert abs(market["probabilidade_pct"] - full_by_market[market["mercado"]]) < 3.0
+
+
+def test_calibration_pulls_a_forecast_back_to_what_it_delivered():
+    """Measured over 1 109 forecasts: what the model called at 84% landed 63%
+    of the time, and what it called at 26% landed 30%."""
+    assert calibrate_pct(84) < 84
+    assert calibrate_pct(90) < calibrate_pct(95) < 90
+    # Under a half it was the other way round: too shy, not too bold.
+    assert calibrate_pct(25) > 25
+    assert calibrate_pct(17) > 17
+    # Order is never touched: a surer market stays the surer market.
+    assert calibrate_pct(60) < calibrate_pct(70) < calibrate_pct(80)
+
+
+def test_calibration_never_manufactures_certainty():
+    assert 0 < calibrate_pct(0) < 5
+    assert 95 < calibrate_pct(100) < 100
+
+
+def test_calibrated_markets_still_agree_with_each_other():
+    """Fifteen markets put through the curve one by one come out incoherent:
+    the three results stop adding to one and the halves of a two-way market
+    stop being each other's remainder."""
+    probs = {
+        m["mercado"]: m["probabilidade_pct"]
+        for m in probabilidades_jogo(average_match(12))["mercados"]
+    }
+
+    assert abs(probs["Casa"] + probs["Empate"] + probs["Fora"] - 100) < 0.5
+    assert abs(probs["1X"] - (probs["Casa"] + probs["Empate"])) < 0.5
+    assert abs(probs["2X"] - (probs["Fora"] + probs["Empate"])) < 0.5
+    assert abs(probs["Mais de 2.5 Golos"] + probs["Menos de 2.5 Golos"] - 100) < 0.5
+    assert abs(probs["Ambas Marcam"] + probs["BTTS No"] - 100) < 0.5
+
+    # A combination can never be likelier than the halves it is made of.
+    assert probs["1X e Menos de 3.5 Golos"] <= probs["1X"] + 0.5
+    assert probs["1X e Menos de 3.5 Golos"] <= probs["Menos de 3.5 Golos"] + 0.5
+    assert probs["2X e Mais de 1.5 Golos"] <= probs["2X"] + 0.5
+
+
+def test_calibration_moves_the_interval_with_the_middle():
+    for market in probabilidades_jogo(average_match(12))["mercados"]:
+        assert market["min_pct"] <= market["probabilidade_pct"] <= market["max_pct"]
+
+
+def test_calibration_leaves_a_forecast_it_has_nothing_to_say_about():
+    """The curve crosses the diagonal where the model was right: around there
+    a forecast comes out as it went in."""
+    distributions = {"X": (0.46, 0.40, 0.52)}
+    moved = calibrate_distributions(distributions)["X"]
+
+    assert abs(moved[0] - 0.46) < 0.02
+
+
+def test_headline_is_the_market_the_league_does_not_already_give_you():
+    """"Menos de 3.5 a 78%" in a league where it lands 77% of the time is
+    one point of opinion dressed as a near certainty."""
+    mercados = [
+        {"mercado": "Menos de 3.5 Golos", "grupo": "Golos", "probabilidade_pct": 78.0},
+        {"mercado": "1X", "grupo": "Resultado", "probabilidade_pct": 66.0},
+    ]
+    rates = {"Menos de 3.5 Golos": 77.0, "1X": 48.0}
+
+    assert pick_headline_market(mercados, rates)["mercado"] == "1X"
+    # Without the league's own rates there is no scale, and the strongest
+    # number is all there is to go on.
+    assert pick_headline_market(mercados)["mercado"] == "Menos de 3.5 Golos"
+
+
+def test_headline_never_leads_with_a_market_nobody_would_back():
+    """A draw eight points above its league rate is still a bet on the least
+    likely outcome of the three."""
+    mercados = [
+        {"mercado": "Empate", "grupo": "Resultado", "probabilidade_pct": 34.0},
+        {"mercado": "1X", "grupo": "Resultado", "probabilidade_pct": 62.0},
+    ]
+    rates = {"Empate": 24.0, "1X": 58.0}
+
+    assert pick_headline_market(mercados, rates)["mercado"] == "1X"
+
+
+def test_headline_falls_back_when_the_league_has_no_rate_for_a_market():
+    mercados = [
+        {"mercado": "Casa", "grupo": "Resultado", "probabilidade_pct": 71.0},
+        {"mercado": "1X", "grupo": "Resultado", "probabilidade_pct": 80.0},
+    ]
+
+    assert pick_headline_market(mercados, {"Fora": 30.0})["mercado"] == "1X"
 
 
 if __name__ == "__main__":

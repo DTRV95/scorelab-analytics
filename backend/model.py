@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -570,7 +570,9 @@ def forecast(
     distributions = estimate_market_distributions(
         lambda_home, lambda_away, data, iterations
     )
-    return lambda_home, lambda_away, distributions
+    # Calibrated here, where both views read it, so the odds-free page and
+    # the priced one can never quote the same market differently.
+    return lambda_home, lambda_away, calibrate_distributions(distributions)
 
 
 def sample_confidence(data) -> Tuple[float, str]:
@@ -612,9 +614,143 @@ PROBABILITY_MARKETS: List[Tuple[str, str]] = [
 ]
 
 
-def pick_headline_market(mercados: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """The single strongest signal in a match, for ranking a board of them."""
-    return max(mercados, key=lambda m: m["probabilidade_pct"])
+# What the model said against what happened, measured on 1 109 forecasts over
+# 111 played fixtures of three competitions, each one forecast again from the
+# league as it stood before its own kickoff (2026-10-11). Read as a curve, the
+# numbers were stretched: everything under a half landed more often than it
+# said, everything over a half landed less.
+#
+#     dizia 25.6% -> 30.3%      dizia 64.2% -> 53.0%
+#     dizia 35.2% -> 40.4%      dizia 75.3% -> 65.9%
+#     dizia 45.0% -> 45.7%      dizia 84.0% -> 62.5%
+#
+# A straight line through that, on the log-odds, is these two numbers. It cuts
+# the calibration error across the bands by a factor of five, and it is the
+# whole of the fix: it makes no forecast better, it stops them overstating.
+#
+# Refitting is the job of the same backtest, run again: it now measures the
+# forecasts as they come out of here, so what it finds is the correction still
+# missing, to be composed with this one rather than to replace it.
+CALIBRATION_INTERCEPT = -0.1346
+CALIBRATION_SLOPE = 0.6427
+
+# Never shown as certainty or impossibility: a forecast of exactly 0 or 100 is
+# a claim no model built from a few dozen matches can make.
+_CALIBRATION_EDGE = 0.001
+
+
+def calibrate(probability: float) -> float:
+    """A forecast, brought back to what forecasts like it actually did."""
+    bounded = min(max(probability, _CALIBRATION_EDGE), 1 - _CALIBRATION_EDGE)
+    odds = math.log(bounded / (1 - bounded))
+    return 1 / (1 + math.exp(-(CALIBRATION_INTERCEPT + CALIBRATION_SLOPE * odds)))
+
+
+def calibrate_pct(raw_pct: float) -> float:
+    """The same, for a number already in percent."""
+    return round(calibrate(raw_pct / 100) * 100, 1)
+
+
+def calibrate_distributions(
+    distributions: Dict[str, Tuple[float, float, float]],
+) -> Dict[str, Tuple[float, float, float]]:
+    """Every market of a forecast, calibrated, and still agreeing with itself.
+
+    Fifteen markets put through the curve one by one come out incoherent:
+    home, draw and away stop adding up to one, and "Menos de 2.5" stops being
+    what is left of "Mais de 2.5". So only the markets a score decides on its
+    own are calibrated — the result, the two goal lines, both teams scoring —
+    and everything else is derived from those exactly as the simulation
+    derives it. A combination can never be likelier than its own halves, so
+    the four combined markets are held to that.
+    """
+    moved = {
+        name: tuple(calibrate(value) for value in triple)
+        for name, triple in distributions.items()
+    }
+
+    def at(name: str, index: int) -> float:
+        return moved[name][index] if name in moved else 0.0
+
+    coherent: Dict[str, List[float]] = {
+        name: list(triple) for name, triple in moved.items()
+    }
+
+    for index in range(3):
+        three_way = at("Casa", index) + at("Empate", index) + at("Fora", index)
+        if three_way > 0:
+            for name in ("Casa", "Empate", "Fora"):
+                if name in coherent:
+                    coherent[name][index] = moved[name][index] / three_way
+
+        home = coherent.get("Casa", [0, 0, 0])[index]
+        draw = coherent.get("Empate", [0, 0, 0])[index]
+        away = coherent.get("Fora", [0, 0, 0])[index]
+
+        for name, value in (
+            ("1X", home + draw),
+            ("2X", away + draw),
+            ("Menos de 2.5 Golos", 1 - at("Mais de 2.5 Golos", index)),
+            ("Menos de 3.5 Golos", 1 - at("Mais de 3.5 Golos", index)),
+            ("BTTS No", 1 - at("Ambas Marcam", index)),
+        ):
+            if name in coherent:
+                coherent[name][index] = max(0.0, min(1.0, value))
+
+        for name, parts in (
+            ("1X e Menos de 3.5 Golos", ("1X", "Menos de 3.5 Golos")),
+            ("2X e Menos de 3.5 Golos", ("2X", "Menos de 3.5 Golos")),
+            ("1X e Mais de 1.5 Golos", ("1X",)),
+            ("2X e Mais de 1.5 Golos", ("2X",)),
+        ):
+            if name not in coherent:
+                continue
+            ceiling = min(coherent[part][index] for part in parts if part in coherent)
+            coherent[name][index] = min(coherent[name][index], ceiling)
+
+    return {name: tuple(values) for name, values in coherent.items()}
+
+
+# Below this, a market is not a tip whatever its edge: "Fora 34%, e a liga dá
+# 28%" is a true statement about a game nobody is backing.
+MIN_HEADLINE_PCT = 55.0
+
+
+def pick_headline_market(
+    mercados: List[Dict[str, Any]],
+    base_rates: Optional[Dict[str, float]] = None,
+) -> Dict[str, Any]:
+    """The one market worth leading a game with.
+
+    Not the highest number. "Mais de 2.5 Golos" at 84% in a league where it
+    lands 77% of the time anyway is seven points of opinion dressed as
+    certainty — and a board ranked on the raw number fills up with exactly
+    those, because the markets that are high by default are high in every
+    game. What is worth showing is the gap between what the model says about
+    this game and what that competition does without being asked.
+
+    Without the competition's own rates — a league nobody has read yet — this
+    falls back to the strongest number, which is what it always did.
+    """
+    if not base_rates:
+        return max(mercados, key=lambda m: m["probabilidade_pct"])
+
+    worth_backing = [
+        market
+        for market in mercados
+        if market["probabilidade_pct"] >= MIN_HEADLINE_PCT
+        and base_rates.get(market["mercado"]) is not None
+    ]
+    if not worth_backing:
+        return max(mercados, key=lambda m: m["probabilidade_pct"])
+
+    return max(
+        worth_backing,
+        key=lambda m: (
+            m["probabilidade_pct"] - base_rates[m["mercado"]],
+            m["probabilidade_pct"],
+        ),
+    )
 
 
 def probabilidades_jogo(data, iterations: int = BOOTSTRAP_ITERATIONS) -> Dict[str, Any]:

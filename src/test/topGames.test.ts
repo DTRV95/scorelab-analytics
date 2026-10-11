@@ -74,6 +74,17 @@ describe("the strongest games of each day", () => {
     expect(days[0].items[0].headline_pct).toBe(55);
   });
 
+  it("carries how far above its league each pick is", () => {
+    // The engine chooses the market a game is led with against the league's
+    // own rate, and the row has to be able to say so.
+    const [day] = topByDay([
+      { ...game(78), league_pct: 66, edge_pp: 12 } as BoardMatch,
+    ]);
+
+    expect(day.items[0].edge_pp).toBe(12);
+    expect(day.items[0].league_pct).toBe(66);
+  });
+
   it("has nothing to say about an empty board", () => {
     expect(topByDay([])).toEqual([]);
   });
