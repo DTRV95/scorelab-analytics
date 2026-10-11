@@ -544,22 +544,21 @@ def test_scoring_a_game_never_sees_the_rates_it_helped_make():
     assert rates[500]["Casa"] == 0.0
 
 
-def test_every_wired_competition_can_get_a_slot_for_the_board():
-    """Eleven competitions and ten requests a minute: the board is one over
-    the line on a cold cache, so the eleventh must be allowed to wait out the
-    minute instead of being refused. It was refused, and because the order
-    never changed it was always the same one — Serie A, every day."""
+def test_the_board_cannot_be_asked_to_outlast_the_window_in_one_request():
+    """Eleven competitions and ten requests a minute: a board built from a
+    cold cache is one request over the line, every time. Waiting the whole
+    minute out is not the answer — the host cuts the connection long before
+    that and answers 502 — so the board waits a little, takes the ones it
+    can, and says which it could not; the second pass of the night, with the
+    rest cached, fetches only what was missing."""
     leagues = football_data.supported_leagues()
 
     assert len(leagues) > football_data.RATE_LIMIT, (
         "this guard only means something while there are more competitions "
         "than the allowance"
     )
-    missing = len(leagues) - football_data.RATE_LIMIT
-    assert football_data.BOARD_SLOT_WAIT > football_data.RATE_WINDOW, (
-        "the board has to outlast the window for the "
-        f"{missing} competition(s) the allowance cannot take at once"
-    )
+    assert football_data.BOARD_SLOT_WAIT > football_data.MAX_SLOT_WAIT
+    assert football_data.BOARD_SLOT_WAIT < football_data.RATE_WINDOW
 
 
 def test_the_board_waits_longer_than_a_page_does():
