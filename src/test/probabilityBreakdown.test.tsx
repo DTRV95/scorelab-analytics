@@ -38,7 +38,7 @@ describe("ProbabilityBreakdown", () => {
     expect(screen.getByText("2.63")).toBeInTheDocument();
     expect(screen.getByText("40.7%")).toBeInTheDocument();
     expect(screen.getByText("Ambas Não Marcam")).toBeInTheDocument();
-    expect(screen.getByText(/Confiança da amostra: Média/)).toBeInTheDocument();
+    expect(screen.getByText(/Histórico por trás: Média/)).toBeInTheDocument();
   });
 
   it("never renders odds, edge, value or a betting decision", () => {

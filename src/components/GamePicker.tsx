@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MarketField } from "@/components/MarketField";
 import { minimumOdd } from "@/lib/shortlist";
+import { VerdictPill } from "@/components/PickReadings";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -597,8 +598,13 @@ export function GamePicker({
                     className="sl-tap flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-[hsl(var(--sl-surface))] disabled:opacity-40"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold text-foreground">
-                        {match.home_name} vs {match.away_name}
+                      <p className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+                        <span className="min-w-0 truncate">
+                          {match.home_name} vs {match.away_name}
+                        </span>
+                        {/* O veredicto do registo, no momento em que a perna
+                            entra no boletim. */}
+                        <VerdictPill match={match} className="flex-none" />
                       </p>
                       <p className="sl-meta truncate text-[11px]">
                         {MARKET_LABELS[match.headline_market] ??

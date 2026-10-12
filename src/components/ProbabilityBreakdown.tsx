@@ -46,10 +46,18 @@ function barTone(pct: number) {
   return "bg-slate-300";
 }
 
-export function sampleTone(label: string) {
-  if (label === "Alta") return "text-emerald-700 bg-emerald-50 ring-emerald-600/20";
-  if (label === "Média") return "text-amber-700 bg-amber-50 ring-amber-600/20";
-  return "text-rose-700 bg-rose-50 ring-rose-600/20";
+/**
+ * Quanto histórico está por trás do número — e não se o número está certo.
+ *
+ * Isto esteve pintado de verde, amarelo e vermelho, como se fosse um
+ * veredicto. Nos 82 jogos já marcados saiu ao contrário: os de amostra
+ * "Alta" entraram 52,6% das vezes e os de amostra "Baixa" 65,1%. Com duas
+ * semanas não se tira daí uma regra nova, mas tira-se esta: enquanto o sinal
+ * não se explicar, não é para ser lido como qualidade. Fica cinzento, a
+ * dizer o que mede e mais nada.
+ */
+export function sampleTone(_label: string) {
+  return "text-muted-foreground bg-muted ring-border";
 }
 
 /**
@@ -99,7 +107,8 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
           data.amostra_label
         )}`}
       >
-        Confiança da amostra: {data.amostra_label} ({data.amostra_pct.toFixed(0)}%)
+        Histórico por trás: {data.amostra_label} ({data.amostra_pct.toFixed(0)}%)
+        <span className="font-normal opacity-70">— quantidade, não acerto</span>
       </div>
 
       {groups.map((group) => (
