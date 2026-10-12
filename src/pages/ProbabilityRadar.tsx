@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PickReadings } from "@/components/PickReadings";
 import { RecentHits } from "@/components/RecentHits";
 import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
 import { TodayMatches, dayKey, dayLabels, timeLabel } from "@/components/TodayMatches";
@@ -247,6 +248,11 @@ function BoardMatchRow({
             className="overflow-hidden"
           >
             <div className="space-y-4 border-t border-border bg-[hsl(var(--sl-surface))] px-3.5 py-4 sm:px-4">
+              {/* Antes dos quinze mercados: o que o registo do quadro diz
+                  desta escolha em concreto — o mercado, a força do número e
+                  o jogo, que são três perguntas diferentes. */}
+              <PickReadings match={match} />
+
               <ProbabilityBreakdown data={match} />
 
               {/* What the forecast was built from, for whoever wants to look
