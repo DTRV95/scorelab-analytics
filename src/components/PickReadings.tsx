@@ -1,28 +1,20 @@
-import { Check, Minus, X } from "lucide-react";
 import {
   readPick,
   VERDICT_LABEL,
-  type PickReading,
   type Tone,
 } from "@/lib/pickReadings";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
-const TONE: Record<Tone, { icon: typeof Check; colour: string }> = {
-  forte: { icon: Check, colour: "text-[hsl(var(--sl-green))]" },
-  neutro: { icon: Minus, colour: "text-muted-foreground" },
-  fraco: { icon: X, colour: "text-destructive" },
+const FIGURE: Record<Tone, string> = {
+  forte: "text-[hsl(var(--sl-green))]",
+  neutro: "text-foreground",
+  fraco: "text-destructive",
 };
 
 const PILL: Record<Tone, string> = {
   forte: "sl-pill-win",
   neutro: "sl-pill-muted",
   fraco: "sl-pill-loss",
-};
-
-const ASKS: Record<PickReading["about"], string> = {
-  mercado: "o mercado",
-  força: "a força",
-  jogo: "o jogo",
 };
 
 /** Uma palavra, para onde não cabe mais do que isso. */
@@ -43,56 +35,48 @@ export function VerdictPill({
 }
 
 /**
- * O que o registo do quadro diz sobre esta escolha, linha a linha.
+ * Três números, uma olhadela.
  *
- * Três perguntas separadas, porque escolher o mercado e escolher o jogo são
- * duas decisões diferentes e os números dizem coisas diferentes sobre cada
- * uma. Cada linha leva atrás o número de jogos de onde saiu: num registo de
- * duas semanas, uma leitura de quinze jogos e uma de cinquenta e sete não
- * valem o mesmo, e esconder isso seria vender como regra o que ainda é
- * indício.
+ * Isto já foi três frases e um parágrafo de ressalvas — honesto e ilegível,
+ * que num ecrã onde se decide em dez segundos dá no mesmo que não estar lá.
+ * Cada pergunta — o mercado, a força do número, o jogo — vale um número: a
+ * percentagem de vezes que as escolhas assim entraram, com a amostra por
+ * baixo em letra pequena. A cor diz o resto.
  */
 export function PickReadings({ match }: { match: BoardMatch }) {
   const { verdict, readings } = readPick(match);
 
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
-        <p className="flex-1 text-[12px] font-semibold text-foreground">
-          O que o registo diz desta escolha
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-2.5">
+        <p className="sl-meta flex-1 text-[10px] uppercase tracking-[0.12em]">
+          Escolhas assim
         </p>
         <span className={`sl-pill ${PILL[verdict]} text-[10px]`}>
           {VERDICT_LABEL[verdict]}
         </span>
       </div>
 
-      <ul className="divide-y divide-border">
-        {readings.map((reading) => {
-          const { icon: Icon, colour } = TONE[reading.tone];
-          return (
-            <li
-              key={reading.about}
-              className="flex items-start gap-2.5 px-3.5 py-2"
+      <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
+        {readings.map((reading) => (
+          <div key={reading.about} className="px-2 py-2 text-center">
+            <p className="sl-meta text-[9.5px] uppercase tracking-[0.12em]">
+              {reading.about}
+            </p>
+            <p
+              className={`sl-figure text-[18px] leading-6 ${FIGURE[reading.tone]}`}
             >
-              <Icon className={`mt-0.5 h-3.5 w-3.5 flex-none ${colour}`} />
-              <div className="min-w-0 flex-1">
-                <p className="sl-meta text-[10px] uppercase tracking-[0.1em]">
-                  {ASKS[reading.about]}
-                </p>
-                <p className="text-[11.5px] leading-5 text-foreground">
-                  {reading.text}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <p className="sl-meta border-t border-border px-3.5 py-2 text-[10px] leading-4">
-        Medido em 82 jogos do próprio quadro, já jogados, previstos outra vez
-        a partir da liga como estava antes de cada apito. São duas semanas:
-        tratem isto como indício, não como regra.
-      </p>
+              {reading.pct === null ? "—" : `${reading.pct}%`}
+            </p>
+            <p className="sl-meta truncate text-[10px] leading-4">
+              {reading.text}
+            </p>
+            <p className="sl-meta text-[9.5px] leading-4 opacity-70">
+              {reading.games} jogos
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

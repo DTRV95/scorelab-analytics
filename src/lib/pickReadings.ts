@@ -27,12 +27,15 @@ export const MEASURED_ON = 82;
 export type Tone = "forte" | "neutro" | "fraco";
 
 export interface PickReading {
-  /** "mercado", "força" ou "jogo" — a pergunta a que responde. */
+  /** A pergunta a que responde: o mercado, a força do número, o jogo. */
   about: "mercado" | "força" | "jogo";
   tone: Tone;
-  text: string;
-  /** Quantos jogos marcados estão por trás desta leitura. */
+  /** Quantas vezes entraram as escolhas assim. Null sem jogos que cheguem. */
+  pct: number | null;
+  /** Em quantos jogos marcados. */
   games: number;
+  /** Duas ou três palavras: o que esta escolha é. */
+  text: string;
 }
 
 /** O desequilíbrio entre as duas equipas, em golos esperados. */
@@ -48,29 +51,28 @@ function marketReading(market: string): PickReading {
     return {
       about: "mercado",
       tone: "forte",
-      text: "Dupla hipótese — o que uma época de resultados mede mesmo: 70% em 57 jogos",
+      pct: 70,
       games: 57,
+      text: "Dupla",
     };
   }
 
-  if (
-    /golos/i.test(market) ||
-    /ambas/i.test(market) ||
-    market === "BTTS No"
-  ) {
+  if (/golos/i.test(market) || /ambas/i.test(market) || market === "BTTS No") {
     return {
       about: "mercado",
       tone: "fraco",
-      text: "Golos ou ambas marcam — o quadro entrou 47% em 32 jogos, uma moeda ao ar",
+      pct: 47,
       games: 32,
+      text: "Golos, ambas",
     };
   }
 
   return {
     about: "mercado",
     tone: "neutro",
-    text: "Resultado seco — poucos jogos marcados para dizer alguma coisa",
+    pct: null,
     games: 2,
+    text: "Resultado",
   };
 }
 
@@ -79,55 +81,31 @@ function strengthReading(pct: number): PickReading {
     return {
       about: "força",
       tone: "forte",
-      text: `Acima de ${SHORTLIST_MIN_PCT}% — daqui para cima o quadro entrou 83% em 29 jogos`,
+      pct: 83,
       games: 29,
+      text: `${SHORTLIST_MIN_PCT}%+`,
     };
   }
 
   if (pct >= 65) {
-    return {
-      about: "força",
-      tone: "fraco",
-      text: "Entre 65% e 69% — a pior banda de todas: 47% em 17 jogos",
-      games: 17,
-    };
+    return { about: "força", tone: "fraco", pct: 47, games: 17, text: "65–69%" };
   }
 
-  return {
-    about: "força",
-    tone: "neutro",
-    text: "Abaixo de 65% — o número ainda não diz nada: 56% em 45 jogos",
-    games: 45,
-  };
+  return { about: "força", tone: "neutro", pct: 56, games: 45, text: "<65%" };
 }
 
 function gameReading(gap: number): PickReading | null {
   if (!Number.isFinite(gap)) return null;
 
   if (gap >= 0.8) {
-    return {
-      about: "jogo",
-      tone: "forte",
-      text: "Equipas muito desniveladas — o quadro entrou 80% nestes, em 15 jogos",
-      games: 15,
-    };
+    return { about: "jogo", tone: "forte", pct: 80, games: 15, text: "Desnivelado" };
   }
 
   if (gap >= 0.4) {
-    return {
-      about: "jogo",
-      tone: "neutro",
-      text: "Desnível médio entre as equipas — 72% em 29 jogos",
-      games: 29,
-    };
+    return { about: "jogo", tone: "neutro", pct: 72, games: 29, text: "Médio" };
   }
 
-  return {
-    about: "jogo",
-    tone: "fraco",
-    text: "Equipas equilibradas — é onde o modelo menos sabe: 47% em 38 jogos",
-    games: 38,
-  };
+  return { about: "jogo", tone: "fraco", pct: 47, games: 38, text: "Equilibrado" };
 }
 
 export interface PickVerdict {
