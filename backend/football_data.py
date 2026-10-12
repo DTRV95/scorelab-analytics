@@ -947,6 +947,16 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
             forecast = probabilidades_jogo(data, iterations=RESULTS_ITERATIONS)
             rates = rates_before.get(played.get("id")) or {}
             headline = pick_headline_market(forecast["mercados"], rates)
+            # The runner-up, to measure whether a lonely favourite is a
+            # better bet than one the model could barely separate.
+            others = sorted(
+                (
+                    m["probabilidade_pct"]
+                    for m in forecast["mercados"]
+                    if m["mercado"] != headline["mercado"]
+                ),
+                reverse=True,
+            )
         except ProviderUnavailable:
             # Nothing played before it: not a miss, simply not scoreable.
             skipped += 1
@@ -977,6 +987,19 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
                 "edge_pp": (
                     round(headline["probabilidade_pct"] - rates[headline["mercado"]], 1)
                     if rates.get(headline["mercado"]) is not None
+                    else None
+                ),
+                # Everything the forecast knew, kept with the result. A
+                # record of what was said and what happened is only worth
+                # mining if it also holds what it was said from.
+                "amostra_pct": forecast["amostra_pct"],
+                "amostra_label": forecast["amostra_label"],
+                "lambda_casa": forecast["lambda_casa"],
+                "lambda_fora": forecast["lambda_fora"],
+                "total_golos_esperados": forecast["total_golos_esperados"],
+                "runner_up_pp": (
+                    round(headline["probabilidade_pct"] - others[0], 1)
+                    if others
                     else None
                 ),
                 "landed": bool(landed),
