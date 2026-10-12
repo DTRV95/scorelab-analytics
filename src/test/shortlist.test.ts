@@ -66,3 +66,19 @@ describe("a lista curta", () => {
     expect(curtos.map((m) => m.headline_pct)).toEqual([81, 75]);
   });
 });
+
+describe("o preço no sítio onde se decide", () => {
+  it("mede um boletim pelas probabilidades das suas pernas", () => {
+    // Duas pernas de 80% são 64%: o boletim fica a zero a 1,57, e não a
+    // 1,25 que é o preço de cada uma delas.
+    expect(minimumOddOfSlip([80, 80])).toBeCloseTo(1.57, 2);
+    expect(minimumOddOfSlip([80])).toBeCloseTo(1.25, 2);
+  });
+
+  it("não deixa uma perna por avaliar baixar o preço do boletim", () => {
+    // Três pernas pedem sempre mais do que duas das mesmas.
+    expect(minimumOddOfSlip([75, 75, 75])).toBeGreaterThan(
+      minimumOddOfSlip([75, 75]),
+    );
+  });
+});

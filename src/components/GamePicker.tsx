@@ -9,6 +9,7 @@ import {
   Search,
 } from "lucide-react";
 import { MarketField } from "@/components/MarketField";
+import { minimumOdd } from "@/lib/shortlist";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -602,8 +603,11 @@ export function GamePicker({
                       <p className="sl-meta truncate text-[11px]">
                         {MARKET_LABELS[match.headline_market] ??
                           match.headline_market}{" "}
-                        {match.headline_pct.toFixed(0)}% ·{" "}
-                        {kickoffTime(match.kickoff)}
+                        {match.headline_pct.toFixed(0)}% · paga acima de{" "}
+                        <span className="font-mono-data font-bold text-foreground">
+                          {minimumOdd(match.headline_pct).toFixed(2)}
+                        </span>{" "}
+                        · {kickoffTime(match.kickoff)}
                       </p>
                     </div>
                     <span

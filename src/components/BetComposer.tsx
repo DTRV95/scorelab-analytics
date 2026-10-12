@@ -21,6 +21,7 @@ import type { PlayerStyle } from "@/lib/bettingStyle";
 import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
+import { minimumOddOfSlip } from "@/lib/shortlist";
 import type { TypingMemory } from "@/lib/typingMemory";
 
 const eur = new Intl.NumberFormat("pt-PT", {
@@ -270,6 +271,21 @@ export function BetComposer({
     legs.map((leg) => ({ modelProb: leg.modelProb, odds: toOdds(leg.odds) })),
   );
 
+  /**
+   * O preço a que este boletim fica a zero.
+   *
+   * Medido no registo dos dois: as pernas entram 75% das vezes e mesmo
+   * assim os golos deram -1,2%, porque foram aceites a 1,32 quando
+   * precisavam de 1,36. Acertar e ganhar são coisas diferentes, e a
+   * diferença é um número que nunca esteve no ecrã onde se decide.
+   */
+  const judged = legs.filter((leg) => leg.modelProb > 0);
+  const floor =
+    judged.length === legs.length && legs.length > 0
+      ? minimumOddOfSlip(judged.map((leg) => leg.modelProb))
+      : 0;
+  const tooCheap = floor > 1 && priced && combined > 1 && combined < floor;
+
   /** A game chosen in the pop-up, onto the slip. */
   const addGame = (game: PickedGame) => {
     const key =
@@ -337,6 +353,16 @@ export function BetComposer({
             </span>
           )}
         </p>
+        {floor > 1 && (
+          <p
+            className={`text-[10.5px] leading-4 ${
+              tooCheap ? "font-semibold text-destructive" : "sl-meta"
+            }`}
+          >
+            {tooCheap ? "abaixo do preço: " : "fica a zero a "}
+            <span className="font-mono-data font-bold">{floor.toFixed(2)}</span>
+          </p>
+        )}
       </div>
 
       <label className="flex-none rounded-xl bg-[hsl(var(--sl-surface))] px-2.5 py-1.5">
