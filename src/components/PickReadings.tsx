@@ -40,8 +40,11 @@ export function VerdictPill({
  * Isto já foi três frases e um parágrafo de ressalvas — honesto e ilegível,
  * que num ecrã onde se decide em dez segundos dá no mesmo que não estar lá.
  * Cada pergunta — o mercado, a força do número, o jogo — vale um número: a
- * percentagem de vezes que as escolhas assim entraram, com a amostra por
- * baixo em letra pequena. A cor diz o resto.
+ * percentagem de vezes que as escolhas assim entraram. A cor diz o resto.
+ *
+ * A amostra de cada leitura continua nos dados e é o que manda mudá-las
+ * quando o registo crescer; no ecrã não está, porque três números com a
+ * contagem por baixo já eram seis números para ler de relance.
  */
 export function PickReadings({ match }: { match: BoardMatch }) {
   const { verdict, readings } = readPick(match);
@@ -70,9 +73,6 @@ export function PickReadings({ match }: { match: BoardMatch }) {
             </p>
             <p className="sl-meta truncate text-[10px] leading-4">
               {reading.text}
-            </p>
-            <p className="sl-meta text-[9.5px] leading-4 opacity-70">
-              {reading.games} jogos
             </p>
           </div>
         ))}
