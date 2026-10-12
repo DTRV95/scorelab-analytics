@@ -828,8 +828,8 @@ export default function ProbabilityRadar() {
                           {onlyShortlist ? "A lista curta" : "Ver só a lista curta"}
                         </span>
                         <span className="sl-meta block text-[11px] leading-5">
-                          Dupla hipótese acima de {SHORTLIST_MIN_PCT}% — 88% de
-                          acerto em 91 jogos marcados. O resto entrou 47%.
+                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 88%
+                          · o resto 47%
                         </span>
                       </span>
                       <span

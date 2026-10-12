@@ -51,11 +51,20 @@ describe("o que o registo diz de uma escolha", () => {
     expect(verdict).toBe("fraco");
   });
 
-  it("cada leitura carrega a amostra de onde saiu", () => {
+  it("cada leitura é um número e a amostra de onde saiu", () => {
     for (const reading of readPick(jogo("1X", 78)).readings) {
       expect(reading.games).toBeGreaterThan(0);
-      expect(reading.text.length).toBeGreaterThan(20);
+      expect(reading.pct).toBeGreaterThan(0);
+      // Duas ou três palavras: isto é lido de relance, não estudado.
+      expect(reading.text.split(" ").length).toBeLessThanOrEqual(4);
     }
+  });
+
+  it("diz um traço em vez de um número que não tem", () => {
+    // Dois jogos marcados num resultado seco não dão percentagem nenhuma.
+    const [mercado] = readPick(jogo("Casa", 78)).readings;
+
+    expect(mercado.pct).toBeNull();
   });
 
   it("mede o desnível pelos golos esperados de cada lado", () => {
