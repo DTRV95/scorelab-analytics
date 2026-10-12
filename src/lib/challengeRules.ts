@@ -91,6 +91,30 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     longShot: true,
   },
   {
+    // Feito a partir do registo dos dois: 38 apostas fechadas, 21 certas
+    // (55,3%), odd média 2,02 — e o empate técnico a 2,02 é 49,5%. Com esse
+    // acerto, meia banca por aposta leva a mediana de 50 € a trinta cêntimos
+    // em sessenta apostas, porque perder metade exige ganhar o dobro para
+    // voltar ao mesmo sítio. A 6% um nível mau custa um nível, não o
+    // desafio: chega aos 100 € em 57% das vezes dentro de 120 apostas, e
+    // mesmo sem vantagem nenhuma ainda chega em 16%.
+    key: "cem",
+    name: "Cem apostas",
+    blurb:
+      "100 níveis a 6% da banca, odds 1.80–2.30. 50 € → 100 €. Medido no vosso registo: falhar um nível custa 6%, não metade.",
+    startingBankroll: 50,
+    target: 100,
+    rules: {
+      days: 100,
+      stakeBands: [{ untilDay: null, pct: 0.06 }],
+      oddsMin: 1.8,
+      oddsMax: 2.3,
+      onePerDay: true,
+      lossStreakPause: 3,
+      oddsPlan: { first: 2, cycle: [2] },
+    },
+  },
+  {
     key: "sprint-7",
     name: "Sprint de 7",
     blurb:

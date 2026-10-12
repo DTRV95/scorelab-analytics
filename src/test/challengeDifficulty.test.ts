@@ -37,6 +37,29 @@ describe("measuring how hard a challenge is", () => {
     }
   });
 
+  it("keeps the challenge built from the record ahead of the older ones", () => {
+    // 38 apostas fechadas, 21 certas: 55,3%. Medidas no mesmo horizonte, ou
+    // a comparação é só sobre quem tem mais dias para tentar.
+    const horizon = 120;
+    const medido = { winRate: 0.553, horizon };
+
+    const cem = CHALLENGE_TEMPLATES.find((t) => t.key === "cem")!;
+    const devagar = CHALLENGE_TEMPLATES.find((t) => t.key === "conservador")!;
+    const dobrar = CHALLENGE_TEMPLATES.find((t) => t.key === "dobrar")!;
+
+    expect(completionChance(cem, medido)).toBeGreaterThan(
+      completionChance(devagar, medido),
+    );
+    expect(completionChance(cem, medido)).toBeGreaterThan(
+      completionChance(dobrar, medido),
+    );
+    // E aguenta-se de pé mesmo sem vantagem nenhuma, que é o que não se pode
+    // garantir com 38 apostas de amostra.
+    expect(
+      completionChance(cem, { winRate: 0.495, horizon }),
+    ).toBeGreaterThan(0.1);
+  });
+
   it("will not call the Plano Milhão finishable", () => {
     // Counting the last day rather than the money once put this at 7 in 100,
     // with a bankroll nowhere near a million. Finishing is the money.
