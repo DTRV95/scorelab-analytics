@@ -5,6 +5,7 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { timeLabel } from "@/components/TodayMatches";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 import { topByDay } from "@/lib/topGames";
+import { minimumOdd, onShortlist } from "@/lib/shortlist";
 
 /**
  * The three games the model is surest about, one day at a time.
@@ -81,19 +82,14 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                   ? ` · ${timeLabel(new Date(match.kickoff))}`
                   : ""}
               </p>
-              {/* What the competition gives that market anyway. Without it,
-                  "78%" reads as a finding in a league where three in four
-                  games do that by themselves. */}
-              {typeof match.edge_pp === "number" && (
-                <p
-                  className={`text-[10.5px] font-semibold ${
-                    match.edge_pp > 0
-                      ? "text-[hsl(var(--sl-green))]"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {match.edge_pp > 0 ? `+${match.edge_pp.toFixed(0)}` : match.edge_pp.toFixed(0)} pp
-                  sobre a liga
+              {/* A distância para a taxa da liga esteve aqui e saiu: nos
+                  jogos já marcados, quanto maior essa distância pior foi o
+                  acerto — 64% nos de +10 pp contra 74% nos de menos de +5.
+                  No lugar dela fica a única coisa que decide se um acerto
+                  vale dinheiro, que é o preço. */}
+              {onShortlist(match) && (
+                <p className="text-[10.5px] font-semibold text-[hsl(var(--sl-green))]">
+                  na lista curta
                 </p>
               )}
             </div>
@@ -105,6 +101,12 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
               </p>
               <p className="sl-meta truncate text-[10px]">
                 {MARKET_LABELS[match.headline_market] ?? match.headline_market}
+              </p>
+              <p className="sl-meta text-[10px]">
+                paga acima de{" "}
+                <span className="font-mono-data font-bold text-foreground">
+                  {minimumOdd(match.headline_pct).toFixed(2)}
+                </span>
               </p>
             </div>
           </Link>

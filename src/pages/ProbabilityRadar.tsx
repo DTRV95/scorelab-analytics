@@ -36,6 +36,11 @@ import {
   type PrefillForm,
 } from "@/components/MatchForm";
 import { loadBoard } from "@/lib/boardSource";
+import {
+  minimumOdd,
+  SHORTLIST_MIN_PCT,
+  shortlistOf,
+} from "@/lib/shortlist";
 import { useBoardResults } from "@/hooks/useBoardResults";
 import {
   readCachedBoard,
@@ -219,6 +224,14 @@ function BoardMatchRow({
           <p className="sl-hero-figure sl-hero-figure-green font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
             {match.headline_pct.toFixed(1)}%
           </p>
+          {/* Acertar não é ganhar: a este preço a aposta fica a zero, e a
+              casa de apostas também sabe que esta equipa não perde. */}
+          <p className="sl-meta text-[10.5px] leading-snug">
+            paga acima de{" "}
+            <span className="font-mono-data font-bold text-foreground">
+              {minimumOdd(match.headline_pct).toFixed(2)}
+            </span>
+          </p>
         </div>
       </button>
 
@@ -365,6 +378,9 @@ export default function ProbabilityRadar() {
   // Yesterday sits in the same row of chips as today and tomorrow, and is
   // the one of them that has already happened.
   const [yesterdayOpen, setYesterdayOpen] = useState(false);
+  // The shortlist is the day read through the board's own record. Off by
+  // default: the whole day is still what the page is for.
+  const [onlyShortlist, setOnlyShortlist] = useState(false);
   const hits = useBoardResults();
   // Closed by default on phones so the actual board — the reason someone
   // opens this page — isn't pushed below the fold by an explainer paragraph.
@@ -516,17 +532,24 @@ export default function ProbabilityRadar() {
 
   const currentDay = dayGroups[Math.min(activeDay, Math.max(dayGroups.length - 1, 0))];
 
+  /** Of the day on screen, the ones the board's own record says to look at. */
+  const curtos = useMemo(
+    () => (currentDay ? shortlistOf(currentDay.items) : []),
+    [currentDay],
+  );
+
   const leagueGroups = useMemo(() => {
     if (!currentDay) return [];
 
+    const items = onlyShortlist ? curtos : currentDay.items;
     const groups = new Map<string, BoardMatch[]>();
-    currentDay.items.forEach((match) => {
+    items.forEach((match) => {
       if (!groups.has(match.league)) groups.set(match.league, []);
       groups.get(match.league)!.push(match);
     });
 
     return [...groups.entries()].map(([league, items]) => ({ league, items }));
-  }, [currentDay]);
+  }, [currentDay, curtos, onlyShortlist]);
 
   // Straight to the match's own page: the board already holds everything it
   // needs, so there is nothing to fetch and prefill on the way out.
@@ -773,10 +796,55 @@ export default function ProbabilityRadar() {
                     })}
                   </div>
 
+                  {/* O dia lido pelo registo do próprio quadro: dupla
+                      hipótese acima de 70%, que em 91 jogos já jogados
+                      entrou 88% das vezes. O resto do que o quadro destaca
+                      — golos, ambas marcam — entrou 47%, que é uma moeda
+                      ao ar. */}
+                  {!yesterdayOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setOnlyShortlist((only) => !only)}
+                      aria-pressed={onlyShortlist}
+                      className={`sl-tap mt-2 flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left ${
+                        onlyShortlist
+                          ? "bg-primary/10 ring-1 ring-primary/30"
+                          : "sl-card"
+                      }`}
+                    >
+                      <ListFilter
+                        className={`h-4 w-4 flex-none ${
+                          onlyShortlist ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[12.5px] font-semibold text-foreground">
+                          {onlyShortlist ? "A lista curta" : "Ver só a lista curta"}
+                        </span>
+                        <span className="sl-meta block text-[11px] leading-5">
+                          Dupla hipótese acima de {SHORTLIST_MIN_PCT}% — 88% de
+                          acerto em 91 jogos marcados. O resto entrou 47%.
+                        </span>
+                      </span>
+                      <span
+                        className={`sl-figure flex-none text-[13px] ${
+                          curtos.length > 0 ? "text-foreground" : "text-muted-foreground"
+                        }`}
+                      >
+                        {curtos.length}
+                      </span>
+                    </button>
+                  )}
+
                   {yesterdayOpen ? (
                     <div className="mt-4">
                       <RecentHits state={hits} />
                     </div>
+                  ) : onlyShortlist && curtos.length === 0 ? (
+                    <p className="sl-card mt-4 px-4 py-4 text-[12.5px] leading-6 text-muted-foreground">
+                      Hoje não há nenhum jogo na lista curta. É um dia para
+                      não apostar — o que também é uma decisão.
+                    </p>
                   ) : (
                   <div className="mt-4 space-y-5">
                     {leagueGroups.map(({ league, items }) => (

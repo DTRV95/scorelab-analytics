@@ -256,6 +256,33 @@ describe("ProbabilityRadar board", () => {
     expect(screen.queryByText("Porto vs Nacional")).toBeNull();
   });
 
+  it("cuts the day down to the picks the board's own record stands behind", async () => {
+    scoring.snapshot.mockResolvedValue(null);
+    mockFetchSequence();
+    renderPage();
+
+    // Porto vs Nacional é "Casa" a 78,4% e City vs United é "Mais de 2.5" a
+    // 55,1%: nenhum dos dois é dupla hipótese acima de 70%.
+    await screen.findByText("Porto vs Nacional");
+    fireEvent.click(screen.getByRole("button", { name: /Ver só a lista curta/ }));
+
+    expect(
+      await screen.findByText(/Hoje não há nenhum jogo na lista curta/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Porto vs Nacional")).toBeNull();
+    expect(screen.queryByText("City vs United")).toBeNull();
+  });
+
+  it("says at what price each forecast stops being worth taking", async () => {
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+
+    // 78,4% fica a zero a 1,28: abaixo disso acertar não chega.
+    expect(screen.getByText("1.28")).toBeInTheDocument();
+  });
+
   it("expands a row into the full breakdown only when clicked", async () => {
     mockFetchSequence();
     renderPage();
