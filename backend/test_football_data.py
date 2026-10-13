@@ -626,6 +626,34 @@ def test_the_board_endpoint_does_not_drop_the_league_comparison():
     assert not missing, f"the endpoint would drop: {sorted(missing)}"
 
 
+def test_a_second_day_of_a_competition_is_not_spent_on_the_first():
+    """A Championship com oito jogos num dia e quatro no seguinte via o
+    quadro mostrar os oito e um dos quatro: o turno da competição gastava-se
+    todo no primeiro dia. O corte passa a ser por competição e por dia."""
+    board = []
+    for index in range(8):
+        board.append({"league": "Championship", "kickoff": f"2026-10-13T{12 + index}:00:00Z"})
+    for index in range(4):
+        board.append({"league": "Championship", "kickoff": f"2026-10-14T{19 + index % 3}:00:00Z"})
+    for index in range(8):
+        board.append({"league": "Premier League", "kickoff": f"2026-10-13T{12 + index}:30:00Z"})
+    board.sort(key=lambda item: item["kickoff"])
+
+    fair = football_data._fair_share(board, 12)
+
+    dia_seguinte = [i for i in fair if i["kickoff"].startswith("2026-10-14")]
+    assert len(dia_seguinte) >= 3, "o segundo dia não pode ficar reduzido a um jogo"
+    assert len(fair) == 12
+
+
+def test_the_board_fits_a_whole_ordinary_week():
+    """Cem jogos analisáveis numa semana das onze competições; o tecto tem de
+    os levar todos, ou volta a haver dias cortados a meio."""
+    from main import MAX_BOARD_MATCHES
+
+    assert MAX_BOARD_MATCHES >= 140
+
+
 def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches

@@ -646,13 +646,21 @@ def _fair_share(board: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]
     which on a busy week is an entire competition — the one that plays at the
     weekend. Taking a turn from each competition instead means a cut costs
     every league its last game rather than costing one league all of them.
+
+    The turn is taken per competition *and per day*. Taken per competition
+    alone, a league that plays twice in a week spends its whole turn on the
+    first day: the Championship had eight games on one day and four on the
+    next, and the board showed the eight and a single one of the four. A day
+    with four games of a competition now shows four, or shows them short by
+    the same amount as everybody else's.
     """
     if len(board) <= limit:
         return board
 
     by_league: Dict[str, List[Dict[str, Any]]] = {}
     for match in board:
-        by_league.setdefault(match["league"], []).append(match)
+        day = (match.get("kickoff") or "")[:10]
+        by_league.setdefault(f"{match['league']}|{day}", []).append(match)
 
     picked: List[Dict[str, Any]] = []
     round_number = 0

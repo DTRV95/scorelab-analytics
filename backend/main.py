@@ -17,7 +17,12 @@ from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
 
 MAX_RESULT_LOOKUPS = 200
-MAX_BOARD_MATCHES = 80
+# Uma semana cheia das onze competições dá à volta de cem jogos analisáveis.
+# O tecto estava em oitenta, e os vinte que sobravam saíam todos do fim: no
+# dia 13/10 a Championship tinha quatro jogos no dia seguinte e o quadro
+# mostrava um. Cento e quarenta cobre uma semana sem cortar nada, e o corte
+# que resta é a rede para uma semana fora do normal.
+MAX_BOARD_MATCHES = 140
 
 app = FastAPI(title="ScoreLab API")
 limiter = Limiter(key_func=get_remote_address)
