@@ -16,7 +16,16 @@ export interface BoardMatch extends ProbabilityResult {
 
 export interface CachedBoard {
   days: number;
+  /** When this browser wrote the copy. Decides when it goes stale. */
   fetchedAt: number;
+  /**
+   * When the board itself was put together — by the nightly job, or by the
+   * engine on the spot. Two different things from `fetchedAt`: a phone can
+   * fetch at eight in the morning a board that was computed at half past
+   * midnight. It is the stamp that says whether the one in the database is
+   * newer than the one on screen, which is the whole point of keeping it.
+   */
+  computedAt: number;
   matches: BoardMatch[];
   unavailable: string[];
   skipped: number;
@@ -64,17 +73,26 @@ export function readCachedBoard(days: number): CachedBoard | null {
     const ttl = isComplete(parsed) ? CACHE_TTL_MS : INCOMPLETE_TTL_MS;
     if (Date.now() - parsed.fetchedAt > ttl) return null;
 
-    return parsed;
+    // A copy written before this stamp existed counts as infinitely old, so
+    // the first stored board after an update always wins over it.
+    return { ...parsed, computedAt: parsed.computedAt ?? 0 };
   } catch {
     return null;
   }
 }
 
-export function writeCachedBoard(data: Omit<CachedBoard, "fetchedAt">): void {
+export function writeCachedBoard(
+  data: Omit<CachedBoard, "fetchedAt" | "computedAt"> & { computedAt?: number }
+): void {
   try {
+    const now = Date.now();
     localStorage.setItem(
       CACHE_KEY,
-      JSON.stringify({ ...data, fetchedAt: Date.now() })
+      JSON.stringify({
+        ...data,
+        computedAt: data.computedAt ?? now,
+        fetchedAt: now,
+      })
     );
   } catch {
     // Storage full or unavailable — the board just recomputes next visit,

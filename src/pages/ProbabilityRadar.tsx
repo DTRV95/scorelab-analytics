@@ -36,7 +36,7 @@ import {
   MatchForm,
   type PrefillForm,
 } from "@/components/MatchForm";
-import { loadBoard } from "@/lib/boardSource";
+import { fetchNewerBoard, loadBoard } from "@/lib/boardSource";
 import {
   minimumOdd,
   SHORTLIST_MIN_PCT,
@@ -480,7 +480,23 @@ export default function ProbabilityRadar() {
         setSkippedCount(cached.skipped);
         setBoardLoading(false);
         setBoardError("");
-        return;
+
+        // Painted — and then, quietly, the question that was never asked:
+        // is the board in the database newer than this one? It usually is
+        // not, and costs one column to find out. When it is, the page
+        // swaps it in where you are looking, instead of holding yesterday's
+        // copy for two hours because that is how long the cache lasts.
+        let stale = false;
+        void fetchNewerBoard(BOARD_DAYS, cached.computedAt).then((newer) => {
+          if (stale || !newer) return;
+          setBoard(newer.matches);
+          setUnavailableLeagues(newer.unavailable);
+          setSkippedCount(newer.skipped);
+        });
+
+        return () => {
+          stale = true;
+        };
       }
     }
 

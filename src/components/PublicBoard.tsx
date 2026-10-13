@@ -72,15 +72,19 @@ export function PublicBoard({ limit = 10 }: { limit?: number }) {
     // sleeps, and which somebody who has not even signed up should never be
     // left waiting for. The same cache the app itself uses, so signing up
     // after reading this does not pay for the request twice.
-    return loadBoard(DAYS)
+    return loadBoard(DAYS, {
+      onNewer: (board) => setMatches(board.matches),
+    })
       .then((data) => setMatches(data.matches))
       .catch(() => setFailed(true));
   }, []);
 
+  // Asked on arrival even with a saved copy in hand: the copy is served
+  // without a request and paints the same frame, and the asking is what
+  // notices that the stored board has moved on since.
   useEffect(() => {
-    if (matches) return;
     void load();
-  }, [matches, load]);
+  }, [load]);
 
   // At midnight the day changes under the page: the list is asked again and
   // the heading moves on by itself.

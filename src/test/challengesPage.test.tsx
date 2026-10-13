@@ -422,9 +422,14 @@ describe("building the day's bet", () => {
         await screen.findByRole("button", { name: /Procurar jogos novos/ }),
       );
 
-      expect(
-        fetched.some((url) => url.includes("/data/probability-board")),
-      ).toBe(true);
+      // One beat later than it used to be: refresh now checks whether the
+      // database holds a newer board before it wakes the engine, and here
+      // there is no database to answer.
+      await waitFor(() =>
+        expect(
+          fetched.some((url) => url.includes("/data/probability-board")),
+        ).toBe(true),
+      );
     } finally {
       global.fetch = original;
     }

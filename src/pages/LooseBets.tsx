@@ -10,7 +10,10 @@ import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BoardAccess } from "@/components/GamePicker";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
-import { buildApiUrl } from "@/lib/apiConfig";
+import {
+  loadBoard as loadBoard7,
+  type LoadedBoard,
+} from "@/lib/boardSource";
 import {
   deleteLooseBet,
   fetchLooseBets,
@@ -31,10 +34,7 @@ import {
   type PlanBetPayload,
   type PlanLeg,
 } from "@/lib/planStore";
-import {
-  readCachedBoard,
-  type BoardMatch,
-} from "@/lib/probabilityBoardCache";
+import { type BoardMatch } from "@/lib/probabilityBoardCache";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import { typingMemory } from "@/lib/typingMemory";
 
@@ -143,22 +143,18 @@ export default function LooseBets() {
   // The games the challenge page already fetched. Asking again would spend one
   // of the ten requests a minute the provider allows on something already here.
   const loadBoard = useCallback((force: boolean) => {
-    const cached = readCachedBoard(7);
-    if (cached && !force) {
-      setBoard(cached.matches);
-      setBoardAt(cached.fetchedAt);
-      setUnavailable(cached.unavailable ?? []);
-      return;
-    }
+    const take = (data: LoadedBoard) => {
+      setBoard(data.matches);
+      setBoardAt(data.at);
+      setUnavailable(data.unavailable);
+    };
 
     setBoardLoading(true);
-    fetch(buildApiUrl("/data/probability-board?days=7"))
-      .then((response) => response.json())
-      .then((data) => {
-        setBoard(data.matches ?? []);
-        setBoardAt(Date.now());
-        setUnavailable(data.unavailable ?? []);
-      })
+    // Saved copy, then the board the job left in the database, and only then
+    // the engine — and a newer stored board replaces the saved copy as soon
+    // as it is found, instead of waiting out the two hours it lasts.
+    loadBoard7(7, { force, onNewer: take })
+      .then(take)
       .catch(() => undefined)
       .finally(() => setBoardLoading(false));
   }, []);

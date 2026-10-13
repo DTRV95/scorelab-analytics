@@ -233,7 +233,14 @@ export default function Home() {
     let cancelled = false;
     // The stored copy, then the board last night's job left in the database,
     // and only then the engine.
-    loadBoard(7)
+    loadBoard(7, {
+      // And if the job has rewritten the board since this browser last saw
+      // it, the list here changes to match it instead of waiting out the
+      // saved copy.
+      onNewer: (board) => {
+        if (!cancelled) setGames(board.matches);
+      },
+    })
       .then((data) => {
         if (!cancelled) setGames(data.matches);
       })

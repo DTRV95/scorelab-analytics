@@ -98,7 +98,10 @@ import {
   type PlanRecord,
   type PlayerStanding,
 } from "@/lib/planStore";
-import { loadBoard as loadBoard7 } from "@/lib/boardSource";
+import {
+  loadBoard as loadBoard7,
+  type LoadedBoard,
+} from "@/lib/boardSource";
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
 
 const BOARD_DAYS = 7;
@@ -426,13 +429,17 @@ export default function Challenges() {
     setBoardLoading(true);
     // The stored copy, then last night's board from the database, then the
     // engine itself. Only a deliberate refresh goes straight to the engine.
-    loadBoard7(BOARD_DAYS, { force })
-      .then((data) => {
-        setBoard(data.matches);
-        setUnavailable(data.unavailable);
-        setSkipped(data.skipped);
-        setBoardAt(data.at);
-      })
+    const take = (data: LoadedBoard) => {
+      setBoard(data.matches);
+      setUnavailable(data.unavailable);
+      setSkipped(data.skipped);
+      setBoardAt(data.at);
+    };
+
+    // The saved copy shows at once; a newer board in the database replaces it
+    // as soon as the check comes back.
+    loadBoard7(BOARD_DAYS, { force, onNewer: take })
+      .then(take)
       .catch(() => undefined)
       .finally(() => setBoardLoading(false));
   }, []);

@@ -23,7 +23,7 @@ vi.mock("@/lib/supabaseClient", () => ({
 }));
 
 import { loadBoard } from "@/lib/boardSource";
-import { writeCachedBoard } from "@/lib/probabilityBoardCache";
+import { readCachedBoard, writeCachedBoard } from "@/lib/probabilityBoardCache";
 
 const match = (home: string): BoardMatch =>
   ({
@@ -134,14 +134,42 @@ describe("where the board of games comes from", () => {
     expect(board.skipped).toBe(2);
   });
 
-  it("goes straight to the engine when somebody presses refresh", async () => {
+  it("takes a newer stored board on refresh instead of waking the engine", async () => {
+    // The copy in the browser was computed three hours ago; the job has
+    // rewritten the board since. Refresh means "show me the newer one", and
+    // that is the newer one — a minute of waking the engine would have
+    // produced the same games.
     writeCachedBoard({
       days: 7,
       matches: [match("Guardado")],
       unavailable: [],
       skipped: 0,
+      computedAt: Date.now() - 3 * 3600_000,
     });
-    db.row = snapshot("Da base de dados");
+    db.row = snapshot("Da base de dados", 1);
+    const engine = vi.fn();
+    vi.stubGlobal("fetch", engine);
+
+    const board = await loadBoard(7, { force: true });
+
+    expect(board.source).toBe("snapshot");
+    expect(board.matches[0].home_name).toBe("Da base de dados");
+    expect(engine).not.toHaveBeenCalled();
+  });
+
+  it("goes to the engine on refresh when the stored board is the one in hand", async () => {
+    const computedAt = Date.now() - 3600_000;
+    writeCachedBoard({
+      days: 7,
+      matches: [match("Guardado")],
+      unavailable: [],
+      skipped: 0,
+      computedAt,
+    });
+    db.row = {
+      payload: { matches: [match("Da base de dados")], unavailable: [], skipped: 1 },
+      computed_at: new Date(computedAt).toISOString(),
+    };
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -154,7 +182,52 @@ describe("where the board of games comes from", () => {
 
     expect(board.source).toBe("engine");
     expect(board.matches[0].home_name).toBe("Acabado de calcular");
-    expect(db.asked).toBe(0);
+  });
+
+  it("hands over a newer stored board after serving the saved copy", async () => {
+    writeCachedBoard({
+      days: 7,
+      matches: [match("Guardado")],
+      unavailable: [],
+      skipped: 0,
+      computedAt: Date.now() - 3 * 3600_000,
+    });
+    db.row = snapshot("Da base de dados", 1);
+    vi.stubGlobal("fetch", vi.fn());
+
+    const newer: string[] = [];
+    const board = await loadBoard(7, {
+      onNewer: (data) => newer.push(data.matches[0].home_name),
+    });
+
+    expect(board.source).toBe("cache");
+    expect(board.matches[0].home_name).toBe("Guardado");
+
+    await vi.waitFor(() => expect(newer).toEqual(["Da base de dados"]));
+    // And the browser keeps the newer one, so the next visit starts there.
+    expect(readCachedBoard(7)?.matches[0].home_name).toBe("Da base de dados");
+  });
+
+  it("says nothing when the stored board is no newer than the saved copy", async () => {
+    const computedAt = Date.now() - 3600_000;
+    writeCachedBoard({
+      days: 7,
+      matches: [match("Guardado")],
+      unavailable: [],
+      skipped: 0,
+      computedAt,
+    });
+    db.row = {
+      payload: { matches: [match("Da base de dados")], unavailable: [], skipped: 1 },
+      computed_at: new Date(computedAt).toISOString(),
+    };
+
+    const onNewer = vi.fn();
+    await loadBoard(7, { onNewer });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onNewer).not.toHaveBeenCalled();
+    expect(readCachedBoard(7)?.matches[0].home_name).toBe("Guardado");
   });
 
   it("carries the engine's own complaint rather than inventing one", async () => {

@@ -76,6 +76,61 @@ export async function fetchBoardSnapshot(
   }
 }
 
+/**
+ * Just the stamp on the stored board, not the board.
+ *
+ * A board is a hundred games with a full forecast each — a few hundred
+ * kilobytes, and nine times out of ten the answer is "the same one you
+ * already have". One short column tells us that for nothing.
+ */
+export async function fetchSnapshotStamp(days = 7): Promise<number | null> {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from("board_snapshots")
+      .select("computed_at")
+      .eq("key", `days:${days}`)
+      .maybeSingle<{ computed_at: string }>();
+
+    if (error || !data?.computed_at) return null;
+
+    const at = new Date(data.computed_at).getTime();
+    return Number.isNaN(at) ? null : at;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The stored board, but only when it is newer than the copy in hand.
+ *
+ * This is what was missing the day the Championship showed one game of four:
+ * the fix landed, the job rewrote the board minutes later, and the phone went
+ * on showing its own copy for two hours because nobody ever asked whether
+ * there was a newer one. Now somebody asks, on every visit, for the price of
+ * one column.
+ */
+export async function fetchNewerBoard(
+  days = 7,
+  knownAt = 0,
+): Promise<LoadedBoard | null> {
+  const stamp = await fetchSnapshotStamp(days);
+  if (stamp === null || stamp <= knownAt) return null;
+
+  const stored = await fetchBoardSnapshot(days);
+  if (!stored || stored.at <= knownAt) return null;
+
+  writeCachedBoard({
+    days,
+    matches: stored.matches,
+    unavailable: stored.unavailable,
+    skipped: stored.skipped,
+    computedAt: stored.at,
+  });
+  return stored;
+}
+
 /** Straight from the engine, which computes it on the spot. */
 export async function fetchBoardFromEngine(
   days = 7,
@@ -102,11 +157,31 @@ export async function fetchBoardFromEngine(
 
 export async function loadBoard(
   days = 7,
-  { force = false, signal }: { force?: boolean; signal?: AbortSignal } = {},
+  {
+    force = false,
+    signal,
+    onNewer,
+  }: {
+    force?: boolean;
+    signal?: AbortSignal;
+    /**
+     * Called later, if the board in the database turns out to be newer than
+     * the copy this returned. The saved copy paints at once — that is what it
+     * is for — and the page is free to take the better one when it arrives.
+     */
+    onNewer?: (board: LoadedBoard) => void;
+  } = {},
 ): Promise<LoadedBoard> {
+  const cached = readCachedBoard(days);
+
   if (!force) {
-    const cached = readCachedBoard(days);
     if (cached) {
+      if (onNewer) {
+        void fetchNewerBoard(days, cached.computedAt).then((newer) => {
+          if (newer) onNewer(newer);
+        });
+      }
+
       return {
         matches: cached.matches,
         unavailable: cached.unavailable,
@@ -123,9 +198,18 @@ export async function loadBoard(
         matches: stored.matches,
         unavailable: stored.unavailable,
         skipped: stored.skipped,
+        computedAt: stored.at,
       });
       return stored;
     }
+  } else {
+    // Refresh used to mean "wake the engine", which is a minute of spinner
+    // for a board the job in the database had already rewritten. So: if the
+    // stored one is newer than what is on screen, that is the refresh. The
+    // engine is still there for when it is not — pressing again when the
+    // stored board is the one you already have does go and compute a new one.
+    const newer = await fetchNewerBoard(days, cached?.computedAt ?? 0);
+    if (newer) return newer;
   }
 
   const fresh = await fetchBoardFromEngine(days, signal);
