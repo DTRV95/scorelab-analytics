@@ -213,6 +213,31 @@ export async function loadBoard(
   }
 
   const fresh = await fetchBoardFromEngine(days, signal);
+
+  // An engine that answers "no games" is not worth a board that has them.
+  //
+  // It happens: the engine wakes up cold, runs into the provider's ten
+  // requests a minute and comes back with nothing. Taking that answer
+  // replaced a hundred games with an empty page — and, worse, wrote the
+  // empty page over the copy in the browser.
+  if (fresh.matches.length === 0) {
+    const stored = await fetchBoardSnapshot(days);
+    if (stored && stored.matches.length > 0) {
+      writeCachedBoard({
+        days,
+        matches: stored.matches,
+        unavailable: stored.unavailable,
+        skipped: stored.skipped,
+        computedAt: stored.at,
+      });
+      return stored;
+    }
+
+    // Nothing anywhere: say so, but do not save it. "No games" is never an
+    // answer worth keeping.
+    return fresh;
+  }
+
   writeCachedBoard({
     days,
     matches: fresh.matches,

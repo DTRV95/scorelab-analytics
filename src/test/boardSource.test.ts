@@ -230,6 +230,51 @@ describe("where the board of games comes from", () => {
     expect(readCachedBoard(7)?.matches[0].home_name).toBe("Guardado");
   });
 
+  it("will not let an empty answer from the engine erase a board that exists", async () => {
+    // The engine wakes up cold, runs into the provider's ten requests a
+    // minute and says "no games". That used to replace the board with an
+    // empty page, and write the empty page over the copy in the browser.
+    writeCachedBoard({
+      days: 7,
+      matches: [match("Guardado")],
+      unavailable: [],
+      skipped: 0,
+      computedAt: Date.now() - 3600_000,
+    });
+    db.row = snapshot("Da base de dados", 2);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
+      })),
+    );
+
+    const board = await loadBoard(7, { force: true });
+
+    expect(board.matches).toHaveLength(1);
+    expect(board.source).toBe("snapshot");
+    expect(readCachedBoard(7)?.matches).toHaveLength(1);
+  });
+
+  it("keeps an empty answer out of the saved copy when there is nothing anywhere", async () => {
+    db.row = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ matches: [], unavailable: [], skipped: 0 }),
+      })),
+    );
+
+    const board = await loadBoard(7);
+
+    expect(board.matches).toEqual([]);
+    // Nothing saved: "no games" is never an answer worth keeping, and the
+    // next visit asks again instead of repeating it.
+    expect(localStorage.getItem("scorelab_probability_board_cache")).toBeNull();
+  });
+
   it("carries the engine's own complaint rather than inventing one", async () => {
     db.row = null;
     vi.stubGlobal(

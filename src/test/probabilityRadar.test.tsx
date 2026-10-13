@@ -430,6 +430,34 @@ describe("ProbabilityRadar board", () => {
     );
   });
 
+  it("keeps the games on screen when refresh finds the engine asleep", async () => {
+    // The one that sent somebody to say "não está a aparecer nada": the
+    // board was there, the button went to the engine, the engine was
+    // asleep — and the page answered that there is no data source, taking
+    // a hundred games off the screen with it.
+    writeCachedBoard({
+      days: 7,
+      matches: boardPayload.matches as never,
+      unavailable: [],
+      skipped: 0,
+    });
+    const asleep = vi.fn(() => Promise.reject(new Error("a dormir")));
+    vi.stubGlobal("fetch", asleep);
+
+    renderPage();
+    await screen.findByText("Porto vs Nacional");
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Procurar jogos outra vez/i })[0],
+    );
+
+    await waitFor(() => expect(asleep).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.queryByText(/O motor de dados não respondeu/)).toBeNull(),
+    );
+    expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
+  });
+
   it("does not sit on an empty board for the full cache window", () => {
     writeCachedBoard({ days: 7, matches: [], unavailable: [], skipped: 0 });
 
