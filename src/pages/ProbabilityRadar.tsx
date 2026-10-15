@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -36,7 +36,11 @@ import {
   MatchForm,
   type PrefillForm,
 } from "@/components/MatchForm";
-import { fetchNewerBoard, loadBoard } from "@/lib/boardSource";
+import {
+  fetchNewerBoard,
+  loadBoard,
+  type LoadedBoard,
+} from "@/lib/boardSource";
 import {
   minimumOdd,
   SHORTLIST_MIN_PCT,
@@ -47,6 +51,7 @@ import {
   readCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
+import { freshness } from "@/lib/freshness";
 import { matchTips, type MatchTip } from "@/lib/matchTips";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
 
@@ -61,6 +66,11 @@ const fadeUp = {
 };
 
 const BOARD_DAYS = 7;
+
+// The engine sleeps after a quarter of an hour alone, and a cold start plus
+// eleven competitions is more than the minute and a half this used to give
+// it: the wait ended just before the answer did, every time.
+const ENGINE_WAIT_MS = 150_000;
 
 interface FormData {
   equipa_casa: string;
@@ -340,6 +350,66 @@ function BoardMatchRow({
 }
 
 /** Go and ask the provider again, now, ignoring anything already stored. */
+/**
+ * The button for when something is missing from the board.
+ *
+ * There was already a refresh icon in the corner of the header, and it was
+ * not enough twice over: an icon says nothing about how old the board is,
+ * so there is no way to tell a board that is missing a competition from one
+ * that is simply the board, and it said nothing back when pressed, so a
+ * minute of silence looked exactly like a button that does nothing.
+ *
+ * So: when the quadro was computed, what it holds, which competitions are
+ * missing from it, and a line that changes while the thing works.
+ */
+function BoardRefresh({
+  at,
+  games,
+  missing,
+  loading,
+  note,
+  onClick,
+}: {
+  at: number;
+  games: number;
+  missing: string[];
+  loading: boolean;
+  note: string;
+  onClick: () => void;
+}) {
+  const summary = [
+    at ? `Quadro de ${freshness(at)}` : "Quadro ainda por carregar",
+    games ? `${games} jogos` : null,
+    missing.length ? `falta ${missing.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="sl-card flex items-center gap-3 px-3.5 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-foreground">
+          {loading ? "A atualizar o quadro..." : summary}
+        </p>
+        {(note || !loading) && (
+          <p className="sl-meta mt-0.5 text-[11px] leading-4">
+            {note ||
+              "Falta alguma competição? Carrega aqui — vai buscar o quadro mais recente."}
+          </p>
+        )}
+      </div>
+      <Button
+        className="sl-btn-primary sl-tap h-9 flex-none px-4 text-xs"
+        disabled={loading}
+        onClick={onClick}
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        Atualizar
+      </Button>
+    </div>
+  );
+}
+
 function SearchAgain({
   loading,
   onClick,
@@ -380,6 +450,11 @@ export default function ProbabilityRadar() {
   const rates = useLeagueRates();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  // When the board on the screen was computed, and what the last press of
+  // the refresh button did — the two things somebody needs to decide
+  // whether to press it again.
+  const [boardAt, setBoardAt] = useState(0);
+  const [refreshNote, setRefreshNote] = useState("");
   const [activeDay, setActiveDay] = useState(0);
   // Yesterday sits in the same row of chips as today and tomorrow, and is
   // the one of them that has already happened.
@@ -405,8 +480,78 @@ export default function ProbabilityRadar() {
   // (navigating away and back) always leaves it at 0.
   const isManualRefresh = reloadToken > 0;
 
-  /** Ask the provider again now, whatever is stored. */
+  /** Ask whether there is a data source at all, again. */
   const searchAgain = () => setReloadToken((token) => token + 1);
+
+  const applyBoard = useCallback((data: LoadedBoard) => {
+    setBoard(data.matches);
+    setUnavailableLeagues(data.unavailable);
+    setSkippedCount(data.skipped);
+    setBoardAt(data.computedAt);
+  }, []);
+
+  /**
+   * The button for when a competition is missing.
+   *
+   * Two steps, in the order that costs least. First the board in the
+   * database, which four jobs a night rewrite and which answers in an
+   * instant: nine times out of ten that is the whole answer, and it is the
+   * step that was missing the day the Championship showed one game of four.
+   * Only if that one is no newer than what is on screen does it go and wake
+   * the engine, which is slow, sleeps, and is the only thing that can
+   * produce a board nobody has computed yet.
+   *
+   * It says which step it is on, because a minute of nothing is what makes
+   * somebody press a button four times.
+   */
+  const refreshBoard = useCallback(async () => {
+    setBoardLoading(true);
+    setBoardError("");
+    setRefreshNote("À procura de um quadro mais recente...");
+
+    try {
+      const newer = await fetchNewerBoard(BOARD_DAYS, boardAt);
+      if (newer) {
+        applyBoard(newer);
+        setRefreshNote(`Quadro atualizado: ${newer.matches.length} jogos.`);
+        return;
+      }
+
+      setRefreshNote(
+        "Já tens o mais recente guardado. A pedir um novo ao motor — pode demorar até dois minutos se esteve parado.",
+      );
+
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), ENGINE_WAIT_MS);
+      try {
+        const fresh = await loadBoard(BOARD_DAYS, {
+          force: true,
+          signal: controller.signal,
+        });
+        if (fresh.matches.length === 0) {
+          setRefreshNote(
+            "O motor não devolveu jogos nenhuns — costuma ser o limite de pedidos do fornecedor. Tenta daqui a um minuto.",
+          );
+          return;
+        }
+        applyBoard(fresh);
+        setRefreshNote(
+          fresh.source === "engine"
+            ? `Quadro recalculado agora: ${fresh.matches.length} jogos.`
+            : `Quadro atualizado: ${fresh.matches.length} jogos.`,
+        );
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    } catch {
+      // Whatever went wrong, the board on the screen stays on the screen.
+      setRefreshNote(
+        "Não foi possível recalcular agora. Fica o quadro que já tinhas.",
+      );
+    } finally {
+      setBoardLoading(false);
+    }
+  }, [applyBoard, boardAt]);
 
   useEffect(() => {
     // Answered once, answered for this visit.
@@ -477,37 +622,36 @@ export default function ProbabilityRadar() {
 
     // Once loaded for these days, stay loaded: reopening the tab (or the
     // whole browser, within the cache window) shows the same board
-    // instantly instead of recomputing it. Only an explicit refresh, or the
-    // cache going stale, triggers a real fetch again.
+    // instantly instead of recomputing it.
     // The stored copy is read on the spot, not through a promise: reopening
     // the tab should paint the board in the same breath, with no frame of
     // emptiness in between.
-    if (!isManualRefresh) {
-      const cached = readCachedBoard(BOARD_DAYS);
-      if (cached) {
-        setBoard(cached.matches);
-        setUnavailableLeagues(cached.unavailable);
-        setSkippedCount(cached.skipped);
-        setBoardLoading(false);
-        setBoardError("");
+    const cached = readCachedBoard(BOARD_DAYS);
+    if (cached) {
+      applyBoard({
+        matches: cached.matches,
+        unavailable: cached.unavailable,
+        skipped: cached.skipped,
+        source: "cache",
+        at: cached.fetchedAt,
+        computedAt: cached.computedAt,
+      });
+      setBoardLoading(false);
+      setBoardError("");
 
-        // Painted — and then, quietly, the question that was never asked:
-        // is the board in the database newer than this one? It usually is
-        // not, and costs one column to find out. When it is, the page
-        // swaps it in where you are looking, instead of holding yesterday's
-        // copy for two hours because that is how long the cache lasts.
-        let stale = false;
-        void fetchNewerBoard(BOARD_DAYS, cached.computedAt).then((newer) => {
-          if (stale || !newer) return;
-          setBoard(newer.matches);
-          setUnavailableLeagues(newer.unavailable);
-          setSkippedCount(newer.skipped);
-        });
+      // Painted — and then, quietly, the question that was never asked:
+      // is the board in the database newer than this one? It usually is
+      // not, and costs one column to find out. When it is, the page
+      // swaps it in where you are looking, instead of holding yesterday's
+      // copy for two hours because that is how long the cache lasts.
+      let stale = false;
+      void fetchNewerBoard(BOARD_DAYS, cached.computedAt).then((newer) => {
+        if (!stale && newer) applyBoard(newer);
+      });
 
-        return () => {
-          stale = true;
-        };
-      }
+      return () => {
+        stale = true;
+      };
     }
 
     let cancelled = false;
@@ -520,12 +664,9 @@ export default function ProbabilityRadar() {
     // Then the board last night's job left in the database, and only then
     // the engine — which sleeps, takes a minute to wake, and is what this
     // page used to wait for every single day.
-    loadBoard(BOARD_DAYS, { force: isManualRefresh, signal: controller.signal })
+    loadBoard(BOARD_DAYS, { signal: controller.signal })
       .then((data) => {
-        if (cancelled) return;
-        setBoard(data.matches);
-        setUnavailableLeagues(data.unavailable);
-        setSkippedCount(data.skipped);
+        if (!cancelled) applyBoard(data);
       })
       .catch((err: Error) => {
         if (!cancelled) setBoardError(err.message);
@@ -540,7 +681,7 @@ export default function ProbabilityRadar() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [enabled, reloadToken, isManualRefresh]);
+  }, [enabled, applyBoard]);
 
   // Grouped by day first, then by league — matches inside each league stay in
   // the order the board already sorted them, chronologically by kickoff.
@@ -701,17 +842,10 @@ export default function ProbabilityRadar() {
                 pixels of explanation above the thing being explained. */}
             <p className="sl-meta mt-1">Os próximos 7 dias, sem odds nem stake.</p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 flex-none rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Procurar jogos outra vez"
-            aria-label="Procurar jogos outra vez"
-            disabled={boardLoading}
-            onClick={searchAgain}
-          >
-            <RefreshCw className={`h-4 w-4 ${boardLoading ? "animate-spin" : ""}`} />
-          </Button>
+          {/* O ícone de atualizar esteve aqui no canto e não chegava: não
+              dizia de quando era o quadro, nem respondia quando se carregava
+              nele. Agora há um botão com as duas coisas, logo por baixo —
+              dois sítios para a mesma coisa era um a mais. */}
         </motion.div>
 
         {enabled === null && (
@@ -764,7 +898,10 @@ export default function ProbabilityRadar() {
                 <p className="text-xs font-medium text-destructive">
                   {boardError}
                 </p>
-                <SearchAgain loading={boardLoading} onClick={searchAgain} />
+                <SearchAgain
+                  loading={boardLoading}
+                  onClick={() => void refreshBoard()}
+                />
               </div>
             )}
 
@@ -779,8 +916,24 @@ export default function ProbabilityRadar() {
                   automáticos. Pode ser só a fonte de dados a não responder
                   agora — procura outra vez.
                 </p>
-                <SearchAgain loading={boardLoading} onClick={searchAgain} />
+                <SearchAgain
+                  loading={boardLoading}
+                  onClick={() => void refreshBoard()}
+                />
               </div>
+            )}
+
+            {/* Above the days, where somebody who notices a missing
+                competition is already looking. */}
+            {board.length > 0 && (
+              <BoardRefresh
+                at={boardAt}
+                games={board.length}
+                missing={unavailableLeagues}
+                loading={boardLoading}
+                note={refreshNote}
+                onClick={() => void refreshBoard()}
+              />
             )}
 
             {(dayGroups.length > 0 || !hits.loading) && (
@@ -915,14 +1068,14 @@ export default function ProbabilityRadar() {
                 </>
               )}
 
-              {(skippedCount > 0 || unavailableLeagues.length > 0) && (
+              {/* The competitions that did not answer used to be named here
+                  too. They are now on the card with the button, which is
+                  the only place where knowing it leads anywhere. */}
+              {skippedCount > 0 && (
                 <p className="mt-3 flex items-start gap-2 text-[11px] text-muted-foreground">
                   <ListFilter className="mt-0.5 h-3 w-3 flex-none" />
                   <span>
-                    {skippedCount > 0 &&
-                      `${skippedCount} jogo${skippedCount === 1 ? "" : "s"} sem histórico suficiente ficaram de fora. `}
-                    {unavailableLeagues.length > 0 &&
-                      `Sem resposta de: ${unavailableLeagues.join(", ")}.`}
+                    {`${skippedCount} jogo${skippedCount === 1 ? "" : "s"} sem histórico suficiente ficaram de fora.`}
                   </span>
                 </p>
               )}
