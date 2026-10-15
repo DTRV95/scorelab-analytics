@@ -3,14 +3,13 @@ import type { BoardMatch } from "@/lib/probabilityBoardCache";
 /**
  * The games worth looking at, and the price each one has to pay.
  *
- * Measured on 91 games already played and scored, the board's own record
- * splits cleanly in two:
+ * Measured on 91 games, and again on 102 after the markets were
+ * recalibrated, the board's own record splits cleanly in two:
  *
- *     dupla hipótese com 70%+   25 jogos   88% certos
- *     só 70%+                   29 jogos   83%
- *     só dupla hipótese         57 jogos   70%
- *     tudo o que destaca        91 jogos   63%
- *     golos / ambas marcam      32 jogos   47%
+ *     dupla hipótese com 70%+   24 jogos   87.5% certos   (antes: 25 / 88%)
+ *     2X abaixo de 70%          13 jogos   46.2%
+ *     golos / ambas / combinados 65 jogos  53.8%          (antes: 32 / 47%)
+ *     tudo junto               102 jogos   60.8%
  *
  * A third of what the board leads with is a coin flip, and it is all in the
  * goals and both-teams-to-score markets: a score is the one thing the model
@@ -18,6 +17,10 @@ import type { BoardMatch } from "@/lib/probabilityBoardCache";
  * season of results actually measures. The confidence only starts meaning
  * something at seventy — between 65% and 69% the board hit 47%, below 65% it
  * hit 56%, and above 70% it hit 83%.
+ *
+ * Since the recalibration the board leads with the double chance whenever it
+ * clears seventy, which is what this file always said it should: the two
+ * numbers below are now the same rule on both sides of the wire.
  *
  * None of which is a bet. A pick that lands 88% of the time is worth money
  * only above the price that 88% is worth, and the bookmaker knows the Benfica

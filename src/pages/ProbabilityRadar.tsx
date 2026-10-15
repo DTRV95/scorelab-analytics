@@ -982,10 +982,11 @@ export default function ProbabilityRadar() {
                   </div>
 
                   {/* O dia lido pelo registo do próprio quadro: dupla
-                      hipótese acima de 70%, que em 91 jogos já jogados
-                      entrou 88% das vezes. O resto do que o quadro destaca
-                      — golos, ambas marcam — entrou 47%, que é uma moeda
-                      ao ar. */}
+                      hipótese acima de 70%, que em 102 jogos já jogados e
+                      medidos outra vez entrou 87,5% das vezes. O resto do
+                      que o quadro destaca — golos, ambas marcam,
+                      combinados — entrou 53%, que é pouco mais do que uma
+                      moeda ao ar. */}
                   {!yesterdayOpen && (
                     <button
                       type="button"
@@ -1007,8 +1008,8 @@ export default function ProbabilityRadar() {
                           {onlyShortlist ? "A lista curta" : "Ver só a lista curta"}
                         </span>
                         <span className="sl-meta block text-[11px] leading-5">
-                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 88%
-                          · o resto 47%
+                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 87%
+                          · o resto 53%
                         </span>
                       </span>
                       <span
