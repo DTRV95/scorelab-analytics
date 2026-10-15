@@ -671,6 +671,22 @@ MARKET_CALIBRATION: Dict[str, float] = {
     "Mais de 2.5 Golos": 0.2345,
     "Mais de 3.5 Golos": -0.0568,
     "Ambas Marcam": 0.3512,
+    # Os quatro combinados são simulados, não derivados, por isso o acerto
+    # dos seis de cima não lhes chega: a mesma medição, feita outra vez com
+    # os seis já corrigidos, encontrou-os onde estavam.
+    #
+    #     1X e Mais de 1.5     dizia 48.7%  ->  aconteceu 56.5%
+    #     1X e Menos de 3.5    dizia 44.5%  ->  aconteceu 47.1%
+    #     2X e Mais de 1.5     dizia 42.2%  ->  aconteceu 43.7%
+    #     2X e Menos de 3.5    dizia 39.7%  ->  aconteceu 36.5%
+    #
+    # É a mesma história dos golos, vista de outro lado: "1X e mais de 1.5"
+    # é o jogo em que a casa não perde e alguém marca dois, e era o mais
+    # subestimado de todo o quadro depois de "ambas marcam".
+    "1X e Mais de 1.5 Golos": 0.3127,
+    "1X e Menos de 3.5 Golos": 0.1040,
+    "2X e Mais de 1.5 Golos": 0.0633,
+    "2X e Menos de 3.5 Golos": -0.1370,
 }
 
 # Never shown as certainty or impossibility: a forecast of exactly 0 or 100 is
