@@ -385,9 +385,7 @@ describe("ProbabilityRadar board", () => {
     await screen.findByText("Porto vs Nacional");
     const callsAfterFirstLoad = fetchMock.mock.calls.length;
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Procurar jogos outra vez/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^Atualizar$/ }));
     await screen.findByText("Porto vs Nacional");
 
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad);
@@ -416,14 +414,14 @@ describe("ProbabilityRadar board", () => {
     await screen.findByText(/Sem jogos analisáveis/);
     const callsAfterFirstLoad = fetchMock.mock.calls.length;
 
-    // Two: the header icon and the one next to the message. The point of this
-    // change is that the second one exists.
-    const buttons = screen.getAllByRole("button", {
+    // With no board there is no card to carry the refresh button, so this
+    // one — next to the sentence that sends somebody looking for it — is
+    // the only way back.
+    const button = screen.getByRole("button", {
       name: /Procurar jogos outra vez/i,
     });
-    expect(buttons.length).toBeGreaterThan(1);
 
-    fireEvent.click(buttons[buttons.length - 1]);
+    fireEvent.click(button);
 
     await waitFor(() =>
       expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstLoad),
@@ -447,15 +445,61 @@ describe("ProbabilityRadar board", () => {
     renderPage();
     await screen.findByText("Porto vs Nacional");
 
-    fireEvent.click(
-      screen.getAllByRole("button", { name: /Procurar jogos outra vez/i })[0],
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^Atualizar$/ }));
 
     await waitFor(() => expect(asleep).toHaveBeenCalled());
     await waitFor(() =>
       expect(screen.queryByText(/O motor de dados não respondeu/)).toBeNull(),
     );
     expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
+    // And it says so, instead of leaving the press looking ignored.
+    expect(
+      await screen.findByText(/Não foi possível recalcular agora/),
+    ).toBeInTheDocument();
+  });
+
+  it("says how old the board is, and which competition is missing", async () => {
+    writeCachedBoard({
+      days: 7,
+      matches: boardPayload.matches as never,
+      unavailable: ["Serie A"],
+      skipped: 0,
+      computedAt: Date.now() - 3 * 3600_000,
+    });
+    mockFetchSequence();
+
+    renderPage();
+    await screen.findByText("Porto vs Nacional");
+
+    expect(
+      screen.getByText(/Quadro de há 3 horas · 3 jogos · falta Serie A/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Atualizar$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("recalculates when the stored board is the one already on screen", async () => {
+    writeCachedBoard({
+      days: 7,
+      matches: boardPayload.matches.slice(0, 1) as never,
+      unavailable: ["Serie A"],
+      skipped: 0,
+    });
+    // No database in the tests, so the first step finds nothing newer and
+    // the button goes on to the engine — which here answers with the lot.
+    mockFetchSequence();
+
+    renderPage();
+    await screen.findByText("Porto vs Nacional");
+    expect(screen.queryByText("City vs United")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Atualizar$/ }));
+
+    expect(await screen.findByText("City vs United")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Quadro recalculado agora: 3 jogos/),
+    ).toBeInTheDocument();
   });
 
   it("does not sit on an empty board for the full cache window", () => {

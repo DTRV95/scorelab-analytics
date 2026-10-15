@@ -30,6 +30,12 @@ export interface LoadedBoard {
   source: BoardSource;
   /** When it was computed (snapshot) or fetched (engine), in epoch ms. */
   at: number;
+  /**
+   * When the board itself was put together, which for a saved copy is not
+   * when this browser downloaded it. This is the one to show somebody, and
+   * the one to compare against what the database holds.
+   */
+  computedAt: number;
 }
 
 /** Older than this and last night's board is not worth showing at all. */
@@ -68,6 +74,7 @@ export async function fetchBoardSnapshot(
       skipped: data.payload.skipped ?? 0,
       source: "snapshot",
       at,
+      computedAt: at,
     };
   } catch {
     // The stored board is a shortcut, never a dependency: anything wrong with
@@ -152,6 +159,7 @@ export async function fetchBoardFromEngine(
     skipped: body.skipped ?? 0,
     source: "engine",
     at: Date.now(),
+    computedAt: Date.now(),
   };
 }
 
@@ -188,6 +196,7 @@ export async function loadBoard(
         skipped: cached.skipped,
         source: "cache",
         at: cached.fetchedAt,
+        computedAt: cached.computedAt,
       };
     }
 
