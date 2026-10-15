@@ -206,6 +206,7 @@ export function GamePicker({
   onPick,
   title = "Inserir jogo",
   footer,
+  slip,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -218,6 +219,16 @@ export function GamePicker({
   title?: string;
   /** The caller's own bar at the bottom: what has been picked, and the way out. */
   footer?: ReactNode;
+  /**
+   * The slip being built, as a second step of its own.
+   *
+   * Given one, the pop-up stops being a single page with everything on it:
+   * choosing games is one screen, pricing them and registering is the next,
+   * and the header says which of the two you are on. Without it — adding a
+   * game to a bet that already exists — one screen is all there is, and the
+   * caller's `footer` is the way out.
+   */
+  slip?: { count: number; content: ReactNode };
 }) {
   const {
     board,
@@ -237,7 +248,20 @@ export function GamePicker({
     market: "",
     odds: "",
   });
-  const [manualOpen, setManualOpen] = useState(false);
+  /**
+   * Which of the two ways in is on screen.
+   *
+   * The form for a game the site does not know used to live under the list of
+   * the ones it does — sixty games down, behind a button that said "adicionar
+   * um jogo à mão". On a phone that is a different screen in all but name, so
+   * now it is one: two tabs, side by side, and whichever is open is the whole
+   * screen.
+   */
+  const [mode, setMode] = useState<"quadro" | "mao">("quadro");
+  /** Choosing games, or pricing them and registering. */
+  const [view, setView] = useState<"jogos" | "boletim">("jogos");
+  /** The game just typed in, so the form can say it went through. */
+  const [added, setAdded] = useState("");
   /** Which competition the list is narrowed to, or all of them. */
   const [league, setLeague] = useState<string | null>(null);
   /**
@@ -406,8 +430,11 @@ export function GamePicker({
       odds: manual.odds,
     });
     // Empty and still open, ready for the next one: every game these two have
-    // ever bet was typed in here by hand, two or three at a time.
+    // ever bet was typed in here by hand, two or three at a time. The line
+    // underneath names what went in, because a form that empties itself and
+    // says nothing looks exactly like a form that lost what was typed.
     setManual({ home: "", away: "", market: "", odds: "" });
+    setAdded(`${home} vs ${away}`);
   };
 
   const manualReady =
@@ -415,13 +442,114 @@ export function GamePicker({
     manual.away.trim().length > 0 &&
     manual.market.trim().length > 0;
 
+  const chosen = slip?.count ?? 0;
+
+  // Nothing on the slip, nothing to be on the second step for. And a pop-up
+  // that opens always opens on the first one.
+  useEffect(() => {
+    if (chosen === 0) setView("jogos");
+  }, [chosen]);
+  useEffect(() => {
+    if (!open) {
+      setView("jogos");
+      setMode("quadro");
+      setAdded("");
+    }
+  }, [open]);
+
+  /** One of the two steps, as a chip in the header. */
+  const stepChip = (
+    target: "jogos" | "boletim",
+    number: string,
+    label: string,
+    disabled = false,
+  ) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => setView(target)}
+      aria-current={view === target}
+      className={`sl-tap flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold disabled:opacity-40 ${
+        view === target
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground ring-1 ring-border"
+      }`}
+    >
+      <span
+        className={`flex h-4 w-4 flex-none items-center justify-center rounded-full text-[9px] ${
+          view === target
+            ? "bg-primary-foreground/25"
+            : "bg-muted-foreground/15"
+        }`}
+      >
+        {number}
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+
   return (
   <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-border px-4 py-3 text-left">
+      {/* One screen at a time: a header that stays, a middle that scrolls,
+          and a bar at the bottom that does not move while the list does. */}
+      <DialogContent className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="flex-none space-y-2 border-b border-border px-4 py-3 text-left">
           <DialogTitle className="text-sm font-bold">{title}</DialogTitle>
+
+          {/* Two steps, named, with the one you are on lit up. Everything used
+              to be on a single scroll — the games, the form for a game off the
+              board, the slip, the prices and the button — and on a phone that
+              is four screens stacked into one. */}
+          {slip && (
+            <div className="flex items-center gap-1.5 pr-6">
+              {stepChip("jogos", "1", "Jogos")}
+              {stepChip(
+                "boletim",
+                "2",
+                chosen > 0 ? `Boletim · ${chosen}` : "Boletim",
+                chosen === 0,
+              )}
+            </div>
+          )}
         </DialogHeader>
 
+        {view === "boletim" && slip ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">{slip.content}</div>
+        ) : (
+        <>
+        {/* The two ways in, side by side rather than one under the other. */}
+        <div className="flex flex-none gap-1.5 border-b border-border px-4 py-2">
+          <button
+            type="button"
+            onClick={() => setMode("quadro")}
+            aria-pressed={mode === "quadro"}
+            aria-label="Escolher um jogo do quadro"
+            className={`sl-tap flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold ${
+              mode === "quadro"
+                ? "bg-[hsl(var(--sl-surface))] text-foreground ring-1 ring-primary/30"
+                : "text-muted-foreground"
+            }`}
+          >
+            Do quadro
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("mao")}
+            aria-pressed={mode === "mao"}
+            aria-label="Adicionar um jogo à mão"
+            className={`sl-tap flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold ${
+              mode === "mao"
+                ? "bg-[hsl(var(--sl-surface))] text-foreground ring-1 ring-primary/30"
+                : "text-muted-foreground"
+            }`}
+          >
+            À mão
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+        {mode === "quadro" && (
+        <>
         <div className="px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
@@ -699,99 +827,6 @@ export function GamePicker({
           )}
         </div>
 
-        <div className="px-4 pb-3">
-          {manualOpen ? (
-            <div className="space-y-2 rounded-lg border border-border bg-[hsl(var(--sl-surface))] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Jogo à mão
-              </p>
-              {/* The same side went in as "Gales" and "País de Gales",
-                  "Chequia" and "Chéquia". Each spelling is a team of its own
-                  to anything that counts them, so what was typed before is
-                  offered back. */}
-              <datalist id="sl-equipas">
-                {memory.teams.map((team) => (
-                  <option key={team} value={team} />
-                ))}
-              </datalist>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  list="sl-equipas"
-                  value={manual.home}
-                  onChange={(event) =>
-                    setManual({ ...manual, home: event.target.value })
-                  }
-                  placeholder="Equipa casa"
-                  aria-label="Equipa da casa"
-                  className={field}
-                />
-                <input
-                  list="sl-equipas"
-                  value={manual.away}
-                  onChange={(event) =>
-                    setManual({ ...manual, away: event.target.value })
-                  }
-                  placeholder="Equipa fora"
-                  aria-label="Equipa de fora"
-                  className={field}
-                />
-              </div>
-
-              <MarketField
-                value={manual.market}
-                onChange={(market) => setManual({ ...manual, market })}
-                used={memory.markets}
-              />
-
-              <div>
-                <p className="sl-meta mb-1 text-[10px] uppercase tracking-[0.12em]">
-                  Odd
-                </p>
-                <input
-                  inputMode="decimal"
-                  value={manual.odds}
-                  onChange={(event) =>
-                    setManual({ ...manual, odds: event.target.value })
-                  }
-                  placeholder="Odd"
-                  aria-label="Odd do jogo à mão"
-                  className={`${field} text-center font-mono-data`}
-                />
-              </div>
-              <p className="sl-meta text-[11px] leading-relaxed">
-                Um jogo que o site não conhece não tem resultado para ir
-                buscar: és tu que dizes depois se entrou.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  className="sl-btn-primary h-9 flex-1 text-xs disabled:opacity-40"
-                  disabled={!manualReady}
-                  onClick={addManual}
-                >
-                  Juntar ao boletim
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setManualOpen(false)}
-                  className="h-9 flex-none rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setManualOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
-            >
-              <PenLine className="h-3.5 w-3.5" />
-              Adicionar um jogo à mão
-            </button>
-          )}
-        </div>
-
         <div className="px-4 py-3">
 
           {/* A competition that fails is dropped from the board on purpose,
@@ -915,8 +950,120 @@ export function GamePicker({
             </div>
           )}
         </div>
+        </>
+        )}
 
-        {footer}
+        {mode === "mao" && (
+          <div className="space-y-3 px-4 py-3">
+            {/* The same side went in as "Gales" and "País de Gales",
+                "Chequia" and "Chéquia". Each spelling is a team of its own
+                to anything that counts them, so what was typed before is
+                offered back. */}
+            <datalist id="sl-equipas">
+              {memory.teams.map((team) => (
+                <option key={team} value={team} />
+              ))}
+            </datalist>
+
+            <div>
+              <p className="sl-meta mb-1.5 text-[10px] uppercase tracking-[0.12em]">
+                Quem joga
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  list="sl-equipas"
+                  value={manual.home}
+                  onChange={(event) =>
+                    setManual({ ...manual, home: event.target.value })
+                  }
+                  placeholder="Equipa casa"
+                  aria-label="Equipa da casa"
+                  className={field}
+                />
+                <input
+                  list="sl-equipas"
+                  value={manual.away}
+                  onChange={(event) =>
+                    setManual({ ...manual, away: event.target.value })
+                  }
+                  placeholder="Equipa fora"
+                  aria-label="Equipa de fora"
+                  className={field}
+                />
+              </div>
+            </div>
+
+            <MarketField
+              value={manual.market}
+              onChange={(market) => setManual({ ...manual, market })}
+              used={memory.markets}
+            />
+
+            <div>
+              <p className="sl-meta mb-1.5 text-[10px] uppercase tracking-[0.12em]">
+                Odd
+              </p>
+              <input
+                inputMode="decimal"
+                value={manual.odds}
+                onChange={(event) =>
+                  setManual({ ...manual, odds: event.target.value })
+                }
+                placeholder="Odd"
+                aria-label="Odd do jogo à mão"
+                className={`${field} text-center font-mono-data`}
+              />
+            </div>
+
+            <Button
+              className="sl-btn-primary h-11 w-full text-xs disabled:opacity-40"
+              disabled={!manualReady}
+              onClick={addManual}
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              Juntar ao boletim
+            </Button>
+
+            {added && (
+              <p className="text-[11px] font-semibold text-[hsl(var(--sl-green))]">
+                {added} foi para o boletim. Escreve o próximo, ou passa ao
+                passo 2.
+              </p>
+            )}
+
+            <p className="sl-meta text-[11px] leading-relaxed">
+              Um jogo que o site não conhece não tem resultado para ir buscar:
+              és tu que dizes depois se entrou.
+            </p>
+          </div>
+        )}
+        </div>
+
+        {/* The bar that does not scroll: what is chosen so far, and the way
+            on. With a slip this is the step button; without one it is
+            whatever the caller put there. */}
+        {slip ? (
+          <div className="flex flex-none items-center gap-3 border-t border-border bg-card px-4 py-3">
+            <p className="sl-meta min-w-0 flex-1 text-[11px]">
+              {chosen === 0
+                ? "Escolhe os jogos do boletim"
+                : chosen === 1
+                  ? "1 jogo escolhido"
+                  : `${chosen} jogos escolhidos`}
+            </p>
+            <Button
+              className="sl-btn-primary sl-tap h-10 flex-none px-5 text-xs disabled:opacity-40"
+              disabled={chosen === 0}
+              onClick={() => setView("boletim")}
+            >
+              Continuar
+            </Button>
+          </div>
+        ) : (
+          footer
+        )}
+        </>
+        )}
       </DialogContent>
   </Dialog>
   );

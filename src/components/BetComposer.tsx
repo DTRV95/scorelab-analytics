@@ -484,27 +484,41 @@ export function BetComposer({
         memory={memory}
         chosenIds={chosenIds}
         onPick={addGame}
-        footer={
-          /* The slip, inside the pop-up: the games chosen, their prices and
-             the button that registers the bet. Everything a bet needs is on
-             this strip, so choosing a game and backing it is one visit. */
-          legs.length > 0 ? (
-            <div className="sticky bottom-0 border-t border-border bg-card">
-              <div className="max-h-[38vh] divide-y divide-border overflow-y-auto">
+        slip={
+          /* The second step of the pop-up: the games chosen, their prices and
+             the button that registers the bet. This was a strip squeezed under
+             the list, with its own scroll inside a pop-up that also scrolled
+             and a third of the screen to show everything in. Now it is a
+             screen of its own, reached from the bar at the bottom of the
+             first one. */
+          {
+            count: legs.length,
+            content:
+              legs.length === 0 ? null : (
+            <div>
+              <div className="divide-y divide-border">
                 {legs.map((leg, index) => (
                   <LegRow
                     key={leg.key}
                     leg={leg}
                     index={index}
-                    compact
                     takeFocus={leg.key === focusKey}
                     onOdds={(odds) => setOdds(leg.key, odds)}
                     onRemove={() => remove(leg.key)}
-                  />
+                  >
+                    <LegContextRow
+                      context={legContext({
+                        market: leg.market,
+                        odds: toOdds(leg.odds),
+                        report: rates.get(leg.league),
+                        style,
+                      })}
+                    />
+                  </LegRow>
                 ))}
               </div>
 
-              <div className="space-y-2 border-t border-border px-4 py-2.5">
+              <div className="space-y-2 border-t border-border px-4 py-3">
                 {totals}
 
                 {/* Whether the price is worth taking, where the bet is now
@@ -550,7 +564,8 @@ export function BetComposer({
                 </button>
               </div>
             </div>
-          ) : null
+              ),
+          }
         }
       />
 

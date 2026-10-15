@@ -85,7 +85,10 @@ describe("registering a bet from the games pop-up", () => {
       screen.getByLabelText("Juntar FC Porto vs Rio Ave em Casa ou Empate (1X)"),
     );
 
-    // On the slip, inside the pop-up, with its price waiting to be typed.
+    // Escolhido no primeiro passo, contado na barra de baixo, e com a odd à
+    // espera no segundo — que é o passo onde cada jogo tem a linha toda.
+    expect(screen.getByText("1 jogo escolhido")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
     expect(
       await screen.findByLabelText("Odd de FC Porto vs Rio Ave"),
     ).toBeInTheDocument();
@@ -101,6 +104,7 @@ describe("registering a bet from the games pop-up", () => {
     fireEvent.click(
       screen.getByLabelText("Juntar FC Porto vs Rio Ave em Casa ou Empate (1X)"),
     );
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
     fireEvent.change(await screen.findByLabelText("Odd de FC Porto vs Rio Ave"), {
       target: { value: "1.85" },
     });
@@ -128,6 +132,7 @@ describe("registering a bet from the games pop-up", () => {
     fireEvent.click(
       screen.getByLabelText("Juntar FC Porto vs Rio Ave em Casa ou Empate (1X)"),
     );
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
     fireEvent.change(await screen.findByLabelText("Odd de FC Porto vs Rio Ave"), {
       target: { value: "1.85" },
     });
@@ -160,6 +165,7 @@ describe("registering a bet from the games pop-up", () => {
     );
 
     // One odd field and one amount field, not one of each in both places.
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
     expect(
       await screen.findAllByLabelText("Odd de FC Porto vs Rio Ave"),
     ).toHaveLength(1);
