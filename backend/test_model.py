@@ -7,9 +7,16 @@ notice in production, because a biased model still returns confident-looking
 numbers.
 """
 
+import math
+
+import pytest
+
 from schemas import AnalyzeRequest
 import model
 from model import (
+    CALIBRATION_INTERCEPT,
+    CALIBRATION_SLOPE,
+    MIN_HEADLINE_PCT,
     analisar_jogo,
     calibrate_distributions,
     calibrate_pct,
@@ -406,6 +413,44 @@ def test_calibration_leaves_a_forecast_it_has_nothing_to_say_about():
     moved = calibrate_distributions(distributions)["X"]
 
     assert abs(moved[0] - 0.46) < 0.02
+
+
+def test_each_market_carries_its_own_measured_bias():
+    """Measured on 692 fixtures of nine competitions: the simulation makes
+    matches too one-sided. Both teams scoring landed 61% of the times it was
+    called at 52%, more than 2.5 landed 58% against 52% — and more than 3.5,
+    the blowout it pays for those with, landed slightly less than it said."""
+    # O valor cru que a curva global transforma em cada média medida.
+    def raw(target: float) -> float:
+        z = math.log(target / (1 - target))
+        return 100 / (1 + math.exp(-((z - CALIBRATION_INTERCEPT) / CALIBRATION_SLOPE)))
+
+    assert calibrate_pct(raw(0.524), "Ambas Marcam") == pytest.approx(61.0, abs=0.2)
+    assert calibrate_pct(raw(0.520), "Mais de 2.5 Golos") == pytest.approx(57.8, abs=0.2)
+    assert calibrate_pct(raw(0.394), "Casa") == pytest.approx(44.1, abs=0.2)
+    assert calibrate_pct(raw(0.320), "Fora") == pytest.approx(28.7, abs=0.2)
+    # Mais de 3.5 é o único mercado de golos que o modelo exagerava.
+    assert calibrate_pct(raw(0.361), "Mais de 3.5 Golos") < 36.1
+    # Um mercado sem viés medido continua só com a curva de todos.
+    assert calibrate_pct(60, "Mercado que não existe") == calibrate_pct(60)
+
+
+def test_the_mirror_of_an_understated_market_stops_being_a_tip():
+    """A correção não é cosmética: "Menos de 2.5" e "BTTS No" são o espelho
+    dos dois mercados mais subestimados, e eram precisamente os que o quadro
+    escolhia e perdia. Corrigidos, deixam quase sempre de passar os 55%."""
+    probs = {
+        m["mercado"]: m["probabilidade_pct"]
+        for m in probabilidades_jogo(average_match(12))["mercados"]
+    }
+
+    assert probs["Menos de 2.5 Golos"] == pytest.approx(
+        100 - probs["Mais de 2.5 Golos"], abs=0.5
+    )
+    assert probs["BTTS No"] == pytest.approx(100 - probs["Ambas Marcam"], abs=0.5)
+    # Num jogo médio nenhum dos dois chega ao mínimo para liderar um jogo.
+    assert probs["Menos de 2.5 Golos"] < MIN_HEADLINE_PCT
+    assert probs["BTTS No"] < MIN_HEADLINE_PCT
 
 
 def test_headline_is_the_market_the_league_does_not_already_give_you():

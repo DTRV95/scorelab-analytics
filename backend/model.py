@@ -634,21 +634,69 @@ PROBABILITY_MARKETS: List[Tuple[str, str]] = [
 CALIBRATION_INTERCEPT = -0.1346
 CALIBRATION_SLOPE = 0.6427
 
+# The same backtest, run again on what comes out of the curve above: 692
+# fixtures of nine competitions, every one forecast from the league as it
+# stood before its own kickoff (2026-10-15). The curve straightened the
+# overall stretch; what it left behind is not spread evenly, it belongs to
+# particular markets, and always in the same direction:
+#
+#     Casa            dizia 39.4%  ->  aconteceu 44.1%
+#     Empate          dizia 28.6%  ->  aconteceu 27.2%
+#     Fora            dizia 32.0%  ->  aconteceu 28.7%
+#     Mais de 2.5     dizia 52.0%  ->  aconteceu 57.8%
+#     Mais de 3.5     dizia 36.1%  ->  aconteceu 34.8%
+#     Ambas Marcam    dizia 52.4%  ->  aconteceu 61.0%
+#
+# Read together they say one thing about the simulation: it makes matches
+# too one-sided. The underdog scores more often than it thinks — hence both
+# teams scoring eight and a half points low, and more than 2.5 goals six
+# points low — while the blowouts it pays for with that never arrive, which
+# is why more than 3.5 is the one goal market it overstates. The home side,
+# meanwhile, wins almost five points more often than it is given.
+#
+# These are the shifts, on the log-odds, that put each of those six back
+# where the results are. Everything else on the board is derived from them,
+# so nothing is corrected twice. The three-way sums to one before and after,
+# because the measured rates do.
+#
+# This matters beyond the number printed next to a game: the market the
+# board leads with is whichever clears 55% by the widest margin over its
+# league, and an overstated "Menos de 2.5" or "BTTS No" — the mirror of the
+# two most understated markets here — is exactly what kept being chosen, and
+# kept losing. Corrected, they mostly stop clearing the bar at all.
+MARKET_CALIBRATION: Dict[str, float] = {
+    "Casa": 0.1934,
+    "Empate": -0.0696,
+    "Fora": -0.1562,
+    "Mais de 2.5 Golos": 0.2345,
+    "Mais de 3.5 Golos": -0.0568,
+    "Ambas Marcam": 0.3512,
+}
+
 # Never shown as certainty or impossibility: a forecast of exactly 0 or 100 is
 # a claim no model built from a few dozen matches can make.
 _CALIBRATION_EDGE = 0.001
 
 
-def calibrate(probability: float) -> float:
-    """A forecast, brought back to what forecasts like it actually did."""
+def calibrate(probability: float, market: Optional[str] = None) -> float:
+    """A forecast, brought back to what forecasts like it actually did.
+
+    Named, it also carries that market's own measured bias; unnamed, only the
+    curve everything shares.
+    """
     bounded = min(max(probability, _CALIBRATION_EDGE), 1 - _CALIBRATION_EDGE)
     odds = math.log(bounded / (1 - bounded))
-    return 1 / (1 + math.exp(-(CALIBRATION_INTERCEPT + CALIBRATION_SLOPE * odds)))
+    moved = (
+        CALIBRATION_INTERCEPT
+        + CALIBRATION_SLOPE * odds
+        + MARKET_CALIBRATION.get(market or "", 0.0)
+    )
+    return 1 / (1 + math.exp(-moved))
 
 
-def calibrate_pct(raw_pct: float) -> float:
+def calibrate_pct(raw_pct: float, market: Optional[str] = None) -> float:
     """The same, for a number already in percent."""
-    return round(calibrate(raw_pct / 100) * 100, 1)
+    return round(calibrate(raw_pct / 100, market) * 100, 1)
 
 
 def calibrate_distributions(
@@ -665,7 +713,7 @@ def calibrate_distributions(
     the four combined markets are held to that.
     """
     moved = {
-        name: tuple(calibrate(value) for value in triple)
+        name: tuple(calibrate(value, name) for value in triple)
         for name, triple in distributions.items()
     }
 
