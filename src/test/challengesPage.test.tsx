@@ -314,8 +314,17 @@ async function pickFromBoard(name: string, market?: RegExp) {
   closePicker();
 }
 
-/** The slip can be registered from inside the pop-up; this is the way back. */
+/**
+ * Out of the pop-up and back to the page.
+ *
+ * The pop-up has two steps now — the games, then the slip — so the way back
+ * goes through the second one, which is also where its own register button
+ * lives.
+ */
 function closePicker() {
+  const next = screen.queryByRole("button", { name: /^Continuar$/ });
+  if (next) fireEvent.click(next);
+
   const done = screen.queryByRole("button", {
     name: /Fechar e ver o boletim/,
   });
@@ -496,6 +505,11 @@ describe("building the day's bet", () => {
       screen.getByLabelText(/Juntar Equipa 2 vs Rival em /),
     );
 
+    // A barra em baixo conta o que já foi escolhido; a odd escreve-se no
+    // passo seguinte, que é onde cada jogo tem a linha toda para si.
+    expect(screen.getByText("1 jogo escolhido")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
+
     expect(screen.getByLabelText("Odd de Equipa 2 vs Rival")).toBeInTheDocument();
   });
 
@@ -530,13 +544,12 @@ describe("building the day's bet", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
 
-    // Still open, the form empty and waiting, and the game on the slip strip
-    // at the bottom with its price already typed.
+    // Still open, the form empty and waiting, e a dizer que o jogo passou —
+    // um formulário que se esvazia e não diz nada parece um formulário que
+    // perdeu o que lá estava.
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Equipa casa")).toHaveValue("");
-    expect(screen.getByLabelText("Odd de Bélgica vs França")).toHaveValue(
-      "1.85",
-    );
+    expect(screen.getByText(/Bélgica vs França foi para o boletim/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("Equipa casa"), {
       target: { value: "Noruega" },
@@ -552,8 +565,12 @@ describe("building the day's bet", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Juntar ao boletim/ }));
 
-    // Two games on the strip, the odd of the pair worked out, and the bet
-    // registrable without the pop-up ever being closed.
+    // Os dois jogos no passo seguinte, com as odds como foram escritas, a odd
+    // do par feita, e a aposta registável sem o pop-up alguma vez fechar.
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/ }));
+    expect(screen.getByLabelText("Odd de Bélgica vs França")).toHaveValue(
+      "1.85",
+    );
     expect(screen.getByText("Odd · 2 jogos")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Registar o nível \d+/ }),
