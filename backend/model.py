@@ -779,6 +779,13 @@ def calibrate_distributions(
 # 28%" is a true statement about a game nobody is backing.
 MIN_HEADLINE_PCT = 55.0
 
+# O que uma época de resultados consegue medir: um lado não perder. Os mesmos
+# dois números que a lista curta usa no ecrã, aqui porque é aqui que a escolha
+# se faz — não adianta destacar um mercado e a aplicação dizer a seguir que a
+# escolha não presta.
+SHORTLIST_MARKETS = ("1X", "2X")
+SHORTLIST_MIN_PCT = 70.0
+
 
 def pick_headline_market(
     mercados: List[Dict[str, Any]],
@@ -793,9 +800,34 @@ def pick_headline_market(
     game. What is worth showing is the gap between what the model says about
     this game and what that competition does without being asked.
 
-    Without the competition's own rates — a league nobody has read yet — this
-    falls back to the strongest number, which is what it always did.
+    Before any of that, though: a side not losing, at seventy or more.
+    Measured on the board's own record, twice over and on both models, that
+    is the only thing it says that is worth acting on —
+
+        dupla hipótese a 70%+     24 jogos   entraram 87.5%
+        2X abaixo de 70%          13 jogos   entraram 46.2%
+        golos / ambas / combinados 65 jogos  entraram 53.8%
+
+    — and the gap over the league, which is what the rest of this function
+    ranks by, has no measured value at all: the picks with ten points or more
+    of edge landed 64% of the time, the ones with under five landed 74%. A
+    season of results measures whether a side loses; a scoreline is the one
+    thing the model has to invent, and it shows.
+
+    So when the double chance clears seventy, that is the headline, whatever
+    edge some goals market is advertising. On the board of the day that is
+    sixty-four games in a hundred, thirty-nine of which were being led by
+    something from the family that lands barely more often than a coin.
     """
+    standing = [
+        market
+        for market in mercados
+        if market["mercado"] in SHORTLIST_MARKETS
+        and market["probabilidade_pct"] >= SHORTLIST_MIN_PCT
+    ]
+    if standing:
+        return max(standing, key=lambda m: m["probabilidade_pct"])
+
     if not base_rates:
         return max(mercados, key=lambda m: m["probabilidade_pct"])
 

@@ -453,6 +453,37 @@ def test_the_mirror_of_an_understated_market_stops_being_a_tip():
     assert probs["BTTS No"] < MIN_HEADLINE_PCT
 
 
+def test_a_side_not_losing_at_seventy_beats_any_advertised_edge():
+    """Medido no registo do próprio quadro, duas vezes: a dupla hipótese a
+    70%+ entrou 87.5% das vezes (24 jogos), os golos e combinados 53.8% (65
+    jogos). A folga sobre a liga, que é por onde o resto desta função
+    ordena, não tem valor medido nenhum — com dez pontos ou mais de folga o
+    quadro acertou 64%, com menos de cinco acertou 74%."""
+    mercados = [
+        {"mercado": "Menos de 3.5 Golos", "grupo": "Golos", "probabilidade_pct": 84.0},
+        {"mercado": "1X", "grupo": "Resultado", "probabilidade_pct": 71.0},
+    ]
+    # A liga dá 60% de "menos de 3.5" e 50% de 1X: a folga é toda do mercado
+    # de golos, e mesmo assim não é ele que lidera.
+    rates = {"Menos de 3.5 Golos": 60.0, "1X": 50.0}
+
+    assert pick_headline_market(mercados, rates)["mercado"] == "1X"
+    # Sem as taxas da liga é igual: a regra não depende de as ter.
+    assert pick_headline_market(mercados)["mercado"] == "1X"
+
+
+def test_below_seventy_the_double_chance_has_no_claim():
+    """Abaixo de setenta não é uma lista curta, é o quadro todo: o 2X abaixo
+    de 70% entrou 46% das vezes, pior do que os golos."""
+    mercados = [
+        {"mercado": "Mais de 2.5 Golos", "grupo": "Golos", "probabilidade_pct": 72.0},
+        {"mercado": "2X", "grupo": "Resultado", "probabilidade_pct": 69.0},
+    ]
+    rates = {"Mais de 2.5 Golos": 55.0, "2X": 60.0}
+
+    assert pick_headline_market(mercados, rates)["mercado"] == "Mais de 2.5 Golos"
+
+
 def test_headline_is_the_market_the_league_does_not_already_give_you():
     """"Menos de 3.5 a 78%" in a league where it lands 77% of the time is
     one point of opinion dressed as a near certainty."""
