@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, TrendingUp } from "lucide-react";
+import { SectionHeader } from "@/components/Section";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { COVERED_LEAGUES } from "@/lib/boardLeagues";
@@ -89,16 +90,13 @@ function Form({ rows, window }: { rows: FormRow[]; window: number }) {
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-          Quem está em forma
-        </h2>
-        <p className="sl-meta text-[11px]">
-          Pontos nos últimos {window} jogos de cada equipa. Três por vitória,
-          um por empate.
-        </p>
-      </div>
+      <SectionHeader
+        tone="green"
+        icon={TrendingUp}
+        title="Quem está em forma"
+        note={`Pontos nos últimos ${window} jogos. Três por vitória, um por empate.`}
+        className="border-b border-border px-4 py-3"
+      />
 
       <div className="divide-y divide-border">
         {rows.map((row, index) => (
@@ -305,11 +303,10 @@ export default function Leagues() {
                 variants={fadeUp}
                 className="sl-card overflow-hidden"
               >
-                <div className="border-b border-border px-4 py-2.5">
-                  <h2 className="text-[13px] font-semibold text-foreground">
-                    {group.title}
-                  </h2>
-                </div>
+                <SectionHeader
+                  title={group.title}
+                  className="border-b border-border px-4 py-2.5"
+                />
 
                 <div className="space-y-2.5 px-4 py-3">
                   {group.markets.map((market) => {
