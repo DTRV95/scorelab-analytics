@@ -91,7 +91,13 @@ export function BetSlip({
         className="sl-tap flex w-full items-center gap-2.5 px-4 py-3 text-left"
       >
         <div className="min-w-0 flex-1">
-          {above && <p className="sl-meta text-[10.5px]">{above}</p>}
+          {(above || open) && (
+            <p className="sl-meta text-[10.5px]">
+              {[above, open ? when(bet.placedAt) : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
           <p className="flex items-baseline gap-2 text-[13.5px] font-bold text-foreground">
             {kind}
             <span className="sl-figure text-[13.5px] font-bold text-foreground">
@@ -124,98 +130,99 @@ export function BetSlip({
             {bet.legs.map((leg, index) => {
               const Icon = ICON[leg.status];
               const pick = pickLabel(leg);
-              // "Ambas Marcam" under "Ambas Marcam" says nothing twice.
+              // A família do mercado só serve quando a escolha é o nome de
+              // uma equipa e mais nada: "Ajax" precisa do "Resultado final"
+              // para não ser só um nome, "Frosinone ou Empate" e "Mais de
+              // 2.5 Golos" dizem-se a si próprios.
               const family = marketFamily(leg.market);
+              const onlyTeam =
+                pick === (leg.homeTeam || "") || pick === (leg.awayTeam || "");
               const kind =
-                family.toLowerCase() === pick.toLowerCase() ? "" : family;
+                onlyTeam && family.toLowerCase() !== pick.toLowerCase()
+                  ? family
+                  : "";
 
               return (
                 <div
                   key={`${bet.id}-${leg.fixtureId ?? "m"}-${index}`}
-                  className="flex items-start gap-2.5 px-4 py-3"
+                  className="flex items-start gap-2.5 px-4 py-2.5"
                 >
                   <Icon
                     className={`mt-0.5 h-3.5 w-3.5 flex-none ${TONE[leg.status]}`}
                   />
 
+                  {/* Duas linhas, não cinco. Eram o mercado, a família do
+                      mercado, a equipa de casa e a de fora, cada uma na sua
+                      linha — e um boletim de dois jogos enchia o ecrã. O
+                      nome do mercado já diz quem é ("Frosinone ou Empate"),
+                      por isso o que falta cabe todo na linha de baixo. */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold leading-5 text-foreground">
+                    <p className="truncate text-[13px] font-semibold leading-5 text-foreground">
                       {pick}
                     </p>
-                    {kind && <p className="sl-meta text-[11px]">{kind}</p>}
-
-                    {/* The two teams on two lines, as on the slip itself: a
-                        game is between somebody and somebody, and "A vs B"
-                        squeezed into one line is the first thing to be cut
-                        off on a phone. */}
-                    <p className="mt-1.5 text-[12px] leading-5 text-foreground">
-                      {leg.homeTeam || leg.match}
+                    <p className="sl-meta truncate text-[11px] leading-4">
+                      {[
+                        kind,
+                        [leg.homeTeam || leg.match, leg.awayTeam]
+                          .filter(Boolean)
+                          .join(" – "),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      {isManualLeg(leg) && (
+                        <span className="ml-1 inline-flex items-center gap-0.5">
+                          <PenLine className="h-2.5 w-2.5" />à mão
+                        </span>
+                      )}
                     </p>
-                    {leg.awayTeam && (
-                      <p className="text-[12px] leading-5 text-foreground">
-                        {leg.awayTeam}
-                      </p>
-                    )}
-
-                    {isManualLeg(leg) && (
-                      <p className="sl-meta mt-1 flex items-center gap-1 text-[10px]">
-                        <PenLine className="h-2.5 w-2.5" />
-                        metido à mão
-                      </p>
-                    )}
                   </div>
 
-                  <div className="flex flex-none flex-col items-end gap-1.5">
+                  <div className="flex flex-none items-center gap-2">
+                    {leg.score && (
+                      <span className="sl-pill sl-pill-muted text-[10px]">
+                        {leg.score.homeGoals}-{leg.score.awayGoals}
+                      </span>
+                    )}
                     <span className="sl-figure text-[13.5px] text-foreground">
                       {leg.odds.toFixed(2)}
                     </span>
-                    {leg.score && (
-                      <span className="sl-pill sl-pill-muted text-[10px]">
-                        Resultado {leg.score.homeGoals}-{leg.score.awayGoals}
-                      </span>
-                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <dl className="divide-y divide-border border-t border-border">
-            <div className="flex items-baseline justify-between gap-2 px-4 py-2.5">
-              <dt className="sl-meta text-[12px]">Montante apostado</dt>
-              <dd className="sl-figure text-[13px] text-foreground">
-                {eur.format(bet.stake)}
+          {/* As contas numa linha, não em três. Montante, odd e retorno são
+              a mesma frase: cinco euros a 1.93 dão 9,65 €. Em três linhas
+              com rótulo cada uma ocupavam mais espaço do que os jogos. */}
+          <dl className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5">
+            <div className="min-w-0">
+              <dt className="sr-only">Montante apostado</dt>
+              <dd className="sl-meta text-[11.5px]">
+                <span className="sl-figure text-[12.5px] text-foreground">
+                  {eur.format(bet.stake)}
+                </span>
+                {bet.legs.length > 1 && (
+                  <>
+                    {" a "}
+                    <span className="sl-figure text-[12.5px] text-foreground">
+                      {bet.odds.toFixed(2)}
+                    </span>
+                  </>
+                )}
+                {bet.settledAt ? ` · fechada a ${when(bet.settledAt)}` : ""}
               </dd>
             </div>
 
-            {bet.legs.length > 1 && (
-              <div className="flex items-baseline justify-between gap-2 px-4 py-2.5">
-                <dt className="sl-meta text-[12px]">Odd total</dt>
-                <dd className="sl-figure text-[13px] text-foreground">
-                  {bet.odds.toFixed(2)}
-                </dd>
-              </div>
-            )}
-
-            {/* What came back, gross, the way a slip says it. The profit is
-                this minus the stake, and saying both would be the third
-                number on a card that already has two. */}
-            <div className="flex items-baseline justify-between gap-2 px-4 py-2.5">
-              <dt className="text-[12.5px] font-semibold text-foreground">
+            <div className="flex flex-none items-baseline gap-1.5">
+              <dt className="sl-meta text-[11.5px]">
                 {bet.status === "pending" ? "Se entrar" : "Ganhos"}
               </dt>
               <dd className={`sl-figure text-[16px] ${TONE[bet.status]}`}>
-                {bet.status === "red"
-                  ? eur.format(0)
-                  : eur.format(returned)}
+                {bet.status === "red" ? eur.format(0) : eur.format(returned)}
               </dd>
             </div>
           </dl>
-
-          <p className="sl-meta border-t border-border px-4 py-2 text-[10.5px]">
-            Registada a {when(bet.placedAt)}
-            {bet.settledAt ? ` · fechada a ${when(bet.settledAt)}` : ""}
-          </p>
 
           {action}
         </>
