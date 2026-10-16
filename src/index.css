@@ -112,7 +112,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Instrument Sans', system-ui, sans-serif;
+    font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif;
     letter-spacing: -0.005em;
     /* A breath of the brand's own orange at the top of the canvas, under the
        bar, and a cool one at the bottom. Flat paper under floating white
@@ -227,7 +227,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Archivo Variable', 'Instrument Sans', system-ui, sans-serif;
+    font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif;
     font-variation-settings: 'wdth' 106;
     letter-spacing: -0.018em;
     text-wrap: balance;
@@ -239,7 +239,7 @@
      the only thing the old monospace was really doing — while its typewriter
      shapes were what made every number on the page look like a printout. */
   .font-mono-data {
-    font-family: 'Archivo Variable', 'Instrument Sans', system-ui, sans-serif;
+    font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif;
     font-variation-settings: 'wdth' 100;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
@@ -248,7 +248,7 @@
   /* A figure meant to be read across the room: the bankroll, the odd on the
      slip, the day. */
   .sl-figure {
-    font-family: 'Archivo Variable', 'Instrument Sans', system-ui, sans-serif;
+    font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif;
     font-variation-settings: 'wdth' 112;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
@@ -423,7 +423,7 @@
   }
 
   .sl-section-title {
-    font-family: 'Archivo Variable', 'Instrument Sans', system-ui, sans-serif;
+    font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif;
     font-variation-settings: 'wdth' 118;
     font-size: 21px;
     font-weight: 800;

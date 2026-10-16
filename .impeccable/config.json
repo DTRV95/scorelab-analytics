@@ -2,13 +2,6 @@
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
-    "ignoreValues": [
-      {
-        "rule": "overused-font",
-        "value": "instrument sans",
-        "createdAt": "2026-10-16T21:55:36.160Z",
-        "reason": "Incumbent body face, predates this session and is recorded in DESIGN.md. The personality is carried by Archivo Variable's width axis (wdth 100/106/112/124), which is the system's signature; Instrument Sans is the quiet companion by design. Not user-confirmed as a typography decision."
-      }
-    ]
+    "ignoreValues": []
   }
 }

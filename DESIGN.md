@@ -21,7 +21,7 @@ colors:
   chart-none: "#7c8698"
 typography:
   display:
-    fontFamily: "Archivo Variable, Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Archivo Variable, Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "clamp(1.75rem, 7vw, 2.75rem)"
     fontWeight: 700
     lineHeight: 1
@@ -29,32 +29,32 @@ typography:
     fontVariation: "'wdth' 112"
     fontFeature: "tabular-nums"
   headline:
-    fontFamily: "Archivo Variable, Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Archivo Variable, Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 700
     lineHeight: 1.15
     letterSpacing: "-0.018em"
     fontVariation: "'wdth' 106"
   title:
-    fontFamily: "Archivo Variable, Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Archivo Variable, Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "13.5px"
     fontWeight: 800
     lineHeight: 1.2
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.45
     letterSpacing: "-0.005em"
   label:
-    fontFamily: "Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "10px"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0.13em"
   data:
-    fontFamily: "Archivo Variable, Instrument Sans, system-ui, sans-serif"
+    fontFamily: "Archivo Variable, Schibsted Grotesk Variable, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 600
     lineHeight: 1.2
@@ -245,14 +245,18 @@ textura — a separação não pode assentar no tom.
 
 ## Typography
 
-**Display Font:** Archivo Variable (com Instrument Sans, system-ui, sans-serif)
-**Body Font:** Instrument Sans (com system-ui, sans-serif)
+**Display Font:** Archivo Variable (com Schibsted Grotesk, system-ui, sans-serif)
+**Body Font:** Schibsted Grotesk Variable (com system-ui, sans-serif)
 **Label/Data Font:** Archivo Variable em largura 100, com `tabular-nums`
 
-**Character:** Um par de um só gesto. O `Archivo` é condensado-expansível: a
-largura variável é usada como peso visual — 112 no número que manda, 106 nos
-títulos, 100 nos dados em coluna. O `Instrument Sans` fica com a prosa, com um
-apertar quase impercetível (`-0.005em`) para o texto não boiar. Não há
+**Character:** Um par de contraste de largura. O `Archivo` é
+condensado-expansível, e a largura variável é usada como peso visual — 112 no
+número que manda, 106 nos títulos, 100 nos dados em coluna. Contra essas
+figuras largas fica o `Schibsted Grotesk` na prosa: um grotesco de jornal, de
+aberturas largas e desenho próprio, com um apertar quase impercetível
+(`-0.005em`) para o texto não boiar. O corpo foi `Instrument Sans` e saiu por
+não ter nada de seu — é a letra por omissão de metade das interfaces novas.
+A troca custa 4% de largura ao texto, medido antes de se fazer. Não há
 monoespaçado: o que o monoespaçado fazia de útil era alinhar euros em coluna, e
 isso faz-se com `tabular-nums` sem fazer a página parecer uma impressão de
 caixa.
