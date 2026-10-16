@@ -25,6 +25,20 @@ const PILL = {
 
 const SAID = { green: "Ganhou", red: "Perdeu", pending: "Por decidir" } as const;
 
+/**
+ * The strip down the left edge, in the colour of where the bet stands.
+ *
+ * A page of these was a stack of identical white cards: a bet waiting for a
+ * result, one waiting for somebody to say what happened, and one already
+ * won read exactly the same from arm's length. The colour is the first
+ * thing seen and the last thing read, so it carries the state.
+ */
+const RAIL = {
+  green: "border-l-[hsl(var(--sl-green))]",
+  red: "border-l-destructive",
+  pending: "border-l-amber-500",
+} as const;
+
 function when(iso: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
@@ -53,11 +67,14 @@ export function BetSlip({
   above,
   /** Whatever this bet can be done to, under the money. */
   action,
+  /** What the pill says, when "por decidir" is not the useful half of it. */
+  state,
 }: {
   bet: PlanBet;
   defaultOpen?: boolean;
   above?: ReactNode;
   action?: ReactNode;
+  state?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -66,7 +83,7 @@ export function BetSlip({
   const names = bet.legs.map((leg) => leg.match).join(" · ");
 
   return (
-    <article className="sl-card overflow-hidden">
+    <article className={`sl-card overflow-hidden border-l-[3px] ${RAIL[bet.status]}`}>
       <button
         type="button"
         onClick={() => setOpen((shown) => !shown)}
@@ -92,7 +109,7 @@ export function BetSlip({
         </div>
 
         <span className={`sl-pill flex-none text-[11px] ${PILL[bet.status]}`}>
-          {SAID[bet.status]}
+          {state ?? SAID[bet.status]}
         </span>
         <ChevronDown
           className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${

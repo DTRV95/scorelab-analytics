@@ -6,6 +6,7 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Clock,
   Flag,
   RotateCcw,
   Settings2,
@@ -1199,29 +1200,43 @@ export default function Challenges() {
 
         {/* One slip per bet, each with its own edges. Stacked inside a single
             card with a hairline between them, two bets by fechar read as one
-            bet with twice the games. */}
+            bet with twice the games.
+
+            And it does not look like the shelf above it: that one is games to
+            choose from, this one is money already na mesa. Tinta âmbar dos
+            dois lados — no título e na beira de cada boletim. */}
         {openBets.length > 0 && (
           <motion.section
             ref={openDays}
             variants={fadeUp}
-            className="space-y-2"
+            className="space-y-2 rounded-2xl bg-amber-500/[0.07] p-2.5 ring-1 ring-amber-500/25"
           >
-            <h2 className="px-1 text-sm font-bold text-foreground">
-              Por fechar
-            </h2>
+            <div className="flex items-center gap-2 px-1.5 pt-0.5">
+              <Clock className="h-4 w-4 flex-none text-amber-600" />
+              <h2 className="flex-1 text-sm font-bold text-foreground">
+                Por fechar
+              </h2>
+              <span className="sl-pill sl-pill-open flex-none text-[11px]">
+                {openBets.length}
+              </span>
+            </div>
+            <p className="sl-meta px-1.5 pb-0.5 text-[11px] leading-5">
+              A banca só mexe quando estas fecharem.
+            </p>
             {openBets.map((bet) => {
               const manual = bet.legs.some(isManualLeg);
               return (
                 <BetSlip
                   key={bet.id}
                   bet={bet}
-                  above={`Nível ${bet.day} · ${
+                  above={`Nível ${bet.day}`}
+                  state={
                     bet.status === "red"
-                      ? "falta dizer quais falharam"
+                      ? "Falta dizeres quais"
                       : manual
-                        ? "à espera de ti"
-                        : "à espera do resultado"
-                  }`}
+                        ? "À espera de ti"
+                        : "À espera do resultado"
+                  }
                   action={
                     losing === bet.id ? (
                       <div className="border-t border-border px-4 pb-3">
