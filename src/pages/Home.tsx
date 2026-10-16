@@ -16,6 +16,7 @@ import { HomeInsights } from "@/components/HomeInsights";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { TopGames } from "@/components/TopGames";
+import { Achievements } from "@/components/Achievements";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
@@ -205,6 +206,18 @@ export default function Home() {
     [bets],
   );
 
+  /** O nível mais alto a que chegou em qualquer desafio, terminado ou não. */
+  const topLevel = useMemo(
+    () =>
+      board
+        ? board.challenges.reduce(
+            (best, entry) => Math.max(best, entry.standing.day),
+            0,
+          )
+        : 0,
+    [board],
+  );
+
   const insights = useMemo(
     () =>
       board
@@ -318,6 +331,20 @@ export default function Home() {
         <motion.div variants={fadeUp}>
           <HomeInsights insights={insights} settled={settled} />
         </motion.div>
+
+        {/* As conquistas contam o registo todo — desafios e apostas soltas —
+            porque é tudo juízo da mesma pessoa. Ganham-se por preço, por
+            escolher o que o quadro mede bem e por manter isto em dia; nunca
+            por apostar mais. */}
+        {user && (
+          <motion.div variants={fadeUp}>
+            <Achievements
+              bets={[...bets, ...looseBets]}
+              level={topLevel}
+              userId={user.id}
+            />
+          </motion.div>
+        )}
 
         {rivals.length > 0 && (
           <motion.div variants={fadeUp}>
