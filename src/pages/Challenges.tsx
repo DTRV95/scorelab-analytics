@@ -24,6 +24,7 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { Section, SectionHeader } from "@/components/Section";
+import { freshness } from "@/lib/freshness";
 import { AddFunds } from "@/components/AddFunds";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
 import {
@@ -67,6 +68,8 @@ import { markSeen } from "@/lib/seenStore";
 import { typingMemory } from "@/lib/typingMemory";
 import {
   acceptInvite,
+  fetchPlanInvites,
+  invitePlayer,
   betsPlacedToday,
   buildStanding,
   declineInvite,
@@ -92,6 +95,7 @@ import {
   resettleBet,
   reopenBet,
   type PendingInvite,
+  type PlanInvite,
   type PlanBet,
   type PlanBetPayload,
   type PlanFunds,
@@ -268,6 +272,22 @@ function PlayerCard({
   );
 }
 
+/**
+ * Há quanto tempo o convite foi enviado.
+ *
+ * "há 2 horas" enquanto é de hoje; a partir daí a data, porque "há 72
+ * horas" é uma maneira pior de dizer segunda-feira.
+ */
+function invitedWhen(iso: string): string {
+  const at = new Date(iso).getTime();
+  if (Number.isNaN(at)) return "";
+  if (Date.now() - at < 24 * 60 * 60 * 1000) return freshness(at);
+  return `a ${new Intl.DateTimeFormat("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(at)}`;
+}
+
 export default function Challenges() {
   const { user } = useAuth();
 
@@ -304,6 +324,15 @@ export default function Challenges() {
   const [losing, setLosing] = useState<string | null>(null);
   const [token, setToken] = useState(0);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  /**
+   * Quem foi convidado e ainda não entrou.
+   *
+   * A informação existia, mas só dentro do diálogo "quem está neste
+   * desafio", atrás de um ícone no cabeçalho — convidava-se alguém e
+   * depois não havia forma de saber, na página do desafio, se já tinha
+   * dito que sim.
+   */
+  const [invites, setInvites] = useState<PlanInvite[]>([]);
   const [answering, setAnswering] = useState(false);
   const currentRow = useRef<HTMLDivElement | null>(null);
   const openDays = useRef<HTMLDivElement | null>(null);
@@ -327,6 +356,7 @@ export default function Challenges() {
 
   const [duelOpen, setDuelOpen] = useState(false);
   const [invitesOpen, setInvitesOpen] = useState(false);
+  const [reinviting, setReinviting] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -413,6 +443,14 @@ export default function Challenges() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+    // Quem foi convidado e em que pé está. Falha em silêncio: um convite por
+    // responder não é razão para a página do desafio não abrir.
+    fetchPlanInvites(planId)
+      .then((rows) => {
+        if (!cancelled) setInvites(rows);
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -667,6 +705,38 @@ export default function Challenges() {
       }
     },
     [fail],
+  );
+
+  /**
+   * Os convidados que ainda não são jogadores: por responder primeiro, os
+   * que disseram que não a seguir. Quem aceitou já está na lista de cima.
+   */
+  const waitingOn = useMemo(
+    () =>
+      invites
+        .filter((invite) => invite.status !== "accepted")
+        .sort((a, b) =>
+          a.status === b.status ? 0 : a.status === "pending" ? -1 : 1,
+        ),
+    [invites],
+  );
+
+  /** Volta a convidar quem recusou, ou quem nunca respondeu. */
+  const inviteAgain = useCallback(
+    async (invite: PlanInvite) => {
+      if (!planId) return;
+      setReinviting(invite.invited_user_id);
+      try {
+        await invitePlayer(planId, invite.email);
+        const rows = await fetchPlanInvites(planId);
+        setInvites(rows);
+      } catch {
+        fail("Não foi possível enviar o convite outra vez.");
+      } finally {
+        setReinviting(null);
+      }
+    },
+    [planId, fail],
   );
 
   /** Records money put into the bankroll, or taken out, apart from betting. */
@@ -1339,6 +1409,71 @@ export default function Challenges() {
             />
           ))}
         </motion.div>
+
+        {/* Quem foi convidado e ainda não está a jogar, a seguir a quem
+            está. Estava tudo dentro do diálogo do cabeçalho: convidava-se
+            alguém e depois não havia maneira de saber, nesta página, se já
+            tinha dito que sim. */}
+        {waitingOn.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <Section
+              tone={waitingOn.some((i) => i.status === "pending") ? "amber" : "plain"}
+              icon={UserPlus}
+              eyebrow="Convites"
+              title="Ainda não entraram"
+              count={waitingOn.length}
+              className="space-y-1.5"
+            >
+              {waitingOn.map((invite) => {
+                const answered = invite.status === "declined";
+                return (
+                  <div
+                    key={invite.invited_user_id}
+                    className="flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border"
+                  >
+                    <span
+                      className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-[11px] font-bold ${
+                        answered
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-[hsl(var(--warning))]/20 text-amber-700"
+                      }`}
+                    >
+                      {invite.display_name.slice(0, 1).toUpperCase()}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-foreground">
+                        {invite.display_name}
+                      </p>
+                      <p className="sl-meta truncate text-[11px]">
+                        {answered
+                          ? "disse que não"
+                          : `convidado ${invitedWhen(invite.created_at)}`}
+                      </p>
+                    </div>
+
+                    {answered ? (
+                      <button
+                        type="button"
+                        disabled={reinviting === invite.invited_user_id}
+                        onClick={() => void inviteAgain(invite)}
+                        className="sl-tap flex-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-primary ring-1 ring-border disabled:opacity-40"
+                      >
+                        {reinviting === invite.invited_user_id
+                          ? "A enviar..."
+                          : "Convidar outra vez"}
+                      </button>
+                    ) : (
+                      <span className="sl-pill sl-pill-open flex-none text-[11px]">
+                        Por responder
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </Section>
+          </motion.div>
+        )}
 
         {me && saved && !ended && (
           <motion.div variants={fadeUp}>
