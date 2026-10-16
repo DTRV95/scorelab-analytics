@@ -23,6 +23,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
+import { Section, SectionHeader } from "@/components/Section";
 import { AddFunds } from "@/components/AddFunds";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
 import {
@@ -1206,23 +1207,16 @@ export default function Challenges() {
             choose from, this one is money already na mesa. Tinta âmbar dos
             dois lados — no título e na beira de cada boletim. */}
         {openBets.length > 0 && (
-          <motion.section
-            ref={openDays}
-            variants={fadeUp}
-            className="space-y-2 rounded-2xl bg-amber-500/[0.07] p-2.5 ring-1 ring-amber-500/25"
+          <motion.div ref={openDays} variants={fadeUp}>
+          <Section
+            tone="amber"
+            icon={Clock}
+            eyebrow="À espera de ti"
+            title="Por fechar"
+            count={openBets.length}
+            note="A banca só mexe quando estas fecharem."
+            className="space-y-2"
           >
-            <div className="flex items-center gap-2 px-1.5 pt-0.5">
-              <Clock className="h-4 w-4 flex-none text-amber-600" />
-              <h2 className="flex-1 text-sm font-bold text-foreground">
-                Por fechar
-              </h2>
-              <span className="sl-pill sl-pill-open flex-none text-[11px]">
-                {openBets.length}
-              </span>
-            </div>
-            <p className="sl-meta px-1.5 pb-0.5 text-[11px] leading-5">
-              A banca só mexe quando estas fecharem.
-            </p>
             {openBets.map((bet) => {
               const manual = bet.legs.some(isManualLeg);
               return (
@@ -1287,7 +1281,8 @@ export default function Challenges() {
                 />
               );
             })}
-          </motion.section>
+          </Section>
+          </motion.div>
         )}
 
         {/* Where the challenge stands, on one line and a bar.
@@ -1416,11 +1411,11 @@ export default function Challenges() {
 
         {saved && (
           <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-            <div className="border-b border-border px-4 py-3.5">
-              <h2 className="text-sm font-bold text-foreground">
-                O que cada um escolheu
-              </h2>
-            </div>
+            <SectionHeader
+              icon={Swords}
+              title="O que cada um escolheu"
+              className="border-b border-border px-4 py-3"
+            />
             <div className="grid gap-px bg-border md:grid-cols-2">
               {standings.map((standing) => (
                 <div key={standing.userId} className="bg-card p-4">
@@ -1497,14 +1492,17 @@ export default function Challenges() {
         )}
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Trophy className="h-4 w-4 text-primary" />A escada
-            </h2>
-            <span className="sl-meta text-[11px]">
-              {me ? `estás no nível ${me.day}` : ""}
-            </span>
-          </div>
+          <SectionHeader
+            tone="primary"
+            icon={Trophy}
+            title="A escada"
+            action={
+              <span className="sl-meta text-[11px]">
+                {me ? `estás no nível ${me.day}` : ""}
+              </span>
+            }
+            className="border-b border-border px-4 py-3"
+          />
 
           {/* What the ladder costs, in the same card as the ladder, on one
               line: the odds of finishing from here, and what one loss does.

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LineChart } from "lucide-react";
+import { SectionHeader } from "@/components/Section";
 import type { Insight } from "@/lib/homeInsights";
 
 /**
@@ -19,20 +20,23 @@ export function HomeInsights({
 }) {
   return (
     <section className="sl-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <h2 className="text-[13px] font-bold text-foreground">
-          O que os teus números dizem
-        </h2>
-        {/* Análises is the long form of exactly these lines: the same bets,
-            by market, by price, by day of the week. Apostas is where a bet
-            outside a challenge gets registered, which is another job. */}
-        <Link
-          to="/dashboard/analises"
-          className="sl-meta flex flex-none items-center gap-1 text-[11px]"
-        >
-          Ver tudo <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
+      {/* Análises is the long form of exactly these lines: the same bets,
+          by market, by price, by day of the week. Apostas is where a bet
+          outside a challenge gets registered, which is another job. */}
+      <SectionHeader
+        tone="green"
+        icon={LineChart}
+        title="O que os teus números dizem"
+        action={
+          <Link
+            to="/dashboard/analises"
+            className="sl-meta flex items-center gap-1 text-[11px]"
+          >
+            Ver tudo <ArrowRight className="h-3 w-3" />
+          </Link>
+        }
+        className="border-b border-border px-4 py-2.5"
+      />
 
       {/* Nothing to say is said out loud.
           The card used to disappear, which from the outside is identical to

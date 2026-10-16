@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronRight, Sparkles } from "lucide-react";
+import { Section } from "@/components/Section";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { timeLabel } from "@/components/TodayMatches";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
@@ -31,29 +32,25 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
   const day = days[Math.min(active, days.length - 1)];
 
   return (
-    <section className="overflow-hidden rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border">
-      <div className="flex items-start justify-between gap-2 px-4 pb-2.5 pt-3">
-        <div className="min-w-0">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-            Para escolher
-          </p>
-          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Os mais prováveis
-          </h2>
-        </div>
+    <Section
+      tone="cool"
+      icon={Sparkles}
+      eyebrow="Para escolher"
+      title="Os mais prováveis"
+      action={
         <Link
           to="/probability"
-          className="sl-meta flex flex-none items-center gap-1 pt-0.5 text-[11px]"
+          className="sl-meta flex items-center gap-1 text-[11px]"
         >
           Ver todos <ArrowRight className="h-3 w-3" />
         </Link>
-      </div>
+      }
+    >
 
       {/* The same days as the Jogos page, in the same order, so the two
           pages are never one tap out of step with each other. */}
       {days.length > 1 && (
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-5 pb-2.5">
+        <div className="flex gap-1.5 overflow-x-auto px-2 pb-2.5">
           {days.map((option, index) => (
             <button
               key={option.long}
@@ -71,7 +68,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
         </div>
       )}
 
-      <div className="space-y-1.5 px-2.5 pb-2.5">
+      <div className="space-y-1.5">
         {day.items.map((match, index) => (
           // Into the game itself, with its fifteen markets: the row carries
           // the one number the model is most sure of and no way to ask it
@@ -81,7 +78,9 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
             to={`/match/${match.fixture_id}`}
             className="sl-tap flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border transition-colors hover:ring-primary/40"
           >
-            <span className="sl-figure flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[hsl(var(--sl-surface))] text-[10px] text-muted-foreground">
+            {/* Um número, não uma medalha: a bolinha comia vinte pixels
+                de largura e os nomes das equipas passaram a ser cortados. */}
+            <span className="sl-figure w-2.5 flex-none text-[11px] text-muted-foreground">
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -124,10 +123,10 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                 </span>
               </p>
             </div>
-            <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+            <ChevronRight className="-mr-1 h-3.5 w-3.5 flex-none text-muted-foreground" />
           </Link>
         ))}
       </div>
-    </section>
+    </Section>
   );
 }

@@ -90,7 +90,7 @@ export function NextMoveCard({
 
   return (
     <section
-      className={`sl-card overflow-hidden px-4 py-4 ring-1 ${tone.ring}`}
+      className={`sl-raised overflow-hidden px-4 py-4 ring-1 ${tone.ring}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

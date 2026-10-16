@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Swords } from "lucide-react";
+import { SectionHeader } from "@/components/Section";
 import { describeNews, type NewsItem } from "@/lib/planNews";
 import type { Rivalry } from "@/lib/rivals";
 
@@ -156,12 +157,11 @@ export function HomeRivals({
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-          <Swords className="h-3.5 w-3.5 text-muted-foreground" />
-          Frente a frente
-        </h2>
-      </div>
+      <SectionHeader
+        icon={Swords}
+        title="Frente a frente"
+        className="border-b border-border px-4 py-3"
+      />
 
       {rivalries.map((rivalry) => (
         <Row
