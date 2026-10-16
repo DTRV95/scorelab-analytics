@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, BarChart3, Info } from "lucide-react";
+import { SectionHeader } from "@/components/Section";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
@@ -92,14 +93,18 @@ function Bars({
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-foreground">{title}</h2>
-        <p className="sl-meta text-[11px]">{hint}</p>
-        {/* Said in words as well as in colour, because a chart that needs to
-            be explained out loud has not been drawn properly, and because
-            green and red are not far enough apart for everybody. */}
-        {rows.some((row) => row.mark != null) && (
-          <p className="sl-meta mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+      <SectionHeader
+        icon={BarChart3}
+        title={title}
+        note={hint}
+        className="border-b border-border px-4 py-3"
+      />
+      {/* Said in words as well as in colour, because a chart that needs to
+          be explained out loud has not been drawn properly, and because
+          green and red are not far enough apart for everybody. */}
+      {rows.some((row) => row.mark != null) && (
+        <div className="border-b border-border px-4 pb-3">
+          <p className="sl-meta flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-[hsl(var(--sl-green))]" />
               acima do que o preço pedia
@@ -113,8 +118,8 @@ function Bars({
               poucos jogos
             </span>
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="space-y-2.5 px-4 py-3.5">
         {rows.map((row) => {
@@ -388,7 +393,7 @@ export default function Analyses() {
             <motion.div variants={fadeUp}>
               <Bars
                 title="Por mercado"
-                hint="Quantas vezes entrou cada aposta que costumas fazer. Sem valor apostado: a aposta é do boletim inteiro, não de cada jogo."
+                hint="Quantas vezes entra cada mercado que costumas jogar"
                 rows={markets}
               />
             </motion.div>
@@ -404,7 +409,7 @@ export default function Analyses() {
             <motion.div variants={fadeUp}>
               <Bars
                 title="Por odd de cada jogo"
-                hint="A que preços acertas. O traço é o acerto que o preço exigia: uma barra que não lá chega é uma faixa que não se paga."
+                hint="A que preços acertas. O traço é o acerto que o preço exigia"
                 rows={legOdds}
               />
             </motion.div>
@@ -412,7 +417,7 @@ export default function Analyses() {
             <motion.div variants={fadeUp}>
               <Bars
                 title="Por odd do boletim"
-                hint="A mesma pergunta, mas para a aposta inteira — as curtas estão a carregar isto, ou as longas?"
+                hint="O mesmo, para o boletim inteiro"
                 rows={odds}
               />
             </motion.div>

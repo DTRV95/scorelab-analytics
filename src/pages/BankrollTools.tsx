@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock, Plus } from "lucide-react";
+import { ArrowRight, Clock, PiggyBank, Plus, Trophy, Wallet } from "lucide-react";
+import { SectionHeader } from "@/components/Section";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollTrend } from "@/components/BankrollTrend";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
@@ -43,14 +44,13 @@ function WhereTheMoneyIs({ rows }: { rows: HomeChallenge[] }) {
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-foreground">
-          Onde está a banca
-        </h2>
-        <p className="sl-meta text-[11px]">
-          A marca em cada barra é onde esse desafio começou.
-        </p>
-      </div>
+      <SectionHeader
+        tone="green"
+        icon={Wallet}
+        title="Onde está a banca"
+        note="A marca em cada barra é onde esse desafio começou."
+        className="border-b border-border px-4 py-3"
+      />
 
       <div className="space-y-3 px-4 py-3.5">
         {rows.map(({ plan, standing }) => {
@@ -111,14 +111,13 @@ function WhatEachOneDid({ rows }: { rows: HomeChallenge[] }) {
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-foreground">
-          O que cada desafio deu
-        </h2>
-        <p className="sl-meta text-[11px]">
-          Só as apostas. O dinheiro que puseste fica de fora desta conta.
-        </p>
-      </div>
+      <SectionHeader
+        tone="green"
+        icon={Trophy}
+        title="O que cada desafio deu"
+        note="Só as apostas. O dinheiro que puseste fica de fora desta conta."
+        className="border-b border-border px-4 py-3"
+      />
 
       <div className="space-y-3 px-4 py-3.5">
         {rows.map(({ plan, standing }) => {
@@ -182,12 +181,12 @@ function AtRisk({ staked, could, bankroll }: {
 
   return (
     <section className="sl-card overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <Clock className="h-3.5 w-3.5 text-amber-700" />
-        <h2 className="text-[13px] font-semibold text-foreground">
-          O que está em jogo
-        </h2>
-      </div>
+      <SectionHeader
+        tone="amber"
+        icon={Clock}
+        title="O que está em jogo"
+        className="border-b border-border px-4 py-3"
+      />
 
       <div className="px-4 py-3.5">
         <div className="flex items-baseline justify-between gap-2">
@@ -313,11 +312,11 @@ export default function BankrollTools() {
                 um número sem origem: os desafios a decorrer, os que já
                 acabaram, e as apostas feitas fora deles. */}
             <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-              <div className="border-b border-border px-4 py-3">
-                <h2 className="text-[13px] font-semibold text-foreground">
-                  De onde vem o saldo
-                </h2>
-              </div>
+              <SectionHeader
+                icon={PiggyBank}
+                title="De onde vem o saldo"
+                className="border-b border-border px-4 py-3"
+              />
               <div className="divide-y divide-border">
                 {[
                   {

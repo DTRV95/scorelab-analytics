@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, Plus } from "lucide-react";
+import { CheckCheck, ChevronRight, Clock, Plus } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { BetSlip } from "@/components/BetSlip";
@@ -14,6 +14,7 @@ import {
   loadBoard as loadBoard7,
   type LoadedBoard,
 } from "@/lib/boardSource";
+import { Section } from "@/components/Section";
 import {
   deleteLooseBet,
   fetchLooseBets,
@@ -195,6 +196,16 @@ export default function LooseBets() {
   );
 
   const totals = useMemo(() => looseTotals(bets), [bets]);
+  // O que ainda está em jogo e o que já acabou, separados: são duas
+  // perguntas diferentes e estavam na mesma lista.
+  const pending = useMemo(
+    () => bets.filter((bet) => bet.status === "pending"),
+    [bets],
+  );
+  const settled = useMemo(
+    () => bets.filter((bet) => bet.status !== "pending"),
+    [bets],
+  );
 
   /**
    * Bets close themselves off the final scores, game by game.
@@ -334,7 +345,7 @@ export default function LooseBets() {
         {bets.length > 0 && (
           <motion.div
             variants={fadeUp}
-            className="sl-card grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4"
+            className="sl-raised grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4"
           >
             {[
               { label: "Apostado", value: eur.format(totals.staked) },
@@ -395,27 +406,61 @@ export default function LooseBets() {
 
         {/* One card per bet, with air between them. They used to be rows
             inside a single card, which is how four bets come to look like the
-            four games of one. */}
-        {bets.length > 0 && (
-          <motion.section variants={fadeUp} className="space-y-2.5">
-            {bets.map((bet, index) => (
-              <Slip
-                key={bet.id}
-                bet={bet}
-                // The recent ones and anything still undecided open as they
-                // are; a year of history does not unroll itself.
-                open={index < 3 || bet.status === "pending"}
-                onOpen={() => setOpenBet(bet)}
-              />
-            ))}
-          </motion.section>
+            four games of one.
+
+            E em duas secções, não numa: o que ainda está em jogo e o que já
+            acabou são coisas diferentes, e misturados numa lista só liam-se
+            como a mesma. Mesmas cores do resto da aplicação — âmbar o que
+            está à espera, verde o que está fechado. */}
+        {pending.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <Section
+              tone="amber"
+              icon={Clock}
+              eyebrow="À espera"
+              title="Por decidir"
+              count={pending.length}
+              note={
+                totals.atRisk > 0
+                  ? `${eur.format(totals.atRisk)} em jogo · se entrar tudo, ${signed(totals.couldWin)}`
+                  : undefined
+              }
+              className="space-y-2.5"
+            >
+              {pending.map((bet) => (
+                <Slip
+                  key={bet.id}
+                  bet={bet}
+                  open
+                  onOpen={() => setOpenBet(bet)}
+                />
+              ))}
+            </Section>
+          </motion.div>
         )}
 
-        {totals.atRisk > 0 && (
-          <motion.p variants={fadeUp} className="sl-meta px-1 text-[11px]">
-            {eur.format(totals.atRisk)} por decidir. Se entrar tudo, são{" "}
-            {signed(totals.couldWin)}.
-          </motion.p>
+        {settled.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <Section
+              tone="green"
+              icon={CheckCheck}
+              eyebrow="Já se sabe"
+              title="Fechadas"
+              count={settled.length}
+              className="space-y-2.5"
+            >
+              {settled.map((bet, index) => (
+                <Slip
+                  key={bet.id}
+                  bet={bet}
+                  // As recentes abrem; um ano de histórico não se desenrola
+                  // sozinho.
+                  open={index < 3}
+                  onOpen={() => setOpenBet(bet)}
+                />
+              ))}
+            </Section>
+          </motion.div>
         )}
       </motion.div>
 
