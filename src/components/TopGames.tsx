@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarClock } from "lucide-react";
+import { ArrowRight, ChevronRight, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { timeLabel } from "@/components/TodayMatches";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
@@ -14,6 +14,13 @@ import { minimumOdd, onShortlist } from "@/lib/shortlist";
  * three games on Saturday: everything worth knowing about today was behind
  * them. A day at a time is how anybody decides what to back, and it is the
  * same question the challenge asks every evening.
+ *
+ * It looks like a shelf on purpose. On the challenge page this sits next to
+ * the bet waiting to be closed, and the two were the same white card with
+ * the same type in it — one is a list of things to choose from, the other is
+ * money already on the table, and nothing on screen said which was which.
+ * So: a tinted panel with the games as cards inside it, each ending in the
+ * arrow that means "there is more behind this one".
  */
 export function TopGames({ board }: { board: BoardMatch[] }) {
   const days = useMemo(() => topByDay(board), [board]);
@@ -24,15 +31,20 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
   const day = days[Math.min(active, days.length - 1)];
 
   return (
-    <section className="sl-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-          Os mais prováveis
-        </h2>
+    <section className="overflow-hidden rounded-2xl bg-[hsl(var(--sl-surface))] ring-1 ring-border">
+      <div className="flex items-start justify-between gap-2 px-4 pb-2.5 pt-3">
+        <div className="min-w-0">
+          <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+            Para escolher
+          </p>
+          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Os mais prováveis
+          </h2>
+        </div>
         <Link
           to="/probability"
-          className="sl-meta flex items-center gap-1 text-[11px]"
+          className="sl-meta flex flex-none items-center gap-1 pt-0.5 text-[11px]"
         >
           Ver todos <ArrowRight className="h-3 w-3" />
         </Link>
@@ -59,7 +71,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
         </div>
       )}
 
-      <div className="divide-y divide-border border-t border-border">
+      <div className="space-y-1.5 px-2.5 pb-2.5">
         {day.items.map((match, index) => (
           // Into the game itself, with its fifteen markets: the row carries
           // the one number the model is most sure of and no way to ask it
@@ -67,9 +79,9 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
           <Link
             key={match.fixture_id}
             to={`/match/${match.fixture_id}`}
-            className="sl-tap flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[hsl(var(--sl-surface))]"
+            className="sl-tap flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border transition-colors hover:ring-primary/40"
           >
-            <span className="sl-figure w-3 flex-none text-[11px] text-muted-foreground">
+            <span className="sl-figure flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[hsl(var(--sl-surface))] text-[10px] text-muted-foreground">
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -87,10 +99,13 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                   acerto — 64% nos de +10 pp contra 74% nos de menos de +5.
                   No lugar dela fica a única coisa que decide se um acerto
                   vale dinheiro, que é o preço. */}
+              {/* Dos destaques do quadro, os da lista curta entraram 87%
+                  das vezes e os outros 53%: é a coisa mais útil desta linha
+                  e estava escrita a miudinho. */}
               {onShortlist(match) && (
-                <p className="text-[10.5px] font-semibold text-[hsl(var(--sl-green))]">
+                <span className="sl-pill sl-pill-win mt-0.5 text-[10px]">
                   na lista curta
-                </p>
+                </span>
               )}
             </div>
             {/* Capped, because "Casa ou Empate (1X)" is wider than some
@@ -109,6 +124,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                 </span>
               </p>
             </div>
+            <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
           </Link>
         ))}
       </div>

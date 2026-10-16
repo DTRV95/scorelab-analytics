@@ -1056,7 +1056,9 @@ describe("closing a bet nobody else can close", () => {
     renderPage();
 
     expect(await screen.findByText("Por fechar")).toBeInTheDocument();
-    expect(screen.getAllByText(/à espera de ti/).length).toBeGreaterThan(0);
+    // O estado passou da linha pequena por cima para a pastilha ao lado,
+    // que é o que se lê sem abrir o boletim.
+    expect(screen.getAllByText(/À espera de ti/).length).toBeGreaterThan(0);
   });
 
   it("pays out the day when it is marked as won", async () => {
