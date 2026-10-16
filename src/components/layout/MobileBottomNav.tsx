@@ -42,7 +42,7 @@ export function MobileBottomNav() {
         to={entry.url}
         data-active={isActive}
         className={cn(
-          "sl-bottomnav-item relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition",
+          "sl-tap sl-bottomnav-item relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition",
           isActive ? "" : "text-white/55 hover:text-white/85",
         )}
       >
@@ -76,7 +76,7 @@ export function MobileBottomNav() {
         <Link
           to={HOME.url}
           aria-current={onHome ? "page" : undefined}
-          className="flex min-w-0 flex-col items-center justify-end gap-0.5 pb-1.5"
+          className="sl-tap flex min-w-0 flex-col items-center justify-end gap-0.5 pb-1.5"
         >
           <span
             className={cn(

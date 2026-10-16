@@ -43,7 +43,7 @@ export function TopBar() {
         <div className="flex min-w-0 items-center gap-2">
           <Link
             to="/dashboard"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-white/15 text-sm font-black text-white lg:hidden"
+            className="sl-tap flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-white/15 text-sm font-black text-white lg:hidden"
           >
             SL
           </Link>
@@ -60,7 +60,7 @@ export function TopBar() {
           <button
             type="button"
             onClick={openCommandCenter}
-            className="hidden h-9 min-w-0 items-center gap-2 rounded-lg bg-white/15 px-3 text-sm text-white/90 transition hover:bg-white/20 sm:flex sm:w-56 md:w-72"
+            className="sl-tap hidden h-9 min-w-0 items-center gap-2 rounded-lg bg-white/15 px-3 text-sm text-white/90 transition hover:bg-white/20 sm:flex sm:w-56 md:w-72"
             title="Pesquisar (Ctrl K)"
           >
             <Search className="h-4 w-4 flex-none" strokeWidth={2} />

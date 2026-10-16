@@ -40,7 +40,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
       action={
         <Link
           to="/probability"
-          className="sl-meta flex items-center gap-1 text-[11px]"
+          className="sl-tap sl-meta flex items-center gap-1 text-[11px]"
         >
           Ver todos <ArrowRight className="h-3 w-3" />
         </Link>

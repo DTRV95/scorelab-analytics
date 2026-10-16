@@ -882,13 +882,23 @@ export default function Challenges() {
           ),
         );
         setLosing(null);
+
+        // O mesmo que fechar por inteiro: o que aconteceu ao dinheiro, e
+        // quantos jogos é que levaram o dia.
+        const after = (me?.bankroll ?? 0) + payload.profitLoss;
+        toast({
+          title: `Nível ${bet.day} perdido · ${eur.format(payload.profitLoss)}`,
+          description: `${
+            failed.length === 1 ? "1 jogo falhou" : `${failed.length} jogos falharam`
+          } · banca em ${eur.format(after)}.`,
+        });
       } catch {
         fail("Não foi possível fechar a aposta.");
       } finally {
         setClosing(null);
       }
     },
-    [plan?.id, fail],
+    [plan?.id, me?.bankroll, fail],
   );
 
   /**
@@ -984,6 +994,18 @@ export default function Challenges() {
           previous.map((entry) => (entry.id === bet.id ? updated : entry)),
         );
 
+        // Fechar um nível era a coisa mais importante desta página e a
+        // única que não respondia nada: carregava-se, o cartão mudava de
+        // sítio e pronto. Diz o que aconteceu ao dinheiro — o mesmo nos
+        // dois casos, sem festa a mais num nem consolo no outro.
+        const after = (me?.bankroll ?? 0) + payload.profitLoss;
+        toast({
+          title: won
+            ? `Nível ${bet.day} ganho · +${eur.format(payload.profitLoss)}`
+            : `Nível ${bet.day} perdido · ${eur.format(payload.profitLoss)}`,
+          description: `Banca em ${eur.format(after)}.`,
+        });
+
         // A lost day of several games leaves every game undecided, and with
         // games typed by hand nothing else will ever fill that in. So the bet
         // opens right here, while the person still remembers which one fell.
@@ -996,7 +1018,7 @@ export default function Challenges() {
         setClosing(null);
       }
     },
-    [plan, me?.name, fail],
+    [plan, me?.name, me?.bankroll, fail],
   );
 
   if (loading) {
