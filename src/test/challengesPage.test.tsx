@@ -1511,6 +1511,71 @@ describe("managing challenges", () => {
     expect(await screen.findByText(/Convite enviado/)).toBeInTheDocument();
   });
 
+  it("says on the page whether the person invited has answered", async () => {
+    // A informação existia, mas só dentro do diálogo atrás do ícone do
+    // cabeçalho: convidava-se alguém e não havia como saber, na página do
+    // desafio, se já tinha dito que sim.
+    fetchPlanInvites.mockResolvedValue([
+      {
+        invited_user_id: "u-valdemar",
+        email: "valdemar@exemplo.pt",
+        display_name: "Valdemar",
+        status: "pending",
+        created_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+        invited_by_me: true,
+      },
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("Ainda não entraram")).toBeInTheDocument();
+    expect(screen.getByText("Valdemar")).toBeInTheDocument();
+    expect(screen.getByText(/convidado há 1 hora/)).toBeInTheDocument();
+    expect(screen.getByText("Por responder")).toBeInTheDocument();
+  });
+
+  it("offers to invite again whoever said no", async () => {
+    fetchPlanInvites.mockResolvedValue([
+      {
+        invited_user_id: "u-rui",
+        email: "rui@exemplo.pt",
+        display_name: "Rui",
+        status: "declined",
+        created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+        invited_by_me: true,
+      },
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("disse que não")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Convidar outra vez/ }),
+    );
+
+    await waitFor(() =>
+      expect(invitePlayer).toHaveBeenCalledWith("plan", "rui@exemplo.pt"),
+    );
+  });
+
+  it("keeps the ones who accepted out of it: those are players now", async () => {
+    fetchPlanInvites.mockResolvedValue([
+      {
+        invited_user_id: "u-ja-entrou",
+        email: "entrou@exemplo.pt",
+        display_name: "Vilagreen",
+        status: "accepted",
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+        invited_by_me: true,
+      },
+    ]);
+
+    renderPage();
+
+    await screen.findByText(/PLANO MILHÃO|Plano Milhão/i);
+    expect(screen.queryByText("Ainda não entraram")).toBeNull();
+  });
+
   it("offers an invitation to accept or refuse", async () => {
     fetchMyPendingInvites.mockResolvedValue([
       {
