@@ -149,12 +149,17 @@ export function HomeChallenges({
     >
       {/* The money is the card above this one, where it is the headline and
           not a line of small print with two labels in it. */}
+      {/* Os rótulos "Agora" e "Os outros" só aparecem quando há mesmo dois
+          grupos. Com um desafio só, eram um cabeçalho para uma linha — e
+          cada linha já diz, em palavras, o que há a fazer nela. */}
       {urgent.length > 0 && (
         <div className="space-y-2">
-          <p className="sl-meta flex items-center gap-1.5 text-[10px] uppercase tracking-[0.13em]">
-            <Target className="h-3 w-3" />
-            Agora
-          </p>
+          {rest.length > 0 && (
+            <p className="sl-meta flex items-center gap-1.5 text-[10px] uppercase tracking-[0.13em]">
+              <Target className="h-3 w-3" />
+              Agora
+            </p>
+          )}
           {urgent.map((entry) => (
             <Row key={entry.plan.id} entry={entry} news={news[entry.plan.id]} />
           ))}
@@ -163,9 +168,11 @@ export function HomeChallenges({
 
       {rest.length > 0 && (
         <div className="space-y-2">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
-            Os outros
-          </p>
+          {urgent.length > 0 && (
+            <p className="sl-meta text-[10px] uppercase tracking-[0.13em]">
+              Os outros
+            </p>
+          )}
           {rest.map((entry) => (
             <Row key={entry.plan.id} entry={entry} news={news[entry.plan.id]} />
           ))}

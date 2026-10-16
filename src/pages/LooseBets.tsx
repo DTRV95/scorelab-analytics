@@ -331,7 +331,7 @@ export default function LooseBets() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Apostas</h1>
+          <h1 className="sr-only">Apostas</h1>
           <p className="sl-meta mt-1 text-[11px]">
             As que não entram em nenhum desafio. Contam na análise na mesma.
           </p>

@@ -400,7 +400,7 @@ export default function ChallengeCatalogue() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Desafios</h1>
+          <h1 className="sr-only">Desafios</h1>
           <p className="sl-meta mt-0.5 text-[11px]">
             Escolhe um, ou continua o que já começaste.
           </p>

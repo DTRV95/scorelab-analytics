@@ -15,6 +15,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
 import { HomeInsights } from "@/components/HomeInsights";
+import { Fold } from "@/components/Fold";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { TopGames } from "@/components/TopGames";
@@ -255,6 +256,17 @@ export default function Home() {
     };
   }, []);
 
+  /** O que a dobra tem lá dentro, para não se abrir às cegas. */
+  const restoHint = useMemo(() => {
+    const partes = [
+      insights.length > 0
+        ? `${insights.length} ${insights.length === 1 ? "leitura" : "leituras"}`
+        : null,
+      rivals.length > 0 ? "duelos" : null,
+    ].filter(Boolean);
+    return partes.length > 0 ? `· ${partes.join(" · ")}` : undefined;
+  }, [insights.length, rivals.length]);
+
   return (
     <AppLayout>
       <motion.div
@@ -263,22 +275,11 @@ export default function Home() {
         variants={stagger}
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
-        {/*
-         * The title sat 45px under the header bar and 6px above its own line,
-         * which read as a caption for the bar rather than as the name of the
-         * page. Three paddings stacked above it — the layout's, this page's,
-         * and the 8px phones put on every h1 — and nothing below. The page's
-         * own top padding is gone and the block is pulled up by the rest, so
-         * the title sits between the bar and the line under it.
-         *
-         * The offset is written out rather than as -mt-4: a phone-width rule
-         * matches any class containing "mt-4" and would turn this into a
-         * positive margin.
-         */}
-        <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Início</h1>
-        </motion.div>
-
+        {/* O nome da página fica para quem o ouve, não para quem o vê: a
+            barra de baixo já diz, acesa, em que página se está, e um
+            título a repeti-la é uma linha que não responde a nada. Um
+            leitor de ecrã continua a anunciá-la. */}
+        <h1 className="sr-only">Início</h1>
         {/* Before anything of their own: somebody is waiting for an answer.
             This used to be buried inside a challenge's page, which is a page
             about challenges they are already in. */}
@@ -320,27 +321,22 @@ export default function Home() {
         )}
 
         <motion.div variants={fadeUp}>
-          <HomeInsights insights={insights} settled={settled} />
-        </motion.div>
-
-        {rivals.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <HomeRivals rivalries={rivals} news={news} />
-          </motion.div>
-        )}
-
-        <motion.div variants={fadeUp}>
           <TopGames board={games} />
         </motion.div>
 
-        {/* The rest of the app, from the page it opens on.
-            Everything above is a door to the page that holds the whole of it;
-            these are the four that nothing above leads to. A phone's bottom
-            bar holds five destinations and no more, so without this the
-            leagues, the model's record and the saved analyses could only be
-            reached on a computer. */}
+        {/* Daqui para baixo é consulta, não é o que há para fazer hoje.
+            Estava tudo aberto, e o resultado era uma página de sete blocos
+            para responder a duas perguntas. Fica a um toque: o que o
+            registo diz, os duelos, e as páginas a que a barra de baixo não
+            chega — nada saiu da aplicação, só saiu da frente. */}
         <motion.div variants={fadeUp}>
-          <HomeDoors />
+          <Fold label="O resto" hint={restoHint}>
+            <HomeInsights insights={insights} settled={settled} />
+            {rivals.length > 0 && (
+              <HomeRivals rivalries={rivals} news={news} />
+            )}
+            <HomeDoors />
+          </Fold>
         </motion.div>
       </motion.div>
     </AppLayout>

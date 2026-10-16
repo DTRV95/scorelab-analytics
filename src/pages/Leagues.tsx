@@ -190,7 +190,7 @@ export default function Leagues() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Ligas</h1>
+          <h1 className="sr-only">Ligas</h1>
           <p className="sl-meta mt-1 text-[11px]">
             O que cada competição costuma dar, pelos jogos desta época.
           </p>

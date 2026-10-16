@@ -19,7 +19,10 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Tinta a 80% tapava a aplicação por completo e cada abertura era um
+      // corte a negro. A 55%, com um desfoque leve, a página continua lá
+      // atrás — o que se abriu está por cima dela, não no lugar dela.
+      "fixed inset-0 z-50 bg-[hsl(222_47%_11%/0.55)] backdrop-blur-[3px] duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -47,11 +50,26 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "sl-raised fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overscroll-contain p-5 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:p-6",
+        "sl-raised fixed z-50 grid max-w-lg grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overscroll-contain p-5 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:p-6",
+        // Telemóvel: uma folha que sobe do fundo, encostada à borda de
+        // baixo, onde o polegar chega. Um painel ao centro do ecrã obriga
+        // a mão a subir e deixa o teclado a empurrá-lo; isto fica onde a
+        // mão já está e abre com o gesto que o telefone inteiro usa.
+        "max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[88dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-[26px] max-sm:pb-[max(env(safe-area-inset-bottom),1rem)] max-sm:data-[state=closed]:slide-out-to-bottom max-sm:data-[state=open]:slide-in-from-bottom",
+        // Ecrã grande: continua ao centro, que é onde um painel pertence
+        // quando não há uma borda à mão.
+        "sm:left-[50%] sm:top-[50%] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-1.5rem)] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
         className
       )}
       {...props}
     >
+      {/* A pega. Não faz nada que o toque fora não faça, e é por isso que
+          está lá: diz, antes de se tentar, que isto é uma folha e que se
+          fecha para baixo. */}
+      <div
+        aria-hidden
+        className="pointer-events-none mx-auto mt-2.5 h-1 w-9 rounded-full bg-muted-foreground/25 sm:hidden"
+      />
       {children}
       <DialogPrimitive.Close className="sl-tap absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 disabled:pointer-events-none">
         <X className="h-[18px] w-[18px]" />

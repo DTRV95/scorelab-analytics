@@ -391,9 +391,13 @@ function BoardRefresh({
         <p className="text-xs font-medium text-foreground">
           {loading ? "A atualizar o quadro..." : summary}
         </p>
-        {(note || !loading) && (
+        {/* A frase que explica para que serve o botão só aparece quando há
+            motivo para ele: depois de uma tentativa, ou quando falta mesmo
+            uma competição. Fixa, eram duas linhas de ensino permanente por
+            cima dos jogos — e o botão diz "Atualizar", que já é a frase. */}
+        {(note || missing.length > 0) && (
           <p className="sl-meta mt-0.5 text-[11px] leading-4">
-            {note || "Falta alguma competição? Vai buscar o mais recente."}
+            {note || "Falta uma competição? Vai buscar o mais recente."}
           </p>
         )}
       </div>
@@ -861,25 +865,13 @@ export default function ProbabilityRadar() {
         variants={stagger}
         className="space-y-4 p-4 pt-0 sm:space-y-6 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
-        <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {/* Fourteen wide letters do not fit beside a button on a phone,
-                and the accent bar in front of them takes a little more: the
-                word ran under the refresh icon. Same size as every other
-                page's title. */}
-            <h1 className="sl-section-title text-[15px] sm:text-[21px]">
-              Probabilidades
-            </h1>
-            {/* One line, so the first game is on screen without scrolling.
-                The two-line version plus the how-to card put four hundred
-                pixels of explanation above the thing being explained. */}
-            <p className="sl-meta mt-1">Os próximos 7 dias, sem odds nem stake.</p>
-          </div>
-          {/* O ícone de atualizar esteve aqui no canto e não chegava: não
-              dizia de quando era o quadro, nem respondia quando se carregava
-              nele. Agora há um botão com as duas coisas, logo por baixo —
-              dois sítios para a mesma coisa era um a mais. */}
-        </motion.div>
+        {/* O título é para quem o ouve. Visível, dizia "Probabilidades"
+            enquanto a barra de baixo dizia "Jogos" — dois nomes para o
+            mesmo sítio — e a linha que explicava o quadro era um ensino
+            de uma vez a ocupar o topo para sempre. O que interessa (de
+            quando é o quadro, e o botão para o ir buscar outra vez) está
+            logo abaixo, e os jogos começam no primeiro ecrã. */}
+        <h1 className="sr-only">Probabilidades</h1>
 
         {enabled === null && (
           <motion.div
@@ -1042,10 +1034,15 @@ export default function ProbabilityRadar() {
                             ? "A mostrar só a lista curta"
                             : "Ver só a lista curta"}
                         </span>
-                        <span className="sl-meta block text-[11px] leading-5">
-                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 87%
-                          · o resto 53%
-                        </span>
+                        {/* O porquê da lista curta só se lê quando ela está
+                            ligada. Desligada, a linha era uma nota de rodapé
+                            a ocupar um terço do cartão acima dos jogos. */}
+                        {onlyShortlist && (
+                          <span className="sl-meta block text-[11px] leading-5">
+                            Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram
+                            87% · o resto 53%
+                          </span>
+                        )}
                       </span>
                       {/* O número estava solto no fim da linha, sem dizer de
                           que era contagem. Numa pílula lê-se como as outras
