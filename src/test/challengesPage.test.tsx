@@ -1094,7 +1094,13 @@ describe("closing a bet nobody else can close", () => {
     const save = screen.getByRole("button", { name: /Guardar o nível perdido/ });
     expect(save).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Sporting CP vs Arouca/ }));
+    // Com o boletim fechado por defeito, o cabeçalho dele também nomeia os
+    // jogos — por isso a escolha faz-se dentro do quadro que pergunta.
+    const picker = screen.getByText("Quais é que falharam?")
+      .parentElement as HTMLElement;
+    fireEvent.click(
+      within(picker).getByRole("button", { name: /Sporting CP vs Arouca/ }),
+    );
     fireEvent.click(save);
 
     const [, betId, payload] = updatePlanBet.mock.calls[0];

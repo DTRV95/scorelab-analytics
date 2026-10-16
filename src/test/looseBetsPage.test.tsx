@@ -223,17 +223,24 @@ describe("bets that answer to no challenge", () => {
 
     renderPage();
 
+    // Fechadas, que é como nascem: cada uma diz numa linha que tipo de
+    // aposta é, quanto custou e em que pé está.
     expect(await screen.findByText("Dupla")).toBeInTheDocument();
     expect(screen.getByText("Simples")).toBeInTheDocument();
-    // O montante e a odd passaram a uma linha só por boletim: "5,00 € a 1.40".
-    expect(screen.getAllByText(/Montante apostado/)).toHaveLength(2);
-    // 10 € at 2.85 comes back as 28,50 €, gross, the way a slip says it.
-    expect(screen.getByText("28,50 €")).toBeInTheDocument();
     expect(screen.getByText("Ganhou")).toBeInTheDocument();
     expect(screen.getByText("Perdeu")).toBeInTheDocument();
+    expect(screen.queryByText(/Montante apostado/)).toBeNull();
+
+    // E abre-se a que interessar.
+    fireEvent.click(screen.getByText("Dupla"));
+
+    // 10 € at 2.85 comes back as 28,50 €, gross, the way a slip says it.
+    expect(await screen.findByText("28,50 €")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Simples"));
     // The pick is the team's name, not "Casa" — e as duas equipas ficam na
     // linha de baixo, na mesma linha, que é o que encolheu o boletim.
-    expect(screen.getByText("Sporting")).toBeInTheDocument();
+    expect(await screen.findByText("Sporting")).toBeInTheDocument();
     expect(screen.getByText(/Sporting – Rio Ave/)).toBeInTheDocument();
     expect(screen.queryByText("Casa")).toBeNull();
   });

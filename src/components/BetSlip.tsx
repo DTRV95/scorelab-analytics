@@ -62,7 +62,15 @@ function when(iso: string | null): string {
  */
 export function BetSlip({
   bet,
-  defaultOpen = true,
+  /**
+   * Fechado, salvo ordem em contrário.
+   *
+   * Abertos, três boletins são três ecrãs: a lista de apostas deixa de se
+   * poder correr com o polegar para ver o que há. Fechado, cada um diz o
+   * que é numa linha — que tipo de aposta, quanto, em que pé está e em que
+   * jogos — e abre-se o que interessar.
+   */
+  defaultOpen = false,
   /** A line above the kind — the level inside a challenge, whose bet it is. */
   above,
   /** Whatever this bet can be done to, under the money. */
@@ -80,7 +88,14 @@ export function BetSlip({
 
   const returned = bet.stake * bet.odds;
   const kind = slipKind(bet.legs.length);
-  const names = bet.legs.map((leg) => leg.match).join(" · ");
+  // Fechado, o boletim tem uma linha para dizer que apostas são. Os nomes
+  // todos separados por pontos davam "FC Porto vs Casa Pia · Arsenal vs
+  // Bren..." — o primeiro jogo e quantos mais cabem, e dizem mais.
+  const names = bet.legs.length
+    ? `${bet.legs[0].match}${
+        bet.legs.length > 1 ? ` +${bet.legs.length - 1}` : ""
+      }`
+    : "";
 
   return (
     <article className={`sl-card overflow-hidden border-l-[3px] ${RAIL[bet.status]}`}>
@@ -88,40 +103,44 @@ export function BetSlip({
         type="button"
         onClick={() => setOpen((shown) => !shown)}
         aria-expanded={open}
-        className="sl-tap flex w-full items-center gap-2.5 px-4 py-3 text-left"
+        className="sl-tap block w-full px-4 py-3 text-left"
       >
-        <div className="min-w-0 flex-1">
-          {(above || open) && (
-            <p className="sl-meta text-[10.5px]">
-              {[above, open ? when(bet.placedAt) : null]
-                .filter(Boolean)
-                .join(" · ")}
+        <div className="flex items-center gap-2.5">
+          <div className="min-w-0 flex-1">
+            {(above || open) && (
+              <p className="sl-meta text-[10.5px]">
+                {[above, open ? when(bet.placedAt) : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+            <p className="flex items-baseline gap-2 text-[13.5px] font-bold text-foreground">
+              {kind}
+              <span className="sl-figure text-[13.5px] font-bold text-foreground">
+                {eur.format(bet.stake)}
+              </span>
             </p>
-          )}
-          <p className="flex items-baseline gap-2 text-[13.5px] font-bold text-foreground">
-            {kind}
-            <span className="sl-figure text-[13.5px] font-bold text-foreground">
-              {eur.format(bet.stake)}
-            </span>
-          </p>
-          {/* Closed, the card still has to say which bet it is: the day it
-              was registered, and the games it was on. */}
-          {!open && (
-            <p className="sl-meta mt-0.5 truncate text-[11px]">
-              {when(bet.placedAt)}
-              {names ? ` · ${names}` : ""}
-            </p>
-          )}
+          </div>
+
+          <span className={`sl-pill flex-none text-[11px] ${PILL[bet.status]}`}>
+            {state ?? SAID[bet.status]}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          />
         </div>
 
-        <span className={`sl-pill flex-none text-[11px] ${PILL[bet.status]}`}>
-          {state ?? SAID[bet.status]}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
+        {/* Fechado, o cartão tem de dizer que aposta é: o dia e os jogos.
+            Esta linha tem a largura toda — espremida ao lado da pastilha
+            dava "FC Porto..." e mais nada. */}
+        {!open && (
+          <p className="sl-meta mt-0.5 truncate text-[11px]">
+            {when(bet.placedAt)}
+            {names ? ` · ${names}` : ""}
+          </p>
+        )}
       </button>
 
       {open && (
@@ -224,9 +243,13 @@ export function BetSlip({
             </div>
           </dl>
 
-          {action}
         </>
       )}
+
+      {/* O que se pode fazer à aposta fica à vista mesmo com o boletim
+          fechado: numa lista chamada "por fechar", fechá-la não devia
+          custar um toque a mais para abrir o que já se sabe o que é. */}
+      {action}
     </article>
   );
 }
