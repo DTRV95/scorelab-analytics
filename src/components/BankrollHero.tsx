@@ -52,7 +52,7 @@ export function BankrollHero({
     startingBankroll > 0 ? (profit / startingBankroll) * 100 : null;
 
   return (
-    <section className="sl-card overflow-hidden">
+    <section className="sl-raised overflow-hidden">
       <Link
         to="/bankroll"
         className="sl-tap flex items-start gap-3 px-4 pb-1 pt-3.5"

@@ -1091,7 +1091,7 @@ export default function ProbabilityRadar() {
           >
             <Info className="h-4 w-4 flex-none text-primary" strokeWidth={2} />
             <p className="flex-1 text-[13px] font-semibold text-foreground">
-              Como usar isto de forma profissional
+              O que o registo diz
             </p>
             <ChevronDown
               className={`h-4 w-4 flex-none text-muted-foreground transition-transform ${infoOpen ? "rotate-180" : ""}`}
@@ -1106,12 +1106,26 @@ export default function ProbabilityRadar() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <p className="px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
-                  1. Olha primeiro para a probabilidade, nunca para a odd. 2. Compara com o preço do
-                  bookmaker — só há valor quando a tua probabilidade é claramente maior do que a implícita
-                  na odd. 3. Aposta pouco por jogo e só em mercados onde a amostra é sólida (evita os
-                  marcados como "Baixa").
-                </p>
+                {/* Isto eram três conselhos genéricos, e um deles — fugir
+                    da amostra "Baixa" — foi medido e não é verdade: a alta
+                    acertou 52,6% e a baixa 65,1%. Ficam os três números que
+                    o registo do próprio quadro dá. */}
+                <dl className="space-y-1.5 px-4 pb-4 text-xs">
+                  {[
+                    ["Dupla hipótese a 70%+", "entrou 87% das vezes"],
+                    ["Golos, ambas marcam, combinados", "53%, moeda ao ar"],
+                    ["Qualquer escolha", "só paga acima da odd mínima da linha"],
+                  ].map(([what, said]) => (
+                    <div key={what} className="flex items-baseline gap-2">
+                      <dt className="min-w-0 flex-1 text-muted-foreground">
+                        {what}
+                      </dt>
+                      <dd className="flex-none font-semibold text-foreground">
+                        {said}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1125,7 +1139,7 @@ export default function ProbabilityRadar() {
           >
             <span className="flex items-center gap-2">
               <Sliders className="h-4 w-4 text-muted-foreground" />
-              Análise manual — para jogos ou ligas fora da lista automática
+              Análise manual
             </span>
             <ChevronDown
               className={`h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? "rotate-180" : ""}`}
