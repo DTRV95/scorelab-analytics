@@ -52,6 +52,10 @@ import {
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
 import { freshness } from "@/lib/freshness";
+import {
+  PULL_THRESHOLD,
+  usePullToRefresh,
+} from "@/hooks/usePullToRefresh";
 import { matchTips, type MatchTip } from "@/lib/matchTips";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
 
@@ -553,6 +557,12 @@ export default function ProbabilityRadar() {
     }
   }, [applyBoard, boardAt]);
 
+  /** Puxar para baixo no topo vale o mesmo que carregar em atualizar. */
+  const pulled = usePullToRefresh({
+    onRefresh: () => void refreshBoard(),
+    disabled: boardLoading,
+  });
+
   useEffect(() => {
     // Answered once, answered for this visit.
     //
@@ -822,6 +832,30 @@ export default function ProbabilityRadar() {
 
   return (
     <AppLayout>
+      {/* Puxar para baixo é o que toda a gente tenta antes de procurar um
+          botão. O indicador aparece com o dedo e passa a verde quando já
+          chega para largar. */}
+      {pulled > 0 && (
+        <div
+          className="pointer-events-none fixed inset-x-0 top-14 z-40 flex justify-center"
+          style={{ transform: `translateY(${Math.round(pulled)}px)` }}
+          aria-hidden
+        >
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-md ring-1 ${
+              pulled >= PULL_THRESHOLD
+                ? "ring-[hsl(var(--sl-green))]/50 text-[hsl(var(--sl-green))]"
+                : "ring-border text-muted-foreground"
+            }`}
+          >
+            <RefreshCw
+              className="h-4 w-4"
+              style={{ transform: `rotate(${pulled * 3}deg)` }}
+            />
+          </span>
+        </div>
+      )}
+
       <motion.div
         initial="hidden"
         animate="visible"

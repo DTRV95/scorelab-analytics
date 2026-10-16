@@ -24,7 +24,9 @@ import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { Section, SectionHeader } from "@/components/Section";
+import { LevelWon } from "@/components/LevelWon";
 import { freshness } from "@/lib/freshness";
+import { useCountUp } from "@/hooks/useCountUp";
 import { AddFunds } from "@/components/AddFunds";
 import { buildPlayerStyle } from "@/lib/bettingStyle";
 import {
@@ -170,6 +172,7 @@ function PlayerCard({
   // day they are on: winning at a better price than the table pencilled in
   // leaves a cushion, and a lost day leaves a hole.
   const aheadOfLadder = standing.bankroll - (planned?.bankrollStart ?? 0);
+  const counting = useCountUp(standing.bankroll);
   const streak = winStreak(standing.bets);
 
   return (
@@ -194,8 +197,10 @@ function PlayerCard({
         </div>
       </div>
 
+      {/* Anda até ao valor novo quando um nível fecha, em vez de aparecer
+          lá: é a mesma informação, vista a acontecer. */}
       <p className="sl-figure mt-1.5 px-4 text-[1.6rem] leading-8 text-foreground">
-        {eur.format(standing.bankroll)}
+        {eur.format(counting)}
       </p>
 
       {/* Once money has been put in or taken out, the bankroll alone stops
@@ -357,6 +362,10 @@ export default function Challenges() {
   const [duelOpen, setDuelOpen] = useState(false);
   const [invitesOpen, setInvitesOpen] = useState(false);
   const [reinviting, setReinviting] = useState<string | null>(null);
+  /** O nível que acabou de ser fechado ganho, enquanto se festeja. */
+  const [justWon, setJustWon] = useState<{ day: number; amount: number } | null>(
+    null,
+  );
   const [rulesOpen, setRulesOpen] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -985,26 +994,42 @@ export default function Challenges() {
   const closeBet = useCallback(
     async (bet: PlanBet, won: boolean) => {
       if (!plan) return;
+
+      const payload = settleManually(bet, won);
+      const updated = { ...payload, id: bet.id, userId: bet.userId };
+      const after = (me?.bankroll ?? 0) + payload.profitLoss;
+
       setClosing(bet.id);
+
+      // Primeiro no ecrã, depois no servidor.
+      //
+      // A escrita demora o seu tempo e a aposta ficava à espera dela para
+      // se mexer — meio segundo em que carregar não fazia nada. Agora o
+      // cartão fecha-se no instante do toque e, se a escrita falhar, volta
+      // ao que estava com o aviso a dizer porquê. O que não se faz é
+      // festejar antes de ter acontecido: o parabéns e a conta do dinheiro
+      // só saem depois de o servidor confirmar.
+      setBets((previous) =>
+        previous.map((entry) => (entry.id === bet.id ? updated : entry)),
+      );
+
       try {
-        const payload = settleManually(bet, won);
         await updatePlanBet(plan.id, bet.id, payload);
-        const updated = { ...payload, id: bet.id, userId: bet.userId };
-        setBets((previous) =>
-          previous.map((entry) => (entry.id === bet.id ? updated : entry)),
-        );
 
         // Fechar um nível era a coisa mais importante desta página e a
         // única que não respondia nada: carregava-se, o cartão mudava de
         // sítio e pronto. Diz o que aconteceu ao dinheiro — o mesmo nos
         // dois casos, sem festa a mais num nem consolo no outro.
-        const after = (me?.bankroll ?? 0) + payload.profitLoss;
         toast({
           title: won
             ? `Nível ${bet.day} ganho · +${eur.format(payload.profitLoss)}`
             : `Nível ${bet.day} perdido · ${eur.format(payload.profitLoss)}`,
           description: `Banca em ${eur.format(after)}.`,
         });
+
+        // Um nível ganho é a única coisa que esta aplicação tem para
+        // festejar, e dura o tempo de se ver.
+        if (won) setJustWon({ day: bet.day, amount: payload.profitLoss });
 
         // A lost day of several games leaves every game undecided, and with
         // games typed by hand nothing else will ever fill that in. So the bet
@@ -1013,7 +1038,10 @@ export default function Challenges() {
           setOpenBet({ bet: updated, player: me?.name ?? "" });
         }
       } catch {
-        fail("Não foi possível fechar a aposta.");
+        setBets((previous) =>
+          previous.map((entry) => (entry.id === bet.id ? bet : entry)),
+        );
+        fail("Não foi possível fechar a aposta. Ficou como estava.");
       } finally {
         setClosing(null);
       }
@@ -1883,6 +1911,8 @@ export default function Challenges() {
           open={duelOpen}
           onClose={() => setDuelOpen(false)}
         />
+
+        <LevelWon won={justWon} onDone={() => setJustWon(null)} />
 
         <BetDetailDialog
           bet={openBet?.bet ?? null}
