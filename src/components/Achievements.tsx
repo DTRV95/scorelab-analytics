@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Medal } from "lucide-react";
 import { Section } from "@/components/Section";
 import { achievements, type Achievement } from "@/lib/achievements";
@@ -44,6 +45,9 @@ export function Achievements({
   const [seen] = useState(() => new Set(seenAchievements(userId)));
 
   const fresh = view.earned.filter((item) => !seen.has(item.id));
+  // Uma medalha nova merece ser notada; quem pediu menos movimento ao
+  // sistema operativo pediu-o para isto também.
+  const still = useReducedMotion();
 
   useEffect(() => {
     if (fresh.length === 0) return;
@@ -82,16 +86,24 @@ export function Achievements({
         {view.earned.map((item) => {
           const isNew = !seen.has(item.id);
           return (
-            <span
+            <motion.span
               key={item.id}
               title={item.note}
+              initial={isNew && !still ? { scale: 0.7, opacity: 0 } : false}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 420,
+                damping: 18,
+                delay: isNew ? 0.08 : 0,
+              }}
               className={`sl-pill text-[11px] ${TONE[item.tone]} ${
                 isNew ? "ring-2 ring-offset-1 ring-offset-transparent" : ""
               }`}
             >
               {item.title}
               {isNew && <span className="text-[9px] font-bold">novo</span>}
-            </span>
+            </motion.span>
           );
         })}
       </div>

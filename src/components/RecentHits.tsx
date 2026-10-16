@@ -179,7 +179,7 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
           type="button"
           disabled={asking}
           onClick={ask}
-          className="flex items-center gap-1.5 py-2.5 text-[11px] font-semibold text-muted-foreground disabled:opacity-50"
+          className="sl-tap flex items-center gap-1.5 py-2.5 text-[11px] font-semibold text-muted-foreground disabled:opacity-50"
         >
           {asking && <Loader2 className="h-3 w-3 animate-spin" />}
           {asking ? "A marcar..." : "Incluir os de hoje"}

@@ -30,7 +30,7 @@ export function HomeInsights({
         action={
           <Link
             to="/dashboard/analises"
-            className="sl-meta flex items-center gap-1 text-[11px]"
+            className="sl-tap sl-meta flex items-center gap-1 text-[11px]"
           >
             Ver tudo <ArrowRight className="h-3 w-3" />
           </Link>
