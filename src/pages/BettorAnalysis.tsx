@@ -15,12 +15,7 @@ import {
 } from "@/lib/bettingStyle";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import type { PlanBet } from "@/lib/planStore";
-
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",

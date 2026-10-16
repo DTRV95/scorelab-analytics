@@ -15,12 +15,24 @@ import type { ReactNode } from "react";
  */
 export type SectionTone = "cool" | "primary" | "amber" | "green" | "plain";
 
+/**
+ * A marca de cor da secção.
+ *
+ * Era um quadrado chapado com o ícone lá dentro. Passa a ter a mesma luz
+ * que o painel à volta dele — claro em cima, a cor em baixo, um aro da
+ * própria cor — para a marca pertencer à superfície em vez de estar
+ * colada a ela.
+ */
 const MARK: Record<SectionTone, string> = {
-  cool: "bg-[hsl(var(--sl-cool))]/12 text-[hsl(var(--sl-cool))]",
-  primary: "bg-primary/15 text-primary",
-  amber: "bg-[hsl(var(--warning))]/20 text-amber-700",
-  green: "bg-[hsl(var(--sl-green))]/15 text-[hsl(var(--sl-green))]",
-  plain: "bg-muted text-muted-foreground",
+  cool: "bg-gradient-to-b from-[hsl(var(--sl-cool))]/24 to-[hsl(var(--sl-cool))]/10 text-[hsl(var(--sl-cool))] shadow-[inset_0_1px_0_hsla(0,0%,100%,0.7),inset_0_0_0_1px_hsl(var(--sl-cool)/0.22)]",
+  primary:
+    "bg-gradient-to-b from-primary/26 to-primary/10 text-primary shadow-[inset_0_1px_0_hsla(0,0%,100%,0.7),inset_0_0_0_1px_hsl(var(--primary)/0.24)]",
+  amber:
+    "bg-gradient-to-b from-[hsl(var(--warning))]/32 to-[hsl(var(--warning))]/12 text-amber-700 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.75),inset_0_0_0_1px_hsl(var(--warning)/0.3)]",
+  green:
+    "bg-gradient-to-b from-[hsl(var(--sl-green))]/24 to-[hsl(var(--sl-green))]/10 text-[hsl(var(--sl-green))] shadow-[inset_0_1px_0_hsla(0,0%,100%,0.7),inset_0_0_0_1px_hsl(var(--sl-green)/0.22)]",
+  plain:
+    "bg-gradient-to-b from-muted to-muted/60 text-muted-foreground shadow-[inset_0_1px_0_hsla(0,0%,100%,0.8),inset_0_0_0_1px_hsla(222,47%,11%,0.06)]",
 };
 
 const COUNT: Record<SectionTone, string> = {
@@ -61,9 +73,9 @@ export function SectionHeader({
     <div className={`flex items-start gap-2.5 ${className}`}>
       {Icon && (
         <span
-          className={`flex h-7 w-7 flex-none items-center justify-center rounded-xl ${MARK[tone]}`}
+          className={`flex h-8 w-8 flex-none items-center justify-center rounded-[11px] ${MARK[tone]}`}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className="h-4 w-4" strokeWidth={2.25} />
         </span>
       )}
 

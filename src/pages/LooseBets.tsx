@@ -38,15 +38,13 @@ import {
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import { typingMemory } from "@/lib/typingMemory";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
   currency: "EUR",
   maximumFractionDigits: 2,
 });
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
 const signed = (value: number) =>
   `${value >= 0 ? "+" : ""}${eur.format(value)}`;

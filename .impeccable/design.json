@@ -338,6 +338,31 @@
         "name": "press",
         "value": "scale(0.976)",
         "purpose": "O quanto cede uma superfície debaixo do polegar."
+      },
+      {
+        "name": "entrada",
+        "value": "spring(stiffness 280, damping 28, mass 0.85) + blur(3px)→0 + y 14→0",
+        "purpose": "A entrada de qualquer bloco de página. Vive em src/lib/motion.ts."
+      },
+      {
+        "name": "fila",
+        "value": "staggerChildren 55ms, delayChildren 30ms",
+        "purpose": "Os filhos de uma página entram em cascata, não todos ao mesmo tempo."
+      },
+      {
+        "name": "nav-escorrega",
+        "value": "spring(stiffness 520, damping 38, mass 0.7) via layoutId",
+        "purpose": "A marca do destino activo escorrega de um item da barra para o outro."
+      },
+      {
+        "name": "reflexo",
+        "value": "translateX(-130%)→130% em 720ms cubic-bezier(0.2,0.8,0.2,1)",
+        "purpose": "A passagem de luz no botão laranja, e só nele."
+      },
+      {
+        "name": "luz-do-papel",
+        "value": "34s ease-in-out infinite alternate",
+        "purpose": "A deriva muito lenta da luz por trás de toda a aplicação."
       }
     ],
     "breakpoints": [
@@ -437,11 +462,11 @@
     "northStar": "A Bancada",
     "overview": "A ScoreLab vê-se de pé, com o jogo a começar, numa mão só. Por isso não é uma folha de cálculo: é a bancada. O número é o que se grita — grande, alinhado, legível de braço esticado — e tudo o resto existe para o deixar respirar. O laranja da marca é a camisola da casa: aparece onde se decide alguma coisa e em mais lado nenhum, porque se estiver em todo o lado deixa de querer dizer qualquer coisa.\n\nO chão é papel claro e quente, não branco e não cinzento, com duas auras muito fracas por baixo de tudo: laranja no topo, azul-escuro no canto de baixo. Em cima dele pousam cartões brancos com três sombras cada — linha de contacto, sombra direta, sombra ambiente — que é o que faz um retângulo parecer pousado em vez de pintado. A energia vem do contraste entre esse fundo calmo e os números, não de gradientes espalhados pela página.\n\nA cor trabalha como código de estado, nunca como decoração: cada secção tem um painel com o seu tom por baixo, e é esse tom que diz de que tipo de coisa se trata antes de se ler uma palavra. Laranja para o que há para escolher, azul frio para material de consulta, âmbar para o que está à tua espera, verde para o que já ficou fechado. Anti-referência confirmada: o HUD escuro de néon ciano que a aplicação já foi — fundo preto, vidro e brilho — não volta.",
     "keyCharacteristics": [
-      "Papel quente em baixo, cartões brancos pousados em cima, nunca o contrário.",
-      "O número é o herói: Archivo de largura variável, tabular, apertado.",
+      "Papel quente com grão em baixo, cartões brancos pousados em cima, nunca o contrário.",
+      "O número é o herói: Archivo de largura variável, tabular, apertado — e a largura é o eixo que a aplicação anima quando o saldo mexe.",
       "Laranja só onde se decide; o resto do sinal vem do tom da secção.",
       "Um gradiente em toda a aplicação, e só num botão e na barra de topo.",
-      "Tudo em que um polegar toca cede debaixo dele."
+      "Tudo em que um polegar toca cede debaixo dele; o que entra, entra com mola."
     ],
     "rules": [
       {
@@ -487,6 +512,11 @@
       {
         "name": "A Regra das Três Sombras",
         "body": "Uma sombra sozinha não se usa. Contacto, direta e ambiente andam sempre juntas — é a ausência da linha de contacto que faz um cartão parecer colado ao fundo.",
+        "section": "elevation"
+      },
+      {
+        "name": "A Regra dos Três Momentos",
+        "body": "Há exactamente três momentos autorais de movimento, e cada um aparece num sítio só: o reflexo que atravessa o botão laranja, a marca da navegação que escorrega de um destino para o outro, e a largura da figura que abre e fecha quando o saldo muda. Um quarto tira o lugar a estes.",
         "section": "elevation"
       }
     ],

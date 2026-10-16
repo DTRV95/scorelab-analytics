@@ -10,6 +10,7 @@ import {
   Flag,
   RotateCcw,
   Settings2,
+  Sparkles,
   Swords,
   Trash2,
   UserPlus,
@@ -111,17 +112,9 @@ import {
   type LoadedBoard,
 } from "@/lib/boardSource";
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BOARD_DAYS = 7;
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
 
 /** The day a challenge was given as over, as somebody would say it. */
 function endedOn(at: string | null): string {
@@ -1713,19 +1706,22 @@ export default function Challenges() {
           {/* The document's own columns, in its order, so the sheet on the
               table and the screen can be read side by side. */}
           <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
-            <span className="sl-meta w-9 flex-none text-[10px] uppercase tracking-[0.1em]">
+            {/* "NÍVEL" a 0,1em de entreletra não cabia nos 36px da coluna
+                e encostava a "BANCA". A entreletra desceu e a coluna
+                alargou — é um cabeçalho de tabela, não uma sobrancelha. */}
+            <span className="sl-meta w-10 flex-none text-[10px] uppercase tracking-[0.05em]">
               Nível
             </span>
-            <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.05em]">
               Banca
             </span>
-            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.05em]">
               Aposta
             </span>
-            <span className="sl-meta w-10 flex-none text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta w-10 flex-none text-right text-[10px] uppercase tracking-[0.05em]">
               Odd
             </span>
-            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.05em]">
               Total
             </span>
           </div>
@@ -1756,7 +1752,7 @@ export default function Challenges() {
                   }`}
                 >
                   <span
-                    className={`sl-figure flex h-6 w-9 flex-none items-center justify-center rounded-lg text-[11px] ${
+                    className={`sl-figure flex h-6 w-10 flex-none items-center justify-center rounded-lg text-[11px] ${
                       today
                         ? "text-white shadow-sm [background:var(--sl-gradient)]"
                         : done
@@ -1803,11 +1799,25 @@ export default function Challenges() {
           )}
         </motion.section>
 
+        {/* Em contorno, e não em laranja cheio: no fundo da página de um
+            desafio a decorrer, começar outro é uma saída, não o que há a
+            fazer. O laranja desta página é do botão que fecha o nível. No
+            catálogo, onde criar é o assunto, continua cheio. */}
         <motion.div variants={fadeUp}>
-          <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
+          <CreateChallenge
+            onCreated={() => setToken((value) => value + 1)}
+            trigger={(openIt) => (
+              <Button
+                variant="outline"
+                className="sl-tap h-12 w-full text-sm font-bold"
+                onClick={openIt}
+              >
+                <Sparkles className="h-4 w-4" />
+                Novo desafio
+              </Button>
+            )}
+          />
         </motion.div>
-
-
 
         <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
           <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">

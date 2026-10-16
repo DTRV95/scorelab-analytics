@@ -22,15 +22,13 @@ import {
   fetchPlans,
   type PlanBet,
 } from "@/lib/planStore";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
   currency: "EUR",
   maximumFractionDigits: 2,
 });
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
 interface BarRow {
   label: string;

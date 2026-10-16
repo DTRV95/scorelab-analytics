@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PublicBoard } from "@/components/PublicBoard";
 import { COVERED_LEAGUES } from "@/lib/boardLeagues";
+import { stagger } from "@/lib/motion";
 
 /**
  * The page everybody meets before signing in.
@@ -31,11 +32,6 @@ const ease = [0.22, 0.61, 0.36, 1] as const;
 const rise = {
   hidden: { opacity: 0, y: 18 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07 } },
 };
 
 const SHOW = { once: true, amount: 0.3 } as const;

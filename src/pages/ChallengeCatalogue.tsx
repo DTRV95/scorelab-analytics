@@ -49,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -56,16 +57,6 @@ const eur = new Intl.NumberFormat("pt-PT", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.04 } },
-};
 
 function Stars({ count }: { count: number }) {
   return (

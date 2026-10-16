@@ -122,7 +122,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                 preço — e por isso o número lia-se a 13px, que para o
                 assunto da linha é pequeno. */}
             <div className="flex-none text-right">
-              <p className="sl-figure text-[22px] leading-none text-[hsl(var(--sl-green))]">
+              <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[25px] leading-none text-[hsl(var(--sl-green))]">
                 {match.headline_pct.toFixed(0)}
                 <span className="text-[13px]">%</span>
               </p>

@@ -4,6 +4,7 @@ import {
   HudStatusPill,
   type HudTone,
 } from "@/components/HudLayer";
+import { fadeUp } from "@/lib/motion";
 
 type MatchdayHeroProps = {
   eyebrow: string;
@@ -13,11 +14,6 @@ type MatchdayHeroProps = {
   statusIcon?: ReactNode;
   statusItems?: ReactNode;
   visual?: ReactNode;
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 export function MatchdayHero({

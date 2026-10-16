@@ -163,12 +163,19 @@ que já ficou fechado. **Anti-referência confirmada:** o HUD escuro de néon ci
 que a aplicação já foi (`scorelab-aurora`, `scorelab-premium-shell`) — fundo
 preto, vidro e brilho — não volta.
 
+O papel não é liso nem está parado: tem grão (um ruído a 4%, fixo, por trás de
+tudo) e uma luz que atravessa a página muito devagar — 34 segundos de um lado
+ao outro, parada para quem pediu menos movimento ao sistema. É o que separa um
+fundo pintado de uma superfície.
+
 **Key Characteristics:**
-- Papel quente em baixo, cartões brancos pousados em cima, nunca o contrário.
-- O número é o herói: `Archivo` de largura variável, tabular, apertado.
+- Papel quente com grão em baixo, cartões brancos pousados em cima, nunca o
+  contrário.
+- O número é o herói: `Archivo` de largura variável, tabular, apertado — e a
+  largura é o eixo que a aplicação anima quando o saldo mexe.
 - Laranja só onde se decide; o resto do sinal vem do tom da secção.
 - Um gradiente em toda a aplicação, e só num botão e na barra de topo.
-- Tudo em que um polegar toca cede debaixo dele.
+- Tudo em que um polegar toca cede debaixo dele; o que entra, entra com mola.
 
 ## Colors
 
@@ -308,6 +315,21 @@ bloco que manda em cada página.
   principal da página — a banca, o nível, o boletim a fechar.
 - **Brilho da marca** (`0 6px 18px -6px` em laranja a 42%): só por baixo do
   botão laranja.
+
+### Movimento
+
+Um sistema só, em `src/lib/motion.ts`, importado por todas as páginas: o
+conteúdo entra de baixo com mola (`stiffness` 280, `damping` 28), sai de um
+desfoque de 3px, e os filhos de uma página entram em fila a 55ms de intervalo.
+Nada disto usa durações fixas — uma mola acaba quando o peso manda, e é isso
+que o olho lê como físico. O `<MotionConfig reducedMotion="user">` na raiz
+desliga tudo para quem pediu menos movimento, sem cada componente ter de se
+lembrar.
+
+Há exactamente três momentos autorais, e cada um aparece num sítio só: o
+reflexo que atravessa o botão laranja, a marca da navegação que escorrega de
+um destino para o outro, e a largura da figura que abre e fecha quando o saldo
+muda.
 
 ### Named Rules
 

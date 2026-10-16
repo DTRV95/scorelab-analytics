@@ -57,16 +57,7 @@ import {
 } from "@/hooks/usePullToRefresh";
 import { matchTips, type MatchTip } from "@/lib/matchTips";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BOARD_DAYS = 7;
 
@@ -234,9 +225,9 @@ function BoardMatchRow({
         </div>
 
         <div className="flex-none text-right">
-          <p className="sl-figure text-[26px] leading-none text-[hsl(var(--sl-green))]">
+          <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[30px] leading-none text-[hsl(var(--sl-green))]">
             {match.headline_pct.toFixed(0)}
-            <span className="text-[15px]">%</span>
+            <span className="text-[16px]">%</span>
           </p>
           {/* Acertar não é ganhar: a este preço a aposta fica a zero, e a
               casa de apostas também sabe que esta equipa não perde. */}

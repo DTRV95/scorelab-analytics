@@ -6,15 +6,13 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollTrend } from "@/components/BankrollTrend";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import type { HomeChallenge } from "@/lib/homeBoard";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
   currency: "EUR",
   maximumFractionDigits: 2,
 });
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
 const signed = (value: number) =>
   `${value >= 0 ? "+" : ""}${eur.format(value)}`;

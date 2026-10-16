@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { BarChart3, Globe, Percent, Ticket, Trophy } from "lucide-react";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function MobileBottomNav() {
   const location = useLocation();
   // Somebody waiting for an answer, on the one bar a phone always has.
   const { invites } = usePlanBoard();
+  const still = useReducedMotion();
   const onHome =
     location.pathname === HOME.url || location.pathname === "/";
 
@@ -42,20 +44,42 @@ export function MobileBottomNav() {
         to={entry.url}
         data-active={isActive}
         className={cn(
-          "sl-tap sl-bottomnav-item relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition",
-          isActive ? "" : "text-white/55 hover:text-white/85",
+          "sl-tap relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1.5 text-[10px] font-semibold transition-colors",
+          isActive
+            ? "text-[hsl(22_100%_62%)]"
+            : "text-white/55 hover:text-white/85",
         )}
       >
-        <entry.icon className="h-[18px] w-[18px]" strokeWidth={2} />
+        {/* A marca do sítio onde se está escorrega de um para o outro em vez
+            de apagar aqui e acender ali. É o mesmo elemento a mudar de
+            lugar — é isso que dá a sensação de a barra estar viva. */}
+        {isActive && (
+          <motion.span
+            layoutId="sl-nav-aqui"
+            className="absolute inset-0 rounded-[20px] bg-primary/[0.18] shadow-[inset_0_1px_0_hsl(var(--primary)/0.28)]"
+            transition={
+              still
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 520, damping: 38, mass: 0.7 }
+            }
+          />
+        )}
+        <entry.icon
+          className={cn(
+            "relative h-[18px] w-[18px] transition-transform duration-200",
+            isActive && !still && "-translate-y-px scale-110",
+          )}
+          strokeWidth={isActive ? 2.4 : 2}
+        />
         {asking > 0 && (
           <span
-            className="absolute right-1.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground"
+            className="absolute right-1.5 top-0.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shadow-[0_0_0_2px_hsl(var(--sl-nav))]"
             aria-label={`${asking} ${asking === 1 ? "convite" : "convites"}`}
           >
             {asking}
           </span>
         )}
-        <span className="max-w-full truncate">{entry.title}</span>
+        <span className="relative max-w-full truncate">{entry.title}</span>
       </Link>
     );
   };

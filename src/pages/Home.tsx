@@ -18,7 +18,6 @@ import { HomeInsights } from "@/components/HomeInsights";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { TopGames } from "@/components/TopGames";
-import { Achievements } from "@/components/Achievements";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
@@ -30,16 +29,7 @@ import { seenByPlan } from "@/lib/seenStore";
 import { type PlanBet } from "@/lib/planStore";
 import { loadBoard } from "@/lib/boardSource";
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 /** Where else there is to go, for the pages nothing above leads to. */
 const DOORS = [
@@ -219,18 +209,6 @@ export default function Home() {
     [bets],
   );
 
-  /** O nível mais alto a que chegou em qualquer desafio, terminado ou não. */
-  const topLevel = useMemo(
-    () =>
-      board
-        ? board.challenges.reduce(
-            (best, entry) => Math.max(best, entry.standing.day),
-            0,
-          )
-        : 0,
-    [board],
-  );
-
   const insights = useMemo(
     () =>
       board
@@ -345,20 +323,6 @@ export default function Home() {
           <HomeInsights insights={insights} settled={settled} />
         </motion.div>
 
-        {/* As conquistas contam o registo todo — desafios e apostas soltas —
-            porque é tudo juízo da mesma pessoa. Ganham-se por preço, por
-            escolher o que o quadro mede bem e por manter isto em dia; nunca
-            por apostar mais. */}
-        {user && (
-          <motion.div variants={fadeUp}>
-            <Achievements
-              bets={[...bets, ...looseBets]}
-              level={topLevel}
-              userId={user.id}
-            />
-          </motion.div>
-        )}
-
         {rivals.length > 0 && (
           <motion.div variants={fadeUp}>
             <HomeRivals rivalries={rivals} news={news} />
@@ -368,7 +332,6 @@ export default function Home() {
         <motion.div variants={fadeUp}>
           <TopGames board={games} />
         </motion.div>
-
 
         {/* The rest of the app, from the page it opens on.
             Everything above is a door to the page that holds the whole of it;

@@ -13,9 +13,7 @@ import {
   type LeagueMarket,
   type LeagueReport,
 } from "@/lib/leagueReport";
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+import { fadeUp, stagger } from "@/lib/motion";
 
 const RUN_TONE: Record<string, string> = {
   V: "bg-[hsl(var(--sl-green))] text-white",

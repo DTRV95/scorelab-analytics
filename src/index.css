@@ -132,6 +132,60 @@
     background-attachment: fixed;
   }
 
+  /* ---------------------------------------------------------------------
+     A luz e o grão do papel.
+
+     O fundo era plano: duas manchas paradas debaixo de tudo. Numa bancada a
+     luz não está parada — move-se devagar, muito devagar, de um lado para o
+     outro, e o papel tem textura. São duas camadas fixas por trás de toda a
+     aplicação, ambas intocáveis pelo rato, ambas a 4% ou menos: nada por
+     cima delas muda de cor, só deixa de assentar em vazio.
+     --------------------------------------------------------------------- */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        46% 38% at 22% 14%,
+        hsla(18, 100%, 54%, 0.1),
+        transparent 70%
+      ),
+      radial-gradient(
+        40% 34% at 82% 76%,
+        hsla(214, 88%, 46%, 0.07),
+        transparent 72%
+      );
+    animation: sl-luz 34s ease-in-out infinite alternate;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)' opacity='0.09'/%3E%3C/svg%3E");
+  }
+
+  /* O conteúdo vive por cima das duas. */
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes sl-luz {
+    from {
+      transform: translate3d(-3%, -2%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(3%, 2%, 0) scale(1.08);
+    }
+  }
+
   ::selection {
     color: hsl(var(--primary-foreground));
     background: hsl(var(--primary) / 0.85);
@@ -140,6 +194,36 @@
   :focus-visible {
     outline: 2px solid hsl(var(--primary) / 0.7);
     outline-offset: 2px;
+  }
+
+  /* A barra de deslocamento também é da casa. É o sítio onde se vê, sem
+     pensar nisso, que uma página foi desenhada e não montada. */
+  @supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background-clip: content-box;
+      background-color: hsl(var(--muted-foreground) / 0.3);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: hsl(var(--muted-foreground) / 0.5);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before {
+      animation: none;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -223,28 +307,59 @@
     box-shadow: inset 0 0 0 1px hsla(222, 47%, 11%, 0.05);
   }
 
+  /* Os tons subiram de 10% para 15% e ganharam um fio branco no topo e uma
+     sombra da sua própria cor por baixo: o painel deixa de ser uma mancha
+     pintada e passa a ser uma superfície com luz em cima e peso em baixo. */
   .sl-sec[data-tone="primary"] {
     background:
-      linear-gradient(180deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.03));
-    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.18);
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.15),
+        hsl(var(--primary) / 0.035)
+      );
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.55),
+      inset 0 0 0 1px hsl(var(--primary) / 0.22),
+      0 10px 26px -20px hsl(var(--primary) / 0.7);
   }
 
   .sl-sec[data-tone="cool"] {
     background:
-      linear-gradient(180deg, hsl(var(--sl-cool) / 0.1), hsl(var(--sl-cool) / 0.03));
-    box-shadow: inset 0 0 0 1px hsl(var(--sl-cool) / 0.2);
+      linear-gradient(
+        180deg,
+        hsl(var(--sl-cool) / 0.15),
+        hsl(var(--sl-cool) / 0.035)
+      );
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.55),
+      inset 0 0 0 1px hsl(var(--sl-cool) / 0.24),
+      0 10px 26px -20px hsl(var(--sl-cool) / 0.7);
   }
 
   .sl-sec[data-tone="amber"] {
     background:
-      linear-gradient(180deg, hsl(var(--warning) / 0.16), hsl(var(--warning) / 0.05));
-    box-shadow: inset 0 0 0 1px hsl(var(--warning) / 0.3);
+      linear-gradient(
+        180deg,
+        hsl(var(--warning) / 0.22),
+        hsl(var(--warning) / 0.06)
+      );
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.6),
+      inset 0 0 0 1px hsl(var(--warning) / 0.34),
+      0 10px 26px -20px hsl(var(--warning) / 0.75);
   }
 
   .sl-sec[data-tone="green"] {
     background:
-      linear-gradient(180deg, hsl(var(--sl-green) / 0.1), hsl(var(--sl-green) / 0.03));
-    box-shadow: inset 0 0 0 1px hsl(var(--sl-green) / 0.2);
+      linear-gradient(
+        180deg,
+        hsl(var(--sl-green) / 0.15),
+        hsl(var(--sl-green) / 0.035)
+      );
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.55),
+      inset 0 0 0 1px hsl(var(--sl-green) / 0.24),
+      0 10px 26px -20px hsl(var(--sl-green) / 0.7);
   }
 
   /* O título de uma secção: a marca de cor, o nome, e o que houver a
@@ -420,6 +535,36 @@
       0 10px 24px -8px hsla(14, 100%, 50%, 0.6);
   }
 
+  /* Uma passagem de luz pelo botão que compromete, e só por esse. É o
+     único sítio da aplicação onde há um reflexo a mexer: se andasse em
+     mais algum, deixava de assinalar o botão que importa. */
+  .sl-btn-primary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .sl-btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      hsla(0, 0%, 100%, 0.3) 50%,
+      transparent 62%
+    );
+    transform: translateX(-130%);
+    transition: transform 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .sl-btn-primary:hover::after,
+  .sl-btn-primary:focus-visible::after {
+    transform: translateX(130%);
+  }
+
   .sl-btn-primary:active {
     transform: scale(0.985);
   }
@@ -440,6 +585,7 @@
     background: var(--sl-gradient);
     color: hsl(var(--primary-foreground));
     position: relative;
+    transition: box-shadow 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
     /* The bar is on every page, so a little depth here is depth everywhere:
        a sheen across the top, a darker hairline at the bottom to separate it
        from the canvas, and a shadow the cards can sit under. */
@@ -447,6 +593,16 @@
       inset 0 1px 0 hsla(0, 0%, 100%, 0.22),
       inset 0 -1px 0 hsla(14, 90%, 28%, 0.4),
       0 10px 24px -16px hsla(14, 100%, 40%, 0.9);
+  }
+
+  /* Com página por baixo, a barra passa a pesar: a sombra abre e o fio de
+     baixo escurece, para o conteúdo passar debaixo de alguma coisa em vez
+     de desaparecer contra ela. */
+  .sl-topbar[data-scrolled="true"] {
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.22),
+      inset 0 -1px 0 hsla(14, 90%, 24%, 0.55),
+      0 14px 34px -18px hsla(14, 100%, 36%, 0.95);
   }
 
   .sl-topbar::after {
@@ -465,16 +621,22 @@
      now a pill that floats above the page, so the colour moves off the strip
      and onto the pill itself — the strip has to stay see-through for the
      content to show under it. */
+  /* A pílula é escura por cima de papel claro, por isso a luz tem de vir de
+     dentro: um fio branco no topo, um brilho quente muito fraco onde o botão
+     de Início assenta, e uma sombra que a põe mesmo a flutuar. A marca do
+     sítio activo é do componente, que a faz escorregar de um para o outro. */
   .sl-bottomnav-pill {
-    background: hsl(var(--sl-nav));
+    background:
+      radial-gradient(
+        120% 160% at 50% -40%,
+        hsl(var(--primary) / 0.22),
+        transparent 62%
+      ),
+      hsl(var(--sl-nav));
     box-shadow:
-      0 12px 28px -12px hsl(var(--sl-nav) / 0.65),
-      0 2px 10px hsl(var(--sl-nav) / 0.22);
-  }
-
-  .sl-bottomnav-item[data-active="true"] {
-    background: hsl(var(--primary) / 0.18);
-    color: hsl(22 100% 62%);
+      inset 0 1px 0 hsla(0, 0%, 100%, 0.1),
+      0 2px 10px hsl(var(--sl-nav) / 0.22),
+      0 18px 38px -14px hsl(var(--sl-nav) / 0.7);
   }
 
   /* The dark palette the public pages used to be painted in lived here. They
@@ -738,17 +900,20 @@
     );
   }
 
-  /* Um traço de cor antes do título, que dá uma âncora à página. */
+  /* Um traço de cor antes do título, que dá uma âncora à página.
+     Alinhado ao topo e esticado a toda a altura: com um título de duas
+     linhas — "PLANO MILHÃO" num telemóvel — o traço ficava a meio, ao lado
+     da segunda palavra, como se marcasse essa e não o título. */
   .sl-section-title {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 0.55rem;
   }
 
   .sl-section-title::before {
     content: "";
     width: 4px;
-    height: 1em;
+    min-height: 1em;
     flex: none;
     border-radius: 999px;
     background: var(--sl-gradient);
@@ -784,12 +949,21 @@
   }
 
   /* Um número que acabou de mudar pisca uma vez, para o olho ir lá ter. */
+  /* O número não muda, acontece.
+     O Archivo é de largura variável, e é esse o eixo que esta aplicação usa
+     como peso: quando o saldo mexe, a figura abre a largura e volta, além
+     de acender. É o gesto mais próprio que esta letra tem, e não há mais
+     nenhum sítio na aplicação onde ele seja usado. */
   @keyframes sl-figure-changed {
     0% {
       color: hsl(var(--primary));
+      font-variation-settings: "wdth" 124;
+      letter-spacing: -0.022em;
     }
     100% {
       color: inherit;
+      font-variation-settings: "wdth" 112;
+      letter-spacing: -0.03em;
     }
   }
 
