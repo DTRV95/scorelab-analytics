@@ -449,7 +449,7 @@ export function CreateChallenge({
             </DialogTitle>
           </DialogHeader>
 
-      <div className="flex gap-1.5 overflow-x-auto px-4 py-3">
+      <div className="sl-scroll-x flex gap-1.5 overflow-x-auto px-4 py-3">
         {CHALLENGE_TEMPLATES.map((template, index) => (
           <button
             key={template.key}

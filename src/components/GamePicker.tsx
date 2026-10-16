@@ -601,7 +601,7 @@ export function GamePicker({
               never once appear on screen — from the outside, identical to
               the provider not sending it. This says which leagues are
               actually there, and gets to them in one tap. */}
-          <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="sl-scroll-x -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
             <button
               type="button"
               onClick={() => setLeague(null)}
@@ -643,7 +643,7 @@ export function GamePicker({
           {/* One day at a time, because seven days of a dozen competitions is
               a list nobody reads to the end. */}
           {days.length > 1 && (
-            <div className="-mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="sl-scroll-x -mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
               {days.map((row) => (
                 <button
                   key={row.key}

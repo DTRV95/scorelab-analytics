@@ -138,7 +138,7 @@ function CalibrationChart({ bands }: { bands: AccuracyBand[] }) {
             }}
           />
           <Tooltip
-            wrapperClassName="scorelab-chart-tooltip"
+            wrapperClassName="sl-chart-tooltip"
             formatter={(value: number, name: string) => [`${value}%`, name]}
             labelFormatter={(label) =>
               `Banda ${label}% · ${samplesByBand.get(String(label)) ?? 0} previsões`

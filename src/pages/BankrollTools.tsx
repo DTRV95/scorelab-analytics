@@ -73,8 +73,12 @@ function WhereTheMoneyIs({ rows }: { rows: HomeChallenge[] }) {
                 className="relative mt-1 h-2.5 overflow-hidden rounded-full bg-muted"
                 title={`${plan.name}: ${eur.format(standing.bankroll)}, começou em ${eur.format(standing.startingBankroll)}`}
               >
+                {/* Azul, não laranja: isto é a medida de onde está o
+                    dinheiro, não um botão. O laranja da casa serve para
+                    decidir, e duas barras na mesma página — esta e a do
+                    lucro, em verde — não podem ter cada uma a sua regra. */}
                 <div
-                  className="h-full rounded-full bg-primary"
+                  className="h-full rounded-full bg-[hsl(var(--sl-cool))]"
                   style={{ width: `${Math.max(width, 2)}%` }}
                 />
                 <div

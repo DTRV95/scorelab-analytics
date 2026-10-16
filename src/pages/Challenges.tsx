@@ -1165,7 +1165,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Regras deste desafio"
               aria-label="Regras deste desafio"
               onClick={() => setRulesOpen(true)}
@@ -1177,7 +1177,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Convidar alguém"
               aria-label="Convidar alguém"
               onClick={() => setInvitesOpen(true)}
@@ -1188,7 +1188,7 @@ export default function Challenges() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+            className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Atualizar"
             onClick={() => {
               setToken((value) => value + 1);
@@ -1202,7 +1202,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title={ended ? "Reabrir este desafio" : "Terminar este desafio"}
               aria-label={ended ? "Reabrir este desafio" : "Terminar este desafio"}
               onClick={() => setEndOpen(true)}
@@ -1239,7 +1239,7 @@ export default function Challenges() {
             whole table of rules stays one tap away, behind the icon. */}
         {intro && (
           <motion.div variants={fadeUp} className="sl-card px-4 py-3">
-            <p className="text-[12.5px] leading-6 text-foreground">
+            <p className="text-[12.5px] leading-[1.5] text-foreground">
               {intro.sentence}
             </p>
             <p className="sl-meta mt-1 text-[11px] leading-5">{intro.terms}</p>
@@ -1331,7 +1331,6 @@ export default function Challenges() {
           <Section
             tone="amber"
             icon={Clock}
-            eyebrow="À espera de ti"
             title="Por fechar"
             count={openBets.length}
             note="A banca só mexe quando estas fecharem."
@@ -1440,7 +1439,7 @@ export default function Challenges() {
               thirty-eight days, and a bar that never moves says nothing. */}
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
             <motion.div
-              className="h-full rounded-full [background:var(--sl-gradient)]"
+              className="h-full rounded-full bg-[hsl(var(--sl-cool))]"
               initial={{ width: 0 }}
               animate={{ width: `${Math.max((day / rules.days) * 100, 2)}%` }}
               transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
@@ -1469,7 +1468,6 @@ export default function Challenges() {
             <Section
               tone={waitingOn.some((i) => i.status === "pending") ? "amber" : "plain"}
               icon={UserPlus}
-              eyebrow="Convites"
               title="Ainda não entraram"
               count={waitingOn.length}
               className="space-y-1.5"
@@ -1668,7 +1666,7 @@ export default function Challenges() {
               <button
                 type="button"
                 onClick={() => setAllDays((open) => !open)}
-                className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+                className="sl-tap w-full border-t border-border py-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 {allDays ? "Mostrar só os últimos 2 níveis" : "Ver todos os níveis"}
               </button>
@@ -1715,7 +1713,7 @@ export default function Challenges() {
           {/* The document's own columns, in its order, so the sheet on the
               table and the screen can be read side by side. */}
           <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
-            <span className="sl-meta w-6 flex-none text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta w-9 flex-none text-[10px] uppercase tracking-[0.1em]">
               Nível
             </span>
             <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.1em]">
@@ -1758,7 +1756,7 @@ export default function Challenges() {
                   }`}
                 >
                   <span
-                    className={`sl-figure flex h-6 w-6 flex-none items-center justify-center rounded-lg text-[11px] ${
+                    className={`sl-figure flex h-6 w-9 flex-none items-center justify-center rounded-lg text-[11px] ${
                       today
                         ? "text-white shadow-sm [background:var(--sl-gradient)]"
                         : done
@@ -1789,7 +1787,7 @@ export default function Challenges() {
             <button
               type="button"
               onClick={() => setWholeTable(true)}
-              className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+              className="sl-tap w-full border-t border-border py-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
             >
               Ver o quadro todo ({ladder.length} níveis)
             </button>

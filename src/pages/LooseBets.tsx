@@ -394,7 +394,7 @@ export default function LooseBets() {
         {bets.length === 0 && (
           <motion.p
             variants={fadeUp}
-            className="sl-card px-4 py-4 text-[13px] leading-6 text-muted-foreground"
+            className="sl-card px-4 py-4 text-[13px] leading-[1.5] text-muted-foreground"
           >
             Ainda não há nenhuma. Uma aposta registada aqui não tem nível nem
             escada: é só o que jogaste, por quanto, e como correu.
@@ -414,7 +414,6 @@ export default function LooseBets() {
             <Section
               tone="amber"
               icon={Clock}
-              eyebrow="À espera"
               title="Por decidir"
               count={pending.length}
               note={
@@ -436,7 +435,6 @@ export default function LooseBets() {
             <Section
               tone="green"
               icon={CheckCheck}
-              eyebrow="Já se sabe"
               title="Fechadas"
               count={settled.length}
               className="space-y-2.5"

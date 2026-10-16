@@ -121,7 +121,7 @@ export function FinishedChallenges({
 }) {
   if (entries.length === 0) {
     return (
-      <p className="sl-card px-4 py-4 text-[12px] leading-6 text-muted-foreground">
+      <p className="sl-card px-4 py-4 text-[12px] leading-[1.5] text-muted-foreground">
         Ainda não terminaste nenhum desafio. Quando terminares um, fica aqui
         com o que deu — e continua inteiro lá dentro, com todas as apostas.
       </p>

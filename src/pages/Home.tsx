@@ -4,11 +4,13 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BarChart3,
+  ChevronRight,
   Gauge,
   Globe,
   Percent,
   Trophy,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
@@ -45,7 +47,7 @@ const DOORS = [
     to: "/desafios",
     icon: Trophy,
     title: "Desafios",
-    detail: "Começar outro",
+    detail: "Começar",
   },
   // Short on purpose: two to a row on a phone, and a title cut off mid-word
   // is a door with no sign on it.
@@ -66,26 +68,37 @@ const DOORS = [
   },
 ];
 
+/**
+ * As portas para o resto da aplicação.
+ *
+ * Eram quatro cartões iguais, cada um com a sua sombra: quatro caixas a
+ * disputar a atenção com o que interessa por cima delas. São agora um bloco
+ * só, dividido por fios — continuam a ser quatro sítios, deixaram de ser
+ * quatro objectos.
+ */
 function HomeDoors() {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {DOORS.map((door) => (
+    <div className="sl-card grid grid-cols-2 overflow-hidden">
+      {DOORS.map((door, index) => (
         <Link
           key={door.to}
           to={door.to}
-          className="sl-card sl-card-interactive sl-tap flex items-center gap-2.5 px-3 py-2.5"
+          className={cn(
+            "sl-tap group flex min-h-[56px] items-center gap-2.5 px-3.5 py-3 transition-colors hover:bg-muted/60",
+            index % 2 === 0 && "border-r border-border/70",
+            index > 1 && "border-t border-border/70",
+          )}
         >
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
-            <door.icon className="h-3.5 w-3.5 text-muted-foreground" />
-          </span>
+          <door.icon className="h-[17px] w-[17px] flex-none text-primary/75" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12.5px] font-semibold text-foreground">
+            <span className="block truncate text-[13px] font-bold tracking-[-0.01em] text-foreground">
               {door.title}
             </span>
-            <span className="sl-meta block truncate text-[10.5px]">
+            <span className="sl-meta block truncate text-[11px]">
               {door.detail}
             </span>
           </span>
+          <ChevronRight className="h-4 w-4 flex-none text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
         </Link>
       ))}
     </div>

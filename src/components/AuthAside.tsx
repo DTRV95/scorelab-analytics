@@ -41,13 +41,13 @@ export function AuthAside({
         <h2 className="mt-8 text-3xl font-black leading-[1.1] tracking-[-0.025em] text-foreground">
           {title}
         </h2>
-        <p className="mt-3 text-[14px] leading-7 text-muted-foreground">{lead}</p>
+        <p className="mt-3 text-[14px] leading-[1.5] text-muted-foreground">{lead}</p>
 
         <ul className="mt-7 space-y-2.5">
           {points.map((point) => (
             <li
               key={point}
-              className="flex items-start gap-2.5 text-[13px] leading-6 text-foreground"
+              className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-foreground"
             >
               <span className="mt-1 flex h-4 w-4 flex-none items-center justify-center rounded-full bg-[hsl(var(--sl-green))]/12 text-[hsl(var(--sl-green))]">
                 <Check className="h-2.5 w-2.5" strokeWidth={3} />

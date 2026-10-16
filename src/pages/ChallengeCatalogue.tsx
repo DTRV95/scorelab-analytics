@@ -463,7 +463,7 @@ export default function ChallengeCatalogue() {
             )}
 
             {shelf === "decorrer" && running.length === 0 && (
-              <p className="sl-card px-4 py-4 text-[12px] leading-6 text-muted-foreground">
+              <p className="sl-card px-4 py-4 text-[12px] leading-[1.5] text-muted-foreground">
                 Não tens nenhum desafio a decorrer. Escolhe um aqui em baixo,
                 ou vê os que já terminaste.
               </p>
@@ -529,7 +529,7 @@ export default function ChallengeCatalogue() {
 
           {/* Four chips rather than one button that cycles: with four orders,
               a cycle means tapping past the ones you did not want. */}
-          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden">
+          <div className="sl-scroll-x -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5">
             {ORDERS.map(([value, label]) => (
               <button
                 key={value}

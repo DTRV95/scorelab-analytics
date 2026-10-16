@@ -63,7 +63,10 @@ interface BarRow {
  */
 function tone(row: BarRow): { bar: string; text: string } {
   if (row.mark == null || row.pct === null) {
-    return { bar: "bg-primary", text: "text-muted-foreground" };
+    // Azul, não laranja. Uma barra sem veredicto é uma medida, e o laranja
+    // da casa quer dizer "aqui decide-se alguma coisa" — com meia página
+    // de barras laranja deixava de querer dizer o que quer que fosse.
+    return { bar: "bg-[hsl(var(--sl-cool))]", text: "text-muted-foreground" };
   }
   if (row.thin) {
     return { bar: "bg-muted-foreground/40", text: "text-muted-foreground" };

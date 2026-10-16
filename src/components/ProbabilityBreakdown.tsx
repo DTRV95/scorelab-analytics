@@ -40,10 +40,18 @@ export const MARKET_LABELS: Record<string, string> = {
 
 const GROUP_ORDER = ["Resultado", "Golos", "Ambas Marcam", "Combinados"];
 
+/**
+ * Verde acima de 60, azul no meio, cinzento em baixo.
+ *
+ * O meio era laranja — a cor da marca, que nesta aplicação quer dizer "aqui
+ * decide-se alguma coisa". Numa lista de quinze mercados isso punha metade
+ * da coluna a gritar sem nada para decidir. O emerald-600 e o slate-300
+ * eram cores do Tailwind em cru, de fora do sistema.
+ */
 function barTone(pct: number) {
-  if (pct >= 60) return "bg-emerald-600";
-  if (pct >= 40) return "bg-primary";
-  return "bg-slate-300";
+  if (pct >= 60) return "bg-[hsl(var(--sl-green))]";
+  if (pct >= 40) return "bg-[hsl(var(--sl-cool))]";
+  return "bg-muted-foreground/30";
 }
 
 /**

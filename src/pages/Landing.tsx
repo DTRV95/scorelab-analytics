@@ -203,7 +203,7 @@ export default function Landing() {
                   <h3 className="mt-3 text-[17px] font-black tracking-[-0.015em] text-foreground">
                     {feature.title}
                   </h3>
-                  <p className="mt-1.5 text-[13.5px] leading-7 text-muted-foreground">
+                  <p className="mt-1.5 text-[13.5px] leading-[1.5] text-muted-foreground">
                     {feature.text}
                   </p>
                 </motion.article>

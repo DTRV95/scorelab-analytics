@@ -2,21 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Medal } from "lucide-react";
 import { Section } from "@/components/Section";
-import { achievements, type Achievement } from "@/lib/achievements";
+import { achievements } from "@/lib/achievements";
 import {
   markAchievementsSeen,
   seenAchievements,
 } from "@/lib/achievementsSeen";
 import type { PlanBet } from "@/lib/planStore";
 
-/** Uma medalha tem de se ver: fundo da cor do que é, e um aro por cima. */
-const TONE: Record<Achievement["tone"], string> = {
-  discipline:
-    "bg-[hsl(var(--sl-green))]/14 text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/25",
-  record:
-    "bg-[hsl(var(--sl-cool))]/12 text-[hsl(var(--sl-cool))] ring-1 ring-[hsl(var(--sl-cool))]/25",
-  ladder: "bg-primary/12 text-primary ring-1 ring-primary/25",
-};
+/**
+ * Ganhas são todas verdes.
+ *
+ * Eram três cores — verde, azul e laranja — por três famílias que só
+ * existem no código: nada no ecrã dizia o que distinguia uma medalha azul
+ * de uma laranja, e o laranja da casa quer dizer "aqui decide-se alguma
+ * coisa", que uma medalha já ganha não é. Uma cor só, a da secção, e o
+ * destaque fica para o que acabou de entrar.
+ */
+const EARNED =
+  "bg-[hsl(var(--sl-green))]/14 text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/25";
+const JUST_EARNED =
+  "bg-[hsl(var(--sl-green))] text-white ring-1 ring-[hsl(var(--sl-green))]";
 
 /**
  * As conquistas, e a que vem a seguir.
@@ -71,15 +76,21 @@ export function Achievements({
     <Section
       tone="green"
       icon={Medal}
-      eyebrow="Conquistas"
+      // O nome estava na sobrancelha e a contagem no título, que é ao
+      // contrário: o título diz o que isto é, a contagem anda ao lado.
       title={
         fresh.length === 1
           ? `Ganhaste: ${fresh[0].title}`
           : fresh.length > 1
             ? `Ganhaste ${fresh.length} novas`
-            : `${view.earned.length} de ${view.all.length}`
+            : "Conquistas"
       }
       count={fresh.length > 0 ? fresh.length : undefined}
+      note={
+        fresh.length > 0
+          ? undefined
+          : `${view.earned.length} de ${view.all.length} conquistadas.`
+      }
       className="space-y-2"
     >
       <div className="flex flex-wrap gap-1.5 px-0.5">
@@ -97,9 +108,7 @@ export function Achievements({
                 damping: 18,
                 delay: isNew ? 0.08 : 0,
               }}
-              className={`sl-pill text-[11px] ${TONE[item.tone]} ${
-                isNew ? "ring-2 ring-offset-1 ring-offset-transparent" : ""
-              }`}
+              className={`sl-pill text-[11px] ${isNew ? JUST_EARNED : EARNED}`}
             >
               {item.title}
               {isNew && <span className="text-[9px] font-bold">novo</span>}

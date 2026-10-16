@@ -17,7 +17,7 @@ export function SectionCard({
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
           {title}
         </h3>
-        <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_18px_var(--scorelab-accent-b)]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
       </div>
       <div className="relative z-10">{children}</div>
     </div>
@@ -47,7 +47,7 @@ export function FormField({
         step={type === "number" ? "any" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        className="sl-field h-11 w-full px-3.5 text-sm placeholder:text-muted-foreground"
       />
       {description ? (
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -79,7 +79,7 @@ export function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="scorelab-premium-input h-10 w-full rounded-xl border px-3 text-sm text-foreground focus:outline-none"
+        className="sl-field h-11 w-full px-3.5 text-sm"
       >
         {options.map((option) => (
           <option

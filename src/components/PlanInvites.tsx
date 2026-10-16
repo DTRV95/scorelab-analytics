@@ -91,7 +91,7 @@ export function PlanInvites({
             </div>
 
             <div className="px-4 py-3">
-              <p className="text-[13.5px] leading-6 text-foreground">
+              <p className="text-[13.5px] leading-[1.5] text-foreground">
                 <span className="font-semibold">{invite.invited_by_name}</span>{" "}
                 convidou-te para o{" "}
                 <span className="font-semibold">{invite.plan_name}</span>.

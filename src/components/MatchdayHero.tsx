@@ -32,7 +32,7 @@ export function MatchdayHero({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-premium-edge relative overflow-hidden rounded-[32px] border border-border p-5 md:p-6"
+      className="sl-card relative overflow-hidden p-5 md:p-6"
     >
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-24" />
 

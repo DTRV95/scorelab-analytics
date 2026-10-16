@@ -211,7 +211,7 @@ export default function BettorAnalysis() {
         )}
 
         <motion.section variants={fadeUp} className="sl-card p-4">
-          <p className="text-[13px] leading-6 text-foreground">{headline(style)}</p>
+          <p className="text-[13px] leading-[1.5] text-foreground">{headline(style)}</p>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Stat label="Apostas" value={String(style.bets)} />

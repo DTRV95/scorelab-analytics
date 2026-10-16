@@ -142,7 +142,7 @@ export function PublicBoard({ limit = 10 }: { limit?: number }) {
       )}
 
       {(failed || (matches && shown.length === 0)) && (
-        <p className="px-4 py-6 text-[12px] leading-6 text-muted-foreground">
+        <p className="px-4 py-6 text-[12px] leading-[1.5] text-muted-foreground">
           Não há jogos a chegar neste momento — acontece quando as competições
           estão paradas ou a fonte de dados está a descansar. Volta amanhã: a
           lista troca sozinha à meia-noite.

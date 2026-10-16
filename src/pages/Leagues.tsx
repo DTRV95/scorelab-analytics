@@ -201,7 +201,7 @@ export default function Leagues() {
         <motion.div
           variants={fadeUp}
           ref={chips}
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden"
+          className="sl-scroll-x -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5"
         >
           {COVERED_LEAGUES.map((name) => (
             <button
@@ -246,7 +246,7 @@ export default function Leagues() {
         {report && !loading && report.played === 0 && (
           <motion.p
             variants={fadeUp}
-            className="sl-card px-4 py-4 text-[13px] leading-6 text-muted-foreground"
+            className="sl-card px-4 py-4 text-[13px] leading-[1.5] text-muted-foreground"
           >
             Ainda não há jogos disputados nesta competição esta época. Sem
             jogos não há percentagens para tirar.
@@ -338,7 +338,7 @@ export default function Leagues() {
                                   ? "bg-[hsl(var(--sl-green))]"
                                   : flag === "baixo"
                                     ? "bg-muted-foreground/40"
-                                    : "bg-primary"
+                                    : "bg-[hsl(var(--sl-cool))]"
                               }`}
                               style={{ width: `${Math.max(pct, 1.5)}%` }}
                             />
