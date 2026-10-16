@@ -71,11 +71,9 @@ function when(iso: string): string {
  */
 function Slip({
   bet,
-  open,
   onOpen,
 }: {
   bet: LooseBet;
-  open: boolean;
   onOpen: () => void;
 }) {
   const said =
@@ -84,7 +82,6 @@ function Slip({
   return (
     <BetSlip
       bet={bet}
-      defaultOpen={open}
       // No date above the kind: the slip already ends with the day it was
       // registered, and twice is once too many on a card this size.
       action={
@@ -428,12 +425,7 @@ export default function LooseBets() {
               className="space-y-2.5"
             >
               {pending.map((bet) => (
-                <Slip
-                  key={bet.id}
-                  bet={bet}
-                  open
-                  onOpen={() => setOpenBet(bet)}
-                />
+                <Slip key={bet.id} bet={bet} onOpen={() => setOpenBet(bet)} />
               ))}
             </Section>
           </motion.div>
@@ -449,15 +441,10 @@ export default function LooseBets() {
               count={settled.length}
               className="space-y-2.5"
             >
-              {settled.map((bet, index) => (
-                <Slip
-                  key={bet.id}
-                  bet={bet}
-                  // As recentes abrem; um ano de histórico não se desenrola
-                  // sozinho.
-                  open={index < 3}
-                  onOpen={() => setOpenBet(bet)}
-                />
+              {/* Todas fechadas: cada uma diz numa linha o que é, e abre-se
+                  a que interessar. */}
+              {settled.map((bet) => (
+                <Slip key={bet.id} bet={bet} onOpen={() => setOpenBet(bet)} />
               ))}
             </Section>
           </motion.div>
