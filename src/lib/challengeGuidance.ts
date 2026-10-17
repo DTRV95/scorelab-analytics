@@ -63,9 +63,14 @@ function lastLine(standing: PlayerStanding, day: number): string | null {
   if (!bet) return null;
 
   if (bet.status === "green") {
-    return `Ganhaste o nível ${bet.day}, +${eur.format(
-      bet.profitLoss,
-    )}. Avanças para o nível ${day}.`;
+    const ganho = `Ganhaste o nível ${bet.day}, +${eur.format(bet.profitLoss)}.`;
+    // Ganhar nem sempre é subir. Depois de uma derrota, o ganho seguinte
+    // repõe o que faltava e deixa a banca no princípio do mesmo nível —
+    // dizer "avanças para o nível 1" quando já se estava no nível 1 é
+    // dizer uma coisa que não aconteceu.
+    if (day > bet.day) return `${ganho} Avanças para o nível ${day}.`;
+    if (day === bet.day) return `${ganho} Repões o nível ${day}.`;
+    return ganho;
   }
 
   if (bet.status === "red") {
