@@ -15,7 +15,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
 import { HomeInsights } from "@/components/HomeInsights";
-import { Fold } from "@/components/Fold";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { TopGames } from "@/components/TopGames";
@@ -256,17 +255,6 @@ export default function Home() {
     };
   }, []);
 
-  /** O que a dobra tem lá dentro, para não se abrir às cegas. */
-  const restoHint = useMemo(() => {
-    const partes = [
-      insights.length > 0
-        ? `${insights.length} ${insights.length === 1 ? "leitura" : "leituras"}`
-        : null,
-      rivals.length > 0 ? "duelos" : null,
-    ].filter(Boolean);
-    return partes.length > 0 ? `· ${partes.join(" · ")}` : undefined;
-  }, [insights.length, rivals.length]);
-
   return (
     <AppLayout>
       <motion.div
@@ -324,19 +312,18 @@ export default function Home() {
           <TopGames board={games} />
         </motion.div>
 
-        {/* Daqui para baixo é consulta, não é o que há para fazer hoje.
-            Estava tudo aberto, e o resultado era uma página de sete blocos
-            para responder a duas perguntas. Fica a um toque: o que o
-            registo diz, os duelos, e as páginas a que a barra de baixo não
-            chega — nada saiu da aplicação, só saiu da frente. */}
         <motion.div variants={fadeUp}>
-          <Fold label="O resto" hint={restoHint}>
-            <HomeInsights insights={insights} settled={settled} />
-            {rivals.length > 0 && (
-              <HomeRivals rivalries={rivals} news={news} />
-            )}
-            <HomeDoors />
-          </Fold>
+          <HomeInsights insights={insights} settled={settled} />
+        </motion.div>
+
+        {rivals.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <HomeRivals rivalries={rivals} news={news} />
+          </motion.div>
+        )}
+
+        <motion.div variants={fadeUp}>
+          <HomeDoors />
         </motion.div>
       </motion.div>
     </AppLayout>

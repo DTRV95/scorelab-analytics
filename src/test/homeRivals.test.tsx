@@ -111,15 +111,6 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-/**
- * Abre a dobra "O resto", onde os duelos passaram a viver: o Início
- * responde ao que há para fazer hoje, e a comparação com o outro é
- * consulta. Dar o toque aqui é também provar que a dobra o entrega.
- */
-async function abreOResto() {
-  fireEvent.click(await screen.findByRole("button", { name: /O resto/ }));
-}
-
 describe("the home page and the person on the other side", () => {
   it("says where you stand, by name and by how much", async () => {
     load(
@@ -129,7 +120,6 @@ describe("the home page and the person on the other side", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     expect(
       await screen.findByText(/Estás 8,00\s€ atrás de Vilagreen/),
@@ -144,7 +134,6 @@ describe("the home page and the person on the other side", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     expect(
       await screen.findByText(/Estás 8,00\s€ à frente de Vilagreen/),
@@ -160,7 +149,6 @@ describe("the home page and the person on the other side", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     expect(await screen.findByText(/Vilagreen ganhou o nível 4/)).toBeInTheDocument();
     expect(screen.getByText("2 novidades")).toBeInTheDocument();
@@ -175,7 +163,6 @@ describe("the home page and the person on the other side", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     await screen.findByText(/Estás/);
     expect(screen.queryByText(/Vilagreen ganhou/)).not.toBeInTheDocument();
@@ -190,7 +177,6 @@ describe("the home page and the person on the other side", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     await screen.findByText("Mil euros em 10");
     expect(screen.queryByText("Frente a frente")).not.toBeInTheDocument();

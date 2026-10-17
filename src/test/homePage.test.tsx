@@ -139,19 +139,6 @@ const renderHome = () =>
     </MemoryRouter>,
   );
 
-/**
- * Abre a dobra "O resto".
- *
- * O que está aqui dentro — as leituras do registo, os duelos, as portas
- * para as outras páginas — deixou de estar aberto na página: o Início
- * responde ao que há para fazer hoje e o resto fica a um toque. Estes
- * testes dão esse toque, que é também a maneira de provar que a dobra
- * entrega mesmo o que diz ter.
- */
-async function abreOResto() {
-  fireEvent.click(await screen.findByRole("button", { name: /O resto/ }));
-}
-
 describe("the record on the page the app opens on", () => {
   it("counts the bets of challenges already finished", async () => {
     // Everything these two have played is in challenges that are over, and a
@@ -174,7 +161,6 @@ describe("the record on the page the app opens on", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     expect(
       await screen.findByText("Ganhas os níveis que fechas"),
@@ -198,7 +184,6 @@ describe("the record on the page the app opens on", () => {
     );
 
     renderHome();
-    await abreOResto();
 
     const link = await screen.findByRole("link", { name: /Ver tudo/ });
     expect(link).toHaveAttribute("href", "/dashboard/analises");
@@ -208,7 +193,6 @@ describe("the record on the page the app opens on", () => {
     setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "green")]);
 
     renderHome();
-    await abreOResto();
 
     expect(
       await screen.findByText(/ainda não chegam para dizer nada/),
@@ -219,7 +203,6 @@ describe("the record on the page the app opens on", () => {
     setBoard([plan("p2", "Um mês perfeito", null)], [bet("p2", "pending")]);
 
     renderHome();
-    await abreOResto();
 
     expect(
       await screen.findByText(/Ainda não fechaste nenhuma aposta/),

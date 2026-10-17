@@ -45,7 +45,6 @@ import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
-import { Fold } from "@/components/Fold";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   chanceOfCompleting,
@@ -1231,22 +1230,12 @@ export default function Challenges() {
         {/* Under the header and above everything that asks for something:
             what this challenge is, before what to do about it today. The
             whole table of rules stays one tap away, behind the icon. */}
-        {/* As regras do desafio passaram para trás de uma dobra. Abria-se
-            um desafio e a primeira coisa era o parágrafo que o descreve —
-            lido na primeira vez e ignorado nas trinta e sete seguintes,
-            sempre por cima do que há mesmo a fazer hoje. */}
         {intro && (
-          <motion.div variants={fadeUp}>
-            <Fold label="As regras">
-              <div className="sl-card px-4 py-3">
-                <p className="text-[12.5px] leading-[1.5] text-foreground">
-                  {intro.sentence}
-                </p>
-                <p className="sl-meta mt-1 text-[11px] leading-5">
-                  {intro.terms}
-                </p>
-              </div>
-            </Fold>
+          <motion.div variants={fadeUp} className="sl-card px-4 py-3">
+            <p className="text-[12.5px] leading-[1.5] text-foreground">
+              {intro.sentence}
+            </p>
+            <p className="sl-meta mt-1 text-[11px] leading-5">{intro.terms}</p>
           </motion.div>
         )}
 

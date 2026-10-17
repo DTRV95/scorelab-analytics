@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Section } from "@/components/Section";
@@ -75,7 +75,10 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
           <Link
             key={match.fixture_id}
             to={`/match/${match.fixture_id}`}
-            className="sl-tap flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border transition-colors hover:ring-primary/40"
+            className="sl-tap sl-meter flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border transition-colors hover:ring-primary/40"
+            style={
+              { "--sl-meter": `${match.headline_pct}%` } as CSSProperties
+            }
           >
             {/* Um número, não uma medalha: a bolinha comia vinte pixels
                 de largura e os nomes das equipas passaram a ser cortados. */}
@@ -102,13 +105,11 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                   e estava escrita a miudinho. A marca passou a andar na
                   mesma linha da liga em vez de abrir uma só para ela. */}
               <p className="sl-meta flex items-center gap-1.5 text-[11px]">
-                {/* A hora primeiro: é o que decide se ainda dá para apostar.
-                    Com a liga à frente, era a hora que o corte comia. */}
+                {/* A hora, e mais nada. A liga andava aqui e era ela que o
+                    corte comia — "Bunde…", "Cham…" — para dizer uma coisa
+                    que o nome das equipas já diz a quem segue futebol. */}
                 <span className="truncate">
-                  {match.kickoff
-                    ? `${timeLabel(new Date(match.kickoff))} · `
-                    : ""}
-                  {match.league}
+                  {match.kickoff ? timeLabel(new Date(match.kickoff)) : ""}
                 </span>
                 {onShortlist(match) && (
                   <span className="sl-pill sl-pill-win flex-none px-1.5 py-0 text-[9.5px]">
