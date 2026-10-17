@@ -64,13 +64,13 @@ export function BankrollHero({
   const saldo = eur.format(counting);
 
   return (
-    <section className="sl-raised overflow-hidden">
+    <section className="sl-board overflow-hidden">
       <Link
         to="/bankroll"
         className="sl-tap flex items-start gap-3 px-4 pb-1 pt-3.5"
       >
         <div className="min-w-0 flex-1">
-          <p className="sl-meta text-[10px] uppercase tracking-[0.14em]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
             O teu saldo
           </p>
           {/* O número da aplicação, lido de braço esticado — mas um Plano
@@ -78,20 +78,22 @@ export function BankrollHero({
               num telemóvel. Por isso o tamanho desce por degraus com o
               comprimento do que lá está, em vez de cortar ou transbordar. */}
           <p
-            className={`sl-figure sl-hero-figure mt-1 leading-[0.92] text-foreground ${figureSize(
+            className={`sl-figure mt-1 leading-[0.92] text-white ${figureSize(
               saldo,
             )} ${moved ? "sl-figure-changed" : ""}`}
           >
             {saldo}
           </p>
-          <p className="sl-meta mt-0.5 text-[11px]">
+          {/* Sobre o azul-noite, o verde escuro dos números em papel não
+              se lê: aqui são os tons claros das mesmas cores. */}
+          <p className="mt-1 text-[11.5px] leading-5 text-white/60">
             <span
               className={
                 up
-                  ? "font-semibold text-[hsl(var(--sl-green))]"
+                  ? "font-bold text-[hsl(152_62%_62%)]"
                   : down
-                    ? "font-semibold text-destructive"
-                    : ""
+                    ? "font-bold text-[hsl(347_85%_72%)]"
+                    : "text-white/80"
               }
             >
               {up ? "+" : ""}
@@ -112,7 +114,7 @@ export function BankrollHero({
               : ""}
           </p>
         </div>
-        <ArrowRight className="mt-1 h-4 w-4 flex-none text-muted-foreground" />
+        <ArrowRight className="mt-1 h-4 w-4 flex-none text-white/45" />
       </Link>
 
       {/* The same money over time, in the same card. Two cards about one
@@ -121,6 +123,7 @@ export function BankrollHero({
         startingBankroll={startingBankroll}
         bets={bets}
         height={108}
+        onDark
       />
     </section>
   );

@@ -1313,25 +1313,15 @@ describe("correcting a bet that was typed wrong", () => {
 });
 
 describe("managing challenges", () => {
-  it("guarda o que o desafio é a um toque, e não em cima do que há a fazer", async () => {
-    // A tabela de regras está atrás de um ícone, e quem volta ao fim de duas
-    // semanas encontrava um nome e uma escada sem nada que dissesse para que
-    // era. A frase que explica o desafio continua cá — mas dobrada: lê-se na
-    // primeira vez e ignora-se nas trinta e sete seguintes, e aberta estava
-    // sempre por cima do que há mesmo a fazer hoje.
+  it("says what the challenge is, every time it is opened", async () => {
+    // The table of rules is behind an icon, and somebody coming back after
+    // two weeks met a name and a ladder with nothing saying what it was for.
     renderPage();
-
-    const dobra = await screen.findByRole("button", { name: /As regras/ });
-    expect(
-      screen.queryByText(/Não é um plano, é uma perseguição/),
-    ).toBeNull();
-
-    fireEvent.click(dobra);
 
     expect(
       await screen.findByText(/Não é um plano, é uma perseguição/),
     ).toBeInTheDocument();
-    // E os termos como estão mesmo, numa linha.
+    // And its terms as they actually stand, in one line.
     expect(screen.getByText(/38 níveis ·/)).toBeInTheDocument();
   });
 

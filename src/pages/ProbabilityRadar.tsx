@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -204,7 +210,8 @@ function BoardMatchRow({
           second verdict on a line that only has room for one. */}
       <button
         type="button"
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        className="sl-meter flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        style={{ "--sl-meter": `${match.headline_pct}%` } as CSSProperties}
         onClick={onToggle}
       >
         {/* A mesma linha que está no Início: jogo e mercado à esquerda, a

@@ -80,10 +80,13 @@ export function TrendChart({
   startingBankroll,
   bets,
   height = 132,
+  onDark = false,
 }: {
   startingBankroll: number;
   bets: PlanBet[];
   height?: number;
+  /** Desenhada por cima do marcador escuro, e não de um cartão branco. */
+  onDark?: boolean;
 }) {
   const points = drawable(bankrollTrend(startingBankroll, bets));
 
@@ -93,6 +96,11 @@ export function TrendChart({
 
   const { low, high } = trendRange(points, startingBankroll);
 
+  // A linha e a grelha mudam com o chão: a grelha cinzenta clara do papel,
+  // posta sobre azul-noite, era mais clara do que o próprio azul.
+  const linha = onDark ? "hsl(22 100% 58%)" : "hsl(var(--primary))";
+  const grelha = onDark ? "hsla(0, 0%, 100%, 0.09)" : "hsl(var(--border))";
+
   return (
     <div className="w-full px-1 pb-2" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -101,12 +109,12 @@ export function TrendChart({
               <linearGradient id="sl-trend" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor="hsl(var(--primary))"
-                  stopOpacity={0.22}
+                  stopColor={linha}
+                  stopOpacity={onDark ? 0.34 : 0.22}
                 />
                 <stop
                   offset="100%"
-                  stopColor="hsl(var(--primary))"
+                  stopColor={linha}
                   stopOpacity={0}
                 />
               </linearGradient>
@@ -114,22 +122,26 @@ export function TrendChart({
 
             <CartesianGrid
               vertical={false}
-              stroke="hsl(var(--border))"
+              stroke={grelha}
               strokeDasharray="3 3"
             />
             <YAxis domain={[low, high]} hide />
             <Tooltip
               content={<Detail />}
-              cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+              cursor={{ stroke: grelha, strokeWidth: 1 }}
             />
             <Area
               type="monotone"
               dataKey="bankroll"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
+              stroke={linha}
+              strokeWidth={2.25}
               fill="url(#sl-trend)"
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))" }}
+              activeDot={{
+                r: 4,
+                strokeWidth: 2,
+                stroke: onDark ? "hsl(var(--sl-nav))" : "hsl(var(--card))",
+              }}
             />
           </AreaChart>
         </ResponsiveContainer>
