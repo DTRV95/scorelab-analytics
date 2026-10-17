@@ -38,15 +38,13 @@ import {
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
 import { fetchFixtureResults, finalScore } from "@/lib/resultsSync";
 import { typingMemory } from "@/lib/typingMemory";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
   currency: "EUR",
   maximumFractionDigits: 2,
 });
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
 const signed = (value: number) =>
   `${value >= 0 ? "+" : ""}${eur.format(value)}`;
@@ -333,7 +331,7 @@ export default function LooseBets() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Apostas</h1>
+          <h1 className="sr-only">Apostas</h1>
           <p className="sl-meta mt-1 text-[11px]">
             As que não entram em nenhum desafio. Contam na análise na mesma.
           </p>
@@ -394,7 +392,7 @@ export default function LooseBets() {
         {bets.length === 0 && (
           <motion.p
             variants={fadeUp}
-            className="sl-card px-4 py-4 text-[13px] leading-6 text-muted-foreground"
+            className="sl-card px-4 py-4 text-[13px] leading-[1.5] text-muted-foreground"
           >
             Ainda não há nenhuma. Uma aposta registada aqui não tem nível nem
             escada: é só o que jogaste, por quanto, e como correu.
@@ -414,7 +412,6 @@ export default function LooseBets() {
             <Section
               tone="amber"
               icon={Clock}
-              eyebrow="À espera"
               title="Por decidir"
               count={pending.length}
               note={
@@ -436,7 +433,6 @@ export default function LooseBets() {
             <Section
               tone="green"
               icon={CheckCheck}
-              eyebrow="Já se sabe"
               title="Fechadas"
               count={settled.length}
               className="space-y-2.5"

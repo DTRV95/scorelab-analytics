@@ -26,16 +26,7 @@ import {
   type AccuracyBand,
   type AccuracyReport,
 } from "@/lib/modelAccuracy";
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BAND_TONE: Record<ReturnType<typeof bandVerdict>, string> = {
   sharp: "sl-pill-win",
@@ -138,7 +129,7 @@ function CalibrationChart({ bands }: { bands: AccuracyBand[] }) {
             }}
           />
           <Tooltip
-            wrapperClassName="scorelab-chart-tooltip"
+            wrapperClassName="sl-chart-tooltip"
             formatter={(value: number, name: string) => [`${value}%`, name]}
             labelFormatter={(label) =>
               `Banda ${label}% · ${samplesByBand.get(String(label)) ?? 0} previsões`

@@ -49,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -56,16 +57,6 @@ const eur = new Intl.NumberFormat("pt-PT", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.04 } },
-};
 
 function Stars({ count }: { count: number }) {
   return (
@@ -409,7 +400,7 @@ export default function ChallengeCatalogue() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Desafios</h1>
+          <h1 className="sr-only">Desafios</h1>
           <p className="sl-meta mt-0.5 text-[11px]">
             Escolhe um, ou continua o que já começaste.
           </p>
@@ -463,7 +454,7 @@ export default function ChallengeCatalogue() {
             )}
 
             {shelf === "decorrer" && running.length === 0 && (
-              <p className="sl-card px-4 py-4 text-[12px] leading-6 text-muted-foreground">
+              <p className="sl-card px-4 py-4 text-[12px] leading-[1.5] text-muted-foreground">
                 Não tens nenhum desafio a decorrer. Escolhe um aqui em baixo,
                 ou vê os que já terminaste.
               </p>
@@ -529,7 +520,7 @@ export default function ChallengeCatalogue() {
 
           {/* Four chips rather than one button that cycles: with four orders,
               a cycle means tapping past the ones you did not want. */}
-          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden">
+          <div className="sl-scroll-x -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5">
             {ORDERS.map(([value, label]) => (
               <button
                 key={value}

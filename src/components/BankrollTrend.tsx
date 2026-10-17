@@ -59,6 +59,18 @@ function Detail({
 }
 
 /**
+ * Só os pontos que são mesmo números.
+ *
+ * Uma banca por somar — uma linha de dados em falta, um campo vazio — dá
+ * NaN, e o gráfico desenhava na mesma: a grelha tracejada e um buraco
+ * branco do tamanho dela, que se lê como coisa partida. Sem pontos
+ * desenháveis não há gráfico nenhum, que é a resposta honesta.
+ */
+function drawable<T extends { bankroll: number }>(points: T[]): T[] {
+  return points.filter((point) => Number.isFinite(point.bankroll));
+}
+
+/**
  * The line itself, without a card around it.
  *
  * Apart from the card so that the home page can put it under the bankroll it
@@ -73,7 +85,7 @@ export function TrendChart({
   bets: PlanBet[];
   height?: number;
 }) {
-  const points = bankrollTrend(startingBankroll, bets);
+  const points = drawable(bankrollTrend(startingBankroll, bets));
 
   // Two points are the shortest line worth drawing; one is a dot pretending
   // to be a trend.
@@ -139,7 +151,7 @@ export function BankrollTrend({
   startingBankroll: number;
   bets: PlanBet[];
 }) {
-  const points = bankrollTrend(startingBankroll, bets);
+  const points = drawable(bankrollTrend(startingBankroll, bets));
   if (points.length < 2) return null;
 
   const moved = points[points.length - 1].bankroll - startingBankroll;

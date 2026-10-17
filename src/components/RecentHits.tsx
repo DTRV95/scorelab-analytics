@@ -79,7 +79,7 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
   if (!results) {
     return (
       <div className="sl-card px-4 py-4">
-        <p className="text-[12.5px] leading-6 text-foreground">
+        <p className="text-[12.5px] leading-[1.5] text-foreground">
           Quantas vezes o mercado que o modelo destacou em cada jogo acabou
           por entrar.
         </p>
@@ -108,7 +108,7 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
   return (
     <div className="sl-card overflow-hidden">
       {rate.pct === null ? (
-        <p className="sl-meta px-4 py-4 text-[12.5px] leading-6">
+        <p className="sl-meta px-4 py-4 text-[12.5px] leading-[1.5]">
           {span === "ontem"
             ? "Ontem não se jogou nada nas competições com dados automáticos."
             : "Nenhum jogo marcado nos últimos sete dias."}

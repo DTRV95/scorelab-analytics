@@ -28,14 +28,9 @@ import {
   writeCachedBoard,
   type BoardMatch,
 } from "@/lib/probabilityBoardCache";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BOARD_DAYS = 7;
-
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
 
 /** When the game is played, written out under its name. */
 function kickoffLabel(kickoff: string | null) {

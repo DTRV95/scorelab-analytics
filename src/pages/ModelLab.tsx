@@ -19,16 +19,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 interface AuditRow extends ModelAuditMarketResult {
   analysisId: string;

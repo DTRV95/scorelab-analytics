@@ -224,7 +224,7 @@ export function TodayMatches({
 
       {days.length > 0 && (
         <>
-          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          <div className="sl-scroll-x mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {days.map((day, index) => {
               const isActive = index === Math.min(activeDay, days.length - 1);
               return (

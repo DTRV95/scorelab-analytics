@@ -368,7 +368,7 @@ export default function Settings() {
         </Card>
 
         <Card title="Dados guardados neste browser" icon={RotateCcw} tone="danger">
-          <p className="text-[12px] leading-6 text-muted-foreground">
+          <p className="text-[12px] leading-[1.5] text-muted-foreground">
             Limpa as análises guardadas, as definições de banca e as cópias
             locais deste dispositivo.{" "}
             <span className="font-semibold text-foreground">

@@ -13,9 +13,7 @@ import {
   type LeagueMarket,
   type LeagueReport,
 } from "@/lib/leagueReport";
-
-const fadeUp = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+import { fadeUp, stagger } from "@/lib/motion";
 
 const RUN_TONE: Record<string, string> = {
   V: "bg-[hsl(var(--sl-green))] text-white",
@@ -192,7 +190,7 @@ export default function Leagues() {
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
         <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Ligas</h1>
+          <h1 className="sr-only">Ligas</h1>
           <p className="sl-meta mt-1 text-[11px]">
             O que cada competição costuma dar, pelos jogos desta época.
           </p>
@@ -201,7 +199,7 @@ export default function Leagues() {
         <motion.div
           variants={fadeUp}
           ref={chips}
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden"
+          className="sl-scroll-x -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5"
         >
           {COVERED_LEAGUES.map((name) => (
             <button
@@ -246,7 +244,7 @@ export default function Leagues() {
         {report && !loading && report.played === 0 && (
           <motion.p
             variants={fadeUp}
-            className="sl-card px-4 py-4 text-[13px] leading-6 text-muted-foreground"
+            className="sl-card px-4 py-4 text-[13px] leading-[1.5] text-muted-foreground"
           >
             Ainda não há jogos disputados nesta competição esta época. Sem
             jogos não há percentagens para tirar.
@@ -338,7 +336,7 @@ export default function Leagues() {
                                   ? "bg-[hsl(var(--sl-green))]"
                                   : flag === "baixo"
                                     ? "bg-muted-foreground/40"
-                                    : "bg-primary"
+                                    : "bg-[hsl(var(--sl-cool))]"
                               }`}
                               style={{ width: `${Math.max(pct, 1.5)}%` }}
                             />

@@ -20,6 +20,13 @@ const eur = new Intl.NumberFormat("pt-PT", {
  * the challenge count all saying the bankroll separately. One card: the
  * number, what the betting did to it, and the line it drew getting there.
  */
+/** Degraus de corpo para o saldo, conforme o que lá cabe. */
+function figureSize(value: string): string {
+  if (value.length > 13) return "text-[clamp(1.5rem,7.5vw,2.1rem)]";
+  if (value.length > 10) return "text-[clamp(1.85rem,9.5vw,2.6rem)]";
+  return "text-[clamp(2.3rem,12vw,3.1rem)]";
+}
+
 export function BankrollHero({
   bankroll,
   profit,
@@ -54,6 +61,7 @@ export function BankrollHero({
   // somebody actually means by "quanto é que isto rendeu".
   const share =
     startingBankroll > 0 ? (profit / startingBankroll) * 100 : null;
+  const saldo = eur.format(counting);
 
   return (
     <section className="sl-raised overflow-hidden">
@@ -65,12 +73,16 @@ export function BankrollHero({
           <p className="sl-meta text-[10px] uppercase tracking-[0.14em]">
             O teu saldo
           </p>
+          {/* O número da aplicação, lido de braço esticado — mas um Plano
+              Milhão chega a "1 000 000,00 €", que a esse corpo não cabe
+              num telemóvel. Por isso o tamanho desce por degraus com o
+              comprimento do que lá está, em vez de cortar ou transbordar. */}
           <p
-            className={`sl-figure sl-hero-figure mt-0.5 text-[1.9rem] leading-9 text-foreground ${
-              moved ? "sl-figure-changed" : ""
-            }`}
+            className={`sl-figure sl-hero-figure mt-1 leading-[0.92] text-foreground ${figureSize(
+              saldo,
+            )} ${moved ? "sl-figure-changed" : ""}`}
           >
-            {eur.format(counting)}
+            {saldo}
           </p>
           <p className="sl-meta mt-0.5 text-[11px]">
             <span

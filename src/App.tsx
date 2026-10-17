@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import { MotionConfig } from "framer-motion";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -56,6 +57,11 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Quem pediu menos movimento ao sistema operativo recebe menos
+          movimento aqui: o framer-motion desliga as transformações e as
+          molas e deixa só a opacidade, sem cada componente ter de se
+          lembrar disso. */}
+      <MotionConfig reducedMotion="user">
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -98,6 +104,7 @@ const App = () => {
             </AuthProvider>
           </BrowserRouter>
       </TooltipProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 };

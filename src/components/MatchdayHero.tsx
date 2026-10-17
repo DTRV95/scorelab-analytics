@@ -4,6 +4,7 @@ import {
   HudStatusPill,
   type HudTone,
 } from "@/components/HudLayer";
+import { fadeUp } from "@/lib/motion";
 
 type MatchdayHeroProps = {
   eyebrow: string;
@@ -13,11 +14,6 @@ type MatchdayHeroProps = {
   statusIcon?: ReactNode;
   statusItems?: ReactNode;
   visual?: ReactNode;
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 export function MatchdayHero({
@@ -32,7 +28,7 @@ export function MatchdayHero({
   return (
     <motion.div
       variants={fadeUp}
-      className="scorelab-premium-edge relative overflow-hidden rounded-[32px] border border-border p-5 md:p-6"
+      className="sl-card relative overflow-hidden p-5 md:p-6"
     >
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-32 opacity-24" />
 

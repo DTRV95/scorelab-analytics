@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   ChevronDown,
-  ChevronRight,
   Info,
   Layers3,
   ListFilter,
@@ -58,16 +57,7 @@ import {
 } from "@/hooks/usePullToRefresh";
 import { matchTips, type MatchTip } from "@/lib/matchTips";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BOARD_DAYS = 7;
 
@@ -217,37 +207,43 @@ function BoardMatchRow({
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
         onClick={onToggle}
       >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 flex-none text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
-        )}
-
+        {/* A mesma linha que está no Início: jogo e mercado à esquerda, a
+            probabilidade sozinha à direita, e a seta no fim, onde uma seta
+            de abrir se espera. Estava ao contrário — a seta à esquerda a
+            abrir uma vala antes do nome, e três linhas à direita a
+            disputar o sítio onde só cabe um número. */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-snug text-foreground">
+          <p className="truncate text-sm font-bold leading-snug tracking-[-0.015em] text-foreground">
             {match.home_name} vs {match.away_name}
+          </p>
+          <p className="truncate text-[12px] font-semibold text-foreground/80">
+            {MARKET_LABELS[match.headline_market] ?? match.headline_market}
           </p>
           <p className="sl-meta truncate text-[11px]">
             {kickoffTime(match.kickoff)}
           </p>
         </div>
 
-        <div className="max-w-[52%] flex-none text-right">
-          <p className="sl-meta text-[11px] leading-snug">
-            {MARKET_LABELS[match.headline_market] ?? match.headline_market}
-          </p>
-          <p className="sl-hero-figure sl-hero-figure-green font-mono-data text-lg font-bold text-[hsl(var(--sl-green))]">
-            {match.headline_pct.toFixed(1)}%
+        <div className="flex-none text-right">
+          <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[30px] leading-none text-[hsl(var(--sl-green))]">
+            {match.headline_pct.toFixed(0)}
+            <span className="text-[16px]">%</span>
           </p>
           {/* Acertar não é ganhar: a este preço a aposta fica a zero, e a
               casa de apostas também sabe que esta equipa não perde. */}
-          <p className="sl-meta text-[10.5px] leading-snug">
-            paga acima de{" "}
+          <p className="sl-meta mt-1 whitespace-nowrap text-[10.5px] leading-snug">
+            odd mín.{" "}
             <span className="font-mono-data font-bold text-foreground">
               {minimumOdd(match.headline_pct).toFixed(2)}
             </span>
           </p>
         </div>
+
+        <ChevronDown
+          className={`h-4 w-4 flex-none text-muted-foreground transition-transform duration-200 ${
+            isExpanded ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       <Tips tips={tips} league={match.league} />
@@ -395,15 +391,22 @@ function BoardRefresh({
         <p className="text-xs font-medium text-foreground">
           {loading ? "A atualizar o quadro..." : summary}
         </p>
-        {(note || !loading) && (
+        {/* A frase que explica para que serve o botão só aparece quando há
+            motivo para ele: depois de uma tentativa, ou quando falta mesmo
+            uma competição. Fixa, eram duas linhas de ensino permanente por
+            cima dos jogos — e o botão diz "Atualizar", que já é a frase. */}
+        {(note || missing.length > 0) && (
           <p className="sl-meta mt-0.5 text-[11px] leading-4">
-            {note ||
-              "Falta alguma competição? Carrega aqui — vai buscar o quadro mais recente."}
+            {note || "Falta uma competição? Vai buscar o mais recente."}
           </p>
         )}
       </div>
+      {/* Em contorno, não em laranja cheio: ir buscar o quadro outra vez é
+          uma utilidade, e o laranja da casa é para o botão que compromete
+          dinheiro. Cheio, era o que mais gritava numa página de jogos. */}
       <Button
-        className="sl-btn-primary sl-tap h-9 flex-none px-4 text-xs"
+        variant="outline"
+        className="sl-tap h-9 flex-none px-3.5 text-xs font-bold"
         disabled={loading}
         onClick={onClick}
       >
@@ -862,25 +865,13 @@ export default function ProbabilityRadar() {
         variants={stagger}
         className="space-y-4 p-4 pt-0 sm:space-y-6 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
-        <motion.div variants={fadeUp} className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {/* Fourteen wide letters do not fit beside a button on a phone,
-                and the accent bar in front of them takes a little more: the
-                word ran under the refresh icon. Same size as every other
-                page's title. */}
-            <h1 className="sl-section-title text-[15px] sm:text-[21px]">
-              Probabilidades
-            </h1>
-            {/* One line, so the first game is on screen without scrolling.
-                The two-line version plus the how-to card put four hundred
-                pixels of explanation above the thing being explained. */}
-            <p className="sl-meta mt-1">Os próximos 7 dias, sem odds nem stake.</p>
-          </div>
-          {/* O ícone de atualizar esteve aqui no canto e não chegava: não
-              dizia de quando era o quadro, nem respondia quando se carregava
-              nele. Agora há um botão com as duas coisas, logo por baixo —
-              dois sítios para a mesma coisa era um a mais. */}
-        </motion.div>
+        {/* O título é para quem o ouve. Visível, dizia "Probabilidades"
+            enquanto a barra de baixo dizia "Jogos" — dois nomes para o
+            mesmo sítio — e a linha que explicava o quadro era um ensino
+            de uma vez a ocupar o topo para sempre. O que interessa (de
+            quando é o quadro, e o botão para o ir buscar outra vez) está
+            logo abaixo, e os jogos começam no primeiro ecrã. */}
+        <h1 className="sr-only">Probabilidades</h1>
 
         {enabled === null && (
           <motion.div
@@ -972,7 +963,7 @@ export default function ProbabilityRadar() {
 
             {(dayGroups.length > 0 || !hits.loading) && (
                 <>
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                  <div className="sl-scroll-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                     {/* The day before, in the same row as the days after.
                         It is the one day on this page with an answer rather
                         than a forecast, and it belongs where somebody is
@@ -1038,20 +1029,30 @@ export default function ProbabilityRadar() {
                         }`}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[12.5px] font-semibold text-foreground">
-                          {onlyShortlist ? "A lista curta" : "Ver só a lista curta"}
+                        <span className="block text-[12.5px] font-bold text-foreground">
+                          {onlyShortlist
+                            ? "A mostrar só a lista curta"
+                            : "Ver só a lista curta"}
                         </span>
-                        <span className="sl-meta block text-[11px] leading-5">
-                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 87%
-                          · o resto 53%
-                        </span>
+                        {/* O porquê da lista curta só se lê quando ela está
+                            ligada. Desligada, a linha era uma nota de rodapé
+                            a ocupar um terço do cartão acima dos jogos. */}
+                        {onlyShortlist && (
+                          <span className="sl-meta block text-[11px] leading-5">
+                            Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram
+                            87% · o resto 53%
+                          </span>
+                        )}
                       </span>
+                      {/* O número estava solto no fim da linha, sem dizer de
+                          que era contagem. Numa pílula lê-se como as outras
+                          contagens da aplicação. */}
                       <span
-                        className={`sl-figure flex-none text-[13px] ${
-                          curtos.length > 0 ? "text-foreground" : "text-muted-foreground"
+                        className={`sl-pill flex-none text-[11px] ${
+                          onlyShortlist ? "sl-pill-open" : "sl-pill-muted"
                         }`}
                       >
-                        {curtos.length}
+                        {curtos.length} jogo{curtos.length === 1 ? "" : "s"}
                       </span>
                     </button>
                   )}
@@ -1061,7 +1062,7 @@ export default function ProbabilityRadar() {
                       <RecentHits state={hits} />
                     </div>
                   ) : onlyShortlist && curtos.length === 0 ? (
-                    <p className="sl-card mt-4 px-4 py-4 text-[12.5px] leading-6 text-muted-foreground">
+                    <p className="sl-card mt-4 px-4 py-4 text-[12.5px] leading-[1.5] text-muted-foreground">
                       Hoje não há nenhum jogo na lista curta. É um dia para
                       não apostar — o que também é uma decisão.
                     </p>
@@ -1069,12 +1070,15 @@ export default function ProbabilityRadar() {
                   <div className="mt-4 space-y-5">
                     {leagueGroups.map(({ league, items }) => (
                       <div key={league} className="space-y-2">
-                        <p className="flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-[-0.01em] text-foreground">
+                        {/* O mesmo cabeçalho que todas as outras secções da
+                            aplicação têm, em vez de um rótulo em
+                            maiúsculas que era um estilo só dele. */}
+                        <h2 className="sl-sec-title px-0.5">
                           {league}
-                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-muted-foreground">
+                          <span className="sl-pill sl-pill-muted text-[11px]">
                             {items.length}
                           </span>
-                        </p>
+                        </h2>
                         <div className="space-y-2">
                           {items.map((match) => (
                             <BoardMatchRow

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Section } from "@/components/Section";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { timeLabel } from "@/components/TodayMatches";
@@ -35,7 +35,6 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
     <Section
       tone="cool"
       icon={Sparkles}
-      eyebrow="Para escolher"
       title="Os mais prováveis"
       action={
         <Link
@@ -50,7 +49,7 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
       {/* The same days as the Jogos page, in the same order, so the two
           pages are never one tap out of step with each other. */}
       {days.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto px-2 pb-2.5">
+        <div className="sl-scroll-x flex gap-1.5 overflow-x-auto px-2 pb-2.5">
           {days.map((option, index) => (
             <button
               key={option.long}
@@ -84,14 +83,14 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold text-foreground">
+              <p className="truncate text-[13.5px] font-bold tracking-[-0.015em] text-foreground">
                 {match.home_name} vs {match.away_name}
               </p>
-              <p className="sl-meta truncate text-[11px]">
-                {match.league}
-                {match.kickoff
-                  ? ` · ${timeLabel(new Date(match.kickoff))}`
-                  : ""}
+              {/* O mercado passou da coluna da direita para aqui: é o nome
+                  da coisa, não um número, e à direita estava a roubar
+                  largura ao que lá devia estar sozinho. */}
+              <p className="truncate text-[11.5px] font-semibold text-foreground/80">
+                {MARKET_LABELS[match.headline_market] ?? match.headline_market}
               </p>
               {/* A distância para a taxa da liga esteve aqui e saiu: nos
                   jogos já marcados, quanto maior essa distância pior foi o
@@ -100,30 +99,40 @@ export function TopGames({ board }: { board: BoardMatch[] }) {
                   vale dinheiro, que é o preço. */}
               {/* Dos destaques do quadro, os da lista curta entraram 87%
                   das vezes e os outros 53%: é a coisa mais útil desta linha
-                  e estava escrita a miudinho. */}
-              {onShortlist(match) && (
-                <span className="sl-pill sl-pill-win mt-0.5 text-[10px]">
-                  na lista curta
+                  e estava escrita a miudinho. A marca passou a andar na
+                  mesma linha da liga em vez de abrir uma só para ela. */}
+              <p className="sl-meta flex items-center gap-1.5 text-[11px]">
+                {/* A hora primeiro: é o que decide se ainda dá para apostar.
+                    Com a liga à frente, era a hora que o corte comia. */}
+                <span className="truncate">
+                  {match.kickoff
+                    ? `${timeLabel(new Date(match.kickoff))} · `
+                    : ""}
+                  {match.league}
                 </span>
-              )}
+                {onShortlist(match) && (
+                  <span className="sl-pill sl-pill-win flex-none px-1.5 py-0 text-[9.5px]">
+                    lista curta
+                  </span>
+                )}
+              </p>
             </div>
-            {/* Capped, because "Casa ou Empate (1X)" is wider than some
-                team names and the game is what the row is about. */}
-            <div className="max-w-[40%] flex-none text-right">
-              <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[13px] text-foreground">
-                {match.headline_pct.toFixed(0)}%
+            {/* A direita fica com uma coisa só, e grande: a probabilidade.
+                Tinha três linhas a disputá-la — o número, o mercado e o
+                preço — e por isso o número lia-se a 13px, que para o
+                assunto da linha é pequeno. */}
+            <div className="flex-none text-right">
+              <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[25px] leading-none text-[hsl(var(--sl-green))]">
+                {match.headline_pct.toFixed(0)}
+                <span className="text-[13px]">%</span>
               </p>
-              <p className="sl-meta truncate text-[10px]">
-                {MARKET_LABELS[match.headline_market] ?? match.headline_market}
-              </p>
-              <p className="sl-meta text-[10px]">
-                paga acima de{" "}
+              <p className="sl-meta mt-1 whitespace-nowrap text-[10px]">
+                odd mín.{" "}
                 <span className="font-mono-data font-bold text-foreground">
                   {minimumOdd(match.headline_pct).toFixed(2)}
                 </span>
               </p>
             </div>
-            <ChevronRight className="-mr-1 h-3.5 w-3.5 flex-none text-muted-foreground" />
           </Link>
         ))}
       </div>

@@ -4,6 +4,8 @@ import { downloadScoreLabExport } from "@/lib/exportData";
 import { OPEN_COMMAND_CENTER_EVENT } from "@/components/ScoreLabCommandCenter";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { useScrolled } from "@/hooks/useScrolled";
+import { cn } from "@/lib/utils";
 
 const eur = new Intl.NumberFormat("pt-PT", {
   style: "currency",
@@ -22,6 +24,8 @@ export function TopBar() {
   // the way in from a phone, where the thumb row has no room for it — and the
   // number itself is the obvious thing to tap to see where it came from.
   const { balance, loading } = usePlanBoard();
+  // Assim que há página a passar por baixo, a barra encolhe e ganha peso.
+  const scrolled = useScrolled();
 
   const openCommandCenter = () => {
     window.dispatchEvent(new Event(OPEN_COMMAND_CENTER_EVENT));
@@ -38,8 +42,16 @@ export function TopBar() {
     "inline-flex h-9 w-9 flex-none items-center justify-center rounded-lg text-white/90 transition hover:bg-white/15 hover:text-white";
 
   return (
-    <header className="sl-topbar px-3 sm:px-5 md:px-6">
-      <div className="flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-4">
+    <header
+      data-scrolled={scrolled}
+      className="sl-topbar px-3 sm:px-5 md:px-6"
+    >
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 transition-[height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:gap-4",
+          scrolled ? "h-12 sm:h-14" : "h-14 sm:h-16",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <Link
             to="/dashboard"
@@ -87,7 +99,10 @@ export function TopBar() {
 
           <Link
             to="/probability"
-            className="sl-btn-cta inline-flex h-9 flex-none items-center gap-1.5 px-3 text-[13px] sm:px-4"
+            // Branco com o laranja da casa por cima. Era verde — a cor de
+            // confirmar — sobre uma barra laranja, que era o único choque
+            // de cor da aplicação.
+            className="sl-tap inline-flex h-9 flex-none items-center gap-1.5 rounded-[12px] bg-white px-3 text-[13px] font-bold text-[hsl(14_92%_42%)] shadow-[0_2px_8px_-2px_hsla(14,90%,24%,0.45)] transition hover:bg-white/90 sm:px-4"
           >
             <Sparkles className="h-4 w-4" strokeWidth={2} />
             <span className="hidden sm:inline">Analisar</span>

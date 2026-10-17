@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T00:00:00Z",
+  "title": "Design System: ScoreLab",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Laranja de Bancada",
+        "canonical": "hsl(14 100% 50%)",
+        "tonalRamp": [
+          "hsl(14 100% 15%)",
+          "hsl(14 100% 25%)",
+          "hsl(14 100% 35%)",
+          "hsl(14 100% 45%)",
+          "hsl(14 100% 55%)",
+          "hsl(14 100% 70%)",
+          "hsl(14 100% 85%)",
+          "hsl(14 100% 95%)"
+        ]
+      },
+      "primary-glow": {
+        "role": "primary",
+        "displayName": "Laranja de Luz",
+        "canonical": "hsl(22 100% 54%)",
+        "tonalRamp": [
+          "hsl(22 100% 15%)",
+          "hsl(22 100% 25%)",
+          "hsl(22 100% 35%)",
+          "hsl(22 100% 45%)",
+          "hsl(22 100% 54%)",
+          "hsl(22 100% 70%)",
+          "hsl(22 100% 85%)",
+          "hsl(22 100% 95%)"
+        ]
+      },
+      "cool": {
+        "role": "secondary",
+        "displayName": "Azul de Consulta",
+        "canonical": "hsl(214 88% 46%)",
+        "tonalRamp": [
+          "hsl(214 88% 15%)",
+          "hsl(214 88% 25%)",
+          "hsl(214 88% 35%)",
+          "hsl(214 88% 46%)",
+          "hsl(214 88% 58%)",
+          "hsl(214 88% 72%)",
+          "hsl(214 70% 86%)",
+          "hsl(214 60% 95%)"
+        ]
+      },
+      "green": {
+        "role": "tertiary",
+        "displayName": "Verde de Fechado",
+        "canonical": "hsl(152 72% 30%)",
+        "tonalRamp": [
+          "hsl(152 72% 12%)",
+          "hsl(152 72% 20%)",
+          "hsl(152 72% 30%)",
+          "hsl(152 68% 40%)",
+          "hsl(152 60% 52%)",
+          "hsl(152 55% 68%)",
+          "hsl(152 50% 84%)",
+          "hsl(152 45% 94%)"
+        ]
+      },
+      "green-cta": {
+        "role": "tertiary",
+        "displayName": "Verde de Confirmar",
+        "canonical": "hsl(152 64% 38%)",
+        "tonalRamp": [
+          "hsl(152 64% 14%)",
+          "hsl(152 64% 22%)",
+          "hsl(152 64% 30%)",
+          "hsl(152 64% 38%)",
+          "hsl(152 60% 50%)",
+          "hsl(152 55% 66%)",
+          "hsl(152 50% 83%)",
+          "hsl(152 45% 94%)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Âmbar de Espera",
+        "canonical": "hsl(32 95% 44%)",
+        "tonalRamp": [
+          "hsl(32 95% 15%)",
+          "hsl(32 95% 24%)",
+          "hsl(32 95% 34%)",
+          "hsl(32 95% 44%)",
+          "hsl(32 95% 56%)",
+          "hsl(32 95% 70%)",
+          "hsl(32 90% 85%)",
+          "hsl(32 85% 95%)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Carmim de Perdido",
+        "canonical": "hsl(347 77% 50%)",
+        "tonalRamp": [
+          "hsl(347 77% 15%)",
+          "hsl(347 77% 25%)",
+          "hsl(347 77% 35%)",
+          "hsl(347 77% 50%)",
+          "hsl(347 77% 62%)",
+          "hsl(347 77% 75%)",
+          "hsl(347 70% 88%)",
+          "hsl(347 65% 96%)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "hsl(216 44% 11%)",
+        "tonalRamp": [
+          "hsl(216 44% 7%)",
+          "hsl(216 44% 11%)",
+          "hsl(216 38% 20%)",
+          "hsl(216 30% 32%)",
+          "hsl(216 24% 48%)",
+          "hsl(216 22% 66%)",
+          "hsl(216 24% 84%)",
+          "hsl(216 28% 95%)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Tinta Apagada",
+        "canonical": "hsl(219 24% 38%)",
+        "tonalRamp": [
+          "hsl(219 24% 12%)",
+          "hsl(219 24% 20%)",
+          "hsl(219 24% 28%)",
+          "hsl(219 24% 38%)",
+          "hsl(219 24% 52%)",
+          "hsl(219 24% 68%)",
+          "hsl(219 24% 84%)",
+          "hsl(219 24% 95%)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel",
+        "canonical": "hsl(30 30% 97%)",
+        "tonalRamp": [
+          "hsl(30 20% 14%)",
+          "hsl(30 20% 24%)",
+          "hsl(30 20% 38%)",
+          "hsl(30 22% 54%)",
+          "hsl(30 26% 70%)",
+          "hsl(30 28% 84%)",
+          "hsl(30 30% 93%)",
+          "hsl(30 30% 97%)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Cartão",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "hsl(0 0% 15%)",
+          "hsl(0 0% 28%)",
+          "hsl(0 0% 42%)",
+          "hsl(0 0% 58%)",
+          "hsl(0 0% 72%)",
+          "hsl(0 0% 86%)",
+          "hsl(0 0% 95%)",
+          "hsl(0 0% 100%)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superfície Interior",
+        "canonical": "hsl(28 40% 97.5%)",
+        "tonalRamp": [
+          "hsl(28 24% 15%)",
+          "hsl(28 24% 26%)",
+          "hsl(28 26% 40%)",
+          "hsl(28 30% 56%)",
+          "hsl(28 34% 72%)",
+          "hsl(28 38% 86%)",
+          "hsl(28 40% 94%)",
+          "hsl(28 40% 97.5%)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Linha",
+        "canonical": "hsl(219 30% 91%)",
+        "tonalRamp": [
+          "hsl(219 30% 15%)",
+          "hsl(219 30% 26%)",
+          "hsl(219 30% 40%)",
+          "hsl(219 30% 56%)",
+          "hsl(219 30% 72%)",
+          "hsl(219 30% 84%)",
+          "hsl(219 30% 91%)",
+          "hsl(219 30% 96%)"
+        ]
+      },
+      "nav": {
+        "role": "neutral",
+        "displayName": "Azul-Noite",
+        "canonical": "hsl(222 40% 9%)",
+        "tonalRamp": [
+          "hsl(222 40% 5%)",
+          "hsl(222 40% 9%)",
+          "hsl(222 36% 16%)",
+          "hsl(222 32% 26%)",
+          "hsl(222 28% 42%)",
+          "hsl(222 26% 62%)",
+          "hsl(222 26% 82%)",
+          "hsl(222 30% 94%)"
+        ]
+      },
+      "chart-good": {
+        "role": "tertiary",
+        "displayName": "Verde de Gráfico",
+        "canonical": "#047857",
+        "tonalRamp": [
+          "#022c21",
+          "#03452f",
+          "#045c43",
+          "#047857",
+          "#059669",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "chart-bad": {
+        "role": "tertiary",
+        "displayName": "Carmim de Gráfico",
+        "canonical": "#e11d48",
+        "tonalRamp": [
+          "#4c0519",
+          "#700a25",
+          "#9f1239",
+          "#e11d48",
+          "#f43f5e",
+          "#fb7185",
+          "#fecdd3",
+          "#fff1f2"
+        ]
+      },
+      "chart-none": {
+        "role": "neutral",
+        "displayName": "Cinzento de Gráfico",
+        "canonical": "#7c8698",
+        "tonalRamp": [
+          "#1b2029",
+          "#2c333f",
+          "#434c5c",
+          "#5f6a7c",
+          "#7c8698",
+          "#a3abb9",
+          "#c9ced7",
+          "#eceef2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "O número que se lê de longe: a banca, a odd do boletim, o nível. Um por ecrã."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Todos os h1–h6. Archivo em largura 106, com equilíbrio de linhas automático."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "O cabeçalho de uma secção, ao lado da marca de cor."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prosa, nomes de equipas, explicações."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "A sobrancelha maiúscula por cima do título de secção. Duas ou três palavras."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Percentagens, euros e odds em qualquer sítio onde apareçam em coluna."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "inset 0 1px 0 hsla(0,0%,100%,0.95), 0 0 0 1px hsla(222,47%,11%,0.055), 0 1px 2px hsla(222,47%,11%,0.05), 0 6px 14px -6px hsla(222,47%,11%,0.10), 0 18px 40px -16px hsla(222,40%,14%,0.12)",
+        "purpose": "Repouso de qualquer superfície branca pousada no papel."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 1px 2px hsla(222,47%,11%,0.06), 0 10px 22px -8px hsla(222,47%,11%,0.14), 0 28px 56px -22px hsla(222,40%,14%,0.18)",
+        "purpose": "Resposta ao rato, com translateY(-2px). Não existe em toque."
+      },
+      {
+        "name": "raised",
+        "value": "inset 0 1px 0 hsla(0,0%,100%,1), 0 0 0 1px hsla(222,47%,11%,0.06), 0 1px 2px hsla(222,47%,11%,0.06), 0 12px 24px -10px hsla(222,47%,11%,0.16), 0 36px 64px -28px hsla(222,40%,14%,0.22)",
+        "purpose": "O bloco que manda na página. Um por ecrã."
+      },
+      {
+        "name": "glow-primary",
+        "value": "inset 0 1px 0 hsla(0,0%,100%,0.28), 0 6px 16px -6px hsla(14,100%,50%,0.55)",
+        "purpose": "Só por baixo do botão laranja."
+      },
+      {
+        "name": "nav-pill",
+        "value": "0 12px 28px -12px hsl(222 40% 9% / 0.65), 0 2px 10px hsl(222 40% 9% / 0.22)",
+        "purpose": "A pílula da navegação a flutuar sobre o papel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-soft",
+        "value": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "purpose": "A curva da casa: transformações, elevação, toque."
+      },
+      {
+        "name": "dur-tap",
+        "value": "140ms",
+        "purpose": "Resposta ao dedo (sl-tap, chips)."
+      },
+      {
+        "name": "dur-state",
+        "value": "200ms",
+        "purpose": "Elevação e mudança de estado de um cartão."
+      },
+      {
+        "name": "dur-enter",
+        "value": "500ms",
+        "purpose": "Entrada de conteúdo (fade-in, fade-in-up)."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.976)",
+        "purpose": "O quanto cede uma superfície debaixo do polegar."
+      },
+      {
+        "name": "entrada",
+        "value": "spring(stiffness 280, damping 28, mass 0.85) + blur(3px)→0 + y 14→0",
+        "purpose": "A entrada de qualquer bloco de página. Vive em src/lib/motion.ts."
+      },
+      {
+        "name": "fila",
+        "value": "staggerChildren 55ms, delayChildren 30ms",
+        "purpose": "Os filhos de uma página entram em cascata, não todos ao mesmo tempo."
+      },
+      {
+        "name": "nav-escorrega",
+        "value": "spring(stiffness 520, damping 38, mass 0.7) via layoutId",
+        "purpose": "A marca do destino activo escorrega de um item da barra para o outro."
+      },
+      {
+        "name": "reflexo",
+        "value": "translateX(-130%)→130% em 720ms cubic-bezier(0.2,0.8,0.2,1)",
+        "purpose": "A passagem de luz no botão laranja, e só nele."
+      },
+      {
+        "name": "luz-do-papel",
+        "value": "34s ease-in-out infinite alternate",
+        "purpose": "A deriva muito lenta da luz por trás de toda a aplicação."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "2xl-container",
+        "value": "1400px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "O botão que compromete dinheiro. O único gradiente da aplicação.",
+      "html": "<button class=\"ds-btn-primary\">Fechar aposta</button>",
+      "css": ".ds-btn-primary { background: linear-gradient(135deg, hsl(18 100% 54%), hsl(8 92% 48%)); color: #fff; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; padding: 12px 20px; border: 0; border-radius: 14px; cursor: pointer; box-shadow: inset 0 1px 0 hsla(0,0%,100%,0.28), 0 6px 16px -6px hsla(14,100%,50%,0.55); transition: filter 160ms ease, transform 160ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 160ms ease; } .ds-btn-primary:hover { filter: brightness(1.06); box-shadow: inset 0 1px 0 hsla(0,0%,100%,0.32), 0 10px 24px -8px hsla(14,100%,50%,0.6); } .ds-btn-primary:focus-visible { outline: 2px solid hsl(14 100% 50% / 0.7); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.985); }"
+    },
+    {
+      "name": "Botão de confirmar",
+      "kind": "button",
+      "refersTo": "button-cta",
+      "description": "Aceitar, guardar, confirmar — ações que não gastam dinheiro.",
+      "html": "<button class=\"ds-btn-cta\">Aceitar desafio</button>",
+      "css": ".ds-btn-cta { background: hsl(152 64% 38%); color: #fff; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-weight: 700; font-size: 15px; padding: 12px 20px; border: 0; border-radius: 10px; cursor: pointer; transition: filter 140ms ease; } .ds-btn-cta:hover { filter: brightness(1.08); } .ds-btn-cta:focus-visible { outline: 2px solid hsl(14 100% 50% / 0.7); outline-offset: 2px; }"
+    },
+    {
+      "name": "Cartão",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Qualquer superfície branca pousada no papel. Três sombras e um realce interior.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-meta\">Liga Portugal · 20:15</p><p class=\"ds-card-title\">Benfica – Sporting</p></div>",
+      "css": ".ds-card { background: linear-gradient(180deg, hsla(0,0%,100%,0.75), hsla(0,0%,100%,0) 42%), #fff; border-radius: 20px; padding: 16px; box-shadow: inset 0 1px 0 hsla(0,0%,100%,0.95), 0 0 0 1px hsla(222,47%,11%,0.055), 0 1px 2px hsla(222,47%,11%,0.05), 0 6px 14px -6px hsla(222,47%,11%,0.10), 0 18px 40px -16px hsla(222,40%,14%,0.12); transition: box-shadow 200ms cubic-bezier(0.2,0.8,0.2,1), transform 200ms cubic-bezier(0.2,0.8,0.2,1); } .ds-card:hover { box-shadow: 0 1px 2px hsla(222,47%,11%,0.06), 0 10px 22px -8px hsla(222,47%,11%,0.14), 0 28px 56px -22px hsla(222,40%,14%,0.18); transform: translateY(-2px); } .ds-card-meta { margin: 0 0 4px; color: hsl(219 24% 38%); font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 13px; } .ds-card-title { margin: 0; color: hsl(216 44% 11%); font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.018em; }"
+    },
+    {
+      "name": "Painel de secção",
+      "kind": "custom",
+      "refersTo": "section-panel",
+      "description": "A moldura de cor que diz de que tipo de coisa se trata antes de se ler uma palavra. Tons: primary, cool, amber, green.",
+      "html": "<section class=\"ds-sec\" data-tone=\"amber\"><header class=\"ds-sec-head\"><span class=\"ds-sec-mark\"></span><div><p class=\"ds-sec-eyebrow\">A tua vez</p><h2 class=\"ds-sec-title\">Por fechar<span class=\"ds-sec-count\">2</span></h2></div></header></section>",
+      "css": ".ds-sec { border-radius: 22px; padding: 10px; background: linear-gradient(180deg, hsla(0,0%,100%,0.5), hsla(0,0%,100%,0)), hsl(28 40% 97.5%); box-shadow: inset 0 0 0 1px hsla(222,47%,11%,0.05); } .ds-sec[data-tone=\"primary\"] { background: linear-gradient(180deg, hsl(14 100% 50% / 0.1), hsl(14 100% 50% / 0.03)); box-shadow: inset 0 0 0 1px hsl(14 100% 50% / 0.18); } .ds-sec[data-tone=\"cool\"] { background: linear-gradient(180deg, hsl(214 88% 46% / 0.1), hsl(214 88% 46% / 0.03)); box-shadow: inset 0 0 0 1px hsl(214 88% 46% / 0.2); } .ds-sec[data-tone=\"amber\"] { background: linear-gradient(180deg, hsl(32 95% 44% / 0.16), hsl(32 95% 44% / 0.05)); box-shadow: inset 0 0 0 1px hsl(32 95% 44% / 0.3); } .ds-sec[data-tone=\"green\"] { background: linear-gradient(180deg, hsl(152 72% 30% / 0.1), hsl(152 72% 30% / 0.03)); box-shadow: inset 0 0 0 1px hsl(152 72% 30% / 0.2); } .ds-sec-head { display: flex; align-items: center; gap: 10px; padding: 6px 6px 10px; } .ds-sec-mark { width: 28px; height: 28px; border-radius: 10px; background: hsl(32 95% 44% / 0.18); box-shadow: inset 0 0 0 1px hsl(32 95% 44% / 0.35); flex: none; } .ds-sec-eyebrow { margin: 0; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: hsl(219 24% 38%); } .ds-sec-title { margin: 2px 0 0; display: flex; align-items: center; gap: 8px; font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 13.5px; font-weight: 800; letter-spacing: -0.01em; color: hsl(216 44% 11%); } .ds-sec-count { font-variant-numeric: tabular-nums; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: hsla(222,47%,11%,0.07); color: hsl(219 24% 38%); }"
+    },
+    {
+      "name": "Chip de filtro",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filtrar liga, dia ou mercado. Ativo = laranja cheio.",
+      "html": "<button class=\"ds-chip\">Todas as ligas</button><button class=\"ds-chip\" data-active=\"true\">Hoje</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; margin-right: 8px; border: 1px solid hsl(219 30% 91%); border-radius: 999px; background: #fff; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: hsl(216 44% 11%); white-space: nowrap; cursor: pointer; transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms cubic-bezier(0.2,0.8,0.2,1); } .ds-chip:hover { border-color: hsl(219 24% 38% / 0.4); } .ds-chip:active { transform: scale(0.976); } .ds-chip:focus-visible { outline: 2px solid hsl(14 100% 50% / 0.7); outline-offset: 2px; } .ds-chip[data-active=\"true\"] { background: hsl(14 100% 50%); border-color: hsl(14 100% 50%); color: #fff; }"
+    },
+    {
+      "name": "Pílula de estado",
+      "kind": "chip",
+      "refersTo": "pill-win",
+      "description": "O estado de uma aposta num boletim. Fundo a 12–15%, texto na cor cheia, sem borda.",
+      "html": "<span class=\"ds-pill ds-pill-win\">Ganha</span><span class=\"ds-pill ds-pill-loss\">Perdida</span><span class=\"ds-pill ds-pill-open\">Por fechar</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; margin-right: 6px; border: 0; border-radius: 999px; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: -0.01em; } .ds-pill-win { background: hsl(152 72% 30% / 0.13); color: hsl(152 72% 30%); } .ds-pill-loss { background: hsl(347 77% 50% / 0.12); color: hsl(347 77% 50%); } .ds-pill-open { background: hsl(32 95% 44% / 0.15); color: hsl(32 90% 36%); }"
+    },
+    {
+      "name": "Linha de resultado 1 / X / 2",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "O átomo do quadro de jogos: rótulo à esquerda, número em verde à direita, a linha inteira é zona de toque.",
+      "html": "<div class=\"ds-outcomes\"><button class=\"ds-outcome\"><span class=\"ds-outcome-label\">Casa</span><span class=\"ds-outcome-value\">58%</span></button><button class=\"ds-outcome\" data-active=\"true\"><span class=\"ds-outcome-label\">Empate</span><span class=\"ds-outcome-value\">24%</span></button><button class=\"ds-outcome\"><span class=\"ds-outcome-label\">Fora</span><span class=\"ds-outcome-value\">18%</span></button></div>",
+      "css": ".ds-outcomes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .ds-outcome { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 48px; padding: 8px 12px; border: 1px solid hsl(219 30% 91%); border-radius: 14px; background: hsl(28 40% 97.5%); cursor: pointer; transition: transform 140ms cubic-bezier(0.2,0.8,0.2,1), background-color 140ms ease, border-color 140ms ease; } .ds-outcome:hover { background: hsl(28 40% 94%); } .ds-outcome:active { transform: scale(0.976); } .ds-outcome:focus-visible { outline: 2px solid hsl(14 100% 50% / 0.7); outline-offset: 2px; } .ds-outcome[data-active=\"true\"] { background: hsl(14 100% 50% / 0.08); border-color: hsl(14 100% 50% / 0.5); } .ds-outcome-label { font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 11px; font-weight: 600; color: hsl(219 24% 38%); } .ds-outcome-value { font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif; font-variation-settings: 'wdth' 112; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px; letter-spacing: -0.03em; color: hsl(152 72% 30%); }"
+    },
+    {
+      "name": "Navegação de baixo",
+      "kind": "nav",
+      "refersTo": "bottomnav",
+      "description": "Pílula azul-noite a flutuar sobre o papel; o item ativo leva fundo laranja a 18%.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item\" data-active=\"true\">Início</button><button class=\"ds-nav-item\">Quadro</button><button class=\"ds-nav-item\">Desafios</button><button class=\"ds-nav-item\">Análises</button></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 4px; padding: 6px; border-radius: 999px; background: hsl(222 40% 9%); box-shadow: 0 12px 28px -12px hsl(222 40% 9% / 0.65), 0 2px 10px hsl(222 40% 9% / 0.22); } .ds-nav-item { min-height: 40px; padding: 8px 14px; border: 0; border-radius: 999px; background: transparent; color: hsl(0 0% 100% / 0.72); font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; } .ds-nav-item:hover { color: #fff; } .ds-nav-item:focus-visible { outline: 2px solid hsl(14 100% 50% / 0.7); outline-offset: 2px; } .ds-nav-item[data-active=\"true\"] { background: hsl(14 100% 50% / 0.18); color: hsl(22 100% 62%); }"
+    },
+    {
+      "name": "Número de display",
+      "kind": "custom",
+      "refersTo": "card-raised",
+      "description": "O número que manda no ecrã, no cartão levantado. Um por página.",
+      "html": "<div class=\"ds-raised\"><p class=\"ds-raised-eyebrow\">Banca</p><p class=\"ds-figure\">184,50 €</p><p class=\"ds-raised-note\">Nível 7 de 20</p></div>",
+      "css": ".ds-raised { background: linear-gradient(180deg, hsla(0,0%,100%,0.9), hsla(0,0%,100%,0) 55%), #fff; border-radius: 22px; padding: 18px; box-shadow: inset 0 1px 0 hsla(0,0%,100%,1), 0 0 0 1px hsla(222,47%,11%,0.06), 0 1px 2px hsla(222,47%,11%,0.06), 0 12px 24px -10px hsla(222,47%,11%,0.16), 0 36px 64px -28px hsla(222,40%,14%,0.22); } .ds-raised-eyebrow { margin: 0; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: hsl(219 24% 38%); } .ds-figure { margin: 4px 0 2px; font-family: 'Archivo Variable', 'Schibsted Grotesk Variable', system-ui, sans-serif; font-variation-settings: 'wdth' 112; font-variant-numeric: tabular-nums; font-weight: 700; font-size: clamp(1.75rem, 7vw, 2.75rem); line-height: 1; letter-spacing: -0.03em; color: hsl(216 44% 11%); } .ds-raised-note { margin: 0; font-family: 'Schibsted Grotesk Variable', system-ui, sans-serif; font-size: 13px; color: hsl(219 24% 38%); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Bancada",
+    "overview": "A ScoreLab vê-se de pé, com o jogo a começar, numa mão só. Por isso não é uma folha de cálculo: é a bancada. O número é o que se grita — grande, alinhado, legível de braço esticado — e tudo o resto existe para o deixar respirar. O laranja da marca é a camisola da casa: aparece onde se decide alguma coisa e em mais lado nenhum, porque se estiver em todo o lado deixa de querer dizer qualquer coisa.\n\nO chão é papel claro e quente, não branco e não cinzento, com duas auras muito fracas por baixo de tudo: laranja no topo, azul-escuro no canto de baixo. Em cima dele pousam cartões brancos com três sombras cada — linha de contacto, sombra direta, sombra ambiente — que é o que faz um retângulo parecer pousado em vez de pintado. A energia vem do contraste entre esse fundo calmo e os números, não de gradientes espalhados pela página.\n\nA cor trabalha como código de estado, nunca como decoração: cada secção tem um painel com o seu tom por baixo, e é esse tom que diz de que tipo de coisa se trata antes de se ler uma palavra. Laranja para o que há para escolher, azul frio para material de consulta, âmbar para o que está à tua espera, verde para o que já ficou fechado. Anti-referência confirmada: o HUD escuro de néon ciano que a aplicação já foi — fundo preto, vidro e brilho — não volta.",
+    "keyCharacteristics": [
+      "Papel quente com grão em baixo, cartões brancos pousados em cima, nunca o contrário.",
+      "O número é o herói: Archivo de largura variável, tabular, apertado — e a largura é o eixo que a aplicação anima quando o saldo mexe.",
+      "Laranja só onde se decide; o resto do sinal vem do tom da secção.",
+      "Um gradiente em toda a aplicação, e só num botão e na barra de topo.",
+      "Tudo em que um polegar toca cede debaixo dele; o que entra, entra com mola."
+    ],
+    "rules": [
+      {
+        "name": "A Regra da Camisola",
+        "body": "O laranja da marca só toca em elementos que mudam alguma coisa: o botão que fecha uma aposta, a barra de topo, o estado ativo. Se um ecrã tiver mais de três coisas laranja, duas estão a mentir.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Tom da Secção",
+        "body": "Uma secção diz o que é pela cor do painel, não pelo título: laranja (há aqui o que escolher), azul (é para consultar), âmbar (está à tua espera), verde (já está fechado). Nenhuma secção fica sem tom por preguiça.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra das Barras",
+        "body": "Uma barra preenchida nunca é laranja. Verde quando bate o que era preciso, carmim quando não bate, cinzento quando há jogos a menos para dizer, azul quando é só uma medida. O laranja é para quem decide, e uma barra não decide nada.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra dos Dois Verdes",
+        "body": "O verde escuro é para números sobre branco; o verde saturado é para texto branco sobre cheio. Trocá-los parte o contraste nos dois sentidos.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Daltónico",
+        "body": "Verde contra vermelho nunca passa sozinho o teste de daltonismo. Qualquer gráfico que os use carrega também o número impresso e uma textura — a separação não pode assentar no tom.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Número Gritado",
+        "body": "Em cada ecrã há exatamente um número que se lê de longe. Se houver dois a competir, um deles não é o assunto do ecrã.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra da Coluna Direita",
+        "body": "Qualquer número que apareça por baixo de outro número leva tabular-nums. Uma coluna de euros desalinhada é um erro, não uma escolha.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra do Degrau Único",
+        "body": "Numa página há um elemento levantado. Se dois se levantam, nenhum se levanta.",
+        "section": "elevation"
+      },
+      {
+        "name": "A Regra das Três Sombras",
+        "body": "Uma sombra sozinha não se usa. Contacto, direta e ambiente andam sempre juntas — é a ausência da linha de contacto que faz um cartão parecer colado ao fundo.",
+        "section": "elevation"
+      },
+      {
+        "name": "A Regra dos Três Momentos",
+        "body": "Há exactamente três momentos autorais de movimento, e cada um aparece num sítio só: o reflexo que atravessa o botão laranja, a marca da navegação que escorrega de um destino para o outro, e a largura da figura que abre e fecha quando o saldo muda. Um quarto tira o lugar a estes.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usar sl-card ou sl-raised para qualquer superfície branca, e sl-sec com um data-tone para qualquer agrupamento de cartões.",
+      "Do pôr tabular-nums (via .sl-figure, .font-mono-data ou o papel data) em todos os números que possam aparecer uns por baixo dos outros.",
+      "Do dar .sl-tap a tudo o que um polegar toca, para ceder debaixo do dedo.",
+      "Do manter as áreas de toque com pelo menos 44×44px.",
+      "Do respeitar prefers-reduced-motion em qualquer animação nova — a aplicação já o faz nas que tem.",
+      "Do escrever números medidos; um valor de exemplo numa interface é uma mentira à espera de ser lida como verdade."
+    ],
+    "donts": [
+      "Don't reintroduzir o mundo escuro de néon: scorelab-aurora, scorelab-premium-shell, glass-surface, --scorelab-*. É a anti-referência do projeto.",
+      "Don't inventar um terceiro degrau de elevação nem uma quarta sombra.",
+      "Don't usar o gradiente laranja em superfícies — ele existe para o botão principal e para a barra de topo, mais nada.",
+      "Don't pintar bordas cinzentas opacas à volta de cartões; o anel interior a 5,5% é o contorno da casa.",
+      "Don't usar cinzento (muted) como fundo de um enchimento dentro de um cartão; é para isso que existe a superfície interior tingida.",
+      "Don't pôr dois números de display a competir no mesmo ecrã.",
+      "Don't encher uma barra de progresso ou de medida com o laranja da marca nem com o gradiente: azul para medir, verde/carmim para veredicto, cinzento para amostra curta."
+    ]
+  }
+}

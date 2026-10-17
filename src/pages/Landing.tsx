@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PublicBoard } from "@/components/PublicBoard";
 import { COVERED_LEAGUES } from "@/lib/boardLeagues";
+import { stagger } from "@/lib/motion";
 
 /**
  * The page everybody meets before signing in.
@@ -31,11 +32,6 @@ const ease = [0.22, 0.61, 0.36, 1] as const;
 const rise = {
   hidden: { opacity: 0, y: 18 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07 } },
 };
 
 const SHOW = { once: true, amount: 0.3 } as const;
@@ -203,7 +199,7 @@ export default function Landing() {
                   <h3 className="mt-3 text-[17px] font-black tracking-[-0.015em] text-foreground">
                     {feature.title}
                   </h3>
-                  <p className="mt-1.5 text-[13.5px] leading-7 text-muted-foreground">
+                  <p className="mt-1.5 text-[13.5px] leading-[1.5] text-muted-foreground">
                     {feature.text}
                   </p>
                 </motion.article>

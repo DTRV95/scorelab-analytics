@@ -4,19 +4,21 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BarChart3,
+  ChevronRight,
   Gauge,
   Globe,
   Percent,
   Trophy,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BankrollHero } from "@/components/BankrollHero";
 import { HomeChallenges } from "@/components/HomeChallenges";
 import { HomeInsights } from "@/components/HomeInsights";
+import { Fold } from "@/components/Fold";
 import { PlanInvites } from "@/components/PlanInvites";
 import { HomeRivals } from "@/components/HomeRivals";
 import { TopGames } from "@/components/TopGames";
-import { Achievements } from "@/components/Achievements";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
@@ -28,16 +30,7 @@ import { seenByPlan } from "@/lib/seenStore";
 import { type PlanBet } from "@/lib/planStore";
 import { loadBoard } from "@/lib/boardSource";
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-};
+import { fadeUp, stagger } from "@/lib/motion";
 
 /** Where else there is to go, for the pages nothing above leads to. */
 const DOORS = [
@@ -45,7 +38,7 @@ const DOORS = [
     to: "/desafios",
     icon: Trophy,
     title: "Desafios",
-    detail: "Começar outro",
+    detail: "Começar",
   },
   // Short on purpose: two to a row on a phone, and a title cut off mid-word
   // is a door with no sign on it.
@@ -66,26 +59,37 @@ const DOORS = [
   },
 ];
 
+/**
+ * As portas para o resto da aplicação.
+ *
+ * Eram quatro cartões iguais, cada um com a sua sombra: quatro caixas a
+ * disputar a atenção com o que interessa por cima delas. São agora um bloco
+ * só, dividido por fios — continuam a ser quatro sítios, deixaram de ser
+ * quatro objectos.
+ */
 function HomeDoors() {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {DOORS.map((door) => (
+    <div className="sl-card grid grid-cols-2 overflow-hidden">
+      {DOORS.map((door, index) => (
         <Link
           key={door.to}
           to={door.to}
-          className="sl-card sl-card-interactive sl-tap flex items-center gap-2.5 px-3 py-2.5"
+          className={cn(
+            "sl-tap group flex min-h-[56px] items-center gap-2.5 px-3.5 py-3 transition-colors hover:bg-muted/60",
+            index % 2 === 0 && "border-r border-border/70",
+            index > 1 && "border-t border-border/70",
+          )}
         >
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-muted">
-            <door.icon className="h-3.5 w-3.5 text-muted-foreground" />
-          </span>
+          <door.icon className="h-[17px] w-[17px] flex-none text-primary/75" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12.5px] font-semibold text-foreground">
+            <span className="block truncate text-[13px] font-bold tracking-[-0.01em] text-foreground">
               {door.title}
             </span>
-            <span className="sl-meta block truncate text-[10.5px]">
+            <span className="sl-meta block truncate text-[11px]">
               {door.detail}
             </span>
           </span>
+          <ChevronRight className="h-4 w-4 flex-none text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
         </Link>
       ))}
     </div>
@@ -206,18 +210,6 @@ export default function Home() {
     [bets],
   );
 
-  /** O nível mais alto a que chegou em qualquer desafio, terminado ou não. */
-  const topLevel = useMemo(
-    () =>
-      board
-        ? board.challenges.reduce(
-            (best, entry) => Math.max(best, entry.standing.day),
-            0,
-          )
-        : 0,
-    [board],
-  );
-
   const insights = useMemo(
     () =>
       board
@@ -264,6 +256,17 @@ export default function Home() {
     };
   }, []);
 
+  /** O que a dobra tem lá dentro, para não se abrir às cegas. */
+  const restoHint = useMemo(() => {
+    const partes = [
+      insights.length > 0
+        ? `${insights.length} ${insights.length === 1 ? "leitura" : "leituras"}`
+        : null,
+      rivals.length > 0 ? "duelos" : null,
+    ].filter(Boolean);
+    return partes.length > 0 ? `· ${partes.join(" · ")}` : undefined;
+  }, [insights.length, rivals.length]);
+
   return (
     <AppLayout>
       <motion.div
@@ -272,22 +275,11 @@ export default function Home() {
         variants={stagger}
         className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0 md:p-6 md:pt-0"
       >
-        {/*
-         * The title sat 45px under the header bar and 6px above its own line,
-         * which read as a caption for the bar rather than as the name of the
-         * page. Three paddings stacked above it — the layout's, this page's,
-         * and the 8px phones put on every h1 — and nothing below. The page's
-         * own top padding is gone and the block is pulled up by the rest, so
-         * the title sits between the bar and the line under it.
-         *
-         * The offset is written out rather than as -mt-4: a phone-width rule
-         * matches any class containing "mt-4" and would turn this into a
-         * positive margin.
-         */}
-        <motion.div variants={fadeUp}>
-          <h1 className="sl-section-title text-[15px]">Início</h1>
-        </motion.div>
-
+        {/* O nome da página fica para quem o ouve, não para quem o vê: a
+            barra de baixo já diz, acesa, em que página se está, e um
+            título a repeti-la é uma linha que não responde a nada. Um
+            leitor de ecrã continua a anunciá-la. */}
+        <h1 className="sr-only">Início</h1>
         {/* Before anything of their own: somebody is waiting for an answer.
             This used to be buried inside a challenge's page, which is a page
             about challenges they are already in. */}
@@ -329,42 +321,22 @@ export default function Home() {
         )}
 
         <motion.div variants={fadeUp}>
-          <HomeInsights insights={insights} settled={settled} />
-        </motion.div>
-
-        {/* As conquistas contam o registo todo — desafios e apostas soltas —
-            porque é tudo juízo da mesma pessoa. Ganham-se por preço, por
-            escolher o que o quadro mede bem e por manter isto em dia; nunca
-            por apostar mais. */}
-        {user && (
-          <motion.div variants={fadeUp}>
-            <Achievements
-              bets={[...bets, ...looseBets]}
-              level={topLevel}
-              userId={user.id}
-            />
-          </motion.div>
-        )}
-
-        {rivals.length > 0 && (
-          <motion.div variants={fadeUp}>
-            <HomeRivals rivalries={rivals} news={news} />
-          </motion.div>
-        )}
-
-        <motion.div variants={fadeUp}>
           <TopGames board={games} />
         </motion.div>
 
-
-        {/* The rest of the app, from the page it opens on.
-            Everything above is a door to the page that holds the whole of it;
-            these are the four that nothing above leads to. A phone's bottom
-            bar holds five destinations and no more, so without this the
-            leagues, the model's record and the saved analyses could only be
-            reached on a computer. */}
+        {/* Daqui para baixo é consulta, não é o que há para fazer hoje.
+            Estava tudo aberto, e o resultado era uma página de sete blocos
+            para responder a duas perguntas. Fica a um toque: o que o
+            registo diz, os duelos, e as páginas a que a barra de baixo não
+            chega — nada saiu da aplicação, só saiu da frente. */}
         <motion.div variants={fadeUp}>
-          <HomeDoors />
+          <Fold label="O resto" hint={restoHint}>
+            <HomeInsights insights={insights} settled={settled} />
+            {rivals.length > 0 && (
+              <HomeRivals rivalries={rivals} news={news} />
+            )}
+            <HomeDoors />
+          </Fold>
         </motion.div>
       </motion.div>
     </AppLayout>

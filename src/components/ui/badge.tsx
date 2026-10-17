@@ -8,13 +8,15 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
+        // Etiquetas de estado: fundo fraco e texto na cor cheia, como as
+        // pílulas do boletim. Uma lista delas não pode virar parede de cor.
         default:
-          "border-transparent gradient-primary text-primary-foreground shadow-[0_12px_30px_-18px_var(--scorelab-accent-b)] hover:-translate-y-0.5",
+          "border-transparent bg-primary/12 text-[hsl(14_92%_40%)]",
         secondary:
-          "border-white/10 bg-white/[0.055] text-secondary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] hover:bg-white/[0.08]",
+          "border-transparent bg-muted text-muted-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "border-cyan-100/14 bg-cyan-100/[0.04] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]",
+          "border-transparent bg-destructive/12 text-destructive",
+        outline: "border-border bg-card text-foreground",
       },
     },
     defaultVariants: {

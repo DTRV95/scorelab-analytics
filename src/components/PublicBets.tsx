@@ -43,10 +43,10 @@ export function PublicBets({
   if (entries.length === 0) {
     return (
       <div className="sl-card px-4 py-4">
-        <p className="text-[12.5px] leading-6 text-foreground">
+        <p className="text-[12.5px] leading-[1.5] text-foreground">
           Ainda não há apostas de mais ninguém para ver.
         </p>
-        <p className="sl-meta mt-1.5 text-[12px] leading-6">
+        <p className="sl-meta mt-1.5 text-[12px] leading-[1.5]">
           Só aparecem aqui as apostas de desafios que alguém abriu a toda a
           gente. {mineArePrivate ? "Os teus estão todos fechados — abres um em Regras deste desafio, no botão de visibilidade." : "Os teus já estão abertos; falta alguém do outro lado."}
         </p>

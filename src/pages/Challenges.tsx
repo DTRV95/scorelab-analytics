@@ -10,6 +10,7 @@ import {
   Flag,
   RotateCcw,
   Settings2,
+  Sparkles,
   Swords,
   Trash2,
   UserPlus,
@@ -44,6 +45,7 @@ import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
 import { FailedPicker } from "@/components/FailedPicker";
 import { Button } from "@/components/ui/button";
+import { Fold } from "@/components/Fold";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   chanceOfCompleting,
@@ -111,17 +113,9 @@ import {
   type LoadedBoard,
 } from "@/lib/boardSource";
 import { type BoardMatch } from "@/lib/probabilityBoardCache";
+import { fadeUp, stagger } from "@/lib/motion";
 
 const BOARD_DAYS = 7;
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
 
 /** The day a challenge was given as over, as somebody would say it. */
 function endedOn(at: string | null): string {
@@ -1165,7 +1159,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Regras deste desafio"
               aria-label="Regras deste desafio"
               onClick={() => setRulesOpen(true)}
@@ -1177,7 +1171,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Convidar alguém"
               aria-label="Convidar alguém"
               onClick={() => setInvitesOpen(true)}
@@ -1188,7 +1182,7 @@ export default function Challenges() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+            className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Atualizar"
             onClick={() => {
               setToken((value) => value + 1);
@@ -1202,7 +1196,7 @@ export default function Challenges() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-none rounded-lg text-muted-foreground"
+              className="sl-tap h-10 w-10 flex-none rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               title={ended ? "Reabrir este desafio" : "Terminar este desafio"}
               aria-label={ended ? "Reabrir este desafio" : "Terminar este desafio"}
               onClick={() => setEndOpen(true)}
@@ -1237,12 +1231,22 @@ export default function Challenges() {
         {/* Under the header and above everything that asks for something:
             what this challenge is, before what to do about it today. The
             whole table of rules stays one tap away, behind the icon. */}
+        {/* As regras do desafio passaram para trás de uma dobra. Abria-se
+            um desafio e a primeira coisa era o parágrafo que o descreve —
+            lido na primeira vez e ignorado nas trinta e sete seguintes,
+            sempre por cima do que há mesmo a fazer hoje. */}
         {intro && (
-          <motion.div variants={fadeUp} className="sl-card px-4 py-3">
-            <p className="text-[12.5px] leading-6 text-foreground">
-              {intro.sentence}
-            </p>
-            <p className="sl-meta mt-1 text-[11px] leading-5">{intro.terms}</p>
+          <motion.div variants={fadeUp}>
+            <Fold label="As regras">
+              <div className="sl-card px-4 py-3">
+                <p className="text-[12.5px] leading-[1.5] text-foreground">
+                  {intro.sentence}
+                </p>
+                <p className="sl-meta mt-1 text-[11px] leading-5">
+                  {intro.terms}
+                </p>
+              </div>
+            </Fold>
           </motion.div>
         )}
 
@@ -1331,7 +1335,6 @@ export default function Challenges() {
           <Section
             tone="amber"
             icon={Clock}
-            eyebrow="À espera de ti"
             title="Por fechar"
             count={openBets.length}
             note="A banca só mexe quando estas fecharem."
@@ -1440,7 +1443,7 @@ export default function Challenges() {
               thirty-eight days, and a bar that never moves says nothing. */}
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--sl-surface))]">
             <motion.div
-              className="h-full rounded-full [background:var(--sl-gradient)]"
+              className="h-full rounded-full bg-[hsl(var(--sl-cool))]"
               initial={{ width: 0 }}
               animate={{ width: `${Math.max((day / rules.days) * 100, 2)}%` }}
               transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
@@ -1469,7 +1472,6 @@ export default function Challenges() {
             <Section
               tone={waitingOn.some((i) => i.status === "pending") ? "amber" : "plain"}
               icon={UserPlus}
-              eyebrow="Convites"
               title="Ainda não entraram"
               count={waitingOn.length}
               className="space-y-1.5"
@@ -1668,7 +1670,7 @@ export default function Challenges() {
               <button
                 type="button"
                 onClick={() => setAllDays((open) => !open)}
-                className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+                className="sl-tap w-full border-t border-border py-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 {allDays ? "Mostrar só os últimos 2 níveis" : "Ver todos os níveis"}
               </button>
@@ -1715,19 +1717,22 @@ export default function Challenges() {
           {/* The document's own columns, in its order, so the sheet on the
               table and the screen can be read side by side. */}
           <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
-            <span className="sl-meta w-6 flex-none text-[10px] uppercase tracking-[0.1em]">
+            {/* "NÍVEL" a 0,1em de entreletra não cabia nos 36px da coluna
+                e encostava a "BANCA". A entreletra desceu e a coluna
+                alargou — é um cabeçalho de tabela, não uma sobrancelha. */}
+            <span className="sl-meta w-10 flex-none text-[10px] uppercase tracking-[0.05em]">
               Nível
             </span>
-            <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta ml-0.5 flex-1 text-[10px] uppercase tracking-[0.05em]">
               Banca
             </span>
-            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.05em]">
               Aposta
             </span>
-            <span className="sl-meta w-10 flex-none text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta w-10 flex-none text-right text-[10px] uppercase tracking-[0.05em]">
               Odd
             </span>
-            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.1em]">
+            <span className="sl-meta flex-1 text-right text-[10px] uppercase tracking-[0.05em]">
               Total
             </span>
           </div>
@@ -1758,7 +1763,7 @@ export default function Challenges() {
                   }`}
                 >
                   <span
-                    className={`sl-figure flex h-6 w-6 flex-none items-center justify-center rounded-lg text-[11px] ${
+                    className={`sl-figure flex h-6 w-10 flex-none items-center justify-center rounded-lg text-[11px] ${
                       today
                         ? "text-white shadow-sm [background:var(--sl-gradient)]"
                         : done
@@ -1789,7 +1794,7 @@ export default function Challenges() {
             <button
               type="button"
               onClick={() => setWholeTable(true)}
-              className="w-full border-t border-border py-2.5 text-[11px] font-semibold text-primary"
+              className="sl-tap w-full border-t border-border py-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
             >
               Ver o quadro todo ({ladder.length} níveis)
             </button>
@@ -1805,11 +1810,25 @@ export default function Challenges() {
           )}
         </motion.section>
 
+        {/* Em contorno, e não em laranja cheio: no fundo da página de um
+            desafio a decorrer, começar outro é uma saída, não o que há a
+            fazer. O laranja desta página é do botão que fecha o nível. No
+            catálogo, onde criar é o assunto, continua cheio. */}
         <motion.div variants={fadeUp}>
-          <CreateChallenge onCreated={() => setToken((value) => value + 1)} />
+          <CreateChallenge
+            onCreated={() => setToken((value) => value + 1)}
+            trigger={(openIt) => (
+              <Button
+                variant="outline"
+                className="sl-tap h-12 w-full text-sm font-bold"
+                onClick={openIt}
+              >
+                <Sparkles className="h-4 w-4" />
+                Novo desafio
+              </Button>
+            )}
+          />
         </motion.div>
-
-
 
         <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
           <DialogContent className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-md">
