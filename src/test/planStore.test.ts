@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
+import {
+  ladderFor,
+  MILLION_PLAN_RULES,
+  stakeForDay,
+} from "@/lib/challengeRules";
 import {
   buildStanding,
   combineOdds,
@@ -73,6 +77,46 @@ describe("a player's standing", () => {
     expect(standing.day).toBe(3);
   });
 
+  it("só sobe de nível quando a banca chega ao que o nível seguinte pede", () => {
+    // O caso que o David descreveu, na tabela do Plano Milhão: o nível 1
+    // joga-se com 10 € e pede 5 €. Perdê-lo deixa 5 €.
+    const perdeu = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", status: "red", profitLoss: -5 }),
+    ]);
+    expect(perdeu.bankroll).toBe(5);
+    expect(perdeu.day).toBe(1);
+    // Com 5 € não há 5 € para arriscar além dos que lá estão: é tudo.
+    const escada = ladderFor(MILLION_PLAN_RULES, 10);
+    expect(stakeForDay(escada, perdeu.day, perdeu.bankroll)).toBe(5);
+
+    // Ganhar a seguir repõe os 10 € — e aqui é que o contador de passos
+    // somava um e pedia o nível 2, que se joga com 15 € e manda apostar
+    // 7,50 €: 75% de uma banca de 10 € num plano que nunca passa de 50%.
+    const repos = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", status: "red", profitLoss: -5 }),
+      bet({
+        id: "b2",
+        stake: 5,
+        profitLoss: 5,
+        placedAt: "2026-09-22T10:00:00.000Z",
+      }),
+    ]);
+    expect(repos.bankroll).toBe(10);
+    expect(repos.day).toBe(1);
+    expect(stakeForDay(escada, repos.day, repos.bankroll)).toBe(5);
+
+    // Só quando a banca chega mesmo aos 15 € da linha seguinte é que o
+    // nível 2 se abre, e aí sim a aposta é a dele.
+    const subiu = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", status: "red", profitLoss: -5 }),
+      bet({ id: "b2", stake: 5, profitLoss: 5, placedAt: "2026-09-22T10:00:00.000Z" }),
+      bet({ id: "b3", stake: 5, profitLoss: 5, placedAt: "2026-09-23T10:00:00.000Z" }),
+    ]);
+    expect(subiu.bankroll).toBe(15);
+    expect(subiu.day).toBe(2);
+    expect(stakeForDay(escada, subiu.day, subiu.bankroll)).toBe(7.5);
+  });
+
   it("leaves a pending bet out of the bankroll but shows what is at risk", () => {
     const standing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1", profitLoss: 5 }),
@@ -114,31 +158,6 @@ describe("a player's standing", () => {
 
     expect(standing.bets).toHaveLength(1);
     expect(standing.bankroll).toBe(15);
-  });
-
-  it("climbs a step for a day won and goes back one for a day lost", () => {
-    // Two wins put the player on day 3 of the table. Losing day 3 sends them
-    // back to day 2 — one step, not back to the start and not forward.
-    const climbing = buildStanding(member, MILLION_PLAN_RULES, [
-      bet({ id: "b1", profitLoss: 5 }),
-      bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
-    ]);
-    expect(climbing.day).toBe(3);
-
-    const fell = buildStanding(member, MILLION_PLAN_RULES, [
-      bet({ id: "b1", profitLoss: 5 }),
-      bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
-      bet({
-        id: "b3",
-        status: "red",
-        stake: 10.69,
-        profitLoss: -10.69,
-        placedAt: "2026-09-23T10:00:00.000Z",
-      }),
-    ]);
-
-    expect(fell.bankroll).toBe(10.69);
-    expect(fell.day).toBe(2);
   });
 
   it("counts the days left open and remembers the last one decided", () => {
@@ -621,61 +640,98 @@ describe("a day closed the wrong way round", () => {
   });
 });
 
+/**
+ * A escada, agora lida pelo dinheiro.
+ *
+ * Estes testes passavam com apostas impossíveis — uma perdida que pagava
+ * +5 € — porque o nível vinha de contar ganhos e derrotas e nunca olhava
+ * para o dinheiro. Passam a usar as quantias da tabela do Plano Milhão,
+ * que é o que torna a pergunta "em que nível estou?" respondível.
+ */
 describe("walking the ladder", () => {
-  const day = (overrides: Partial<PlanBet>, index: number) =>
+  /** Um dia jogado, com a quantia verdadeira do que aconteceu. */
+  const day = (
+    profitLoss: number,
+    index: number,
+    status: PlanBet["status"] = "green",
+  ) =>
     bet({
       id: `l${index}`,
+      status,
+      profitLoss,
       placedAt: `2026-09-${String(20 + index).padStart(2, "0")}T10:00:00.000Z`,
-      ...overrides,
     });
 
-  it("climbs a day for every day won", () => {
-    const bets = [day({ status: "green" }, 1), day({ status: "green" }, 2)];
+  // Tabela do Plano Milhão: 10 → 15 → 21,38 → 30,99.
+  const GANHA_1 = 5;
+  const GANHA_2 = 6.38;
 
-    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(3);
-  });
-
-  it("goes back a day for a day lost", () => {
-    const bets = [
-      day({ status: "green" }, 1),
-      day({ status: "green" }, 2),
-      day({ status: "red" }, 3),
-    ];
-
-    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
-  });
-
-  it("stays on day 1 after losing it: there is no day 0 to fall into", () => {
+  it("sobe um degrau quando a banca chega ao que esse degrau pede", () => {
     expect(
-      buildStanding(member, MILLION_PLAN_RULES, [day({ status: "red" }, 1)]).day,
+      buildStanding(member, MILLION_PLAN_RULES, [day(GANHA_1, 1)]).day,
+    ).toBe(2);
+    expect(
+      buildStanding(member, MILLION_PLAN_RULES, [
+        day(GANHA_1, 1),
+        day(GANHA_2, 2),
+      ]).day,
+    ).toBe(3);
+  });
+
+  it("desce na escada quando a banca cai, e não um passo no tempo", () => {
+    // Dois ganhos põem a banca em 21,38 € — o nível 3. Perder a aposta
+    // desse nível (10,69 €) deixa 10,69 €, que é menos do que os 15 € que
+    // o nível 2 pede: por isso o degrau é o 1, não o 2. Um passo atrás no
+    // contador diria 2 e mandaria apostar 7,50 € de uma banca de 10,69 €.
+    const caiu = buildStanding(member, MILLION_PLAN_RULES, [
+      day(GANHA_1, 1),
+      day(GANHA_2, 2),
+      day(-10.69, 3, "red"),
+    ]);
+
+    expect(caiu.bankroll).toBe(10.69);
+    expect(caiu.day).toBe(1);
+  });
+
+  it("não cai abaixo do primeiro degrau", () => {
+    expect(
+      buildStanding(member, MILLION_PLAN_RULES, [day(-5, 1, "red")]).day,
     ).toBe(1);
   });
 
-  it("moves to day 2 after winning day 1, even having lost it before", () => {
-    // The real sequence that stalled: day 1 lost, day 1 won the next evening.
-    // Counting one win and one loss and subtracting left the ladder on day 1,
-    // because the loss that could go nowhere was still in the total.
-    const bets = [day({ status: "red" }, 1), day({ status: "green" }, 2)];
+  it("repor o que se perdeu não é subir: fica-se no mesmo nível", () => {
+    // Perder o nível 1 deixa 5 €; ganhar a seguir repõe os 10 €. Isso é
+    // estar outra vez no princípio do nível 1, não ter chegado ao 2 — que
+    // se joga com 15 €.
+    const repos = buildStanding(member, MILLION_PLAN_RULES, [
+      day(-5, 1, "red"),
+      day(5, 2),
+    ]);
 
-    expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
+    expect(repos.bankroll).toBe(10);
+    expect(repos.day).toBe(1);
   });
 
-  it("does not bank wins past the end of the table", () => {
+  it("não passa do fim da tabela", () => {
     const rules = { ...MILLION_PLAN_RULES, days: 3 };
-    const bets = [
-      day({ status: "green" }, 1),
-      day({ status: "green" }, 2),
-      day({ status: "green" }, 3),
-      day({ status: "red" }, 4),
-    ];
+    const bets = [day(GANHA_1, 1), day(GANHA_2, 2), day(9.61, 3)];
 
-    // Three wins reach the last day and stop there, so the loss costs a day
-    // rather than being absorbed by a win that had nowhere to go.
-    expect(buildStanding(member, rules, bets).day).toBe(2);
+    // A banca chegaria ao degrau 4, mas o desafio acaba no 3.
+    expect(buildStanding(member, rules, bets).bankroll).toBe(30.99);
+    expect(buildStanding(member, rules, bets).day).toBe(3);
   });
 
-  it("leaves an open day where it is", () => {
-    const bets = [day({ status: "green" }, 1), day({ status: "pending" }, 2)];
+  it("uma aposta em aberto não mexe no nível", () => {
+    const bets = [
+      day(GANHA_1, 1),
+      bet({
+        id: "l2",
+        status: "pending",
+        profitLoss: 0,
+        settledAt: null,
+        placedAt: "2026-09-22T10:00:00.000Z",
+      }),
+    ];
 
     expect(buildStanding(member, MILLION_PLAN_RULES, bets).day).toBe(2);
   });

@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabaseClient";
-import type { ChallengeRules } from "@/lib/challengeRules";
+import {
+  ladderFor,
+  rungForBankroll,
+  type ChallengeRules,
+} from "@/lib/challengeRules";
 import { isGreenMarket } from "@/lib/modelAudit";
 import type { BetStatus } from "@/types/analysis";
 
@@ -681,27 +685,17 @@ export function buildStanding(
   let openBets = 0;
   let lastSettled: PlanBet | null = null;
 
-  // The ladder is walked a day at a time, in the order the days were played,
-  // because the ends of the table are walls and not corrections applied at
-  // the finish. Counting the wins and the losses and subtracting once lets a
-  // loss taken at day 1 — which can go nowhere, there is no day 0 — sit in the
-  // total and quietly swallow the next win, leaving somebody who has just won
-  // day 1 still on day 1.
-  let day = 1;
-
   mine.forEach((bet) => {
     if (bet.status === "green") {
       profit += bet.profitLoss;
       greens += 1;
       lossStreak = 0;
       lastSettled = bet;
-      day = Math.min(day + 1, rules.days);
     } else if (bet.status === "red") {
       profit += bet.profitLoss;
       reds += 1;
       lossStreak += 1;
       lastSettled = bet;
-      day = Math.max(day - 1, 1);
     } else if (bet.status === "pending") {
       openStake += bet.stake;
       openBets += 1;
@@ -711,6 +705,38 @@ export function buildStanding(
   const rounded = Number(
     (Number(member.starting_bankroll) + added + profit).toFixed(2)
   );
+
+  /**
+   * O nível é onde o dinheiro está, não quantas vezes se ganhou.
+   *
+   * Era um contador de passos: ganha, sobe um; perde, desce um. Isso parece
+   * a mesma coisa e não é. No Plano Milhão, perder o nível 1 deixa 5 € —
+   * metade dos 10 € com que o nível 1 se joga. Ganhar a seguir repõe os
+   * 10 €, e o contador somava um: pedia o nível 2, que se joga com 15 € e
+   * manda apostar 7,50 €. De uma banca de 10 €, isso são 75% em cima da
+   * mesa num plano que nunca passa de 50%.
+   *
+   * Agora a escada é lida ao contrário: o nível é a linha cuja banca de
+   * partida o dinheiro já alcançou. Com 10 € volta a ser o nível 1 e a
+   * aposta volta a ser 5 €, até a banca chegar mesmo aos 15 € da linha
+   * seguinte. Perder não faz andar para trás no tempo — faz descer na
+   * escada, e é o mesmo degrau que diz o que apostar.
+   */
+  /**
+   * Dinheiro metido na banca não é um resultado: meter 500 € não é ganhar
+   * um nível. O degrau lê-se do que as apostas fizeram, e só disso — a
+   * aposta que o nível pede é depois limitada pela banca verdadeira, essa
+   * sim com os depósitos lá dentro.
+   */
+  const ganho = Number((Number(member.starting_bankroll) + profit).toFixed(2));
+  const ladder = ladderFor(rules, Number(member.starting_bankroll));
+  // A tabela escrita do Plano Milhão tem 38 linhas quaisquer que sejam os
+  // dias guardados no desafio, por isso o fim é o mais curto dos dois.
+  const topo = Math.max(
+    1,
+    Math.min(ladder.length || rules.days, rules.days),
+  );
+  const day = Math.min(Math.max(rungForBankroll(ganho, ladder), 1), topo);
 
   return {
     userId: member.user_id,
@@ -724,8 +750,8 @@ export function buildStanding(
     greens,
     reds,
     lossStreak,
-    // Win and you climb a step, lose and you go back one, never past the ends
-    // of the table.
+    // O degrau onde a banca chegou, nunca abaixo do primeiro nem acima do
+    // último.
     day,
     openBets,
     openStake: Number(openStake.toFixed(2)),
