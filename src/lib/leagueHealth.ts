@@ -10,6 +10,15 @@ export interface LeagueHealth {
   upcoming: number;
   /** Games kicking off inside the board's window. */
   within_days: number;
+  /**
+   * Quantos jogos a fonte tem marcados nesta janela, por estado.
+   *
+   * Uma competição pode responder bem, ter jogos marcados no calendário e
+   * aparecer a zero — foi o que a Liga dos Campeões fez com dezoito jogos
+   * marcados para os dois dias seguintes. Sem isto, as contas da linha não
+   * fechavam com nada e não havia como saber porquê.
+   */
+  window_statuses: Record<string, number>;
   next_kickoff: string | null;
   season: string | null;
 }
@@ -52,13 +61,43 @@ export function byUrgency(rows: LeagueHealth[]): LeagueHealth[] {
   );
 }
 
+const ESTADOS: Record<string, string> = {
+  POSTPONED: "adiado",
+  CANCELLED: "cancelado",
+  SUSPENDED: "suspenso",
+  IN_PLAY: "a decorrer",
+  PAUSED: "ao intervalo",
+  FINISHED: "disputado",
+  AWARDED: "atribuído",
+  SCHEDULED: "por disputar",
+  TIMED: "por disputar",
+};
+
+/**
+ * O que a fonte tem marcado nesta janela que o quadro não leva.
+ *
+ * "Sem jogos nesta janela" é uma resposta que não chega quando a pessoa está
+ * a ver dezoito jogos marcados no calendário. Isto diz onde eles estão.
+ */
+function retidos(row: LeagueHealth): string {
+  const contas = new Map<string, number>();
+  for (const [estado, n] of Object.entries(row.window_statuses ?? {})) {
+    if (estado === "SCHEDULED" || estado === "TIMED") continue;
+    const nome = ESTADOS[estado] ?? estado.toLowerCase();
+    contas.set(nome, (contas.get(nome) ?? 0) + n);
+  }
+  const partes = [...contas].map(([nome, n]) => `${n} ${nome}`);
+  return partes.length ? ` A fonte marca ${partes.join(", ")}.` : "";
+}
+
 /** One line per competition, for a panel with no room for a table. */
 export function describeHealth(row: LeagueHealth): string {
   if (!row.ok) return row.error ?? "Não respondeu.";
   if (row.within_days === 0) {
+    const onde = retidos(row);
     return row.upcoming > 0
-      ? `Responde, mas sem jogos nesta janela. ${row.upcoming} por disputar mais à frente.`
-      : "Responde, mas não tem jogos por disputar.";
+      ? `Responde, mas sem jogos nesta janela. ${row.upcoming} por disputar mais à frente.${onde}`
+      : `Responde, mas não tem jogos por disputar.${onde}`;
   }
   return `${row.within_days} ${row.within_days === 1 ? "jogo" : "jogos"} nesta janela · ${
     row.finished

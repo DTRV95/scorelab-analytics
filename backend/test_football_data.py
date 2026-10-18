@@ -729,6 +729,43 @@ def test_diagnostics_name_the_competition_the_provider_refused():
     assert "Premier League" in report["empty"]
 
 
+def test_diagnostics_say_which_state_a_missing_competition_is_in():
+    """Uma competição vazia tem de dizer em que estado estão os jogos.
+
+    A Liga dos Campeões tinha dezoito jogos marcados para os dois dias
+    seguintes e apareceu a zero no quadro, sem erro e sem constar das
+    indisponíveis. A página sabia dizer "vazia" e mais nada: as contas que
+    mostrava não fechavam com nada, e não havia maneira de saber se o
+    problema era da fonte, do corte por hora ou do filtro de estados.
+
+    O estado é a resposta, e passa a estar lá.
+    """
+    original = _stub_provider(
+        {
+            "Liga dos Campeões": [
+                team_match(1, 1, 2, "Arsenal", "Benfica",
+                           status="POSTPONED", kickoff=_future(2)),
+                team_match(2, 2, 1, "Benfica", "Arsenal",
+                           status="POSTPONED", kickoff=_future(2)),
+                team_match(3, 1, 2, "Arsenal", "Benfica",
+                           status="TIMED", kickoff=_future(40)),
+            ],
+        }
+    )
+    try:
+        report = football_data.league_diagnostics(days=7)
+    finally:
+        football_data.get_season_matches = original
+
+    linha = {row["league"]: row for row in report["leagues"]}["Liga dos Campeões"]
+
+    # Vazia, sim — mas agora diz-se porquê, e o número bate certo com os
+    # jogos que a pessoa está a ver marcados no calendário.
+    assert "Liga dos Campeões" in report["empty"]
+    assert linha["within_days"] == 0
+    assert linha["window_statuses"] == {"POSTPONED": 2}
+
+
 def test_the_board_keeps_todays_games_after_the_whistle():
     """O quadro corta no princípio do dia de hoje, não em "agora".
 

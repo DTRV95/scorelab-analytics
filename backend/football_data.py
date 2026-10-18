@@ -477,8 +477,16 @@ def league_diagnostics(days: int = 7) -> Dict[str, Any]:
     anyone being told. This is the page that says why: the provider's own error
     for the ones that fail, and the counts for the ones that work, so "there are
     Dutch games on and I see none" has an answer instead of a guess.
+
+    `window_statuses` conta, por estado, tudo o que a fonte tem marcado para
+    os dias cobertos. Sem isso a página sabia dizer que uma competição estava
+    vazia mas não porquê: a Liga dos Campeões tinha dezoito jogos marcados
+    para terça e quarta e apareceu a zero, e as contas não fechavam com nada
+    do que estava escrito. O estado é a resposta, e era o único número que
+    faltava.
     """
-    horizon = time.time() + max(1, days) * 24 * 60 * 60
+    floor = _start_of_today()
+    horizon = _end_of_day(max(1, days))
     now = time.time()
 
     def probe(league_key: str) -> Dict[str, Any]:
@@ -491,6 +499,7 @@ def league_diagnostics(days: int = 7) -> Dict[str, Any]:
             "finished": 0,
             "upcoming": 0,
             "within_days": 0,
+            "window_statuses": {},
             "next_kickoff": None,
             "season": None,
         }
@@ -508,25 +517,27 @@ def league_diagnostics(days: int = 7) -> Dict[str, Any]:
         row["matches"] = len(matches)
 
         kickoffs: List[str] = []
+        janela: Dict[str, int] = {}
         for match in matches:
+            estado = match.get("status") or "?"
+            stamp = _kickoff_stamp(match.get("utcDate") or "")
+            na_janela = stamp is not None and floor <= stamp <= horizon
+            if na_janela:
+                janela[estado] = janela.get(estado, 0) + 1
+
             if _is_finished(match):
                 row["finished"] += 1
                 continue
-            if match.get("status") not in UPCOMING_STATUSES:
+            if estado not in UPCOMING_STATUSES:
                 continue
 
             row["upcoming"] += 1
-            kickoff = match.get("utcDate")
-            if not kickoff:
-                continue
-            stamp = _kickoff_stamp(kickoff)
-            if stamp is None:
-                continue
-            if now <= stamp <= horizon:
+            if na_janela:
                 row["within_days"] += 1
-            if stamp >= now:
-                kickoffs.append(kickoff)
+            if stamp is not None and stamp >= now:
+                kickoffs.append(match["utcDate"])
 
+        row["window_statuses"] = dict(sorted(janela.items()))
         if kickoffs:
             row["next_kickoff"] = min(kickoffs)
         if matches:
