@@ -17,7 +17,9 @@ import {
   RefreshCw,
   Sliders,
   Sparkles,
+  Star,
 } from "lucide-react";
+import { useFavourites } from "@/hooks/useFavourites";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PickReadings } from "@/components/PickReadings";
 import { RecentHits } from "@/components/RecentHits";
@@ -162,6 +164,8 @@ function BoardMatchRow({
   isExpanded,
   onToggle,
   onContinue,
+  favourite,
+  onFavourite,
 }: {
   match: BoardMatch;
   /** Where this game stands out from its own competition. */
@@ -169,6 +173,9 @@ function BoardMatchRow({
   isExpanded: boolean;
   onToggle: () => void;
   onContinue: () => void;
+  /** Se este jogo está guardado nos favoritos desta conta. */
+  favourite: boolean;
+  onFavourite: () => void;
 }) {
   /** The form behind the number, for whoever asks for it. */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -208,9 +215,14 @@ function BoardMatchRow({
           rarely the same line. The full set is one tap away, and so is how
           much history backs it: the sample badge used to sit here too, a
           second verdict on a line that only has room for one. */}
+      {/* Duas coisas a fazer nesta linha, e por isso dois controlos: o
+          corpo abre os mercados, a estrela guarda o jogo. A estrela é uma
+          coluna à parte, com um fio a separá-la, porque um botão dentro de
+          outro botão não existe — e porque assim lê-se como o que é. */}
+      <div className="flex items-stretch">
       <button
         type="button"
-        className="sl-meter flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        className="sl-meter flex min-w-0 flex-1 items-center gap-2.5 py-3.5 pl-4 pr-1 text-left"
         style={{ "--sl-meter": `${match.headline_pct}%` } as CSSProperties}
         onClick={onToggle}
       >
@@ -226,8 +238,17 @@ function BoardMatchRow({
           <p className="truncate text-[12px] font-semibold text-foreground/80">
             {MARKET_LABELS[match.headline_market] ?? match.headline_market}
           </p>
+          {/* A odd mínima desceu para aqui, ao lado da hora. Estava na
+              coluna da direita, por baixo da percentagem, e essa coluna
+              tem uma regra: um número, e só um. Em troca, o nome das
+              equipas ganha de volta a largura que a estrela levou.
+              Acertar não é ganhar: a este preço a aposta fica a zero, e a
+              casa de apostas também sabe que esta equipa não perde. */}
           <p className="sl-meta truncate text-[11px]">
-            {kickoffTime(match.kickoff)}
+            {kickoffTime(match.kickoff)} · odd mín.{" "}
+            <span className="font-mono-data font-bold text-foreground">
+              {minimumOdd(match.headline_pct).toFixed(2)}
+            </span>
           </p>
         </div>
 
@@ -235,14 +256,6 @@ function BoardMatchRow({
           <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[30px] leading-none text-[hsl(var(--sl-green))]">
             {match.headline_pct.toFixed(0)}
             <span className="text-[16px]">%</span>
-          </p>
-          {/* Acertar não é ganhar: a este preço a aposta fica a zero, e a
-              casa de apostas também sabe que esta equipa não perde. */}
-          <p className="sl-meta mt-1 whitespace-nowrap text-[10.5px] leading-snug">
-            odd mín.{" "}
-            <span className="font-mono-data font-bold text-foreground">
-              {minimumOdd(match.headline_pct).toFixed(2)}
-            </span>
           </p>
         </div>
 
@@ -252,6 +265,29 @@ function BoardMatchRow({
           }`}
         />
       </button>
+
+      <button
+        type="button"
+        aria-pressed={favourite}
+        aria-label={
+          favourite
+            ? `Tirar ${match.home_name} vs ${match.away_name} dos favoritos`
+            : `Guardar ${match.home_name} vs ${match.away_name} nos favoritos`
+        }
+        onClick={onFavourite}
+        className={`sl-tap flex w-11 flex-none items-center justify-center transition-colors ${
+          favourite
+            ? "text-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/10"
+            : "text-muted-foreground/45 hover:bg-muted/60 hover:text-muted-foreground"
+        }`}
+      >
+        <Star
+          className="h-[18px] w-[18px]"
+          strokeWidth={2}
+          fill={favourite ? "currentColor" : "none"}
+        />
+      </button>
+      </div>
 
       <Tips tips={tips} league={match.league} />
 
@@ -476,6 +512,8 @@ export default function ProbabilityRadar() {
   // The shortlist is the day read through the board's own record. Off by
   // default: the whole day is still what the page is for.
   const [onlyShortlist, setOnlyShortlist] = useState(false);
+  const [onlyFavourites, setOnlyFavourites] = useState(false);
+  const favoritos = useFavourites();
   const hits = useBoardResults();
   // Closed by default on phones so the actual board — the reason someone
   // opens this page — isn't pushed below the fold by an explainer paragraph.
@@ -734,7 +772,13 @@ export default function ProbabilityRadar() {
   const leagueGroups = useMemo(() => {
     if (!currentDay) return [];
 
-    const items = onlyShortlist ? curtos : currentDay.items;
+    // Os dois filtros somam-se em vez de se substituírem: "a lista curta,
+    // dos que eu marquei" é uma pergunta que faz sentido e não teria
+    // resposta se ligar um desligasse o outro.
+    const base = onlyShortlist ? curtos : currentDay.items;
+    const items = onlyFavourites
+      ? base.filter((match) => favoritos.has(match.fixture_id))
+      : base;
     const groups = new Map<string, BoardMatch[]>();
     items.forEach((match) => {
       if (!groups.has(match.league)) groups.set(match.league, []);
@@ -742,7 +786,17 @@ export default function ProbabilityRadar() {
     });
 
     return [...groups.entries()].map(([league, items]) => ({ league, items }));
-  }, [currentDay, curtos, onlyShortlist]);
+  }, [currentDay, curtos, onlyShortlist, onlyFavourites, favoritos]);
+
+  /** Quantos dos jogos deste dia estão marcados. */
+  const marcadosHoje = useMemo(
+    () =>
+      currentDay
+        ? currentDay.items.filter((match) => favoritos.has(match.fixture_id))
+            .length
+        : 0,
+    [currentDay, favoritos],
+  );
 
   // Straight to the match's own page: the board already holds everything it
   // needs, so there is nothing to fetch and prefill on the way out.
@@ -1019,55 +1073,66 @@ export default function ProbabilityRadar() {
                       que o quadro destaca — golos, ambas marcam,
                       combinados — entrou 53%, que é pouco mais do que uma
                       moeda ao ar. */}
+                  {/* Dois filtros, dois chips, na mesma fila dos dias: era
+                      um cartão inteiro para um deles, e dois cartões para os
+                      dois teriam empurrado os jogos para fora do ecrã outra
+                      vez. A explicação de cada um só se lê quando está
+                      ligado. */}
                   {!yesterdayOpen && (
-                    <button
-                      type="button"
-                      onClick={() => setOnlyShortlist((only) => !only)}
-                      aria-pressed={onlyShortlist}
-                      className={`sl-tap mt-2 flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left ${
-                        onlyShortlist
-                          ? "bg-primary/10 ring-1 ring-primary/30"
-                          : "sl-card"
-                      }`}
-                    >
-                      <ListFilter
-                        className={`h-4 w-4 flex-none ${
-                          onlyShortlist ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[12.5px] font-bold text-foreground">
-                          {onlyShortlist
-                            ? "A mostrar só a lista curta"
-                            : "Ver só a lista curta"}
-                        </span>
-                        {/* O porquê da lista curta só se lê quando ela está
-                            ligada. Desligada, a linha era uma nota de rodapé
-                            a ocupar um terço do cartão acima dos jogos. */}
-                        {onlyShortlist && (
-                          <span className="sl-meta block text-[11px] leading-5">
-                            Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram
-                            87% · o resto 53%
+                    <>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setOnlyShortlist((only) => !only)}
+                          aria-pressed={onlyShortlist}
+                          data-active={onlyShortlist}
+                          className="sl-chip sl-tap"
+                        >
+                          <ListFilter className="h-3.5 w-3.5 flex-none" />
+                          Lista curta
+                          <span className="text-[11px] opacity-65">
+                            {curtos.length}
                           </span>
-                        )}
-                      </span>
-                      {/* O número estava solto no fim da linha, sem dizer de
-                          que era contagem. Numa pílula lê-se como as outras
-                          contagens da aplicação. */}
-                      <span
-                        className={`sl-pill flex-none text-[11px] ${
-                          onlyShortlist ? "sl-pill-open" : "sl-pill-muted"
-                        }`}
-                      >
-                        {curtos.length} jogo{curtos.length === 1 ? "" : "s"}
-                      </span>
-                    </button>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setOnlyFavourites((only) => !only)}
+                          aria-pressed={onlyFavourites}
+                          data-active={onlyFavourites}
+                          disabled={marcadosHoje === 0 && !onlyFavourites}
+                          className="sl-chip sl-tap disabled:opacity-45"
+                        >
+                          <Star
+                            className="h-3.5 w-3.5 flex-none"
+                            fill={onlyFavourites ? "currentColor" : "none"}
+                          />
+                          Favoritos
+                          <span className="text-[11px] opacity-65">
+                            {marcadosHoje}
+                          </span>
+                        </button>
+                      </div>
+
+                      {onlyShortlist && (
+                        <p className="sl-meta mt-1.5 px-0.5 text-[11px] leading-[1.5]">
+                          Dupla hipótese a {SHORTLIST_MIN_PCT}%+ · entraram 87%
+                          · o resto 53%
+                        </p>
+                      )}
+                    </>
                   )}
 
                   {yesterdayOpen ? (
                     <div className="mt-4">
                       <RecentHits state={hits} />
                     </div>
+                  ) : onlyFavourites && leagueGroups.length === 0 ? (
+                    <p className="sl-card mt-4 px-4 py-4 text-[12.5px] leading-[1.5] text-muted-foreground">
+                      {marcadosHoje === 0
+                        ? "Ainda não marcaste nenhum jogo deste dia. A estrela ao lado de cada um guarda-o aqui."
+                        : "Nenhum dos que marcaste está também na lista curta."}
+                    </p>
                   ) : onlyShortlist && curtos.length === 0 ? (
                     <p className="sl-card mt-4 px-4 py-4 text-[12.5px] leading-[1.5] text-muted-foreground">
                       Hoje não há nenhum jogo na lista curta. É um dia para
@@ -1104,6 +1169,10 @@ export default function ProbabilityRadar() {
                                 )
                               }
                               onContinue={() => openDeepDive(match)}
+                              favourite={favoritos.has(match.fixture_id)}
+                              onFavourite={() =>
+                                favoritos.toggle(match.fixture_id)
+                              }
                             />
                           ))}
                         </div>
