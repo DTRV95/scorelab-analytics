@@ -20,7 +20,7 @@ from datetime import datetime, time as dt_time, timedelta, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 BASE_URL = "https://api.football-data.org/v4"
 REQUEST_TIMEOUT = 20
@@ -49,6 +49,21 @@ SUPPORTED_LEAGUES: Dict[str, str] = {
 
 FINISHED_STATUSES = {"FINISHED", "AWARDED"}
 UPCOMING_STATUSES = {"SCHEDULED", "TIMED"}
+# O que o quadro leva, que é mais do que o que está por jogar.
+#
+# A fonte muda o estado de um jogo mal ele arranca: SCHEDULED/TIMED passa a
+# IN_PLAY, depois PAUSED ao intervalo, e FINISHED no fim. Aceitar só os dois
+# primeiros tirava do quadro todos os jogos de hoje à medida que a tarde
+# passava — e tirar do quadro é tirar da aplicação inteira, porque é dele que
+# a lista de inserir jogos se alimenta.
+#
+# Adiados e cancelados ficam de fora: têm uma hora marcada que já não quer
+# dizer nada, e um jogo que não se vai jogar não é um jogo para escolher.
+BOARD_STATUSES = UPCOMING_STATUSES | FINISHED_STATUSES | {
+    "IN_PLAY",
+    "PAUSED",
+    "SUSPENDED",
+}
 
 
 class ProviderUnavailable(Exception):
@@ -308,13 +323,24 @@ def _is_finished(match: Dict[str, Any]) -> bool:
 
 
 def upcoming_fixtures(
-    league_key: str, limit: int = 40, patience: float = MAX_SLOT_WAIT
+    league_key: str,
+    limit: int = 40,
+    patience: float = MAX_SLOT_WAIT,
+    statuses: Optional[Set[str]] = None,
 ) -> List[Dict[str, Any]]:
+    """As fixturas de uma competição, por omissão só as que estão por jogar.
+
+    O quadro pede um conjunto mais largo (BOARD_STATUSES): precisa dos jogos
+    de hoje mesmo depois do apito. Quem conta "quantos jogos vêm aí" continua
+    a querer só os que ainda não começaram, e por isso o valor por omissão
+    não muda.
+    """
     matches = get_season_matches(league_key, patience=patience)
+    allowed = statuses or UPCOMING_STATUSES
 
     fixtures = []
     for match in matches:
-        if match.get("status") not in UPCOMING_STATUSES:
+        if match.get("status") not in allowed:
             continue
         home = match.get("homeTeam") or {}
         away = match.get("awayTeam") or {}
@@ -390,7 +416,12 @@ def matches_for_days(
         try:
             return (
                 league_key,
-                upcoming_fixtures(league_key, limit=100, patience=patience),
+                upcoming_fixtures(
+                    league_key,
+                    limit=100,
+                    patience=patience,
+                    statuses=BOARD_STATUSES,
+                ),
                 None,
             )
         except ProviderUnavailable as exc:
