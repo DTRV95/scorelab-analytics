@@ -32,6 +32,22 @@ import {
   writeCachedBoard,
 } from "@/lib/probabilityBoardCache";
 
+/**
+ * As horas das fixturas, contadas a partir de agora.
+ *
+ * Estavam escritas à mão numa data de Setembro de 2026, e isso passou: um
+ * quadro real só tem hoje e os dias a seguir, e desde que a linha passou a
+ * dizer "à espera do resultado" a um jogo cuja hora já passou, uma fixtura
+ * no passado punha todas as linhas nesse estado. Dois dias à frente, às
+ * mesmas horas, é o que o quadro tem mesmo.
+ */
+function daqui(dias: number, hora: number, minuto = 0) {
+  const quando = new Date();
+  quando.setDate(quando.getDate() + dias);
+  quando.setHours(hora, minuto, 0, 0);
+  return quando.toISOString();
+}
+
 const boardPayload = {
   matches: [
     {
@@ -39,7 +55,7 @@ const boardPayload = {
       league: "Liga Portugal",
       home_name: "Porto",
       away_name: "Nacional",
-      kickoff: "2026-09-20T18:00:00Z",
+      kickoff: daqui(1, 18),
       headline_market: "Casa",
       headline_pct: 78.4,
       amostra_pct: 90,
@@ -58,7 +74,7 @@ const boardPayload = {
       league: "Premier League",
       home_name: "City",
       away_name: "United",
-      kickoff: "2026-09-20T20:00:00Z",
+      kickoff: daqui(1, 20),
       headline_market: "Mais de 2.5 Golos",
       headline_pct: 55.1,
       amostra_pct: 40,
@@ -76,7 +92,7 @@ const boardPayload = {
       league: "Bundesliga",
       home_name: "Bayern",
       away_name: "Dortmund",
-      kickoff: "2026-09-21T17:30:00Z",
+      kickoff: daqui(2, 17, 30),
       headline_market: "Mais de 2.5 Golos",
       headline_pct: 60.0,
       amostra_pct: 85,
@@ -299,6 +315,59 @@ describe("ProbabilityRadar board", () => {
 
     expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
     expect(screen.queryByText("City vs United")).toBeNull();
+  });
+
+  it("marca a linha de um jogo já jogado com o que aconteceu", async () => {
+    // O quadro diz o que vai acontecer; passada a hora, tem de dizer se
+    // aconteceu. O jogo 1 é "Casa" a 78,4% e acabou 2–0: entrou.
+    scoring.snapshot.mockResolvedValue({
+      matches: [
+        {
+          fixture_id: 1,
+          league: "Liga Portugal",
+          home_name: "Porto",
+          away_name: "Nacional",
+          kickoff: daqui(1, 18),
+          home_goals: 2,
+          away_goals: 0,
+          headline_market: "Casa",
+          headline_pct: 78.4,
+          landed: true,
+        },
+        {
+          fixture_id: 2,
+          league: "Premier League",
+          home_name: "City",
+          away_name: "United",
+          kickoff: daqui(1, 18),
+          home_goals: 1,
+          away_goals: 1,
+          headline_market: "Mais de 2.5 Golos",
+          headline_pct: 55.1,
+          landed: false,
+        },
+      ],
+      played: 2,
+      hits: 1,
+      hit_pct: 50,
+      predicted_pct: 66.8,
+      unavailable: [],
+      skipped: 0,
+      at: Date.now(),
+      source: "snapshot" as const,
+    });
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+
+    expect(await screen.findByText("Entrou")).toBeInTheDocument();
+    expect(screen.getByText("2–0")).toBeInTheDocument();
+    expect(screen.getByText("Não entrou")).toBeInTheDocument();
+    expect(screen.getByText("1–1")).toBeInTheDocument();
+
+    // E a hora e o preço mínimo saem: num jogo já jogado não dizem nada.
+    expect(screen.queryByText(/odd mín\./)).toBeNull();
   });
 
   it("says at what price each forecast stops being worth taking", async () => {

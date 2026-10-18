@@ -20,6 +20,7 @@ import {
   Star,
 } from "lucide-react";
 import { useFavourites } from "@/hooks/useFavourites";
+import type { ScoredMatch } from "@/lib/boardResults";
 import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
 import type { PickedGame } from "@/components/GamePicker";
 import {
@@ -181,6 +182,7 @@ function BoardMatchRow({
   favourite,
   onFavourite,
   onAddToChallenge,
+  verdict,
 }: {
   match: BoardMatch;
   /** Where this game stands out from its own competition. */
@@ -193,7 +195,22 @@ function BoardMatchRow({
   onFavourite: () => void;
   /** Dado, cada mercado aberto leva directamente ao boletim do desafio. */
   onAddToChallenge?: (market: string, pct: number) => void;
+  /** O jogo já jogado e marcado contra o que o quadro disse. */
+  verdict?: ScoredMatch;
 }) {
+  /**
+   * Três momentos, e não dois.
+   *
+   * Um jogo cuja hora passou não está decidido: está a jogar-se, e durante
+   * noventa minutos não há nada honesto a dizer sobre ele. Dois tempos e o
+   * intervalo dão cerca de duas horas, por isso é esse o limite entre "a
+   * decorrer" e "já acabou, o resultado é que ainda não chegou" — o motor
+   * marca os jogos de três em três horas.
+   */
+  const kickoff = match.kickoff ? new Date(match.kickoff).getTime() : null;
+  const since = kickoff === null ? null : Date.now() - kickoff;
+  const started = !verdict && since !== null && since > 0;
+  const playing = started && since !== null && since < 2.2 * 60 * 60 * 1000;
   /** The form behind the number, for whoever asks for it. */
   const [moreOpen, setMoreOpen] = useState(false);
   const [prefill, setPrefill] = useState<PrefillForm | null>(null);
@@ -240,6 +257,7 @@ function BoardMatchRow({
       <button
         type="button"
         className="sl-meter flex min-w-0 flex-1 items-center gap-2.5 py-3.5 pl-4 pr-1 text-left"
+        data-verdict={verdict ? (verdict.landed ? "hit" : "miss") : undefined}
         style={{ "--sl-meter": `${match.headline_pct}%` } as CSSProperties}
         onClick={onToggle}
       >
@@ -255,22 +273,54 @@ function BoardMatchRow({
           <p className="truncate text-[12px] font-semibold text-foreground/80">
             {MARKET_LABELS[match.headline_market] ?? match.headline_market}
           </p>
-          {/* A odd mínima desceu para aqui, ao lado da hora. Estava na
+          {/* Antes do apito, a hora e o preço a que isto deixa de valer a
+              pena. Depois dele, o que aconteceu — porque a hora de um jogo
+              que já se jogou não interessa a ninguém, e o preço mínimo de
+              uma previsão já decidida ainda menos.
+
+              A odd mínima desceu para aqui, ao lado da hora. Estava na
               coluna da direita, por baixo da percentagem, e essa coluna
-              tem uma regra: um número, e só um. Em troca, o nome das
-              equipas ganha de volta a largura que a estrela levou.
-              Acertar não é ganhar: a este preço a aposta fica a zero, e a
-              casa de apostas também sabe que esta equipa não perde. */}
-          <p className="sl-meta truncate text-[11px]">
-            {kickoffTime(match.kickoff)} · odd mín.{" "}
-            <span className="font-mono-data font-bold text-foreground">
-              {minimumOdd(match.headline_pct).toFixed(2)}
-            </span>
-          </p>
+              tem uma regra: um número, e só um.
+
+              Acertar não é ganhar: ao preço mínimo a aposta fica a zero, e
+              a casa de apostas também sabe que esta equipa não perde. */}
+          {verdict ? (
+            <p className="flex items-center gap-1.5 truncate text-[11px] font-bold">
+              <span
+                className={
+                  verdict.landed
+                    ? "text-[hsl(var(--sl-green))]"
+                    : "text-destructive"
+                }
+              >
+                {verdict.landed ? "Entrou" : "Não entrou"}
+              </span>
+              <span className="font-mono-data font-bold text-foreground">
+                {verdict.home_goals}–{verdict.away_goals}
+              </span>
+            </p>
+          ) : started ? (
+            <p className="sl-meta truncate text-[11px]">
+              {playing ? "A decorrer" : "À espera do resultado"}
+            </p>
+          ) : (
+            <p className="sl-meta truncate text-[11px]">
+              {kickoffTime(match.kickoff)} · odd mín.{" "}
+              <span className="font-mono-data font-bold text-foreground">
+                {minimumOdd(match.headline_pct).toFixed(2)}
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="flex-none text-right">
-          <p className="sl-figure sl-hero-figure sl-hero-figure-green text-[30px] leading-none text-[hsl(var(--sl-green))]">
+          <p
+            className={`sl-figure text-[30px] leading-none ${
+              verdict && !verdict.landed
+                ? "text-muted-foreground/70"
+                : "sl-hero-figure sl-hero-figure-green text-[hsl(var(--sl-green))]"
+            }`}
+          >
             {match.headline_pct.toFixed(0)}
             <span className="text-[16px]">%</span>
           </p>
@@ -541,6 +591,22 @@ export default function ProbabilityRadar() {
   const [onlyFavourites, setOnlyFavourites] = useState(false);
   const favoritos = useFavourites();
   const hits = useBoardResults();
+
+  /**
+   * O que já está marcado, por jogo.
+   *
+   * O quadro diz o que vai acontecer e, até agora, no dia seguinte já
+   * tinha passado à semana seguinte: o separador de ontem guardava o
+   * acerto todo somado, mas a linha de cada jogo nunca dizia se aquilo
+   * que ela própria previu se confirmou.
+   */
+  const marcados = useMemo(() => {
+    const porJogo = new Map<number, ScoredMatch>();
+    (hits.results?.matches ?? []).forEach((scored) => {
+      porJogo.set(scored.fixture_id, scored);
+    });
+    return porJogo;
+  }, [hits.results]);
 
   /**
    * Do quadro para o boletim, sem passar pelo meio.
@@ -1254,6 +1320,7 @@ export default function ProbabilityRadar() {
                                       juntarAoDesafio(match, market, pct)
                                   : undefined
                               }
+                              verdict={marcados.get(match.fixture_id)}
                             />
                           ))}
                         </div>
