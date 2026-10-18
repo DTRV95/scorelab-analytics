@@ -64,7 +64,14 @@ export interface BoardAccess {
   skipped: number;
   /** Competitions the provider did not answer for on the last board fetch. */
   unavailable: string[];
-  /** Every fixture already spoken for by an open bet. */
+  /**
+   * Jogos em que esta pessoa já apostou neste desafio.
+   *
+   * Dizem-no na linha, e já não a fecham: apostar outra vez no mesmo jogo
+   * — noutro dia, noutro mercado — é uma escolha legítima, e o quadro não
+   * tem nada que a recusar. O que continua fechado é o mesmo jogo duas
+   * vezes no mesmo boletim, que é outra coisa.
+   */
   usedFixtures: Set<number>;
   onRefreshBoard: () => void;
 }
@@ -718,7 +725,7 @@ export function GamePicker({
                       strip at the bottom without this list moving. */}
                   <button
                     type="button"
-                    disabled={already || used}
+                    disabled={already}
                     onClick={() =>
                       addFromBoard(
                         match,
@@ -756,20 +763,33 @@ export function GamePicker({
                           jogo. Mas um jogo a decorrer não é um jogo para
                           apostar — e quem o escolhe aqui tem de o saber
                           antes de carregar, não depois. */}
-                      {jaComecou(match.kickoff) && (
-                        <p className="mt-0.5 text-[11px] font-bold text-[hsl(32_90%_36%)]">
-                          Já começou
+                      {(jaComecou(match.kickoff) || used) && (
+                        <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold">
+                          {jaComecou(match.kickoff) && (
+                            <span className="text-[hsl(32_90%_36%)]">
+                              Já começou
+                            </span>
+                          )}
+                          {used && (
+                            <span className="text-muted-foreground">
+                              Já apostaste neste
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>
+                    {/* O visto é só para o que já está neste boletim. Ter
+                        apostado antes diz-se em palavras, na linha, porque
+                        um visto ao fundo de uma linha que continua a poder
+                        ser carregada diz a coisa errada. */}
                     <span
                       className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
-                        already || used
+                        already
                           ? "text-[hsl(var(--sl-green))]"
                           : "border border-primary/40 text-primary"
                       }`}
                     >
-                      {already || used ? (
+                      {already ? (
                         <Check className="h-3.5 w-3.5" />
                       ) : (
                         <Plus className="h-3.5 w-3.5" />
@@ -779,7 +799,7 @@ export function GamePicker({
 
                   {/* The other fourteen markets, for the bet that is not the
                       obvious one. */}
-                  {!already && !used && (
+                  {!already && (
                     <button
                       type="button"
                       onClick={() =>
