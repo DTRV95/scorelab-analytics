@@ -535,6 +535,18 @@
     );
   }
 
+  /* Já jogado e falhado: o enchimento deixa de ser verde. Uma lista de
+     ontem toda verde diria que correu tudo bem, e a cor é o que se lê
+     antes das palavras. */
+  .sl-meter[data-verdict="miss"]::before {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--destructive) / 0.1) 0%,
+      hsl(var(--destructive) / 0.055) calc(var(--sl-meter) - 22%),
+      transparent var(--sl-meter)
+    );
+  }
+
   .sl-chip {
     display: inline-flex;
     align-items: center;
