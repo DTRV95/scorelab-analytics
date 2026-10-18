@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ProbabilityBreakdown } from "@/components/ProbabilityBreakdown";
 
 const data = {
@@ -29,6 +29,29 @@ const data = {
 
 afterEach(() => {
   cleanup();
+});
+
+describe("do quadro para o boletim", () => {
+  it("sem desafio a decorrer, a tabela é só para ler", () => {
+    render(<ProbabilityBreakdown data={data} />);
+
+    expect(
+      screen.queryByRole("button", { name: /Juntar .* ao boletim/ }),
+    ).toBeNull();
+  });
+
+  it("com um desafio a decorrer, cada mercado leva ao boletim", () => {
+    const juntar = vi.fn();
+    render(<ProbabilityBreakdown data={data} onPick={juntar} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Juntar Casa ou Empate (1X) ao boletim" }),
+    );
+
+    // O mercado como o modelo lhe chama, e a probabilidade que estava no
+    // ecrã: é com estes dois que a perna entra no boletim.
+    expect(juntar).toHaveBeenCalledWith("1X", 68.7);
+  });
 });
 
 describe("ProbabilityBreakdown", () => {

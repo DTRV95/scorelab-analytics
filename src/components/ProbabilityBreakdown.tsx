@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Plus } from "lucide-react";
 
 export interface ProbabilityMarket {
   mercado: string;
@@ -73,7 +74,20 @@ export function sampleTone(_label: string) {
  * edge and no stake anywhere on it. Comparing this against a bookmaker's
  * price is a separate, later step.
  */
-export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
+export function ProbabilityBreakdown({
+  data,
+  onPick,
+}: {
+  data: ProbabilityResult;
+  /**
+   * Dado, cada mercado passa a ser um botão que o leva para o boletim.
+   *
+   * Opcional porque esta tabela também se lê sem nada para fazer com ela:
+   * na página do jogo e no resultado de uma análise à mão, ninguém está a
+   * meio de uma aposta.
+   */
+  onPick?: (market: string, pct: number) => void;
+}) {
   const groups = GROUP_ORDER.map((grupo) => ({
     grupo,
     mercados: data.mercados
@@ -125,20 +139,38 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
             {group.grupo}
           </p>
           <div className="space-y-2">
-            {group.mercados.map((market) => (
-              <div
+            {group.mercados.map((market) => {
+              const nome = MARKET_LABELS[market.mercado] ?? market.mercado;
+              const Linha = onPick ? "button" : "div";
+              return (
+              <Linha
                 key={market.mercado}
-                className="rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3"
+                {...(onPick
+                  ? {
+                      type: "button" as const,
+                      onClick: () =>
+                        onPick(market.mercado, market.probabilidade_pct),
+                      "aria-label": `Juntar ${nome} ao boletim`,
+                    }
+                  : {})}
+                className={`block w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3 text-left ${
+                  onPick
+                    ? "sl-tap transition-colors hover:border-primary/45 hover:bg-primary/[0.04]"
+                    : ""
+                }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-foreground">
-                    {MARKET_LABELS[market.mercado] ?? market.mercado}
+                  <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <span className="truncate">{nome}</span>
+                    {onPick && (
+                      <Plus className="h-3.5 w-3.5 flex-none text-primary" />
+                    )}
                   </span>
-                  <span className="font-mono-data text-sm font-bold text-[hsl(var(--sl-green))]">
+                  <span className="font-mono-data flex-none text-sm font-bold text-[hsl(var(--sl-green))]">
                     {market.probabilidade_pct.toFixed(1)}%
                   </span>
                 </div>
-                <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-muted">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${market.probabilidade_pct}%` }}
@@ -151,8 +183,9 @@ export function ProbabilityBreakdown({ data }: { data: ProbabilityResult }) {
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
                   Intervalo plausível: {market.min_pct.toFixed(0)}% – {market.max_pct.toFixed(0)}%
                 </p>
-              </div>
-            ))}
+              </Linha>
+              );
+            })}
           </div>
         </div>
       ))}
