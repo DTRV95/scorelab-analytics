@@ -743,7 +743,7 @@ def test_the_board_keeps_todays_games_after_the_whistle():
     """
     original = football_data.upcoming_fixtures
 
-    def fixtures(league_key, limit=100, patience=None, statuses=None):
+    def fixtures(league_key, limit=100, patience=None, statuses=None, since=None):
         if league_key != "Eredivisie":
             return []
         return [
@@ -804,6 +804,39 @@ def test_the_board_keeps_a_game_the_provider_marks_as_playing():
     # A decorrer, acabado e por jogar: os três ficam. O adiado sai — tem uma
     # hora marcada que já não quer dizer nada.
     assert levados == [1, 2, 3]
+
+
+def test_a_long_season_already_played_does_not_eat_the_whole_competition():
+    """Um campeonato a meio da época continua a entrar inteiro no quadro.
+
+    O carregador corta às cem fixturas por competição, e a época vem
+    ordenada pela hora: as jornadas já jogadas estão à frente. Enquanto o
+    quadro só aceitava jogos por jogar isso não tinha custo nenhum, porque
+    os acabados saíam antes de o corte chegar. Ao passar a aceitá-los — para
+    os jogos de hoje ficarem depois do apito — as cem primeiras fixturas do
+    Brasileirão passaram a ser cem jogos de Maio, e a competição desapareceu
+    do quadro sem sequer aparecer como indisponível.
+
+    A fonte dizia que havia onze jogos nos próximos sete dias, o quadro não
+    trazia nenhum, e nada na aplicação explicava a diferença.
+    """
+    epoca = [
+        team_match(1000 + n, 1, 2, "Flamengo", "Palmeiras",
+                   status="FINISHED", kickoff=_past(300 - n))
+        for n in range(260)
+    ]
+    epoca.append(
+        team_match(1, 1, 2, "Flamengo", "Palmeiras",
+                   status="TIMED", kickoff=_future(2))
+    )
+
+    original = _stub_provider({"Brasileirão": epoca})
+    try:
+        board = football_data.matches_for_days(7)
+    finally:
+        football_data.get_season_matches = original
+
+    assert [match["fixture_id"] for match in board["matches"]] == [1]
 
 
 def test_a_busy_week_never_costs_a_competition_all_its_games():
@@ -1067,7 +1100,7 @@ def test_the_board_carries_the_whole_of_its_last_day():
         tzinfo=timezone.utc,
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def fixtures(league_key, limit=100, patience=None, statuses=None):
+    def fixtures(league_key, limit=100, patience=None, statuses=None, since=None):
         if league_key != "Brasileirão":
             return []
         return [

@@ -327,6 +327,7 @@ def upcoming_fixtures(
     limit: int = 40,
     patience: float = MAX_SLOT_WAIT,
     statuses: Optional[Set[str]] = None,
+    since: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """As fixturas de uma competição, por omissão só as que estão por jogar.
 
@@ -334,6 +335,12 @@ def upcoming_fixtures(
     de hoje mesmo depois do apito. Quem conta "quantos jogos vêm aí" continua
     a querer só os que ainda não começaram, e por isso o valor por omissão
     não muda.
+
+    `since` corta pela hora antes de o `limit` cortar pelo número, e tem de
+    ser assim: a época vem ordenada pela hora e as jornadas já jogadas estão
+    à frente. Num campeonato com mais de cem jogos feitos, as cem primeiras
+    fixturas são todas do passado, e quem quisesse os próximos sete dias
+    ficava com uma lista inteira para deitar fora.
     """
     matches = get_season_matches(league_key, patience=patience)
     allowed = statuses or UPCOMING_STATUSES
@@ -342,6 +349,10 @@ def upcoming_fixtures(
     for match in matches:
         if match.get("status") not in allowed:
             continue
+        if since is not None:
+            stamp = _kickoff_stamp(match.get("utcDate") or "")
+            if stamp is None or stamp < since:
+                continue
         home = match.get("homeTeam") or {}
         away = match.get("awayTeam") or {}
         if not home.get("id") or not away.get("id"):
@@ -421,6 +432,7 @@ def matches_for_days(
                     limit=100,
                     patience=patience,
                     statuses=BOARD_STATUSES,
+                    since=floor,
                 ),
                 None,
             )
