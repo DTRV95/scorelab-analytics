@@ -20,6 +20,14 @@ import {
   Star,
 } from "lucide-react";
 import { useFavourites } from "@/hooks/useFavourites";
+import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
+import type { PickedGame } from "@/components/GamePicker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PickReadings } from "@/components/PickReadings";
 import { RecentHits } from "@/components/RecentHits";
@@ -66,6 +74,12 @@ import {
 import { matchTips, type MatchTip } from "@/lib/matchTips";
 import { useLeagueRates } from "@/hooks/useLeagueRates";
 import { fadeUp, stagger } from "@/lib/motion";
+
+const eur = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
 
 const BOARD_DAYS = 7;
 
@@ -166,6 +180,7 @@ function BoardMatchRow({
   onContinue,
   favourite,
   onFavourite,
+  onAddToChallenge,
 }: {
   match: BoardMatch;
   /** Where this game stands out from its own competition. */
@@ -176,6 +191,8 @@ function BoardMatchRow({
   /** Se este jogo está guardado nos favoritos desta conta. */
   favourite: boolean;
   onFavourite: () => void;
+  /** Dado, cada mercado aberto leva directamente ao boletim do desafio. */
+  onAddToChallenge?: (market: string, pct: number) => void;
 }) {
   /** The form behind the number, for whoever asks for it. */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -306,7 +323,16 @@ function BoardMatchRow({
                   o jogo, que são três perguntas diferentes. */}
               <PickReadings match={match} />
 
-              <ProbabilityBreakdown data={match} />
+              {/* Com um desafio a decorrer, cada mercado é um atalho para
+                  o boletim dele: estava-se a olhar para a probabilidade,
+                  e o passo seguinte era sair daqui, abrir o desafio e
+                  procurar o mesmo jogo numa lista. */}
+              {onAddToChallenge && (
+                <p className="sl-meta -mb-2 px-0.5 text-[11px]">
+                  Carrega num mercado para o pôr no boletim do desafio.
+                </p>
+              )}
+              <ProbabilityBreakdown data={match} onPick={onAddToChallenge} />
 
               {/* What the forecast was built from, for whoever wants to look
                   behind the number. Behind a tap, because most people are
@@ -515,6 +541,55 @@ export default function ProbabilityRadar() {
   const [onlyFavourites, setOnlyFavourites] = useState(false);
   const favoritos = useFavourites();
   const hits = useBoardResults();
+
+  /**
+   * Do quadro para o boletim, sem passar pelo meio.
+   *
+   * Só os desafios a decorrer: juntar um jogo a um que já acabou não quer
+   * dizer nada. Com um, vai-se directo; com mais do que um, pergunta-se
+   * qual — porque adivinhar aqui é pôr dinheiro no sítio errado.
+   */
+  const planBoard = useMaybePlanBoard()?.board ?? null;
+  const aDecorrer = useMemo(
+    () =>
+      (planBoard?.challenges ?? []).filter((entry) => !entry.plan.ended_at),
+    [planBoard],
+  );
+  const [aEscolherDesafio, setAEscolherDesafio] = useState<PickedGame | null>(
+    null,
+  );
+
+  const levarParaODesafio = useCallback(
+    (planId: string, game: PickedGame) => {
+      setAEscolherDesafio(null);
+      navigate(`/desafios/${planId}`, { state: { juntar: game } });
+    },
+    [navigate],
+  );
+
+  const juntarAoDesafio = useCallback(
+    (match: BoardMatch, market: string, pct: number) => {
+      const game: PickedGame = {
+        fixtureId: match.fixture_id,
+        homeTeam: match.home_name,
+        awayTeam: match.away_name,
+        league: match.league,
+        market,
+        modelProb: pct,
+        kickoff: match.kickoff,
+        // O preço é a única coisa que o quadro não sabe: é o que se
+        // escreve a seguir, já com a perna no boletim.
+        odds: "",
+      };
+
+      if (aDecorrer.length === 1) {
+        levarParaODesafio(aDecorrer[0].plan.id, game);
+        return;
+      }
+      setAEscolherDesafio(game);
+    },
+    [aDecorrer, levarParaODesafio],
+  );
   // Closed by default on phones so the actual board — the reason someone
   // opens this page — isn't pushed below the fold by an explainer paragraph.
   const [infoOpen, setInfoOpen] = useState(
@@ -1173,6 +1248,12 @@ export default function ProbabilityRadar() {
                               onFavourite={() =>
                                 favoritos.toggle(match.fixture_id)
                               }
+                              onAddToChallenge={
+                                aDecorrer.length > 0
+                                  ? (market, pct) =>
+                                      juntarAoDesafio(match, market, pct)
+                                  : undefined
+                              }
                             />
                           ))}
                         </div>
@@ -1402,6 +1483,46 @@ export default function ProbabilityRadar() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Com mais do que um desafio a decorrer, pergunta-se qual. Cada
+          linha diz em que nível está e quanto esse nível pede, porque é
+          isso que decide para onde o jogo vai. */}
+      <Dialog
+        open={aEscolherDesafio !== null}
+        onOpenChange={(open) => !open && setAEscolherDesafio(null)}
+      >
+        <DialogContent className="gap-0 p-0 sm:max-w-sm">
+          <DialogHeader className="border-b border-border px-4 py-3 text-left">
+            <DialogTitle className="text-sm font-bold">
+              Para que desafio?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 p-3">
+            {aDecorrer.map((entry) => (
+              <button
+                key={entry.plan.id}
+                type="button"
+                onClick={() =>
+                  aEscolherDesafio &&
+                  levarParaODesafio(entry.plan.id, aEscolherDesafio)
+                }
+                className="sl-tap flex w-full items-center gap-3 rounded-xl bg-card px-3.5 py-3 text-left ring-1 ring-border transition-colors hover:ring-primary/45"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-bold text-foreground">
+                    {entry.plan.name}
+                  </span>
+                  <span className="sl-meta block text-[11px]">
+                    Nível {entry.standing.day} de {entry.plan.days} ·{" "}
+                    {eur.format(entry.standing.bankroll)}
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

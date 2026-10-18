@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -39,7 +39,7 @@ import {
 import { BetDetailDialog } from "@/components/BetDetailDialog";
 import { BetSlip } from "@/components/BetSlip";
 import { TopGames } from "@/components/TopGames";
-import type { BoardAccess } from "@/components/GamePicker";
+import type { BoardAccess, PickedGame } from "@/components/GamePicker";
 import { EndChallenge } from "@/components/EndChallenge";
 import { HeadToHead } from "@/components/HeadToHead";
 import { toast } from "@/hooks/use-toast";
@@ -300,6 +300,27 @@ export default function Challenges() {
   // an old link, or a challenge just created — the page falls back to the
   // first it finds, as it always did.
   const { planId: routePlanId } = useParams<{ planId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  /**
+   * Um jogo escolhido no quadro, a caminho do boletim.
+   *
+   * Chega no estado da navegação e é consumido à chegada: sem o limpar, um
+   * refresh ou um passo atrás no histórico punham a mesma perna outra vez,
+   * e ninguém a tinha pedido duas.
+   */
+  const [vindoDoQuadro, setVindoDoQuadro] = useState<{
+    game: PickedGame;
+    signal: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const trazido = (location.state as { juntar?: PickedGame } | null)?.juntar;
+    if (!trazido) return;
+    setVindoDoQuadro({ game: trazido, signal: Date.now() });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
   const [planId, setPlanId] = useState<string | null>(routePlanId ?? null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
@@ -1542,6 +1563,7 @@ export default function Challenges() {
               targetOdds={move?.targetOdds ?? 0}
               plannedStake={move?.stake ?? 0}
               openSignal={pickSignal}
+              startWith={vindoDoQuadro ?? undefined}
               style={myStyle}
               entryElsewhere={move?.state === "play"}
               saving={saving}
