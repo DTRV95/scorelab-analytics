@@ -34,6 +34,25 @@ def _future(days):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + days * 86400))
 
 
+def _earlier_today():
+    """Um jogo que já começou, hoje. À meia-noite e cinco é agora mesmo.
+
+    Contado a partir do princípio do dia e não de "agora menos umas horas":
+    às 00:30, "menos duas horas" cai em ontem, e o teste passava a medir
+    outra coisa uma vez por dia.
+    """
+    start = time.gmtime(time.time())
+    midnight = time.time() - (start.tm_hour * 3600 + start.tm_min * 60 + start.tm_sec)
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(midnight + 60))
+
+
+def _yesterday():
+    """Um jogo de ontem: fora do quadro, feito e arrumado."""
+    start = time.gmtime(time.time())
+    midnight = time.time() - (start.tm_hour * 3600 + start.tm_min * 60 + start.tm_sec)
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(midnight - 3600))
+
+
 def with_season(matches):
     """Serve a fixed season instead of calling the provider."""
     football_data._cache.clear()
@@ -710,21 +729,32 @@ def test_diagnostics_name_the_competition_the_provider_refused():
     assert "Premier League" in report["empty"]
 
 
-def test_the_board_never_offers_a_game_already_under_way():
-    """The provider's status lags the whistle, and a bet cannot be placed on a
-    game that has started."""
+def test_the_board_keeps_todays_games_after_the_whistle():
+    """O quadro corta no princípio do dia de hoje, não em "agora".
+
+    Cortava em "agora", com uma razão boa: um jogo a decorrer não é um jogo
+    para apostar. Só que o quadro não serve só para apostar — é de lá que a
+    aposta se regista, e quem apostou às 14:30 regista às 20:00. Com o corte
+    em "agora", o jogo tinha desaparecido da aplicação inteira a meio da
+    tarde, e a linha do quadro nunca chegava a poder dizer se acertou.
+
+    Que esteja a decorrer é dito onde a pergunta se faz: a lista de inserir
+    jogos marca-o, e a linha do quadro troca a hora por "A decorrer".
+    """
     original = football_data.upcoming_fixtures
 
     def fixtures(league_key, limit=100, patience=None):
         if league_key != "Eredivisie":
             return []
         return [
-            {"fixture_id": 1, "kickoff": _future(-0.1), "home_id": 1,
+            {"fixture_id": 1, "kickoff": _earlier_today(), "home_id": 1,
              "home_name": "Ajax", "away_id": 2, "away_name": "PSV"},
             {"fixture_id": 2, "kickoff": _future(2), "home_id": 2,
              "home_name": "PSV", "away_id": 1, "away_name": "Ajax"},
             {"fixture_id": 3, "kickoff": _future(30), "home_id": 1,
              "home_name": "Ajax", "away_id": 2, "away_name": "PSV"},
+            {"fixture_id": 4, "kickoff": _yesterday(), "home_id": 2,
+             "home_name": "PSV", "away_id": 1, "away_name": "Ajax"},
         ]
 
     football_data.upcoming_fixtures = fixtures
@@ -733,9 +763,9 @@ def test_the_board_never_offers_a_game_already_under_way():
     finally:
         football_data.upcoming_fixtures = original
 
-    # Kicked off already, and beyond the window: both out. Only the game in
-    # two days is bettable.
-    assert [match["fixture_id"] for match in board["matches"]] == [2]
+    # Hoje de manhã fica; daqui a dois dias fica. Ontem sai, e daqui a trinta
+    # dias sai — um está feito e o outro está para lá do que o quadro cobre.
+    assert sorted(match["fixture_id"] for match in board["matches"]) == [1, 2]
 
 
 def test_a_busy_week_never_costs_a_competition_all_its_games():

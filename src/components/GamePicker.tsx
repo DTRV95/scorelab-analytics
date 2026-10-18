@@ -131,6 +131,13 @@ function dayLabel(kickoff: string | null): string {
 }
 
 /** Just the hour: the heading above the run of games already said the day. */
+/** Se o apito inicial já soou, pelo relógio deste telemóvel. */
+function jaComecou(kickoff: string | null): boolean {
+  if (!kickoff) return false;
+  const at = new Date(kickoff).getTime();
+  return Number.isFinite(at) && at < Date.now();
+}
+
 function kickoffTime(kickoff: string | null) {
   if (!kickoff) return "";
   const date = new Date(kickoff);
@@ -743,6 +750,17 @@ export function GamePicker({
                         </span>{" "}
                         · {kickoffTime(match.kickoff)}
                       </p>
+                      {/* O quadro passou a guardar os jogos de hoje desde a
+                          meia-noite, e não desde agora: quem apostou às
+                          14:30 regista às 20:00 e precisa de encontrar o
+                          jogo. Mas um jogo a decorrer não é um jogo para
+                          apostar — e quem o escolhe aqui tem de o saber
+                          antes de carregar, não depois. */}
+                      {jaComecou(match.kickoff) && (
+                        <p className="mt-0.5 text-[11px] font-bold text-[hsl(32_90%_36%)]">
+                          Já começou
+                        </p>
+                      )}
                     </div>
                     <span
                       className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${
