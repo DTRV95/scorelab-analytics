@@ -264,12 +264,40 @@ describe("ProbabilityRadar board", () => {
     // Porto vs Nacional é "Casa" a 78,4% e City vs United é "Mais de 2.5" a
     // 55,1%: nenhum dos dois é dupla hipótese acima de 70%.
     await screen.findByText("Porto vs Nacional");
-    fireEvent.click(screen.getByRole("button", { name: /Ver só a lista curta/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Lista curta/ }));
 
     expect(
       await screen.findByText(/Hoje não há nenhum jogo na lista curta/),
     ).toBeInTheDocument();
     expect(screen.queryByText("Porto vs Nacional")).toBeNull();
+    expect(screen.queryByText("City vs United")).toBeNull();
+  });
+
+  it("guarda um jogo nos favoritos e deixa ver só esses", async () => {
+    scoring.snapshot.mockResolvedValue(null);
+    mockFetchSequence();
+    renderPage();
+
+    await screen.findByText("Porto vs Nacional");
+
+    // Sem nada marcado, o filtro não tem o que mostrar e não se liga.
+    const filtro = screen.getByRole("button", { name: /Favoritos/ });
+    expect(filtro).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Guardar Porto vs Nacional nos favoritos/,
+      }),
+    );
+
+    // A estrela fica acesa e diz o que faz a seguir.
+    await screen.findByRole("button", {
+      name: /Tirar Porto vs Nacional dos favoritos/,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Favoritos/ }));
+
+    expect(screen.getByText("Porto vs Nacional")).toBeInTheDocument();
     expect(screen.queryByText("City vs United")).toBeNull();
   });
 

@@ -144,3 +144,16 @@ export function useAuth(): AuthContextValue {
   }
   return context;
 }
+
+/**
+ * Quem está ligado, ou ninguém, sem rebentar por isso.
+ *
+ * O useAuth atira quando não há provedor à volta, e é o que deve fazer:
+ * uma página que mostra as apostas de alguém não tem nada que se montar
+ * sem saber quem é esse alguém. Mas há coisas que só melhoram com uma
+ * conta e funcionam sem ela — os favoritos ficam no telemóvel enquanto
+ * não houver sessão — e essas perguntam assim.
+ */
+export function useMaybeAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
+}
