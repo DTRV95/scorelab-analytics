@@ -336,6 +336,27 @@ def upcoming_fixtures(
     return fixtures[:limit]
 
 
+def _start_of_today() -> float:
+    """O primeiro segundo do dia de hoje, em UTC.
+
+    O quadro cortava em "agora": um jogo das 15:00 saía dele às 15:01 e,
+    com ele, saía de toda a aplicação. Mas quem aposta às 14:30 regista a
+    aposta às 20:00, e o quadro é o sítio de onde essa aposta se escolhe —
+    o jogo tem de lá continuar. É também a única maneira de a linha do
+    quadro poder dizer, mais tarde, se o que previu entrou.
+
+    Um jogo a decorrer não é um jogo para apostar, e isso resolve-se onde a
+    pergunta se faz: a lista de inserir jogos marca-o, e a linha do quadro
+    diz "A decorrer" em vez da hora.
+    """
+    start = datetime.combine(
+        datetime.now(timezone.utc).date(),
+        dt_time.min,
+        tzinfo=timezone.utc,
+    )
+    return start.timestamp()
+
+
 def _end_of_day(days: int) -> float:
     """The last second of the day N days from now, in UTC.
 
@@ -360,7 +381,7 @@ def matches_for_days(
     Competitions that fail are skipped instead of breaking the whole board, so a
     single unavailable league never hides the rest.
     """
-    now = time.time()
+    floor = _start_of_today()
     horizon = _end_of_day(max(1, days))
     board: List[Dict[str, Any]] = []
     unavailable: List[str] = []
@@ -392,11 +413,12 @@ def matches_for_days(
             stamp = _kickoff_stamp(kickoff)
             if stamp is None:
                 continue
-            # A fixture whose kickoff has passed is not upcoming, whatever the
-            # provider still calls it: its status can lag the whistle by an hour
-            # or more, and a board that offers a game already under way is
-            # offering a bet nobody can place.
-            if stamp < now or stamp > horizon:
+            # Do princípio do dia de hoje até ao fim do último dia coberto.
+            # Era de "agora" em diante, e isso apagava do quadro os jogos de
+            # hoje à medida que a tarde passava: quem apostou às 14:30 e foi
+            # registar às 20:00 já não encontrava o jogo em lado nenhum, e a
+            # linha do quadro nunca chegava a poder dizer se acertou.
+            if stamp < floor or stamp > horizon:
                 continue
             board.append({**fixture, "league": league_key})
 
