@@ -677,7 +677,7 @@ def _stub_provider(per_league):
     """Serve a fixed season per competition, and errors for the rest."""
     original = football_data.get_season_matches
 
-    def fake(league_key, season=None):
+    def fake(league_key, season=None, patience=None):
         value = per_league.get(league_key)
         if isinstance(value, Exception):
             raise value
@@ -743,7 +743,7 @@ def test_the_board_keeps_todays_games_after_the_whistle():
     """
     original = football_data.upcoming_fixtures
 
-    def fixtures(league_key, limit=100, patience=None):
+    def fixtures(league_key, limit=100, patience=None, statuses=None):
         if league_key != "Eredivisie":
             return []
         return [
@@ -766,6 +766,44 @@ def test_the_board_keeps_todays_games_after_the_whistle():
     # Hoje de manhã fica; daqui a dois dias fica. Ontem sai, e daqui a trinta
     # dias sai — um está feito e o outro está para lá do que o quadro cobre.
     assert sorted(match["fixture_id"] for match in board["matches"]) == [1, 2]
+
+
+def test_the_board_keeps_a_game_the_provider_marks_as_playing():
+    """Um jogo a decorrer continua no quadro, e um adiado não.
+
+    Este é o filtro que escapou à primeira: o carregador das fixturas só
+    aceitava SCHEDULED e TIMED, e a fonte muda o estado mal o jogo arranca —
+    IN_PLAY, depois PAUSED, depois FINISHED. O corte por hora podia ser o
+    que fosse: o jogo já tinha sido deitado fora antes de lá chegar.
+
+    O teste anterior não o apanhou porque substituía o carregador inteiro e
+    por isso nunca passava pelo filtro de estados. Este serve a época em
+    cru, como a fonte a serve, e deixa o código verdadeiro correr.
+    """
+    original = _stub_provider(
+        {
+            "Eredivisie": [
+                team_match(1, 1, 2, "Ajax", "PSV", status="IN_PLAY",
+                           kickoff=_earlier_today()),
+                team_match(2, 2, 1, "PSV", "Ajax", status="FINISHED",
+                           kickoff=_earlier_today()),
+                team_match(3, 1, 2, "Ajax", "PSV", status="SCHEDULED",
+                           kickoff=_future(2)),
+                team_match(4, 2, 1, "PSV", "Ajax", status="POSTPONED",
+                           kickoff=_future(1)),
+            ],
+        }
+    )
+    try:
+        board = football_data.matches_for_days(7)
+    finally:
+        football_data.get_season_matches = original
+
+    levados = sorted(match["fixture_id"] for match in board["matches"])
+
+    # A decorrer, acabado e por jogar: os três ficam. O adiado sai — tem uma
+    # hora marcada que já não quer dizer nada.
+    assert levados == [1, 2, 3]
 
 
 def test_a_busy_week_never_costs_a_competition_all_its_games():
@@ -1029,7 +1067,7 @@ def test_the_board_carries_the_whole_of_its_last_day():
         tzinfo=timezone.utc,
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def fixtures(league_key, limit=100, patience=None):
+    def fixtures(league_key, limit=100, patience=None, statuses=None):
         if league_key != "Brasileirão":
             return []
         return [
