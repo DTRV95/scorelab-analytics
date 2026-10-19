@@ -22,7 +22,11 @@ import {
 import { useFavourites } from "@/hooks/useFavourites";
 import type { ScoredMatch } from "@/lib/boardResults";
 import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
-import type { PickedGame } from "@/components/GamePicker";
+import { draftSlip, useDraftSlip } from "@/hooks/useDraftSlip";
+import type { SlipLeg } from "@/lib/draftSlip";
+
+/** Um jogo a caminho do boletim: tudo menos a chave, que o boletim dá. */
+type SlipSeed = Omit<SlipLeg, "key">;
 import {
   Dialog,
   DialogContent,
@@ -609,11 +613,17 @@ export default function ProbabilityRadar() {
   }, [hits.results]);
 
   /**
-   * Do quadro para o boletim, sem passar pelo meio.
+   * Do quadro para o boletim, sem sair da página.
+   *
+   * Isto levava para a página do desafio, e levar para lá resolve um jogo e
+   * estraga dois: para pôr o segundo era preciso voltar atrás e reencontrar
+   * o sítio na lista. Agora o jogo cai no boletim que flutua por cima de
+   * tudo e continua lá na página seguinte — que é o que um boletim é.
    *
    * Só os desafios a decorrer: juntar um jogo a um que já acabou não quer
-   * dizer nada. Com um, vai-se directo; com mais do que um, pergunta-se
-   * qual — porque adivinhar aqui é pôr dinheiro no sítio errado.
+   * dizer nada. Pergunta-se qual quando há mais do que um por onde
+   * escolher; com um só, uma pergunta de resposta única não é uma pergunta.
+   * Depois do primeiro jogo nem isso: o boletim já tem dono, e muda-se lá.
    */
   const planBoard = useMaybePlanBoard()?.board ?? null;
   const aDecorrer = useMemo(
@@ -621,21 +631,19 @@ export default function ProbabilityRadar() {
       (planBoard?.challenges ?? []).filter((entry) => !entry.plan.ended_at),
     [planBoard],
   );
-  const [aEscolherDesafio, setAEscolherDesafio] = useState<PickedGame | null>(
+  const slip = useDraftSlip();
+  const [aEscolherDesafio, setAEscolherDesafio] = useState<SlipSeed | null>(
     null,
   );
 
-  const levarParaODesafio = useCallback(
-    (planId: string, game: PickedGame) => {
-      setAEscolherDesafio(null);
-      navigate(`/desafios/${planId}`, { state: { juntar: game } });
-    },
-    [navigate],
-  );
+  const porNoBoletim = useCallback((planId: string, game: SlipSeed) => {
+    setAEscolherDesafio(null);
+    draftSlip.add(planId, game);
+  }, []);
 
   const juntarAoDesafio = useCallback(
     (match: BoardMatch, market: string, pct: number) => {
-      const game: PickedGame = {
+      const game: SlipSeed = {
         fixtureId: match.fixture_id,
         homeTeam: match.home_name,
         awayTeam: match.away_name,
@@ -648,13 +656,17 @@ export default function ProbabilityRadar() {
         odds: "",
       };
 
-      if (aDecorrer.length === 1) {
-        levarParaODesafio(aDecorrer[0].plan.id, game);
+      const dono = slip.planId ?? (aDecorrer.length === 1
+        ? aDecorrer[0].plan.id
+        : null);
+
+      if (dono) {
+        porNoBoletim(dono, game);
         return;
       }
       setAEscolherDesafio(game);
     },
-    [aDecorrer, levarParaODesafio],
+    [aDecorrer, porNoBoletim, slip.planId],
   );
   // Closed by default on phones so the actual board — the reason someone
   // opens this page — isn't pushed below the fold by an explainer paragraph.
@@ -1571,7 +1583,7 @@ export default function ProbabilityRadar() {
                 type="button"
                 onClick={() =>
                   aEscolherDesafio &&
-                  levarParaODesafio(entry.plan.id, aEscolherDesafio)
+                  porNoBoletim(entry.plan.id, aEscolherDesafio)
                 }
                 className="sl-tap flex w-full items-center gap-3 rounded-xl bg-card px-3.5 py-3 text-left ring-1 ring-border transition-colors hover:ring-primary/45"
               >

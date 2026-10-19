@@ -169,7 +169,6 @@ export function BetComposer({
   openBets,
   style,
   openSignal,
-  startWith,
   entryElsewhere,
   targetOdds,
   plannedStake,
@@ -191,15 +190,6 @@ export function BetComposer({
   /** Bumped from outside to open the picker, so the card at the top of the
       page can start the day's bet without anyone scrolling to find it. */
   openSignal?: number;
-  /**
-   * Um jogo escolhido noutro sítio, para entrar já no boletim.
-   *
-   * Vem do quadro: estava-se a olhar para as probabilidades de um jogo e
-   * carregou-se no mercado. O sinal é o que distingue "um jogo novo para
-   * pôr" de "o mesmo jogo, noutro render" — sem ele, voltar a esta página
-   * punha a mesma perna outra vez.
-   */
-  startWith?: { game: PickedGame; signal: number };
   /** True when the card at the top of the page is already offering the way in
       and this one would only repeat it. */
   entryElsewhere?: boolean;
@@ -228,26 +218,6 @@ export function BetComposer({
     lastSignal.current = openSignal;
     setPickerOpen(true);
   }, [openSignal]);
-
-  // O mesmo cuidado para o jogo que chega de fora: só um sinal novo o põe
-  // no boletim. Sem isto, qualquer repintura voltava a juntá-lo.
-  // Ao contrário do sinal que abre o pop-up, este começa vazio de
-  // propósito: um jogo que já venha no primeiro render tem de entrar no
-  // boletim, e não ser engolido por o sinal já lá estar quando se montou.
-  const lastSeed = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!startWith || startWith.signal === lastSeed.current) return;
-    lastSeed.current = startWith.signal;
-    const game = startWith.game;
-    const key =
-      game.fixtureId === null ? `m${Date.now()}` : `f${game.fixtureId}`;
-    setLegs((previous) =>
-      previous.some((leg) => leg.key === key)
-        ? previous
-        : [...previous, { ...game, key }],
-    );
-    setFocusKey(key);
-  }, [startWith]);
 
   const suggested = plannedStake;
   const stake =

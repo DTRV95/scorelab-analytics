@@ -303,24 +303,9 @@ export default function Challenges() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /**
-   * Um jogo escolhido no quadro, a caminho do boletim.
-   *
-   * Chega no estado da navegação e é consumido à chegada: sem o limpar, um
-   * refresh ou um passo atrás no histórico punham a mesma perna outra vez,
-   * e ninguém a tinha pedido duas.
-   */
-  const [vindoDoQuadro, setVindoDoQuadro] = useState<{
-    game: PickedGame;
-    signal: number;
-  } | null>(null);
-
-  useEffect(() => {
-    const trazido = (location.state as { juntar?: PickedGame } | null)?.juntar;
-    if (!trazido) return;
-    setVindoDoQuadro({ game: trazido, signal: Date.now() });
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
+  // Um jogo escolhido no quadro chegava aqui no estado da navegação, e
+  // chegar aqui era o problema: punha a pessoa noutra página a meio de
+  // montar um boletim. Agora cai no boletim flutuante, que a acompanha.
   const [planId, setPlanId] = useState<string | null>(routePlanId ?? null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [bets, setBets] = useState<PlanBet[]>([]);
@@ -1563,7 +1548,6 @@ export default function Challenges() {
               targetOdds={move?.targetOdds ?? 0}
               plannedStake={move?.stake ?? 0}
               openSignal={pickSignal}
-              startWith={vindoDoQuadro ?? undefined}
               style={myStyle}
               entryElsewhere={move?.state === "play"}
               saving={saving}
