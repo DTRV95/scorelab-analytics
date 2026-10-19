@@ -117,6 +117,62 @@ describe("a player's standing", () => {
     expect(stakeForDay(escada, subiu.day, subiu.bankroll)).toBe(7.5);
   });
 
+  it("sobe um degrau de cada vez, por muito que se ganhe num dia", () => {
+    // Ganhar a 5,00 onde a tabela pedia 2,00 põe o dinheiro três linhas à
+    // frente, e o nível ia atrás dele. Mas os níveis do plano são
+    // consecutivos: o nível 3 é o que se joga depois do 2, não uma linha
+    // onde se aterra. O troco é almofada, não um degrau grátis.
+    const grande = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", stake: 5, odds: 5, profitLoss: 20 }),
+    ]);
+
+    expect(grande.bankroll).toBe(30);
+    // A banca chega ao nível 3 (21,38 €) e sobra. O nível é 2.
+    expect(grande.day).toBe(2);
+  });
+
+  it("e o degrau que sobrou ganha-se no dia seguinte", () => {
+    // O dinheiro já lá estava; o que faltava era o dia. Dois dias, dois
+    // degraus, sem nunca saltar nenhum.
+    const depois = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", stake: 5, odds: 5, profitLoss: 20 }),
+      bet({
+        id: "b2",
+        stake: 7.5,
+        profitLoss: 1,
+        placedAt: "2026-09-22T10:00:00.000Z",
+        settledAt: "2026-09-22T20:00:00.000Z",
+      }),
+    ]);
+
+    expect(depois.bankroll).toBe(31);
+    expect(depois.day).toBe(3);
+  });
+
+  it("desce para onde a banca chegar, que é outra coisa", () => {
+    // Travar a descida escreveria no ecrã um nível que a banca não paga.
+    // Perder metade da banca é quase sempre mais do que uma linha atrás, e
+    // o nível tem de dizer com que dinheiro se joga a seguir.
+    const dia = (n: number, profitLoss: number) =>
+      bet({
+        id: `b${n}`,
+        profitLoss,
+        placedAt: `2026-09-2${n}T10:00:00.000Z`,
+        settledAt: `2026-09-2${n}T20:00:00.000Z`,
+        status: profitLoss < 0 ? ("red" as const) : ("green" as const),
+      });
+
+    const caiu = buildStanding(member, MILLION_PLAN_RULES, [
+      dia(1, 5), // 15 → nível 2
+      dia(2, 6.38), // 21,38 → nível 3
+      dia(3, 9.61), // 30,99 → nível 4
+      dia(4, -20.3), // 10,69 → nível 1, e não 3
+    ]);
+
+    expect(caiu.bankroll).toBe(10.69);
+    expect(caiu.day).toBe(1);
+  });
+
   it("leaves a pending bet out of the bankroll but shows what is at risk", () => {
     const standing = buildStanding(member, MILLION_PLAN_RULES, [
       bet({ id: "b1", profitLoss: 5 }),
@@ -818,6 +874,44 @@ describe("money put into the bankroll, apart from betting", () => {
 
     expect(standing.profit).toBe(-4.45);
     expect(standing.added).toBe(10);
+  });
+
+  it("entra na ordem certa mesmo escrito noutro formato", () => {
+    // As apostas trazem a hora como o navegador a escreve e os movimentos
+    // da banca como a base de dados a devolve. Comparadas letra a letra, um
+    // depósito das 19:58:52 vinha antes de uma aposta fechada às 19:58:27 —
+    // e no registo real estão a vinte e cinco segundos uma da outra.
+    const standing = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [
+        bet({
+          id: "b1",
+          status: "red",
+          profitLoss: -5,
+          settledAt: "2026-09-26T19:58:27.470Z",
+        }),
+      ],
+      [{ ...funds(10), at: "2026-09-26 19:58:52.209893+00" }],
+    );
+
+    // Perdeu com 10 €, ficou com 5, meteu 10: quinze. O nível 2 pede 15 €,
+    // e é um degrau acima do 1 — sobe. Pela ordem contrária teria passado
+    // por 20 € e descido depois para 15, e o degrau dava no mesmo; o que
+    // não dava no mesmo era a ordem estar errada à espera de um caso onde
+    // desse.
+    expect(standing.bankroll).toBe(15);
+    expect(standing.day).toBe(2);
+  });
+
+  it("um depósito grande sobe um nível, não dez", () => {
+    // A banca manda no nível, mas um degrau é um passo e não um atalho:
+    // 510 € alcançam o nível 10 da tabela, e o nível 2 é o que se tem.
+    // Os outros oito ganham-se, um dia de cada vez.
+    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(500)]);
+
+    expect(standing.bankroll).toBe(510);
+    expect(standing.day).toBe(2);
   });
 
   it("tirar dinheiro também desce o nível", () => {
