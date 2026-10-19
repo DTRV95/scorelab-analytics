@@ -467,8 +467,10 @@ describe("ProbabilityRadar board", () => {
 
     await screen.findByText("Porto vs Nacional");
 
-    // 78,4% fica a zero a 1,28: abaixo disso acertar não chega.
-    expect(screen.getByText("1.28")).toBeInTheDocument();
+    // 78,4% é, no registo do quadro, 67,4% — e 67,4% fica a zero a 1,49.
+    // Era 1,28, o preço da probabilidade em cru, que é uma perda disfarçada
+    // de preço justo: vinte e um jogos foram aceites por causa dele.
+    expect(screen.getByText("1.49")).toBeInTheDocument();
   });
 
   it("expands a row into the full breakdown only when clicked", async () => {

@@ -1424,7 +1424,12 @@ export default function ProbabilityRadar() {
                   {[
                     ["Dupla hipótese a 70%+", "entrou 87% das vezes"],
                     ["Golos, ambas marcam, combinados", "53%, moeda ao ar"],
-                    ["Qualquer escolha", "só paga acima da odd mínima da linha"],
+                    // A linha que explica o número que mudou de sentido.
+                    // Acima dos 55% a previsão promete uns onze pontos a
+                    // mais — medido em 1185 previsões deste quadro — e a
+                    // odd mínima passou a ser a do que ela faz.
+                    ["Acima de 60%", "promete ~11 pontos a mais"],
+                    ["Odd mínima da linha", "já conta com isso"],
                   ].map(([what, said]) => (
                     <div key={what} className="flex items-baseline gap-2">
                       <dt className="min-w-0 flex-1 text-muted-foreground">
