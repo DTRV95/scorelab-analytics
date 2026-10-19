@@ -737,7 +737,25 @@ export function buildStanding(
    * calcula. De onde veio diz-se noutro sítio: `profit` continua a contar
    * só as apostas, que é o número que responde a "estamos a ganhar?".
    */
-  const ganho = rounded;
+  /**
+   * E sobe-se um degrau de cada vez.
+   *
+   * Ler a escada só pela banca deixava saltar: ganhar a 3,00 onde a tabela
+   * pedia 1,85 põe o dinheiro duas linhas à frente, e o nível ia atrás
+   * dele. Mas os níveis do plano são consecutivos — o nível 3 é o que se
+   * joga depois do 2, não uma linha onde se aterra. É a mesma razão por
+   * que `stakeForDay` manda apostar o que a linha diz e não metade do que
+   * lá está: ganhar acima do preço deixa troco, e o troco é almofada e não
+   * um degrau grátis.
+   *
+   * Para cima, portanto, um de cada vez. Para baixo, o dinheiro manda:
+   * travar a descida escreveria no ecrã um nível que a banca não paga, e
+   * perder metade da banca é quase sempre mais do que uma linha para trás.
+   *
+   * Um depósito conta — a regra é que o nível segue a banca — mas conta
+   * como um passo e não como um atalho: meter 500 € sobe um nível, e o
+   * seguinte é preciso ganhá-lo.
+   */
   const ladder = ladderFor(rules, Number(member.starting_bankroll));
   // A tabela escrita do Plano Milhão tem 38 linhas quaisquer que sejam os
   // dias guardados no desafio, por isso o fim é o mais curto dos dois.
@@ -745,7 +763,47 @@ export function buildStanding(
     1,
     Math.min(ladder.length || rules.days, rules.days),
   );
-  const day = Math.min(Math.max(rungForBankroll(ganho, ladder), 1), topo);
+
+  /**
+   * Tudo o que mexeu a banca, pela ordem em que mexeu.
+   *
+   * Uma aposta mexe-a quando fecha e não quando se regista: entre as duas
+   * coisas podem ir dias, e um depósito pelo meio chegou primeiro.
+   */
+  const quando = (iso: string) => {
+    const stamp = Date.parse(iso);
+    return Number.isNaN(stamp) ? 0 : stamp;
+  };
+
+  const passos: { at: number; amount: number }[] = [
+    ...mine
+      .filter((bet) => bet.status === "green" || bet.status === "red")
+      .map((bet) => ({
+        at: quando(bet.settledAt ?? bet.placedAt),
+        amount: bet.profitLoss,
+      })),
+    ...funds
+      .filter((entry) => entry.userId === member.user_id)
+      .map((entry) => ({ at: quando(entry.at), amount: entry.amount })),
+    // Pelo instante e não pelo texto: as apostas trazem a hora como o
+    // navegador a escreve e os movimentos da banca como a base de dados a
+    // devolve, e as duas escritas da mesma hora não se comparam letra a
+    // letra. O David meteu dinheiro vinte e cinco segundos depois de
+    // fechar uma aposta — é essa a ordem, e tem de ser essa.
+  ].sort((a, b) => a.at - b.at);
+
+  let degrau = 1;
+  let banca = Number(member.starting_bankroll);
+  passos.forEach((passo) => {
+    banca = Number((banca + passo.amount).toFixed(2));
+    const alcance = Math.min(
+      Math.max(rungForBankroll(banca, ladder), 1),
+      topo,
+    );
+    degrau = Math.min(alcance, degrau + 1);
+  });
+
+  const day = Math.min(Math.max(degrau, 1), topo);
 
   return {
     userId: member.user_id,
