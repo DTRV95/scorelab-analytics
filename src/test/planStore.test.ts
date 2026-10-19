@@ -789,10 +789,48 @@ describe("money put into the bankroll, apart from betting", () => {
     expect(standing.added).toBe(0);
   });
 
-  it("does not move anybody up or down the ladder", () => {
-    // Money is not a result. Putting €500 in does not win a day.
-    const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(500)]);
+  it("conta para o nível, porque o nível é onde a banca está", () => {
+    // Isto esteve do avesso, e o caso real foi este: 10 € de início, 10 €
+    // metidos e 4,45 € perdidos a apostar. Banca de 15,55 € no ecrã e
+    // nível 1 — que manda apostar 5 € de uma banca que já passou os 15 €
+    // da linha seguinte.
+    const standing = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [bet({ id: "b1", status: "red", profitLoss: -4.45 })],
+      [funds(10)]
+    );
 
+    expect(standing.bankroll).toBe(15.55);
+    expect(standing.day).toBe(2);
+  });
+
+  it("continua a não contar como lucro, que é outra pergunta", () => {
+    // Subir de nível e estar a ganhar não são a mesma coisa, e o ecrã tem
+    // de poder dizer as duas: a banca chegou aos 15 €, e mesmo assim as
+    // apostas estão a perder.
+    const standing = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [bet({ id: "b1", status: "red", profitLoss: -4.45 })],
+      [funds(10)]
+    );
+
+    expect(standing.profit).toBe(-4.45);
+    expect(standing.added).toBe(10);
+  });
+
+  it("tirar dinheiro também desce o nível", () => {
+    // O corolário, e tem de valer nos dois sentidos: com 5 € na mão não se
+    // joga o nível 2, haja o que houver escrito na história.
+    const standing = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [bet({ id: "b1", status: "green", profitLoss: 5 })],
+      [funds(-10)]
+    );
+
+    expect(standing.bankroll).toBe(5);
     expect(standing.day).toBe(1);
   });
 });
