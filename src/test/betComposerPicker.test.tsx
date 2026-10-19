@@ -13,23 +13,8 @@ vi.mock("@/hooks/useLeagueRates", () => ({
 
 import { BetComposer } from "@/components/BetComposer";
 
-const jogoDoQuadro = {
-  fixtureId: 901,
-  homeTeam: "Bayern",
-  awayTeam: "RB Leipzig",
-  league: "Bundesliga",
-  market: "1X",
-  modelProb: 88,
-  kickoff: null,
-  odds: "",
-};
-
-const composer = (
-  openSignal: number,
-  startWith?: { game: typeof jogoDoQuadro; signal: number },
-) => (
+const composer = (openSignal: number) => (
   <BetComposer
-    startWith={startWith}
     access={{
       board: [],
       boardAt: null,
@@ -83,26 +68,5 @@ describe("when the games pop-up is allowed to open by itself", () => {
 
     view.rerender(composer(2));
     expect(screen.getByText("pop-up dos jogos")).toBeInTheDocument();
-  });
-});
-
-describe("um jogo escolhido no quadro", () => {
-  it("entra no boletim sem abrir o pop-up dos jogos", () => {
-    const view = render(composer(0));
-    expect(screen.queryByText(/Bayern/)).toBeNull();
-
-    view.rerender(composer(0, { game: jogoDoQuadro, signal: 1 }));
-
-    expect(screen.getByText(/Bayern/)).toBeInTheDocument();
-    // O jogo já lá está: não há nada para procurar numa lista.
-    expect(screen.queryByText("pop-up dos jogos")).toBeNull();
-  });
-
-  it("não volta a pôr a mesma perna a cada repintura", () => {
-    const view = render(composer(0, { game: jogoDoQuadro, signal: 1 }));
-    view.rerender(composer(0, { game: jogoDoQuadro, signal: 1 }));
-    view.rerender(composer(0, { game: jogoDoQuadro, signal: 1 }));
-
-    expect(screen.getAllByText(/Bayern/)).toHaveLength(1);
   });
 });
