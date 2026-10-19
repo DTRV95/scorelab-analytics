@@ -723,12 +723,21 @@ export function buildStanding(
    * escada, e é o mesmo degrau que diz o que apostar.
    */
   /**
-   * Dinheiro metido na banca não é um resultado: meter 500 € não é ganhar
-   * um nível. O degrau lê-se do que as apostas fizeram, e só disso — a
-   * aposta que o nível pede é depois limitada pela banca verdadeira, essa
-   * sim com os depósitos lá dentro.
+   * O degrau lê-se da banca inteira, depósitos incluídos.
+   *
+   * Lia-se só do que as apostas tinham feito, para que meter 500 € não
+   * contasse como ganhar um nível. Parecia prudente e dava a resposta
+   * errada: com 10 € de início, 10 € metidos e 4,45 € perdidos a apostar,
+   * o ecrã dizia 15,55 € de banca e nível 1 — e o nível 1 manda apostar
+   * 5 € de uma banca que já passou os 15 € da linha seguinte.
+   *
+   * A regra é a que está escrita: passa-se de nível quando a banca chega
+   * ao que o nível seguinte pede. Banca é o dinheiro que lá está, venha
+   * de onde vier — é com ele que se aposta, e é dele que a aposta se
+   * calcula. De onde veio diz-se noutro sítio: `profit` continua a contar
+   * só as apostas, que é o número que responde a "estamos a ganhar?".
    */
-  const ganho = Number((Number(member.starting_bankroll) + profit).toFixed(2));
+  const ganho = rounded;
   const ladder = ladderFor(rules, Number(member.starting_bankroll));
   // A tabela escrita do Plano Milhão tem 38 linhas quaisquer que sejam os
   // dias guardados no desafio, por isso o fim é o mais curto dos dois.
