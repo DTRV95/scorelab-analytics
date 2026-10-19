@@ -933,12 +933,19 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
     so there was never anywhere to see whether any of it came true. This is
     that board, scored: each played fixture forecast again from the league as
     it stood before its own kickoff — never from a season that already holds
-    the result — and the market the model picked out marked against the final
-    score.
+    the result — and every market it forecast marked against the final score.
 
-    One market per game, the one the board itself led with. A game is not a
-    prediction about fifteen markets to whoever reads it; it is the line the
-    model put at the top, and that is the line worth being held to.
+    Era só um mercado por jogo, o que o quadro pôs à frente, com a razão de
+    que é essa a linha por que o modelo se deixa julgar. Mas a tabela que se
+    abre num jogo tem quinze linhas, e depois do apito catorze delas ficavam
+    por verificar — uma previsão que ninguém podia voltar a medir, porque
+    refazê-la exige a época como estava antes daquele jogo. O resultado
+    decide-as todas ao mesmo tempo, e a simulação já foi feita.
+
+    O mercado da frente continua a ter nome próprio no que vai daqui
+    (`headline_market`, `landed`): é por ele que o quadro se apresenta, e
+    misturá-lo com os outros numa média seria deixar de poder dizer como
+    correu aquilo que foi mesmo sugerido.
     """
     from model import pick_headline_market, probabilidades_jogo, settle_markets
     from schemas import ProbabilityRequest
@@ -1049,10 +1056,30 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
             skipped += 1
             continue
 
-        landed = settle_markets(home_goals, away_goals).get(headline["mercado"])
+        outcomes = settle_markets(home_goals, away_goals)
+        landed = outcomes.get(headline["mercado"])
         if landed is None:
             skipped += 1
             continue
+
+        # Todos os mercados marcados, e não só o que ficou à frente.
+        #
+        # A tabela que se abre num jogo tem quinze linhas, e depois do apito
+        # catorze delas continuavam a ser uma previsão por verificar. O
+        # resultado decide-as todas ao mesmo tempo e de graça: a simulação já
+        # foi feita e o marcador já cá está. Guardar só uma era deitar fora
+        # catorze medições por jogo que ninguém mais ia poder fazer, porque a
+        # previsão tem de ser refeita a partir da época anterior ao jogo e
+        # isso não se recupera depois.
+        marked = [
+            {
+                "mercado": market["mercado"],
+                "probabilidade_pct": market["probabilidade_pct"],
+                "landed": bool(outcomes[market["mercado"]]),
+            }
+            for market in forecast["mercados"]
+            if outcomes.get(market["mercado"]) is not None
+        ]
 
         scored.append(
             {
@@ -1087,11 +1114,25 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
                     else None
                 ),
                 "landed": bool(landed),
+                "mercados": marked,
+                "markets_scored": len(marked),
+                "markets_hit": sum(1 for market in marked if market["landed"]),
             }
         )
 
     hits = sum(1 for row in scored if row["landed"])
     said = sum(row["headline_pct"] for row in scored)
+    # A mesma conta sobre tudo o que foi dito, e não só sobre a linha de
+    # cima: quinze mercados por jogo são quinze medições, e é sobre elas que
+    # se pode dizer alguma coisa sobre o modelo com um fim-de-semana de
+    # jogos em vez de com um mês.
+    market_rows = sum(row["markets_scored"] for row in scored)
+    market_hits = sum(row["markets_hit"] for row in scored)
+    market_said = sum(
+        market["probabilidade_pct"]
+        for row in scored
+        for market in row["mercados"]
+    )
 
     payload = {
         "matches": scored,
@@ -1101,6 +1142,14 @@ def board_results(days: int = 7, limit: int = MAX_RESULT_MATCHES) -> Dict[str, A
         # rate alone cannot tell a sharp model from a timid one.
         "hit_pct": round(hits / len(scored) * 100, 1) if scored else 0.0,
         "predicted_pct": round(said / len(scored), 1) if scored else 0.0,
+        "markets_played": market_rows,
+        "markets_hits": market_hits,
+        "markets_hit_pct": (
+            round(market_hits / market_rows * 100, 1) if market_rows else 0.0
+        ),
+        "markets_predicted_pct": (
+            round(market_said / market_rows, 1) if market_rows else 0.0
+        ),
         "days": days,
         "unavailable": unavailable,
         "skipped": skipped,

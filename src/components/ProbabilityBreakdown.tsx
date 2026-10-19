@@ -77,6 +77,7 @@ export function sampleTone(_label: string) {
 export function ProbabilityBreakdown({
   data,
   onPick,
+  verdicts,
 }: {
   data: ProbabilityResult;
   /**
@@ -87,6 +88,14 @@ export function ProbabilityBreakdown({
    * meio de uma aposta.
    */
   onPick?: (market: string, pct: number) => void;
+  /**
+   * O que o resultado fez a cada mercado, para um jogo já jogado.
+   *
+   * Sem isto, a tabela de um jogo de ontem continuava a ser quinze
+   * previsões por verificar — e o resultado estava escrito duas linhas
+   * acima. Era a única parte do ecrã onde o que aconteceu não contava.
+   */
+  verdicts?: Map<string, boolean>;
 }) {
   const groups = GROUP_ORDER.map((grupo) => ({
     grupo,
@@ -141,6 +150,7 @@ export function ProbabilityBreakdown({
           <div className="space-y-2">
             {group.mercados.map((market) => {
               const nome = MARKET_LABELS[market.mercado] ?? market.mercado;
+              const entrou = verdicts?.get(market.mercado);
               const Linha = onPick ? "button" : "div";
               return (
               <Linha
@@ -153,7 +163,16 @@ export function ProbabilityBreakdown({
                       "aria-label": `Juntar ${nome} ao boletim`,
                     }
                   : {})}
-                className={`block w-full rounded-xl border border-border bg-[hsl(var(--sl-surface))] px-3.5 py-3 text-left ${
+                data-entrou={
+                  entrou === undefined ? undefined : entrou ? "sim" : "nao"
+                }
+                className={`block w-full rounded-xl border bg-[hsl(var(--sl-surface))] px-3.5 py-3 text-left ${
+                  entrou === undefined
+                    ? "border-border"
+                    : entrou
+                      ? "border-[hsl(var(--sl-green))]/45 bg-[hsl(var(--sl-green))]/[0.05]"
+                      : "border-border opacity-60"
+                } ${
                   onPick
                     ? "sl-tap transition-colors hover:border-primary/45 hover:bg-primary/[0.04]"
                     : ""
@@ -166,7 +185,30 @@ export function ProbabilityBreakdown({
                       <Plus className="h-3.5 w-3.5 flex-none text-primary" />
                     )}
                   </span>
-                  <span className="font-mono-data flex-none text-sm font-bold text-[hsl(var(--sl-green))]">
+                  {/* Entrou ou não entrou, dito em palavra e não só em cor:
+                      é a resposta à pergunta que a linha fazia, e uma
+                      moldura verde não é uma resposta para quem não
+                      distingue as duas cores. */}
+                  {entrou !== undefined && (
+                    <span
+                      className={`flex-none rounded-full px-1.5 py-px text-[10px] font-bold ${
+                        entrou
+                          ? "bg-[hsl(var(--sl-green))]/12 text-[hsl(var(--sl-green))]"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {entrou ? "Entrou" : "Falhou"}
+                    </span>
+                  )}
+                  <span
+                    className={`font-mono-data flex-none text-sm font-bold ${
+                      entrou === undefined
+                        ? "text-[hsl(var(--sl-green))]"
+                        : entrou
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                    }`}
+                  >
                     {market.probabilidade_pct.toFixed(1)}%
                   </span>
                 </div>
@@ -175,9 +217,18 @@ export function ProbabilityBreakdown({
                     initial={{ width: 0 }}
                     animate={{ width: `${market.probabilidade_pct}%` }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className={`absolute inset-y-0 left-0 rounded-full ${barTone(
-                      market.probabilidade_pct
-                    )}`}
+                    // Num jogo já jogado a barra deixa de poder ser
+                    // verde: o verde passou a querer dizer "entrou", e
+                    // tê-lo também a querer dizer "mais de 60%" punha a
+                    // mesma cor a responder a duas perguntas na mesma
+                    // linha. Mede-se em azul, decide-se em verde.
+                    className={`absolute inset-y-0 left-0 rounded-full ${
+                      entrou === undefined
+                        ? barTone(market.probabilidade_pct)
+                        : entrou
+                          ? "bg-[hsl(var(--sl-cool))]"
+                          : "bg-muted-foreground/30"
+                    }`}
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">

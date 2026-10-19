@@ -214,6 +214,21 @@ function BoardMatchRow({
   const kickoff = match.kickoff ? new Date(match.kickoff).getTime() : null;
   const since = kickoff === null ? null : Date.now() - kickoff;
   const started = !verdict && since !== null && since > 0;
+
+  /**
+   * O que o resultado fez a cada mercado da tabela.
+   *
+   * Um quadro guardado antes de o motor passar a marcar tudo não traz
+   * `mercados`, e aí a tabela volta a ser o que era — previsões por
+   * verificar — em vez de mentir sobre catorze delas.
+   */
+  const verdicts = useMemo(() => {
+    if (!verdict?.mercados?.length) return undefined;
+    return new Map(
+      verdict.mercados.map((market) => [market.mercado, market.landed]),
+    );
+  }, [verdict]);
+  const acertos = verdict?.mercados?.filter((market) => market.landed).length ?? 0;
   const playing = started && since !== null && since < 2.2 * 60 * 60 * 1000;
   /** The form behind the number, for whoever asks for it. */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -302,6 +317,14 @@ function BoardMatchRow({
               <span className="font-mono-data font-bold text-foreground">
                 {verdict.home_goals}–{verdict.away_goals}
               </span>
+              {/* Como correu o resto da previsão, sem ser preciso abrir.
+                  "Não entrou" sobre um jogo em que onze dos quinze
+                  mercados entraram conta meia verdade. */}
+              {verdicts && (
+                <span className="font-mono-data sl-meta font-bold">
+                  {acertos}/{verdicts.size}
+                </span>
+              )}
             </p>
           ) : started ? (
             <p className="sl-meta truncate text-[11px]">
@@ -381,12 +404,25 @@ function BoardMatchRow({
                   o boletim dele: estava-se a olhar para a probabilidade,
                   e o passo seguinte era sair daqui, abrir o desafio e
                   procurar o mesmo jogo numa lista. */}
-              {onAddToChallenge && (
+              {onAddToChallenge && !verdict && (
                 <p className="sl-meta -mb-2 px-0.5 text-[11px]">
                   Carrega num mercado para o pôr no boletim do desafio.
                 </p>
               )}
-              <ProbabilityBreakdown data={match} onPick={onAddToChallenge} />
+              {/* Jogo já jogado: a tabela deixa de ser uma lista de
+                  previsões e passa a ser o que cada uma delas deu. E
+                  deixa de ser um atalho para o boletim — apostar num
+                  jogo que já acabou não é uma coisa que exista. */}
+              {verdicts && (
+                <p className="sl-meta -mb-2 px-0.5 text-[11px]">
+                  {acertos} de {verdicts.size} mercados entraram.
+                </p>
+              )}
+              <ProbabilityBreakdown
+                data={match}
+                onPick={verdict ? undefined : onAddToChallenge}
+                verdicts={verdicts}
+              />
 
               {/* What the forecast was built from, for whoever wants to look
                   behind the number. Behind a tap, because most people are

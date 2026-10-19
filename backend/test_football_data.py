@@ -426,6 +426,70 @@ def test_recent_board_scores_only_what_was_already_played():
         assert row["home_goals"] == 2 and row["away_goals"] == 0
 
 
+def test_the_scored_board_marks_every_market_it_forecast():
+    """Catorze das quinze linhas ficavam por verificar.
+
+    A tabela que se abre num jogo tem quinze mercados, e só o que ficou à
+    frente era marcado contra o resultado. O marcador decide-os todos ao
+    mesmo tempo, e a simulação de onde saíram já tinha sido feita: guardar
+    um era deitar fora catorze medições por jogo que mais ninguém ia poder
+    repetir, porque refazer a previsão exige a época como estava antes
+    daquele jogo.
+    """
+    with_season(build_recent_season())
+    football_data._cache.pop("board-results:7", None)
+
+    report = football_data.board_results(days=7)
+    (linha,) = report["matches"][:1]
+
+    # 2-0 em casa: a casa ganhou, houve menos de 2.5 golos, e não marcaram
+    # as duas. Três contas que o resultado faz sem ambiguidade nenhuma.
+    marcados = {
+        market["mercado"]: market["landed"] for market in linha["mercados"]
+    }
+    assert marcados["Casa"] is True
+    assert marcados["Fora"] is False
+    assert marcados["Empate"] is False
+    assert marcados["1X"] is True
+    assert marcados["Menos de 2.5 Golos"] is True
+    assert marcados["Mais de 2.5 Golos"] is False
+    assert marcados["Ambas Marcam"] is False
+    assert marcados["BTTS No"] is True
+
+    # A conta por jogo, e a mesma conta somada sobre o quadro inteiro.
+    assert linha["markets_scored"] == len(linha["mercados"]) > 1
+    assert linha["markets_hit"] == sum(marcados.values())
+    assert report["markets_played"] == sum(
+        row["markets_scored"] for row in report["matches"]
+    )
+    assert report["markets_hits"] == sum(
+        row["markets_hit"] for row in report["matches"]
+    )
+    assert 0 < report["markets_hit_pct"] < 100
+
+
+def test_the_market_the_board_led_with_keeps_its_own_name():
+    """Misturar a linha da frente na média apagava a pergunta que interessa.
+
+    "Como correu o que foi sugerido" e "como correu tudo o que foi dito"
+    são duas perguntas, e a primeira é a que o quadro faz na página
+    inicial. Passar a marcar tudo não pode apagá-la.
+    """
+    with_season(build_recent_season())
+    football_data._cache.pop("board-results:7", None)
+
+    report = football_data.board_results(days=7)
+    (linha,) = report["matches"][:1]
+
+    marcados = {
+        market["mercado"]: market["landed"] for market in linha["mercados"]
+    }
+    assert linha["landed"] == marcados[linha["headline_market"]]
+    assert report["hits"] == sum(1 for row in report["matches"] if row["landed"])
+    # E são contas diferentes: quinze mercados por jogo, não um.
+    assert report["markets_played"] > report["played"]
+
+
 def test_recent_board_stops_at_the_edge_of_the_window():
     with_season(build_recent_season())
 
