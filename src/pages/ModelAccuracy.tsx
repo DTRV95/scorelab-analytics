@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { ModelRecordTable } from "@/components/ModelRecordTable";
 import { Button } from "@/components/ui/button";
 import {
   measuredAgo,
@@ -459,6 +460,12 @@ export default function ModelAccuracy() {
                   </p>
                 )}
               </div>
+            </motion.section>
+
+            {/* O registo do próprio quadro, antes do backtest por
+                competição: é o que esteve mesmo no ecrã, e é o que cresce. */}
+            <motion.section variants={fadeUp}>
+              <ModelRecordTable />
             </motion.section>
 
             <motion.section variants={fadeUp} className="sl-card overflow-hidden">
