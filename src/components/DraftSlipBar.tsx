@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Loader2, Ticket, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Ticket, Trash2, X } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { Button } from "@/components/ui/button";
 import { useMaybeAuth } from "@/contexts/AuthContext";
@@ -44,16 +44,26 @@ export function DraftSlipBar() {
   const planBoard = useMaybePlanBoard();
   const user = useMaybeAuth()?.user ?? null;
   const [aberto, setAberto] = useState(false);
+  const [aTrocar, setATrocar] = useState(false);
   const [aGuardar, setAGuardar] = useState(false);
 
-  const entry = useMemo(() => {
-    if (!slip.planId) return null;
-    return (
-      (planBoard?.board?.challenges ?? []).find(
-        (candidate) => candidate.plan.id === slip.planId,
-      ) ?? null
-    );
-  }, [planBoard, slip.planId]);
+  // O quadro já deixa de fora os desafios acabados, por isso o que vem
+  // aqui são os que estão mesmo a decorrer.
+  const aDecorrer = planBoard?.board?.challenges ?? [];
+
+  const entry = slip.planId
+    ? (aDecorrer.find((candidate) => candidate.plan.id === slip.planId) ?? null)
+    : null;
+
+  /**
+   * Trocar o boletim de desafio, depois de ele já ter dono.
+   *
+   * A pergunta no quadro só aparece na primeira perna. Sem isto, escolher
+   * o desafio errado obrigava a desfazer o boletim inteiro para o montar
+   * outra vez — e um desafio apagado a meio deixava o boletim sem saída
+   * nenhuma, com o botão de registar apagado e nada a explicar porquê.
+   */
+  const podeTrocar = aDecorrer.length > 1 || !entry;
 
   const conta = useMemo(() => {
     if (!entry) return null;
@@ -144,7 +154,7 @@ export function DraftSlipBar() {
 
   const titulo = entry
     ? `${entry.plan.name} · Nível ${entry.standing.day}`
-    : "Desafio não encontrado";
+    : "Escolhe o desafio";
 
   return (
     // Acima do rodapé no telemóvel, ao canto no computador. As 7rem são
@@ -166,6 +176,72 @@ export function DraftSlipBar() {
               transition={spring}
               className="overflow-hidden"
             >
+              {podeTrocar && (
+                <div className="border-b border-white/[0.07]">
+                  <button
+                    type="button"
+                    onClick={() => setATrocar((open) => !open)}
+                    aria-expanded={aTrocar}
+                    className="sl-tap flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+                  >
+                    <span className="flex-none text-[10px] uppercase tracking-[0.13em] text-white/45">
+                      Boletim de
+                    </span>
+                    {/* Só o nome: o nível está na barra de baixo e em cada
+                        linha da lista, e dizê-lo aqui era a terceira vez
+                        no mesmo ecrã. */}
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold">
+                      {entry?.plan.name ?? "Escolhe o desafio"}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 flex-none text-white/45 transition-transform ${
+                        aTrocar ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {aTrocar &&
+                    (aDecorrer.length === 0 ? (
+                      <p className="px-3.5 pb-2.5 text-[11.5px] text-white/55">
+                        Não há nenhum desafio a decorrer.
+                      </p>
+                    ) : (
+                      <div className="space-y-1 px-2 pb-2">
+                        {aDecorrer.map((candidate) => {
+                          const aqui = candidate.plan.id === slip.planId;
+                          return (
+                            <button
+                              key={candidate.plan.id}
+                              type="button"
+                              aria-current={aqui}
+                              onClick={() => {
+                                draftSlip.setPlan(candidate.plan.id);
+                                setATrocar(false);
+                              }}
+                              className={`sl-tap flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                                aqui ? "bg-white/[0.12]" : "hover:bg-white/[0.07]"
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[12.5px] font-bold">
+                                  {candidate.plan.name}
+                                </span>
+                                <span className="font-mono-data block text-[11px] text-white/55">
+                                  Nível {candidate.standing.day} ·{" "}
+                                  {eur.format(candidate.standing.bankroll)}
+                                </span>
+                              </span>
+                              {aqui && (
+                                <Check className="h-4 w-4 flex-none text-[hsl(var(--sl-green))]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                </div>
+              )}
+
               <div className="max-h-[45vh] overflow-y-auto">
                 {slip.legs.map((leg) => (
                   <div
