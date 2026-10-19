@@ -370,6 +370,97 @@ describe("ProbabilityRadar board", () => {
     expect(screen.queryByText(/odd mín\./)).toBeNull();
   });
 
+  it("marca todos os mercados de um jogo já jogado, e não só o sugerido", async () => {
+    // "Não entrou" sobre um jogo em que o modelo acertou em quase tudo
+    // conta meia verdade. A tabela tem quinze linhas e o resultado
+    // decide-as todas; antes disto, catorze ficavam por verificar.
+    scoring.snapshot.mockResolvedValue({
+      matches: [
+        {
+          fixture_id: 1,
+          league: "Liga Portugal",
+          home_name: "Porto",
+          away_name: "Nacional",
+          kickoff: daqui(1, 18),
+          home_goals: 2,
+          away_goals: 0,
+          headline_market: "Casa",
+          headline_pct: 78.4,
+          landed: true,
+          mercados: [
+            { mercado: "Casa", probabilidade_pct: 78.4, landed: true },
+            { mercado: "Empate", probabilidade_pct: 14, landed: false },
+            { mercado: "Fora", probabilidade_pct: 7.6, landed: false },
+          ],
+          markets_scored: 3,
+          markets_hit: 1,
+        },
+      ],
+      played: 1,
+      hits: 1,
+      hit_pct: 100,
+      predicted_pct: 78.4,
+      markets_played: 3,
+      markets_hits: 1,
+      markets_hit_pct: 33.3,
+      markets_predicted_pct: 33.3,
+      unavailable: [],
+      skipped: 0,
+      at: Date.now(),
+      source: "snapshot" as const,
+    });
+    mockFetchSequence();
+    renderPage();
+
+    const linha = await screen.findByText("Porto vs Nacional");
+    // A conta do jogo inteiro, sem ser preciso abrir.
+    expect(screen.getByText("1/3")).toBeInTheDocument();
+
+    fireEvent.click(linha.closest("button")!);
+
+    expect(await screen.findByText("1 de 3 mercados entraram.")).toBeInTheDocument();
+    expect(screen.getAllByText("Entrou").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Falhou")).toHaveLength(2);
+  });
+
+  it("não oferece o boletim num jogo que já acabou", async () => {
+    // Apostar num jogo já jogado não é uma coisa que exista, e a tabela
+    // de um jogo desses é uma medição e não um atalho.
+    scoring.snapshot.mockResolvedValue({
+      matches: [
+        {
+          fixture_id: 1,
+          league: "Liga Portugal",
+          home_name: "Porto",
+          away_name: "Nacional",
+          kickoff: daqui(1, 18),
+          home_goals: 2,
+          away_goals: 0,
+          headline_market: "Casa",
+          headline_pct: 78.4,
+          landed: true,
+          mercados: [
+            { mercado: "Casa", probabilidade_pct: 78.4, landed: true },
+          ],
+          markets_scored: 1,
+          markets_hit: 1,
+        },
+      ],
+      played: 1, hits: 1, hit_pct: 100, predicted_pct: 78.4,
+      unavailable: [], skipped: 0, at: Date.now(), source: "snapshot" as const,
+    });
+    mockFetchSequence();
+    renderPage();
+
+    const linha = await screen.findByText("Porto vs Nacional");
+    fireEvent.click(linha.closest("button")!);
+
+    await screen.findByText("1 de 1 mercados entraram.");
+    expect(
+      screen.queryByRole("button", { name: /ao boletim/ }),
+    ).toBeNull();
+  });
+
   it("says at what price each forecast stops being worth taking", async () => {
     mockFetchSequence();
     renderPage();

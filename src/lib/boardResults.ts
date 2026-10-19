@@ -11,6 +11,13 @@ import { supabase } from "@/lib/supabaseClient";
  * the result — and the market the board led with marked against the score.
  */
 
+/** Um dos mercados da previsão, marcado contra o resultado. */
+export interface ScoredMarket {
+  mercado: string;
+  probabilidade_pct: number;
+  landed: boolean;
+}
+
 export interface ScoredMatch {
   fixture_id: number;
   league: string;
@@ -24,6 +31,19 @@ export interface ScoredMatch {
   league_pct?: number | null;
   edge_pp?: number | null;
   landed: boolean;
+  /**
+   * Todos os mercados da previsão, marcados.
+   *
+   * Era só o da frente. A tabela que se abre num jogo tem quinze linhas e
+   * catorze delas ficavam por verificar depois do apito — uma previsão que
+   * ninguém podia voltar a medir, porque refazê-la exige a época como
+   * estava antes daquele jogo.
+   *
+   * Opcional porque um quadro guardado antes disto não as tem.
+   */
+  mercados?: ScoredMarket[];
+  markets_scored?: number;
+  markets_hit?: number;
 }
 
 export interface BoardResults {
@@ -33,6 +53,15 @@ export interface BoardResults {
   hit_pct: number;
   /** What the model said, on average, about the markets it led with. */
   predicted_pct: number;
+  /**
+   * A mesma conta sobre tudo o que foi dito, e não só sobre a linha de
+   * cima: quinze mercados por jogo são quinze medições, e é com elas que
+   * um fim-de-semana de jogos chega para dizer alguma coisa sobre o modelo.
+   */
+  markets_played?: number;
+  markets_hits?: number;
+  markets_hit_pct?: number;
+  markets_predicted_pct?: number;
   unavailable: string[];
   skipped: number;
   /** When this was computed, in epoch ms. */

@@ -54,6 +54,32 @@ describe("do quadro para o boletim", () => {
   });
 });
 
+describe("a tabela de um jogo que já se jogou", () => {
+  it("diz de cada mercado se entrou, e não só do sugerido", () => {
+    // A tabela tem quinze linhas e o resultado decide-as todas ao mesmo
+    // tempo. Antes disto, catorze ficavam por verificar com o marcador
+    // escrito duas linhas acima.
+    render(
+      <ProbabilityBreakdown
+        data={data}
+        verdicts={new Map([["Casa", true], ["Fora", false], ["1X", true]])}
+      />,
+    );
+
+    expect(screen.getAllByText("Entrou")).toHaveLength(2);
+    expect(screen.getAllByText("Falhou")).toHaveLength(1);
+  });
+
+  it("deixa em paz os mercados que não foram marcados", () => {
+    // Um quadro guardado antes de o motor passar a marcar tudo não traz
+    // nada — e aí a tabela volta a ser o que era, em vez de mentir.
+    render(<ProbabilityBreakdown data={data} />);
+
+    expect(screen.queryByText("Entrou")).toBeNull();
+    expect(screen.queryByText("Falhou")).toBeNull();
+  });
+});
+
 describe("ProbabilityBreakdown", () => {
   it("renders expected goals and every market's probability", () => {
     render(<ProbabilityBreakdown data={data} />);
