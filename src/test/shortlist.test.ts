@@ -32,9 +32,12 @@ describe("a lista curta", () => {
   });
 
   it("diz a que preço a aposta fica a zero", () => {
-    expect(minimumOdd(88)).toBeCloseTo(1.14, 2);
-    expect(minimumOdd(70)).toBeCloseTo(1.43, 2);
-    expect(minimumOdd(50)).toBeCloseTo(2.0, 2);
+    // Sobre o que a previsão faz, não sobre o que ela diz: acima dos 55%
+    // promete cerca de onze pontos a mais, e esses onze pontos são a
+    // diferença entre um preço justo e uma perda.
+    expect(minimumOdd(88)).toBeCloseTo(1.3, 2); // 77% a sério
+    expect(minimumOdd(70)).toBeCloseTo(1.7, 2); // 59% a sério
+    expect(minimumOdd(50)).toBeCloseTo(2.0, 2); // abaixo de 55 não se mexe
   });
 
   it("arredonda o preço para cima, nunca para baixo", () => {
@@ -43,9 +46,23 @@ describe("a lista curta", () => {
     expect(minimumOdd(77)).toBeGreaterThanOrEqual(100 / 77);
   });
 
+  it("nunca pede menos do que a probabilidade em cru pediria", () => {
+    // O ajuste só pode apertar o preço. Se alguma vez o afrouxasse, o
+    // ecrã estaria a mandar aceitar odds piores por causa de uma medição.
+    for (const pct of [20, 35, 45, 55, 58, 60, 70, 80, 88, 95]) {
+      expect(minimumOdd(pct)).toBeGreaterThanOrEqual(100 / pct - 0.01);
+    }
+  });
+
+  it("não dá um salto nos 60%", () => {
+    // Sem a rampa entre 55 e 60, 59,9% e 60,1% pediriam preços a treze
+    // cêntimos de distância, e a lista ficava com um degrau sem sentido.
+    expect(minimumOdd(60.1) - minimumOdd(59.9)).toBeLessThan(0.02);
+  });
+
   it("multiplica as hipóteses quando as apostas vão juntas", () => {
-    // Duas de 88% são 77,4% — e 77,4% precisa de 1,30, não de 1,14.
-    expect(minimumOddOfSlip([88, 88])).toBeCloseTo(1.3, 2);
+    // Duas de 88% são, medidas, duas de 77% — e isso são 59,3% juntas.
+    expect(minimumOddOfSlip([88, 88])).toBeCloseTo(1.69, 2);
     expect(minimumOddOfSlip([88])).toBe(minimumOdd(88));
   });
 
@@ -69,10 +86,20 @@ describe("a lista curta", () => {
 
 describe("o preço no sítio onde se decide", () => {
   it("mede um boletim pelas probabilidades das suas pernas", () => {
-    // Duas pernas de 80% são 64%: o boletim fica a zero a 1,57, e não a
-    // 1,25 que é o preço de cada uma delas.
-    expect(minimumOddOfSlip([80, 80])).toBeCloseTo(1.57, 2);
-    expect(minimumOddOfSlip([80])).toBeCloseTo(1.25, 2);
+    // Duas pernas de 80% — 69% medidas — são 47,6% juntas: o boletim fica
+    // a zero a 2,11, e não a 1,45 que é o preço de cada uma delas.
+    expect(minimumOddOfSlip([80, 80])).toBeCloseTo(2.11, 2);
+    expect(minimumOddOfSlip([80])).toBeCloseTo(1.45, 2);
+  });
+
+  it("corrige cada perna antes de as multiplicar, e não o produto", () => {
+    // Ao contrário dava outra coisa: a correcção foi medida em previsões
+    // de mercados, e duas pernas de 80% dão um boletim de 64% — um número
+    // que nunca foi previsto por ninguém.
+    const porPerna = minimumOddOfSlip([80, 80]);
+    const aoProduto = minimumOdd(80 * 0.8);
+
+    expect(porPerna).toBeGreaterThan(aoProduto);
   });
 
   it("não deixa uma perna por avaliar baixar o preço do boletim", () => {
