@@ -68,8 +68,16 @@ const scores = (entries: [number, [number, number]][]) =>
 describe("a player's standing", () => {
   it("builds the bankroll from the results, so it cannot drift", () => {
     const standing = buildStanding(member, MILLION_PLAN_RULES, [
-      bet({ id: "b1", profitLoss: 5 }),
-      bet({ id: "b2", stake: 7.5, odds: 1.85, profitLoss: 6.38, placedAt: "2026-09-22T10:00:00.000Z" }),
+      bet({ id: "b1", day: 1, profitLoss: 5 }),
+      bet({
+        id: "b2",
+        day: 2,
+        stake: 7.5,
+        odds: 1.85,
+        profitLoss: 6.38,
+        placedAt: "2026-09-22T10:00:00.000Z",
+        settledAt: "2026-09-22T20:00:00.000Z",
+      }),
     ]);
 
     expect(standing.bankroll).toBe(21.38);
@@ -135,9 +143,10 @@ describe("a player's standing", () => {
     // O dinheiro já lá estava; o que faltava era o dia. Dois dias, dois
     // degraus, sem nunca saltar nenhum.
     const depois = buildStanding(member, MILLION_PLAN_RULES, [
-      bet({ id: "b1", stake: 5, odds: 5, profitLoss: 20 }),
+      bet({ id: "b1", day: 1, stake: 5, odds: 5, profitLoss: 20 }),
       bet({
         id: "b2",
+        day: 2,
         stake: 7.5,
         profitLoss: 1,
         placedAt: "2026-09-22T10:00:00.000Z",
@@ -705,17 +714,26 @@ describe("a day closed the wrong way round", () => {
  * que é o que torna a pergunta "em que nível estou?" respondível.
  */
 describe("walking the ladder", () => {
-  /** Um dia jogado, com a quantia verdadeira do que aconteceu. */
+  /**
+   * Um dia jogado, com a quantia verdadeira do que aconteceu.
+   *
+   * `nivel` é o degrau em que o boletim foi registado, e por omissão é o
+   * próprio índice — um jogador que vai ganhando regista o dia 1, depois o
+   * 2, depois o 3. Quem perde volta a registar o mesmo, e aí diz-se.
+   */
   const day = (
     profitLoss: number,
     index: number,
     status: PlanBet["status"] = "green",
+    nivel = index,
   ) =>
     bet({
       id: `l${index}`,
       status,
+      day: nivel,
       profitLoss,
       placedAt: `2026-09-${String(20 + index).padStart(2, "0")}T10:00:00.000Z`,
+      settledAt: `2026-09-${String(20 + index).padStart(2, "0")}T20:00:00.000Z`,
     });
 
   // Tabela do Plano Milhão: 10 → 15 → 21,38 → 30,99.
@@ -761,7 +779,8 @@ describe("walking the ladder", () => {
     // se joga com 15 €.
     const repos = buildStanding(member, MILLION_PLAN_RULES, [
       day(-5, 1, "red"),
-      day(5, 2),
+      // Jogado outra vez o nível 1, que é o que o ecrã passou a pedir.
+      day(5, 2, "green", 1),
     ]);
 
     expect(repos.bankroll).toBe(10);
@@ -775,6 +794,58 @@ describe("walking the ladder", () => {
     // A banca chegaria ao degrau 4, mas o desafio acaba no 3.
     expect(buildStanding(member, rules, bets).bankroll).toBe(30.99);
     expect(buildStanding(member, rules, bets).day).toBe(3);
+  });
+
+  it("o nível é o dia a seguir ao que se jogou, e não onde o dinheiro aterra", () => {
+    // O caso do Vilagreen, com os números dele. Jogou sete dias ao nível 1
+    // (5 € cada) e ganhou quatro, depois jogou o nível 2 (7,50 €) e ganhou
+    // — logo está no 3. O ecrã dizia 4, porque a banca de 33,17 € passa os
+    // 30,99 € do degrau 4; só que desse dinheiro 10 € são um depósito e o
+    // resto é troco de ter ganho acima do preço da tabela.
+    const cinco = (index: number, profitLoss: number) =>
+      bet({
+        id: `v${index}`,
+        day: 1,
+        stake: 5,
+        status: profitLoss < 0 ? ("red" as const) : ("green" as const),
+        profitLoss,
+        placedAt: `2026-09-${String(10 + index).padStart(2, "0")}T10:00:00.000Z`,
+        settledAt: `2026-09-${String(10 + index).padStart(2, "0")}T20:00:00.000Z`,
+      });
+
+    const vilagreen = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [
+        cinco(1, -5),
+        cinco(2, -5),
+        cinco(3, 5.75),
+        cinco(4, -5),
+        cinco(5, 5.7),
+        cinco(6, 5.05),
+        cinco(7, 5),
+        bet({
+          id: "v8",
+          day: 2,
+          stake: 7.5,
+          profitLoss: 6.67,
+          placedAt: "2026-09-18T10:00:00.000Z",
+          settledAt: "2026-09-18T20:00:00.000Z",
+        }),
+      ],
+      [
+        {
+          id: "f10",
+          userId: "u1",
+          amount: 10,
+          note: null,
+          at: "2026-09-11T16:17:25.000Z",
+        },
+      ],
+    );
+
+    expect(vilagreen.bankroll).toBe(33.17);
+    expect(vilagreen.day).toBe(3);
   });
 
   it("uma aposta em aberto não mexe no nível", () => {
@@ -904,14 +975,50 @@ describe("money put into the bankroll, apart from betting", () => {
     expect(standing.day).toBe(2);
   });
 
-  it("um depósito grande sobe um nível, não dez", () => {
-    // A banca manda no nível, mas um degrau é um passo e não um atalho:
-    // 510 € alcançam o nível 10 da tabela, e o nível 2 é o que se tem.
-    // Os outros oito ganham-se, um dia de cada vez.
+  it("não começa o plano a meio por se ter metido dinheiro", () => {
+    // 510 € alcançam o décimo degrau da tabela, e quem nunca jogou um dia
+    // está no primeiro. O plano é uma escada que se sobe; dinheiro na
+    // conta à partida é almofada, não degraus já subidos.
     const standing = buildStanding(member, MILLION_PLAN_RULES, [], [funds(500)]);
 
     expect(standing.bankroll).toBe(510);
-    expect(standing.day).toBe(2);
+    expect(standing.day).toBe(1);
+  });
+
+  it("mas abre o portão de quem já ganhou um dia — e só um", () => {
+    // Ganhar o dia 1 e ficar com 10 € não chega ao nível 2, que pede 15 €:
+    // o portão fica fechado e repete-se o nível 1. Meter dinheiro abre-o.
+    // Não abre dez: o dia seguinte é um só, por muito que lá esteja.
+    const semDinheiro = buildStanding(member, MILLION_PLAN_RULES, [
+      bet({ id: "b1", day: 1, status: "red", profitLoss: -5 }),
+      bet({
+        id: "b2",
+        day: 1,
+        profitLoss: 5,
+        placedAt: "2026-09-22T10:00:00.000Z",
+        settledAt: "2026-09-22T20:00:00.000Z",
+      }),
+    ]);
+    expect(semDinheiro.bankroll).toBe(10);
+    expect(semDinheiro.day).toBe(1);
+
+    const comDinheiro = buildStanding(
+      member,
+      MILLION_PLAN_RULES,
+      [
+        bet({ id: "b1", day: 1, status: "red", profitLoss: -5 }),
+        bet({
+          id: "b2",
+          day: 1,
+          profitLoss: 5,
+          placedAt: "2026-09-22T10:00:00.000Z",
+          settledAt: "2026-09-22T20:00:00.000Z",
+        }),
+      ],
+      [{ ...funds(500), at: "2026-09-23T10:00:00.000Z" }],
+    );
+    expect(comDinheiro.bankroll).toBe(510);
+    expect(comDinheiro.day).toBe(2);
   });
 
   it("tirar dinheiro também desce o nível", () => {

@@ -707,54 +707,38 @@ export function buildStanding(
   );
 
   /**
-   * O nível é onde o dinheiro está, não quantas vezes se ganhou.
+   * O nível é o dia a seguir ao que se ganhou — não onde o dinheiro aterra.
    *
-   * Era um contador de passos: ganha, sobe um; perde, desce um. Isso parece
-   * a mesma coisa e não é. No Plano Milhão, perder o nível 1 deixa 5 € —
-   * metade dos 10 € com que o nível 1 se joga. Ganhar a seguir repõe os
-   * 10 €, e o contador somava um: pedia o nível 2, que se joga com 15 € e
-   * manda apostar 7,50 €. De uma banca de 10 €, isso são 75% em cima da
-   * mesa num plano que nunca passa de 50%.
+   * Isto já foi três coisas, e cada uma estava errada de maneira diferente.
    *
-   * Agora a escada é lida ao contrário: o nível é a linha cuja banca de
-   * partida o dinheiro já alcançou. Com 10 € volta a ser o nível 1 e a
-   * aposta volta a ser 5 €, até a banca chegar mesmo aos 15 € da linha
-   * seguinte. Perder não faz andar para trás no tempo — faz descer na
-   * escada, e é o mesmo degrau que diz o que apostar.
-   */
-  /**
-   * O degrau lê-se da banca inteira, depósitos incluídos.
+   * Foi um contador de passos: ganha, sobe um; perde, desce um. Perder o
+   * nível 1 deixa 5 € e ganhar a seguir repõe os 10 €, e o contador pedia
+   * o nível 2 — que se joga com 15 € e manda apostar 7,50 €, ou seja 75%
+   * de uma banca de 10 € num plano que nunca passa de 50%.
    *
-   * Lia-se só do que as apostas tinham feito, para que meter 500 € não
-   * contasse como ganhar um nível. Parecia prudente e dava a resposta
-   * errada: com 10 € de início, 10 € metidos e 4,45 € perdidos a apostar,
-   * o ecrã dizia 15,55 € de banca e nível 1 — e o nível 1 manda apostar
-   * 5 € de uma banca que já passou os 15 € da linha seguinte.
+   * Foi depois a linha a que a banca chegava. Isso resolvia o nível 2 a
+   * pedir dinheiro que não existe, e trazia outro: ganhar a 5,00 onde a
+   * tabela pedia 2,00 punha o dinheiro três linhas à frente e o nível ia
+   * atrás. O Vilagreen tinha jogado e ganho o nível 2, com os 7,50 € que o
+   * nível 2 manda apostar, e o ecrã dizia-lhe 4 — porque tinha 33,17 € na
+   * banca, dos quais 10 € eram um depósito e o resto troco de ter ganho
+   * acima do preço da tabela.
    *
-   * A regra é a que está escrita: passa-se de nível quando a banca chega
-   * ao que o nível seguinte pede. Banca é o dinheiro que lá está, venha
-   * de onde vier — é com ele que se aposta, e é dele que a aposta se
-   * calcula. De onde veio diz-se noutro sítio: `profit` continua a contar
-   * só as apostas, que é o número que responde a "estamos a ganhar?".
-   */
-  /**
-   * E sobe-se um degrau de cada vez.
+   * O que decide o nível é o dia que se jogou. Ganhar um dia leva ao
+   * seguinte, um de cada vez, porque os níveis do plano são consecutivos.
+   * Perder um dia deixa-nos onde o dinheiro está, que é mais do que uma
+   * linha atrás e tem de ser: o nível diz com que dinheiro se joga a
+   * seguir, e travar a descida escreveria no ecrã um nível que a banca não
+   * paga.
    *
-   * Ler a escada só pela banca deixava saltar: ganhar a 3,00 onde a tabela
-   * pedia 1,85 põe o dinheiro duas linhas à frente, e o nível ia atrás
-   * dele. Mas os níveis do plano são consecutivos — o nível 3 é o que se
-   * joga depois do 2, não uma linha onde se aterra. É a mesma razão por
-   * que `stakeForDay` manda apostar o que a linha diz e não metade do que
-   * lá está: ganhar acima do preço deixa troco, e o troco é almofada e não
-   * um degrau grátis.
+   * E a banca continua a mandar na subida, como gate: só se passa ao nível
+   * seguinte quando ela chega ao que esse nível pede. É a regra tal como
+   * foi dita — "perdemos o primeiro nível e ficamos com 5 €; se acertamos
+   * o seguinte passamos aos 10, e a aposta tem de ser novamente 5 €, não
+   * pode avançar para o nível 2". Com 10 € o portão está fechado.
    *
-   * Para cima, portanto, um de cada vez. Para baixo, o dinheiro manda:
-   * travar a descida escreveria no ecrã um nível que a banca não paga, e
-   * perder metade da banca é quase sempre mais do que uma linha para trás.
-   *
-   * Um depósito conta — a regra é que o nível segue a banca — mas conta
-   * como um passo e não como um atalho: meter 500 € sobe um nível, e o
-   * seguinte é preciso ganhá-lo.
+   * Um depósito não é um dia ganho, mas abre o portão: a banca é o
+   * dinheiro que lá está, venha de onde vier. Sobe um nível, nunca dois.
    */
   const ladder = ladderFor(rules, Number(member.starting_bankroll));
   // A tabela escrita do Plano Milhão tem 38 linhas quaisquer que sejam os
@@ -765,45 +749,36 @@ export function buildStanding(
   );
 
   /**
-   * Tudo o que mexeu a banca, pela ordem em que mexeu.
+   * O último dia decidido, pela hora a que ficou decidido.
    *
-   * Uma aposta mexe-a quando fecha e não quando se regista: entre as duas
-   * coisas podem ir dias, e um depósito pelo meio chegou primeiro.
+   * `lastSettled` é o último pela ordem em que as apostas foram
+   * registadas, que é a ordem em que a página as mostra. Para o dinheiro a
+   * ordem é outra: uma aposta de segunda que só fecha na sexta fecha
+   * depois de uma de terça. É a de sexta que diz em que dia estamos.
    */
-  const quando = (iso: string) => {
-    const stamp = Date.parse(iso);
-    return Number.isNaN(stamp) ? 0 : stamp;
-  };
+  const decidido = mine
+    .filter((bet) => bet.status === "green" || bet.status === "red")
+    .reduce<PlanBet | null>((ultimo, bet) => {
+      if (!ultimo) return bet;
+      const quando = (entry: PlanBet) =>
+        Date.parse(entry.settledAt ?? entry.placedAt) || 0;
+      return quando(bet) >= quando(ultimo) ? bet : ultimo;
+    }, null);
 
-  const passos: { at: number; amount: number }[] = [
-    ...mine
-      .filter((bet) => bet.status === "green" || bet.status === "red")
-      .map((bet) => ({
-        at: quando(bet.settledAt ?? bet.placedAt),
-        amount: bet.profitLoss,
-      })),
-    ...funds
-      .filter((entry) => entry.userId === member.user_id)
-      .map((entry) => ({ at: quando(entry.at), amount: entry.amount })),
-    // Pelo instante e não pelo texto: as apostas trazem a hora como o
-    // navegador a escreve e os movimentos da banca como a base de dados a
-    // devolve, e as duas escritas da mesma hora não se comparam letra a
-    // letra. O David meteu dinheiro vinte e cinco segundos depois de
-    // fechar uma aposta — é essa a ordem, e tem de ser essa.
-  ].sort((a, b) => a.at - b.at);
+  /** O degrau que a banca paga, nunca abaixo do primeiro. */
+  const alcance = Math.min(
+    Math.max(rungForBankroll(rounded, ladder), 1),
+    topo,
+  );
 
-  let degrau = 1;
-  let banca = Number(member.starting_bankroll);
-  passos.forEach((passo) => {
-    banca = Number((banca + passo.amount).toFixed(2));
-    const alcance = Math.min(
-      Math.max(rungForBankroll(banca, ladder), 1),
-      topo,
-    );
-    degrau = Math.min(alcance, degrau + 1);
-  });
-
-  const day = Math.min(Math.max(degrau, 1), topo);
+  const day = !decidido
+    ? 1
+    : decidido.status === "green"
+      ? // Ganhou: o dia seguinte, se a banca o pagar. Se não pagar, fica
+        // onde ela chega — que depois de uma vitória é o dia que acabou de
+        // jogar, ou o que o dinheiro der se ele tiver ficado curto.
+        Math.min(Math.max(decidido.day, 1) + 1, alcance)
+      : alcance;
 
   return {
     userId: member.user_id,
