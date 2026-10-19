@@ -175,6 +175,59 @@ describe("o boletim que anda com a pessoa", () => {
     expect(screen.getByText("Benfica vs Braga")).toBeInTheDocument();
   });
 
+  it("não deixa trocar de desafio quando só há um", () => {
+    // Um controlo que não tem para onde levar é ruído.
+    draftSlip.add("p1", jogo(1, "FC Porto", "Rio Ave"));
+    render(<DraftSlipBar />);
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+
+    expect(screen.queryByText("Boletim de")).toBeNull();
+  });
+
+  it("troca de desafio sem desfazer o boletim, e pede o valor do novo nível", () => {
+    // A pergunta no quadro só aparece na primeira perna. Sem isto,
+    // escolher o desafio errado obrigava a desfazer tudo e começar de novo.
+    quadro.value = {
+      board: homeBoard(
+        "david",
+        [plan, { ...plan, id: "p2", name: "Dez mil em 20" }],
+        [member, { ...member, plan_id: "p2" }],
+        [ganho],
+        [],
+      ),
+    };
+    draftSlip.add("p1", jogo(1, "FC Porto", "Rio Ave"));
+    draftSlip.add("p1", jogo(2, "Benfica", "Braga"));
+    render(<DraftSlipBar />);
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    fireEvent.click(screen.getByText("Boletim de"));
+    fireEvent.click(screen.getByText("Dez mil em 20"));
+
+    expect(draftSlip.read().planId).toBe("p2");
+    // Os jogos são os jogos: mudar de dono não os deita fora.
+    expect(draftSlip.read().legs).toHaveLength(2);
+    // O p2 não tem apostas nenhumas, por isso está no nível 1, que pede 5 €.
+    expect(screen.getByText(/5,00/)).toBeInTheDocument();
+  });
+
+  it("deixa escolher outro quando o desafio do boletim deixou de existir", () => {
+    // Um desafio apagado a meio deixava o boletim sem saída nenhuma: o
+    // botão de registar apagado e nada no ecrã a explicar porquê.
+    draftSlip.add("desaparecido", jogo(1, "FC Porto", "Rio Ave"));
+    render(<DraftSlipBar />);
+
+    expect(screen.getByText("Escolhe o desafio")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    fireEvent.click(screen.getByText("Boletim de"));
+    fireEvent.click(screen.getByText("Plano Milhão"));
+
+    expect(draftSlip.read().planId).toBe("p1");
+    expect(draftSlip.read().legs).toHaveLength(1);
+  });
+
   it("não guarda nada quando a aposta falha", async () => {
     // O boletim não pode desaparecer a prometer uma aposta que não ficou:
     // o trabalho de a montar tem de continuar lá para se tentar outra vez.
