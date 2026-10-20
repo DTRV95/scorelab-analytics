@@ -753,6 +753,66 @@ def _stub_provider(per_league):
     return original
 
 
+def test_an_empty_season_is_a_failure_and_is_not_remembered():
+    """Uma época vazia era guardada, e a competição desaparecia em silêncio.
+
+    O Championship tem 552 jogos. Quando a fonte responde 200 com a lista
+    vazia, isso ficava seis horas na cache e a aplicação inteira concluía
+    que a competição não tinha jogos: saía do quadro sem entrar em
+    `unavailable`, porque ninguém tinha falhado, e sem entrar em `skipped`,
+    porque não havia fixturas para saltar.
+
+    Aconteceu a 20 de Outubro às 15:26, e o quadro ficou sem os treze jogos
+    do Championship com um deles a começar às 18:45.
+    """
+    original = football_data._request
+    pedidos = []
+
+    def vazio(path, params=None, patience=None):
+        pedidos.append(path)
+        return {"matches": []}
+
+    football_data._cache.clear()
+    football_data._request = vazio
+    try:
+        for _ in range(2):
+            try:
+                football_data.get_season_matches("Championship")
+            except football_data.ProviderUnavailable as exc:
+                assert "sem jogos" in str(exc)
+            else:
+                raise AssertionError("uma época vazia tem de ser um erro")
+    finally:
+        football_data._request = original
+        football_data._cache.clear()
+
+    # E não fica guardada: a segunda tentativa volta mesmo a pedir, em vez
+    # de ler a lista vazia da cache durante as seis horas seguintes.
+    assert len(pedidos) == 2
+
+
+def test_the_board_names_a_competition_that_came_back_empty():
+    """E deixa de desaparecer sem deixar rasto no ecrã."""
+    original = _stub_provider(
+        {
+            "Eredivisie": [
+                team_match(1, 1, 2, "Ajax", "PSV", status="TIMED",
+                           kickoff=_future(2)),
+            ],
+            "Championship": football_data.ProviderUnavailable(
+                "A fonte devolveu uma época sem jogos nenhuns."
+            ),
+        }
+    )
+    try:
+        board = football_data.matches_for_days(7)
+    finally:
+        football_data.get_season_matches = original
+
+    assert [match["fixture_id"] for match in board["matches"]] == [1]
+    assert "Championship" in board["unavailable"]
+
+
 def test_diagnostics_name_the_competition_the_provider_refused():
     """A competition missing from the board has a reason, and it is knowable.
 
