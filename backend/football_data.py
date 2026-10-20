@@ -309,6 +309,24 @@ def get_season_matches(
     if not isinstance(matches, list):
         raise ProviderUnavailable("Resposta sem jogos para esta competição.")
 
+    # Uma época vazia é uma falha, não uma notícia — e era guardada.
+    #
+    # O Championship tem 552 jogos. Quando a fonte responde 200 com a lista
+    # vazia, isto punha [] na cache por seis horas e toda a aplicação
+    # concluía que a competição não tinha jogos: saía do quadro sem entrar
+    # em `unavailable`, porque ninguém tinha falhado, e sem entrar em
+    # `skipped`, porque não havia fixturas para saltar. Desaparecia e não
+    # havia número nenhum no ecrã que o explicasse.
+    #
+    # Aconteceu a 20 de Outubro às 15:26 e o quadro ficou sem o Championship
+    # inteiro, com um jogo a começar às 18:45. Passa a ser um erro como
+    # outro qualquer: aparece na lista das que não responderam, e não fica
+    # guardado, por isso a tentativa seguinte volta a pedir.
+    if not matches:
+        raise ProviderUnavailable(
+            "A fonte devolveu uma época sem jogos nenhuns."
+        )
+
     _cache_put(cache_key, matches)
     return matches
 
