@@ -187,3 +187,113 @@ def test_a_segunda_pergunta_nao_gasta_pedido():
         urllib.request.urlopen = original_open
         injury_data.get_api_key = original_key
         injury_data.forget()
+
+
+def _league(name, country, season=2026, current=True, injuries=True, lid=1):
+    return {
+        "league": {"id": lid, "name": name, "type": "League"},
+        "country": {"name": country},
+        "seasons": [
+            {
+                "year": season,
+                "current": current,
+                "coverage": {"injuries": injuries, "odds": False},
+            }
+        ],
+    }
+
+
+def _coverage(payload, key="chave"):
+    original_open = urllib.request.urlopen
+    original_key = injury_data.get_api_key
+    injury_data.forget()
+    injury_data.get_api_key = lambda: key
+    urllib.request.urlopen = _serving(payload)
+    try:
+        return injury_data.league_coverage()
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+
+def test_cobertura_sem_chave_nao_toca_na_rede():
+    original = injury_data.get_api_key
+    injury_data.get_api_key = lambda: ""
+    try:
+        answer = injury_data.league_coverage()
+    finally:
+        injury_data.get_api_key = original
+
+    assert answer["configured"] is False
+    assert answer["leagues"] == []
+
+
+def test_cobertura_encontra_a_liga_pelo_nome_e_pais():
+    answer = _coverage(
+        {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
+    )
+    linha = next(r for r in answer["leagues"] if r["scorelab"] == "Liga Portugal")
+
+    assert linha["found"] is True
+    assert linha["api_id"] == 94
+    assert linha["injuries"] is True
+    assert linha["season"] == 2026
+
+
+def test_cobertura_nao_confunde_ligas_com_o_mesmo_nome():
+    # "Serie A" existe em Itália e no Brasil. Pelo nome só, o Brasileirão
+    # apanhava a italiana.
+    answer = _coverage(
+        {
+            "response": [
+                _league("Serie A", "Italy", lid=135),
+                _league("Serie A", "Brazil", lid=71),
+            ]
+        }
+    )
+    italia = next(r for r in answer["leagues"] if r["scorelab"] == "Serie A")
+    brasil = next(r for r in answer["leagues"] if r["scorelab"] == "Brasileirão")
+
+    assert italia["api_id"] == 135
+    assert brasil["api_id"] == 71
+
+
+def test_cobertura_marca_as_que_faltam():
+    answer = _coverage({"response": []})
+
+    assert all(row["found"] is False for row in answer["leagues"])
+    assert answer["with_injuries"] == 0
+    assert answer["total"] == len(injury_data.LEAGUE_NAMES)
+
+
+def test_cobertura_distingue_liga_sem_lesoes():
+    answer = _coverage(
+        {"response": [_league("Championship", "England", injuries=False, lid=40)]}
+    )
+    linha = next(r for r in answer["leagues"] if r["scorelab"] == "Championship")
+
+    assert linha["found"] is True
+    assert linha["injuries"] is False
+    assert answer["with_injuries"] == 0
+
+
+def test_cobertura_usa_a_epoca_mais_recente_quando_nenhuma_e_corrente():
+    # Entre épocas nenhuma traz `current`, e isso não torna a liga
+    # inexistente.
+    entry = _league("Eredivisie", "Netherlands", season=2025, current=False, lid=88)
+    entry["seasons"].append(
+        {"year": 2026, "current": False, "coverage": {"injuries": True}}
+    )
+    answer = _coverage({"response": [entry]})
+    linha = next(r for r in answer["leagues"] if r["scorelab"] == "Eredivisie")
+
+    assert linha["season"] == 2026
+    assert linha["season_is_current"] is False
+
+
+def test_cobertura_aguenta_resposta_estranha():
+    answer = _coverage({"response": "nada disto"})
+
+    assert answer["leagues"] == []
+    assert "inesperada" in answer["detail"]

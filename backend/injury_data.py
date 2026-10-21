@@ -24,6 +24,29 @@ from typing import Any, Dict, Optional, Tuple
 BASE_URL = "https://v3.football.api-sports.io"
 REQUEST_TIMEOUT = 15
 
+# As nossas onze competições pelo nome que esta fonte lhes dá.
+#
+# Por nome e país, e não por um número decorado: um identificador errado
+# devolve a liga de outro país sem se queixar, e isso passava despercebido
+# até alguém reparar que o Brasileirão tinha nomes italianos. O número sai
+# da resposta deles e aparece na sonda, para se conferir.
+LEAGUE_NAMES: Dict[str, Tuple[str, str]] = {
+    "Liga Portugal": ("Primeira Liga", "Portugal"),
+    "Premier League": ("Premier League", "England"),
+    "Championship": ("Championship", "England"),
+    "La Liga": ("La Liga", "Spain"),
+    "Serie A": ("Serie A", "Italy"),
+    "Bundesliga": ("Bundesliga", "Germany"),
+    "Ligue 1": ("Ligue 1", "France"),
+    "Eredivisie": ("Eredivisie", "Netherlands"),
+    "Liga dos Campeões": ("UEFA Champions League", "World"),
+    "Campeonato da Europa": ("Euro Championship", "World"),
+    "Brasileirão": ("Serie A", "Brazil"),
+}
+
+# O catálogo deles muda de época a época, não de hora a hora.
+LEAGUES_TTL = 24 * 60 * 60
+
 # Fifteen minutes is short enough to see a key appear right after a deploy
 # and long enough that a page left open does not spend the day asking. The
 # free plan allows a hundred calls a day and injuries are what they are for.
@@ -182,4 +205,115 @@ def account_status(force: bool = False) -> Dict[str, Any]:
         "daily_limit": requests.get("limit_day"),
     }
     _store("status", answer)
+    return answer
+
+
+def _current_season(entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """A época a decorrer, pela palavra deles.
+
+    Com recurso à mais recente quando nenhuma se diz corrente: a seguir a
+    uma época acabada e antes de a outra arrancar, nenhuma traz
+    `current: true`, e isso não é razão para dizer que a liga não existe.
+    """
+    seasons = entry.get("seasons")
+    if not isinstance(seasons, list) or not seasons:
+        return None
+
+    for season in seasons:
+        if isinstance(season, dict) and season.get("current"):
+            return season
+
+    latest = [s for s in seasons if isinstance(s, dict) and s.get("year")]
+    return max(latest, key=lambda s: s["year"]) if latest else None
+
+
+def league_coverage(force: bool = False) -> Dict[str, Any]:
+    """Quais das nossas competições é que esta fonte cobre, e com o quê.
+
+    Uma liga que eles não tenham, ou cuja época corrente o plano gratuito
+    não inclua, fica a dizê-lo — para o dossiê do jogo a pôr a cinzento em
+    vez de mostrar zero lesionados, que se leria como "estão todos bons".
+    """
+    if not is_configured():
+        return {"configured": False, "leagues": [], "detail": "Sem chave."}
+
+    if not force:
+        remembered = _cached("coverage", LEAGUES_TTL)
+        if remembered is not None:
+            return remembered
+
+    try:
+        payload = _request("/leagues")
+    except Exception:
+        # Sem cache: não vale a pena guardar um dia inteiro de "não sei".
+        return {
+            "configured": True,
+            "leagues": [],
+            "detail": "Não foi possível contactar a API-Football.",
+        }
+
+    complaint = _errors_of(payload)
+    if complaint:
+        return {
+            "configured": True,
+            "leagues": [],
+            "detail": f"A API-Football recusou o pedido: {complaint}",
+        }
+
+    catalogue = payload.get("response")
+    if not isinstance(catalogue, list):
+        return {
+            "configured": True,
+            "leagues": [],
+            "detail": "A API-Football respondeu de forma inesperada.",
+        }
+
+    index: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for entry in catalogue:
+        if not isinstance(entry, dict):
+            continue
+        league = entry.get("league") or {}
+        country = entry.get("country") or {}
+        name, land = league.get("name"), country.get("name")
+        if isinstance(name, str) and isinstance(land, str):
+            index.setdefault((name, land), entry)
+
+    leagues = []
+    for ours, (name, land) in sorted(LEAGUE_NAMES.items()):
+        entry = index.get((name, land))
+        if not entry:
+            leagues.append(
+                {
+                    "scorelab": ours,
+                    "found": False,
+                    "detail": f"Não há '{name}' ({land}) no catálogo desta fonte.",
+                }
+            )
+            continue
+
+        season = _current_season(entry)
+        cover = (season or {}).get("coverage") or {}
+        leagues.append(
+            {
+                "scorelab": ours,
+                "found": True,
+                "api_id": (entry.get("league") or {}).get("id"),
+                "api_name": name,
+                "country": land,
+                "season": (season or {}).get("year"),
+                "season_is_current": bool((season or {}).get("current")),
+                "injuries": bool(cover.get("injuries")),
+                "odds": bool(cover.get("odds")),
+                "detail": "",
+            }
+        )
+
+    answer = {
+        "configured": True,
+        "detail": "",
+        "with_injuries": sum(1 for row in leagues if row.get("injuries")),
+        "total": len(leagues),
+        "leagues": leagues,
+    }
+    _store("coverage", answer)
     return answer
