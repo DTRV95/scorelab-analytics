@@ -21,8 +21,6 @@ import {
   X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { canonicalMarket } from "@/lib/marketNames";
 import { BetComposer } from "@/components/BetComposer";
 import { Section, SectionHeader } from "@/components/Section";
 import { LevelWon } from "@/components/LevelWon";
@@ -1362,7 +1360,15 @@ export default function Challenges() {
                 <BetSlip
                   key={bet.id}
                   bet={bet}
-                  above={`Nível ${bet.day}`}
+                  // O nome quando há mais do que um: a secção chama-se "o
+                  // que cada um escolheu", e a do lado trazia o nome do
+                  // outro enquanto esta vinha sem o meu.
+                  above={[
+                    members.length > 1 ? me?.name : null,
+                    `Nível ${bet.day}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                   state={
                     bet.status === "red"
                       ? "Falta dizeres quais"
@@ -1371,7 +1377,8 @@ export default function Challenges() {
                         : "À espera do resultado"
                   }
                   action={
-                    losing === bet.id ? (
+                    <>
+                    {losing === bet.id ? (
                       <div className="border-t border-border px-4 pb-3">
                         <FailedPicker
                           bet={bet}
@@ -1415,7 +1422,24 @@ export default function Challenges() {
                           {bet.legs.length === 1 ? "Falhou" : "Perdi o nível"}
                         </button>
                       </div>
-                    )
+                    )}
+                    {/* A mesma porta para o diálogo que as fechadas têm.
+                        Antes só a lista lado a lado a abria, e só para os
+                        dois últimos níveis — uma aposta em aberto cujo
+                        preço se tivesse escrito mal não se corrigia. */}
+                    {losing !== bet.id && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenBet({ bet, player: me?.name ?? "" })
+                        }
+                        aria-label={`Ver e corrigir a aposta do nível ${bet.day} de ${me?.name ?? ""}`}
+                        className="sl-tap w-full border-t border-border py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                      >
+                        Ver e corrigir
+                      </button>
+                    )}
+                    </>
                   }
                 />
               );
@@ -1615,80 +1639,6 @@ export default function Challenges() {
           </motion.div>
         )}
 
-        {saved && (
-          <motion.section variants={fadeUp} className="sl-card overflow-hidden">
-            <SectionHeader
-              icon={Swords}
-              title="O que cada um escolheu"
-              className="border-b border-border px-4 py-3"
-            />
-            <div className="grid gap-px bg-border md:grid-cols-2">
-              {standings.map((standing) => (
-                <div key={standing.userId} className="bg-card p-4">
-                  <p className="text-[13px] font-semibold text-foreground">
-                    {standing.name}
-                  </p>
-                  <div className="mt-2 space-y-1.5">
-                    {[...standing.bets]
-                      .reverse()
-                      .slice(0, 2)
-                      .map((bet) => (
-                        <button
-                          key={bet.id}
-                          type="button"
-                          onClick={() =>
-                            setOpenBet({ bet, player: standing.name })
-                          }
-                          aria-label={`Ver a aposta do nível ${bet.day} de ${standing.name}`}
-                          className="sl-tap flex w-full items-center gap-2.5 rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5 text-left hover:bg-muted"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold text-foreground">
-                              {bet.legs.length === 1
-                                ? bet.legs[0].match
-                                : `${bet.legs[0]?.match ?? "—"} + ${bet.legs.length - 1}`}
-                            </p>
-                            <p className="sl-meta truncate text-[11px]">
-                              Nível {bet.day} ·{" "}
-                              {bet.legs.length === 1
-                                ? (MARKET_LABELS[bet.legs[0].market] ??
-                                  canonicalMarket(bet.legs[0].market))
-                                : `${bet.legs.length} jogos`}{" "}
-                              @ {bet.odds.toFixed(2)}
-                            </p>
-                          </div>
-                          <span
-                            className={`sl-pill flex-none ${
-                              bet.status === "green"
-                                ? "sl-pill-win"
-                                : bet.status === "red"
-                                  ? "sl-pill-loss"
-                                  : "sl-pill-open"
-                            }`}
-                          >
-                            {bet.status === "green"
-                              ? `+${bet.profitLoss.toFixed(2)}`
-                              : bet.status === "red"
-                                ? bet.profitLoss.toFixed(2)
-                                : "aberta"}
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
-                        </button>
-                      ))}
-                    {standing.bets.length === 0 && (
-                      <p className="sl-meta text-[11px]">Ainda não apostou.</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Dois níveis é o que alguém olha, e esta secção responde a
-                "quem vai à frente". O resto é histórico, e histórico em
-                linhas de uma linha não é histórico — está logo abaixo,
-                onde os boletins são boletins e se pode procurar neles. */}
-          </motion.section>
-        )}
 
 
 

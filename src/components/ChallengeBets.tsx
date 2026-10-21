@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Search } from "lucide-react";
+import { Search, Swords } from "lucide-react";
 import { BetSlip } from "@/components/BetSlip";
+import { SectionHeader } from "@/components/Section";
 import {
   buildHistory,
   byMonth,
@@ -120,6 +121,7 @@ export function ChallengeBets({
    * sítio cem linhas que não têm nada que ver com aba nenhuma.
    */
   openSlot: ReactNode;
+  /** Quantas são minhas e estão por fechar — as que vêm em `openSlot`. */
   openCount: number;
   /**
    * Abrir uma aposta por inteiro, que é onde ela se corrige.
@@ -141,7 +143,13 @@ export function ChallengeBets({
     openCount > 0 ? "abertas" : "fechadas",
   );
   const [outcome, setOutcome] = useState<Outcome>("todas");
-  const [userId, setUserId] = useState<string | null>(me);
+  /**
+   * Abre nos dois, que é o que a secção promete no título.
+   *
+   * Abria nas minhas, e num desafio a dois isso esconde metade do que lá
+   * está a quem veio precisamente comparar.
+   */
+  const [userId, setUserId] = useState<string | null>(null);
   const [text, setText] = useState("");
 
   const history = useMemo(
@@ -172,16 +180,38 @@ export function ChallengeBets({
     [members],
   );
 
+  /**
+   * As que o outro tem por fechar, só para ver.
+   *
+   * Fechar uma aposta é coisa de quem a fez, por isso estas não trazem
+   * botão nenhum. Mas saber em que é que o outro está neste momento é
+   * metade da graça de um desafio a dois, e era o que a lista lado a lado
+   * mostrava antes de esta aba a substituir.
+   */
+  const theirs = useMemo(
+    () =>
+      history.filter(
+        (entry) => entry.bet.status === "pending" && entry.bet.userId !== me,
+      ),
+    [history, me],
+  );
+
   if (history.length === 0) return null;
 
   const abas: { key: "abertas" | "fechadas"; label: string; n: number }[] = [
-    { key: "abertas", label: "Em aberto", n: openCount },
+    { key: "abertas", label: "Em aberto", n: openCount + theirs.length },
     { key: "fechadas", label: "Fechadas", n: closed.length },
   ];
 
   return (
     <section className="sl-card overflow-hidden">
-      {/* Duas abas e mais nada no cabeçalho. Eram duas secções em sítios
+      <SectionHeader
+        icon={Swords}
+        title="O que cada um escolheu"
+        className="border-b border-border px-4 py-3"
+      />
+
+      {/* Duas abas, dentro da secção que já existia. Eram duas secções em sítios
           diferentes da página — as por fechar no topo, a âmbar, e as
           outras a meio — e a pergunta "o que é que nós apostámos" não
           tinha sítio: respondia-se com duas respostas separadas por meia
@@ -219,8 +249,33 @@ export function ChallengeBets({
       </div>
 
       {tab === "abertas" ? (
-        openCount > 0 ? (
-          <div className="space-y-2 p-3">{openSlot}</div>
+        openCount + theirs.length > 0 ? (
+          <div className="space-y-2 p-3">
+            {openSlot}
+            {theirs.map((entry) => (
+              <BetSlip
+                key={entry.bet.id}
+                bet={entry.bet}
+                above={`${naming.get(entry.bet.userId) ?? "—"} · Nível ${
+                  entry.bet.day
+                }`}
+                action={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpen(entry.bet, naming.get(entry.bet.userId) ?? "—")
+                    }
+                    aria-label={`Ver a aposta do nível ${entry.bet.day} de ${
+                      naming.get(entry.bet.userId) ?? "—"
+                    }`}
+                    className="sl-tap w-full border-t border-border py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  >
+                    Ver
+                  </button>
+                }
+              />
+            ))}
+          </div>
         ) : (
           <p className="px-4 py-6 text-center text-xs text-muted-foreground">
             Nada por fechar. A banca já conta tudo o que aqui está.

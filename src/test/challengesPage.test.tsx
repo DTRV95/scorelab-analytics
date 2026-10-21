@@ -261,6 +261,12 @@ afterEach(() => {
   cleanup();
 });
 
+/** As apostas já decididas vivem na aba das fechadas. */
+async function abrirFechadas(name: RegExp) {
+  fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
+  return screen.findByRole("button", { name });
+}
+
 function renderPage() {
   // The app mounts the Toaster in App.tsx, so a page rendered without it can
   // fire a toast that nothing ever shows — which is the state this page was
@@ -1122,7 +1128,7 @@ describe("reading the other player's bet", () => {
 
     // The brother's day 1, which the list can only show as one line.
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de Irmão/ }),
+      await abrirFechadas(/Ver e corrigir a aposta do nível 1 de Irmão/),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1137,7 +1143,9 @@ describe("reading the other player's bet", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 2 de David/ }),
+      await screen.findByRole("button", {
+        name: /Ver e corrigir a aposta do nível 2 de David/,
+      }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1223,7 +1231,9 @@ describe("correcting a bet that was typed wrong", () => {
   async function openMine() {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 2 de David/ }),
+      await screen.findByRole("button", {
+        name: /Ver e corrigir a aposta do nível 2 de David/,
+      }),
     );
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(
@@ -1279,7 +1289,7 @@ describe("correcting a bet that was typed wrong", () => {
   it("leaves the other player's bet alone", async () => {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de Irmão/ }),
+      await abrirFechadas(/Ver e corrigir a aposta do nível 1 de Irmão/),
     );
 
     const dialog = await screen.findByRole("dialog");
