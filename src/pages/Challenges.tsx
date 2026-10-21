@@ -1351,10 +1351,8 @@ export default function Challenges() {
             members={members}
             bets={bets}
             me={user?.id ?? null}
-            openCount={openBets.length}
-            openSlot={
-              <>
-            {openBets.map((bet) => {
+            openBets={openBets}
+            renderOpen={(bet) => {
               const manual = bet.legs.some(isManualLeg);
               return (
                 <BetSlip
@@ -1443,9 +1441,7 @@ export default function Challenges() {
                   }
                 />
               );
-            })}
-              </>
-            }
+            }}
             onOpen={(bet, player) => setOpenBet({ bet, player })}
           />
         </motion.div>
