@@ -25,6 +25,7 @@ const Analyses = lazy(routeLoaders.analyses);
 const MatchAnalysis = lazy(routeLoaders.matchAnalysis);
 const ProbabilityRadar = lazy(routeLoaders.probability);
 const ModelLab = lazy(routeLoaders.modelLab);
+const BetHistory = lazy(routeLoaders.history);
 const ModelAccuracy = lazy(routeLoaders.accuracy);
 const Leagues = lazy(routeLoaders.leagues);
 const MatchDeepDive = lazy(routeLoaders.matchDeepDive);
@@ -94,6 +95,7 @@ const App = () => {
                     <Route path="/model-lab" element={<ProtectedRoute><OwnerRoute><ModelLab /></OwnerRoute></ProtectedRoute>} />
                     <Route path="/bankroll" element={<ProtectedRoute><BankrollTools /></ProtectedRoute>} />
                     <Route path="/apostas" element={<ProtectedRoute><LooseBets /></ProtectedRoute>} />
+                    <Route path="/historico" element={<ProtectedRoute><BetHistory /></ProtectedRoute>} />
                     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

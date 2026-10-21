@@ -164,17 +164,41 @@ describe("the thumb row, which on a phone is the whole menu", () => {
       </MemoryRouter>,
     );
 
-  it("carries the leagues, and gets to the bankroll from the bar instead", () => {
-    // Five places is all a thumb row holds. The bankroll's figure is in the
-    // top bar of every page and opens the page itself, so it did not need a
-    // second way in; the leagues had none at all.
+  it("não deixa nada inalcançável ao tirá-lo do menu", () => {
+    // Três saíram do menu lateral, e isto é o contrato que impede que
+    // "arrumar" passe a querer dizer "esconder": cada uma tem de continuar
+    // a abrir-se de onde faz sentido abri-la.
+    //
+    //   Análises  — do Início (HomeInsights) e da Banca
+    //   Banca     — do número que está no topo de todas as páginas
+    //   Ligas     — do Início e da linha do quadro que diz o que faltou
+    //
+    // Cada uma dessas ligações tem o seu próprio teste, nos ficheiros das
+    // páginas que as mostram. Este fica aqui a dizer porquê, para quem
+    // mexer no menu outra vez saber o que tem de verificar.
     renderRow();
 
-    expect(screen.getByRole("link", { name: "Ligas" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Histórico" })).toBeInTheDocument();
+  });
+
+  it("carries the history, and gets to the rest from where it is needed", () => {
+    // Cinco lugares é tudo o que um polegar segura, e cada um tem de ser
+    // ganho. A Banca tem o número dela no topo de todas as páginas, e esse
+    // número abre-a. As Ligas estiveram aqui porque de um telemóvel não se
+    // chegava lá de maneira nenhuma; agora chega-se do Início e da linha
+    // do quadro que diz qual foi a competição que faltou — que é o momento
+    // em que se quer lá ir.
+    //
+    // O Histórico fica com o lugar: é a única página que responde a "o que
+    // é que eu tenho feito", e não tinha nenhum.
+    renderRow();
+
+    expect(screen.getByRole("link", { name: "Histórico" })).toHaveAttribute(
       "href",
-      "/ligas",
+      "/historico",
     );
     expect(screen.queryByRole("link", { name: "Banca" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Ligas" })).toBeNull();
   });
 
   it("keeps the four places a bet is made or followed", () => {
@@ -202,7 +226,7 @@ describe("the thumb row, which on a phone is the whole menu", () => {
       "Desafios",
       "Início",
       "Apostas",
-      "Ligas",
+      "Histórico",
     ]);
   });
 
