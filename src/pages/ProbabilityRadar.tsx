@@ -5,7 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -22,6 +22,7 @@ import {
 import { useFavourites } from "@/hooks/useFavourites";
 import type { ScoredMatch } from "@/lib/boardResults";
 import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
+import { silentLeagues } from "@/lib/boardLeagues";
 import { draftSlip, useDraftSlip } from "@/hooks/useDraftSlip";
 import type { SlipLeg } from "@/lib/draftSlip";
 
@@ -525,13 +526,17 @@ function BoardRefresh({
   at,
   games,
   missing,
+  silent,
   loading,
   note,
   onClick,
 }: {
   at: number;
   games: number;
+  /** As que o motor diz que falharam. */
   missing: string[];
+  /** As que responderam e não trouxeram jogo nenhum. */
+  silent: string[];
   loading: boolean;
   note: string;
   onClick: () => void;
@@ -540,6 +545,12 @@ function BoardRefresh({
     at ? `Quadro de ${freshness(at)}` : "Quadro ainda por carregar",
     games ? `${games} jogos` : null,
     missing.length ? `falta ${missing.join(", ")}` : null,
+    // Dito à parte do "falta", porque é outra coisa: ali houve um erro,
+    // aqui não houve nada. Na maioria das semanas é a verdade — a Liga dos
+    // Campeões joga de quinze em quinze dias. Mas quando uma competição
+    // some sem razão, é aqui que o nome dela aparece, e é a diferença
+    // entre ir perguntar e ir ver.
+    silent.length ? `sem jogos: ${silent.join(", ")}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -554,9 +565,20 @@ function BoardRefresh({
             motivo para ele: depois de uma tentativa, ou quando falta mesmo
             uma competição. Fixa, eram duas linhas de ensino permanente por
             cima dos jogos — e o botão diz "Atualizar", que já é a frase. */}
-        {(note || missing.length > 0) && (
+        {(note || missing.length > 0 || silent.length > 0) && (
           <p className="sl-meta mt-0.5 text-[11px] leading-4">
-            {note || "Falta uma competição? Vai buscar o mais recente."}
+            {note || (
+              <>
+                Falta uma competição?{" "}
+                <Link
+                  to="/ligas"
+                  className="font-semibold text-primary underline-offset-2 hover:underline"
+                >
+                  Vê o que cada uma respondeu
+                </Link>{" "}
+                ou vai buscar o mais recente.
+              </>
+            )}
           </p>
         )}
       </div>
@@ -1205,6 +1227,7 @@ export default function ProbabilityRadar() {
                 at={boardAt}
                 games={board.length}
                 missing={unavailableLeagues}
+                silent={silentLeagues(board, unavailableLeagues)}
                 loading={boardLoading}
                 note={refreshNote}
                 onClick={() => void refreshBoard()}

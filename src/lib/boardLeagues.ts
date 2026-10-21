@@ -38,6 +38,29 @@ export interface LeagueCount {
  * it at all. Counting every covered competition, zeroes included, turns that
  * into something the page can just say.
  */
+/**
+ * As competições cobertas que não puseram um único jogo no quadro.
+ *
+ * As que o motor diz que falharam já têm nome no ecrã. Estas são as outras:
+ * respondeu-se por elas, ninguém deu erro, e mesmo assim não vem nada. Na
+ * maioria das semanas isso é a verdade — o Campeonato da Europa não joga, a
+ * Liga dos Campeões joga de quinze em quinze dias.
+ *
+ * Mas esta semana o Championship desapareceu três vezes, por três razões
+ * diferentes, e das três o quadro ficou exactamente com este aspecto: sem a
+ * competição e sem nada a dizer que ela faltava. Nomeá-las não é um alarme,
+ * é tirar o caso de "não vejo o Championship" do sítio onde não tem resposta.
+ */
+export function silentLeagues(
+  matches: BoardMatch[],
+  unavailable: string[] = [],
+): string[] {
+  const refused = new Set(unavailable);
+  return leagueCounts(matches)
+    .filter((row) => row.count === 0 && !refused.has(row.league))
+    .map((row) => row.league);
+}
+
 export function leagueCounts(matches: BoardMatch[]): LeagueCount[] {
   const counts = new Map<string, number>(
     COVERED_LEAGUES.map((league) => [league, 0])
