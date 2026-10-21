@@ -56,6 +56,8 @@ import {
   type ChallengeRules,
 } from "@/lib/challengeRules";
 import { nextMove, sinceStart } from "@/lib/challengeGuidance";
+import { measuredEdge } from "@/lib/measuredEdge";
+import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
 import { challengeIntro } from "@/lib/challengePitch";
 import { planSchedule } from "@/lib/challengeSchedule";
 import { NextMoveCard } from "@/components/NextMoveCard";
@@ -637,6 +639,24 @@ export default function Challenges() {
   const myStyle = useMemo(
     () => (user ? buildPlayerStyle(user.id, me?.name ?? "", bets) : null),
     [user, me?.name, bets],
+  );
+
+  /**
+   * A vantagem desta pessoa, medida — e o que ela aguenta apostar.
+   *
+   * A tabela diz o que apostar e a tabela não sabe quem a está a jogar. Com
+   * meia banca a 1,85 são precisos 66% de acerto só para a banca não
+   * encolher, e esse número nunca esteve no ecrã onde a aposta se faz.
+   *
+   * Contada sobre as apostas desta pessoa em todos os desafios, e não só
+   * neste. A vantagem é dela e não do desafio: cada desafio por si tem oito
+   * apostas fechadas, que é metade do que é preciso para a taxa de acerto
+   * querer dizer alguma coisa — e assim a linha nunca apareceria a ninguém.
+   */
+  const everyBetOfMine = useMaybePlanBoard()?.bets ?? null;
+  const myEdge = useMemo(
+    () => measuredEdge(everyBetOfMine ?? me?.bets ?? []),
+    [everyBetOfMine, me?.bets],
   );
 
   const openBets = useMemo(
@@ -1549,6 +1569,7 @@ export default function Challenges() {
               plannedStake={move?.stake ?? 0}
               openSignal={pickSignal}
               style={myStyle}
+              edge={myEdge}
               entryElsewhere={move?.state === "play"}
               saving={saving}
               onPlace={place}

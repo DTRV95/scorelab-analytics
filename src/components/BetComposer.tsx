@@ -20,6 +20,11 @@ import { betTips } from "@/lib/betTips";
 import type { PlayerStyle } from "@/lib/bettingStyle";
 import { describeValue, edgePoints, slipValue } from "@/lib/valueBet";
 import { checkBet, type ChallengeRules } from "@/lib/challengeRules";
+import {
+  growthPerBet,
+  sustainableStake,
+  type MeasuredEdge,
+} from "@/lib/measuredEdge";
 import { combineOdds, type PlanLeg } from "@/lib/planStore";
 import { minimumOddOfSlip } from "@/lib/shortlist";
 import type { TypingMemory } from "@/lib/typingMemory";
@@ -168,6 +173,7 @@ export function BetComposer({
   lossStreak,
   openBets,
   style,
+  edge,
   openSignal,
   entryElsewhere,
   targetOdds,
@@ -187,6 +193,13 @@ export function BetComposer({
   openBets: number;
   /** This person's settled record, to say what it makes of the slip. */
   style: PlayerStyle | null;
+  /**
+   * A vantagem medida nas apostas desta pessoa, ou nada enquanto for cedo.
+   *
+   * A tabela diz o que apostar e não sabe quem a está a jogar. Isto diz o
+   * que o registo aguenta, que é outra coisa e às vezes é muito menos.
+   */
+  edge?: MeasuredEdge | null;
   /** Bumped from outside to open the picker, so the card at the top of the
       page can start the day's bet without anyone scrolling to find it. */
   openSignal?: number;
@@ -394,6 +407,60 @@ export function BetComposer({
     </div>
   );
 
+  /**
+   * O que o registo desta pessoa diz sobre a quantia que está no campo.
+   *
+   * Uma linha, e só quando há registo que chegue. A tabela manda apostar
+   * metade da banca; a vantagem medida aguenta uma fracção disso, e às
+   * vezes aguenta zero. Dizer qual é não bloqueia nada — põe no ecrã, ao
+   * lado do valor, a conta que de outra maneira só aparece meses depois no
+   * saldo.
+   */
+  const aguenta = edge ? sustainableStake(edge, bankroll) : null;
+  const ritmo =
+    edge && bankroll > 0
+      ? growthPerBet(edge, (stake / bankroll) * 100)
+      : null;
+
+  const edgeLine =
+    edge && aguenta !== null ? (
+      <p className="sl-meta text-[11px] leading-5">
+        {edge.stakePct <= 0 ? (
+          <>
+            Em {edge.settled} apostas acertaste{" "}
+            <b className="font-mono-data text-foreground">{edge.winPct}%</b> a{" "}
+            <b className="font-mono-data text-foreground">
+              {edge.odds.toFixed(2)}
+            </b>
+            : a esse preço cada euro devolve{" "}
+            <b className="font-mono-data text-destructive">
+              {edge.perEuro.toFixed(2)} €
+            </b>
+            , e não há quantia que aguente.
+          </>
+        ) : (
+          <>
+            O teu registo ({edge.settled} apostas, {edge.winPct}% a{" "}
+            {edge.odds.toFixed(2)}) aguenta{" "}
+            <b className="font-mono-data text-foreground">
+              {eur.format(aguenta)}
+            </b>
+            .
+          </>
+        )}
+        {ritmo !== null && ritmo < 1 && (
+          <>
+            {" "}
+            Com {eur.format(stake)}, cada nível multiplica a banca por{" "}
+            <b className="font-mono-data text-destructive">
+              {ritmo.toFixed(2)}
+            </b>
+            .
+          </>
+        )}
+      </p>
+    ) : null;
+
   const registerButton = (
     <Button
       className="sl-btn-primary h-11 w-full text-sm disabled:opacity-40"
@@ -549,6 +616,7 @@ export function BetComposer({
                     {breach.message}
                   </p>
                 )}
+                {edgeLine}
 
                 {registerButton}
 
@@ -574,6 +642,8 @@ export function BetComposer({
           <div className="rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-primary/25">
             {totals}
           </div>
+
+          {edgeLine}
 
           {/* Every other number here says what happens if it lands. This one
               says whether it is worth backing at the price, which is the only

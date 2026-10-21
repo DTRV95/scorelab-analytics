@@ -14,6 +14,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { CreateChallenge } from "@/components/ChallengeSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
+import { measuredEdge, type MeasuredEdge } from "@/lib/measuredEdge";
 import { newsByPlan, planNews } from "@/lib/planNews";
 import { seenByPlan } from "@/lib/seenStore";
 import {
@@ -77,18 +78,25 @@ function ChallengeCard({
   template,
   playing,
   rows,
+  edge,
   onCreated,
 }: {
   template: ChallengeTemplate;
   /** How many people are running it, across every challenge anybody opened. */
   playing: number;
   rows: ReturnType<typeof leaderboard>;
+  /** A vantagem medida de quem está a ler, ou nada enquanto for cedo. */
+  edge: MeasuredEdge | null;
   onCreated: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [tableOpen, setTableOpen] = useState(false);
   const { chance, stars } = difficultyOf(template);
-  const viable = isViable(template.rules);
+  // Julgado com a taxa de quem está a ler, quando ela existe. Era sempre
+  // com 55% assumidos — uma frase sobre um apostador imaginário, e a
+  // pessoa que a lê tem um registo onde a resposta está escrita.
+  const rate = edge ? edge.winPct / 100 : ASSUMED_WIN_RATE;
+  const viable = isViable(template.rules, rate);
   const lines = challengeLines(template);
 
   return (
@@ -154,9 +162,11 @@ function ChallengeCard({
             <p className="mt-3 flex items-start gap-1.5 rounded-lg bg-[hsl(var(--sl-green))]/8 px-2.5 py-2 text-[11px] leading-5 text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/25">
               <Check className="mt-0.5 h-3 w-3 flex-none" strokeWidth={3} />
               <span>
-                Matematicamente viável: com{" "}
-                {Math.round(ASSUMED_WIN_RATE * 100)}% de acerto, a banca cresce
-                ao longo do tempo.
+                {edge
+                  ? `Com os teus ${edge.winPct}% de acerto, esta banca cresce ao longo do tempo.`
+                  : `Matematicamente viável: com ${Math.round(
+                      ASSUMED_WIN_RATE * 100,
+                    )}% de acerto, a banca cresce ao longo do tempo.`}
               </span>
             </p>
           ) : (
@@ -165,7 +175,9 @@ function ChallengeCard({
               <span>
                 {template.longShot
                   ? "Bilhete de lotaria, e de propósito: todos os níveis têm de entrar, e uma falha acaba com ele."
-                  : "A aposta é grande de mais para a odd: a banca desce ao longo do tempo."}
+                  : edge
+                    ? `Com os teus ${edge.winPct}% de acerto, a aposta é grande de mais para a odd: esta banca desce ao longo do tempo.`
+                    : "A aposta é grande de mais para a odd: a banca desce ao longo do tempo."}
               </span>
             </p>
           )}
@@ -271,6 +283,12 @@ export default function ChallengeCatalogue() {
     "decorrer",
   );
   const [token, setToken] = useState(0);
+
+  /** O registo de quem está a ler, para julgar os modelos com ele. */
+  const myEdge = useMemo(
+    () => measuredEdge(allBets.filter((bet) => bet.userId === user?.id)),
+    [allBets, user?.id],
+  );
 
   // What the other players did in each challenge since this person last had
   // it open. The sidebar no longer unfolds the challenges, so this page is
@@ -541,6 +559,7 @@ export default function ChallengeCatalogue() {
             <ChallengeCard
               key={template.key}
               template={template}
+              edge={myEdge}
               playing={counts[template.key] ?? 0}
               rows={tables[template.key] ?? []}
               onCreated={() => setToken((value) => value + 1)}
