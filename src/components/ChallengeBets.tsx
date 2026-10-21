@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
-import { History, Search } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Search } from "lucide-react";
 import { BetSlip } from "@/components/BetSlip";
-import { SectionHeader } from "@/components/Section";
 import {
   buildHistory,
   byMonth,
@@ -21,11 +20,11 @@ const eur = new Intl.NumberFormat("pt-PT", {
 const pct = (value: number, casas = 0) =>
   `${value.toFixed(casas).replace(".", ",")}%`;
 
+/** Sem "em aberto": essas têm aba própria, com o que se lhes pode fazer. */
 const OUTCOMES: { key: Outcome; label: string }[] = [
   { key: "todas", label: "Todas" },
   { key: "ganhas", label: "Ganhas" },
   { key: "perdidas", label: "Perdidas" },
-  { key: "abertas", label: "Em aberto" },
 ];
 
 function Pill({
@@ -85,7 +84,7 @@ function Figure({
 }
 
 /**
- * O histórico deste desafio, dentro do desafio.
+ * As apostas deste desafio, em aberto e fechadas, numa aba só.
  *
  * A página já mostrava os dois últimos níveis de cada jogador, lado a lado,
  * e um botão que abria mais quarenta em linhas de uma linha. Isso responde a
@@ -97,11 +96,13 @@ function Figure({
  * contas no topo são as do que está filtrado, porque é essa a pergunta por
  * que se filtra: "e nisto, como é que me tenho saído?".
  */
-export function ChallengeHistory({
+export function ChallengeBets({
   plan,
   members,
   bets,
   me,
+  openSlot,
+  openCount,
   onOpen,
 }: {
   plan: PlanRecord;
@@ -111,15 +112,34 @@ export function ChallengeHistory({
   /** Quem está a ver, para a lista abrir nas apostas dela. */
   me: string | null;
   /**
+   * As apostas por fechar, já montadas, com o que se lhes pode fazer.
+   *
+   * Chegam prontas da página em vez de se construírem aqui: fechar um
+   * nível mexe no estado dela — o marcador, quem falhou, o que fica
+   * guardado — e trazer isso para dentro deste componente era mudar de
+   * sítio cem linhas que não têm nada que ver com aba nenhuma.
+   */
+  openSlot: ReactNode;
+  openCount: number;
+  /**
    * Abrir uma aposta por inteiro, que é onde ela se corrige.
    *
    * O cartão lado a lado mostrava dois níveis por pessoa e tinha um botão
    * que abria o resto; era de lá que se chegava a uma aposta antiga para a
-   * reabrir ou corrigir. Esse botão passou a ser este histórico, e sem isto
-   * uma aposta de há três semanas deixava de se poder tocar.
+   * reabrir ou corrigir. Sem isto, uma aposta de há três semanas deixava
+   * de se poder tocar.
    */
   onOpen: (bet: PlanBet, player: string) => void;
 }) {
+  /**
+   * Abre nas que estão por fechar, que é o que bloqueia tudo o resto.
+   *
+   * Sem nenhuma por fechar abre nas fechadas, porque aí a aba das abertas
+   * é uma frase a dizer que não há nada.
+   */
+  const [tab, setTab] = useState<"abertas" | "fechadas">(
+    openCount > 0 ? "abertas" : "fechadas",
+  );
   const [outcome, setOutcome] = useState<Outcome>("todas");
   const [userId, setUserId] = useState<string | null>(me);
   const [text, setText] = useState("");
@@ -133,9 +153,16 @@ export function ChallengeHistory({
     [bets, plan],
   );
 
+  // Nesta aba só entram as que já fecharam: as outras estão na do lado,
+  // com o que se lhes pode fazer. Por isso "Em aberto" saiu dos filtros —
+  // seria uma pastilha que esvazia a lista e manda a pessoa à aba errada.
+  const closed = useMemo(
+    () => history.filter((entry) => entry.bet.status !== "pending"),
+    [history],
+  );
   const shown = useMemo(
-    () => filterHistory(history, { userId, outcome, text }),
-    [history, userId, outcome, text],
+    () => filterHistory(closed, { userId, outcome, text }),
+    [closed, userId, outcome, text],
   );
   const totals = useMemo(() => historyTotals(shown), [shown]);
   const months = useMemo(() => byMonth(shown), [shown]);
@@ -147,16 +174,65 @@ export function ChallengeHistory({
 
   if (history.length === 0) return null;
 
+  const abas: { key: "abertas" | "fechadas"; label: string; n: number }[] = [
+    { key: "abertas", label: "Em aberto", n: openCount },
+    { key: "fechadas", label: "Fechadas", n: closed.length },
+  ];
+
   return (
     <section className="sl-card overflow-hidden">
-      <SectionHeader
-        icon={History}
-        title="Histórico"
-        className="border-b border-border px-4 py-3"
-      />
+      {/* Duas abas e mais nada no cabeçalho. Eram duas secções em sítios
+          diferentes da página — as por fechar no topo, a âmbar, e as
+          outras a meio — e a pergunta "o que é que nós apostámos" não
+          tinha sítio: respondia-se com duas respostas separadas por meia
+          página de escada. */}
+      <div
+        role="tablist"
+        aria-label="Apostas deste desafio"
+        className="flex border-b border-border"
+      >
+        {abas.map((aba) => (
+          <button
+            key={aba.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === aba.key}
+            onClick={() => setTab(aba.key)}
+            className={`sl-tap flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-[13px] font-bold transition-colors ${
+              tab === aba.key
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {aba.label}
+            <span
+              className={`sl-pill flex-none ${
+                aba.key === "abertas" && aba.n > 0
+                  ? "sl-pill-open"
+                  : "sl-pill-muted"
+              }`}
+            >
+              {aba.n}
+            </span>
+          </button>
+        ))}
+      </div>
 
+      {tab === "abertas" ? (
+        openCount > 0 ? (
+          <div className="space-y-2 p-3">{openSlot}</div>
+        ) : (
+          <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+            Nada por fechar. A banca já conta tudo o que aqui está.
+          </p>
+        )
+      ) : (
+      <>
       <div className="space-y-2 border-b border-border px-4 py-3">
-        <div className="flex items-end gap-3">
+        {/* Dois por linha no telemóvel, quatro no ecrã grande. A quatro
+            num telefone, "+11,92 €" ficava "+11,9…" — um número cortado
+            diz menos do que nenhum. */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4 sm:items-end">
           <Figure label="Apostas" value={String(totals.bets)} />
           <Figure
             label="Acerto"
@@ -274,6 +350,8 @@ export function ChallengeHistory({
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </section>
   );
