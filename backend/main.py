@@ -15,6 +15,7 @@ from schemas import (
 )
 from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
+import injury_data
 
 MAX_RESULT_LOOKUPS = 200
 # Uma semana cheia das onze competições dá à volta de cem jogos analisáveis.
@@ -56,6 +57,9 @@ def root():
             "match_data": True,
             "match_results": True,
             "match_data_key_configured": football_data.is_configured(),
+            # Só a presença, que é o que se vê sem gastar um pedido. Se a
+            # fonte aceita a chave diz-se em /data/injury-source.
+            "injury_data_key_configured": injury_data.is_configured(),
             "leagues": football_data.supported_leagues(),
         },
         "model": model_self_check(),
@@ -82,6 +86,18 @@ def data_status():
         "configured": configured,
         "leagues": football_data.supported_leagues() if configured else [],
     }
+
+
+@app.get("/data/injury-source")
+@limiter.limit("6/minute")
+def data_injury_source(request: Request, force: bool = False):
+    """Se a fonte de lesões está mesmo ligada, e quanto resta do dia.
+
+    Responde sempre 200, mesmo sem chave: é uma luz para se olhar, e uma
+    luz que rebenta a página não é luz nenhuma. Não devolve nada da conta
+    de quem é a chave — só o plano, a quota e se foi aceite.
+    """
+    return injury_data.account_status(force=force)
 
 
 @app.get("/data/leagues")
