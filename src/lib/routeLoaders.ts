@@ -26,7 +26,6 @@ export const routeLoaders = {
   bettorAnalysis: () => import("@/pages/BettorAnalysis"),
   bankroll: () => import("@/pages/BankrollTools"),
   looseBets: () => import("@/pages/LooseBets"),
-  history: () => import("@/pages/BetHistory"),
   settings: () => import("@/pages/Settings"),
   notFound: () => import("@/pages/NotFound"),
 } as const;
@@ -44,7 +43,6 @@ const WARM: RouteKey[] = [
   "probability",
   "challenges",
   "looseBets",
-  "history",
   "leagues",
 ];
 

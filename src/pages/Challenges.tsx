@@ -61,6 +61,7 @@ import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
 import { challengeIntro } from "@/lib/challengePitch";
 import { planSchedule } from "@/lib/challengeSchedule";
 import { NextMoveCard } from "@/components/NextMoveCard";
+import { ChallengeHistory } from "@/components/ChallengeHistory";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
 import { PlanPlayers } from "@/components/PlanPlayers";
 import {
@@ -345,7 +346,6 @@ export default function Challenges() {
   // Bumped to open the picker from the card at the top of the page.
   const [pickSignal, setPickSignal] = useState(0);
   const [wholeTable, setWholeTable] = useState(false);
-  const [allDays, setAllDays] = useState(false);
   // Which bet is open in full, and whose it is.
   /**
    * An action that failed, said where the person is looking.
@@ -1628,7 +1628,7 @@ export default function Challenges() {
                   <div className="mt-2 space-y-1.5">
                     {[...standing.bets]
                       .reverse()
-                      .slice(0, allDays ? 40 : 2)
+                      .slice(0, 2)
                       .map((bet) => (
                         <button
                           key={bet.id}
@@ -1680,18 +1680,23 @@ export default function Challenges() {
               ))}
             </div>
 
-            {/* Two days is what anyone looks at. The rest is history, and a
-                history that is always open turns the page into a scroll. */}
-            {standings.some((standing) => standing.bets.length > 2) && (
-              <button
-                type="button"
-                onClick={() => setAllDays((open) => !open)}
-                className="sl-tap w-full border-t border-border py-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              >
-                {allDays ? "Mostrar só os últimos 2 níveis" : "Ver todos os níveis"}
-              </button>
-            )}
+            {/* Dois níveis é o que alguém olha, e esta secção responde a
+                "quem vai à frente". O resto é histórico, e histórico em
+                linhas de uma linha não é histórico — está logo abaixo,
+                onde os boletins são boletins e se pode procurar neles. */}
           </motion.section>
+        )}
+
+        {saved && plan && (
+          <motion.div variants={fadeUp}>
+            <ChallengeHistory
+              plan={plan}
+              members={members}
+              bets={bets}
+              me={user?.id ?? null}
+              onOpen={(bet, player) => setOpenBet({ bet, player })}
+            />
+          </motion.div>
         )}
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">

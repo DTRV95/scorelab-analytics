@@ -6,7 +6,6 @@ import {
   User,
   ChevronLeft,
   Gauge,
-  History,
   Trophy,
   Ticket,
   Percent,
@@ -41,7 +40,6 @@ const navItems: NavItem[] = [
   // used to unfold them — each challenge, the full list, the comparison —
   // which put four entries in a sidebar for what is one page.
   { title: "Desafios", url: "/desafios", icon: Trophy, challenges: true },
-  { title: "Histórico", url: "/historico", icon: History },
   { title: "Apostas", url: "/apostas", icon: Ticket },
   { title: "Acerto do modelo", url: "/accuracy", icon: Gauge },
   { title: "Perfil", url: "/settings", icon: User },
@@ -57,9 +55,8 @@ const navItems: NavItem[] = [
 // Início e da linha do quadro que diz qual é a competição que faltou — que
 // é exactamente o momento em que se quer lá ir.
 //
-// O Histórico fica, e fica alto: é a única página que responde a "o que é
-// que eu tenho feito", e o registo dela já existia inteiro sem ter onde
-// aparecer.
+// O histórico das apostas não é uma entrada aqui: vive dentro do desafio a
+// que pertence, que é onde se vai procurá-lo.
 
 export function AppSidebar() {
   const location = useLocation();
