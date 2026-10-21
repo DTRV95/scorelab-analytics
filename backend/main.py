@@ -16,6 +16,8 @@ from schemas import (
 from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
 import injury_data
+import bigballs_data
+import odds_api
 
 MAX_RESULT_LOOKUPS = 200
 # Uma semana cheia das onze competições dá à volta de cem jogos analisáveis.
@@ -98,6 +100,22 @@ def data_injury_source(request: Request, force: bool = False):
     de quem é a chave — só o plano, a quota e se foi aceite.
     """
     return injury_data.account_status(force=force)
+
+
+@app.get("/data/sources")
+@limiter.limit("6/minute")
+def data_sources(request: Request):
+    """O estado de todas as fontes de contexto, num endereço só.
+
+    Para a pergunta "já está a funcionar?" ter uma resposta que se abre
+    no telemóvel em vez de precisar de alguém a investigar. Nenhuma das
+    respostas traz chaves nem dados de conta — só se a porta abre.
+    """
+    return {
+        "lesoes_api_football": injury_data.account_status(),
+        "lesoes_bigballs": bigballs_data.account_status(),
+        "odds": odds_api.account_status(),
+    }
 
 
 @app.get("/data/injury-coverage")
