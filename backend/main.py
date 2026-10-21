@@ -100,6 +100,18 @@ def data_injury_source(request: Request, force: bool = False):
     return injury_data.account_status(force=force)
 
 
+@app.get("/data/injury-coverage")
+@limiter.limit("4/minute")
+def data_injury_coverage(request: Request, force: bool = False):
+    """Quais das nossas onze competições é que a fonte de lesões cobre.
+
+    O que decide se o dossiê de um jogo pode falar de lesões ou se tem de
+    as deixar a cinzento: zero lesionados numa liga que eles não seguem
+    lê-se como "estão todos bons", que é a pior coisa que podíamos dizer.
+    """
+    return injury_data.league_coverage(force=force)
+
+
 @app.get("/data/leagues")
 @limiter.limit("6/minute")
 def data_leagues(request: Request, days: int = 7):
