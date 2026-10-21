@@ -61,7 +61,7 @@ import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
 import { challengeIntro } from "@/lib/challengePitch";
 import { planSchedule } from "@/lib/challengeSchedule";
 import { NextMoveCard } from "@/components/NextMoveCard";
-import { ChallengeHistory } from "@/components/ChallengeHistory";
+import { ChallengeBets } from "@/components/ChallengeBets";
 import { MILLION_PLAN_RULES } from "@/lib/challengeRules";
 import { PlanPlayers } from "@/components/PlanPlayers";
 import {
@@ -1342,19 +1342,20 @@ export default function Challenges() {
             card with a hairline between them, two bets by fechar read as one
             bet with twice the games.
 
-            And it does not look like the shelf above it: that one is games to
-            choose from, this one is money already na mesa. Tinta âmbar dos
-            dois lados — no título e na beira de cada boletim. */}
-        {openBets.length > 0 && (
-          <motion.div ref={openDays} variants={fadeUp}>
-          <Section
-            tone="amber"
-            icon={Clock}
-            title="Por fechar"
-            count={openBets.length}
-            note="A banca só mexe quando estas fecharem."
-            className="space-y-2"
-          >
+        {/* As apostas deste desafio, as duas espécies na mesma aba.
+            Estavam em dois sítios da página: as por fechar no topo, a
+            âmbar, e as outras a meio, em linhas de uma linha. "O que é que
+            nós apostámos" respondia-se com duas respostas separadas por
+            meia página de escada. */}
+        <motion.div ref={openDays} variants={fadeUp}>
+          <ChallengeBets
+            plan={plan}
+            members={members}
+            bets={bets}
+            me={user?.id ?? null}
+            openCount={openBets.length}
+            openSlot={
+              <>
             {openBets.map((bet) => {
               const manual = bet.legs.some(isManualLeg);
               return (
@@ -1419,9 +1420,11 @@ export default function Challenges() {
                 />
               );
             })}
-          </Section>
-          </motion.div>
-        )}
+              </>
+            }
+            onOpen={(bet, player) => setOpenBet({ bet, player })}
+          />
+        </motion.div>
 
         {/* Where the challenge stands, on one line and a bar.
             This was a card with two big figures, a bar and a line of small
@@ -1687,17 +1690,7 @@ export default function Challenges() {
           </motion.section>
         )}
 
-        {saved && plan && (
-          <motion.div variants={fadeUp}>
-            <ChallengeHistory
-              plan={plan}
-              members={members}
-              bets={bets}
-              me={user?.id ?? null}
-              onOpen={(bet, player) => setOpenBet({ bet, player })}
-            />
-          </motion.div>
-        )}
+
 
         <motion.section variants={fadeUp} className="sl-card overflow-hidden">
           <SectionHeader

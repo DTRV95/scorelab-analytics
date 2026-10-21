@@ -1055,7 +1055,11 @@ describe("closing a bet nobody else can close", () => {
   it("offers the owner a way to say how a hand-added game went", async () => {
     renderPage();
 
-    expect(await screen.findByText("Por fechar")).toBeInTheDocument();
+    // "Por fechar" era uma secção à parte, no topo; passou a ser a aba
+    // em que a página abre.
+    expect(
+      await screen.findByRole("tab", { name: /Em aberto/ }),
+    ).toHaveAttribute("aria-selected", "true");
     // O estado passou da linha pequena por cima para a pastilha ao lado,
     // que é o que se lê sem abrir o boletim.
     expect(screen.getAllByText(/À espera de ti/).length).toBeGreaterThan(0);
@@ -1145,12 +1149,26 @@ describe("reading the other player's bet", () => {
   });
 });
 
-describe("o histórico dentro do desafio", () => {
+describe("as apostas do desafio, nas duas abas", () => {
+  it("abre nas que estão por fechar, que é o que bloqueia o resto", async () => {
+    // As duas espécies na mesma aba, e a que exige alguma coisa primeiro.
+    renderPage();
+
+    expect(
+      await screen.findByRole("tab", { name: /Em aberto/ }),
+    ).toHaveAttribute("aria-selected", "true");
+    // A procura é das fechadas, e essa aba ainda não está à vista.
+    expect(
+      screen.queryByLabelText("Procurar no histórico do desafio"),
+    ).toBeNull();
+  });
+
   it("mostra as apostas antigas, que o cartão lado a lado já não mostra", async () => {
     // O cartão mostra dois níveis por pessoa e responde a "quem vai à
     // frente". O histórico responde a "o que é que nós fizemos", e é onde
     // uma aposta de há três semanas continua a existir.
     renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
 
     expect(
       await screen.findByRole("button", {
@@ -1161,6 +1179,7 @@ describe("o histórico dentro do desafio", () => {
 
   it("procura por equipa", async () => {
     renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
     const procura = await screen.findByLabelText(
       "Procurar no histórico do desafio",
     );
@@ -1174,15 +1193,29 @@ describe("o histórico dentro do desafio", () => {
 
   it("filtra pelo que aconteceu", async () => {
     renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
+    await screen.findByRole("button", {
+      name: /Ver e corrigir a aposta do nível 1 de David/,
+    });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Em aberto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Perdidas" }));
 
-    // Os totais são os da lista filtrada: é a pergunta por que se filtra.
+    // O nível 1 do David ganhou, por isso sai da lista das perdidas.
     expect(
       screen.queryByRole("button", {
         name: /Ver e corrigir a aposta do nível 1 de David/,
       }),
     ).toBeNull();
+  });
+
+  it("não oferece \"em aberto\" como filtro das fechadas", async () => {
+    // Era uma pastilha que esvaziava a lista e mandava a pessoa à aba
+    // errada: as que estão por fechar vivem na outra, com o que se lhes
+    // pode fazer.
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
+
+    expect(screen.queryByRole("button", { name: "Em aberto" })).toBeNull();
   });
 });
 
@@ -1259,6 +1292,7 @@ describe("correcting a bet that was typed wrong", () => {
     renderPage();
     // O cartão lado a lado mostra dois níveis; uma aposta mais antiga
     // abre-se do histórico, que é onde o resto passou a viver.
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Ver e corrigir a aposta do nível 1 de David/,
@@ -1332,6 +1366,7 @@ describe("correcting a bet that was typed wrong", () => {
     // arrive undecided on a bet that is not, and there is no honest answer
     // to what that day then won.
     renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /Fechadas/ }));
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Ver e corrigir a aposta do nível 1 de David/,
