@@ -311,6 +311,15 @@ def league_coverage(force: bool = False) -> Dict[str, Any]:
     answer = {
         "configured": True,
         "detail": "",
+        # Aviso que custou uma tarde: isto é o catálogo da API, não o que
+        # a nossa chave pode ir buscar. O plano gratuito respondeu "Free
+        # plans do not have access to this season, try from 2022 to 2024"
+        # a uma liga que aqui aparece com a época corrente e lesões. Quem
+        # diz a verdade sobre o acesso é /data/match-context.
+        "note": (
+            "Isto é o que a fonte cataloga, não o que o nosso plano alcança. "
+            "O plano gratuito não dá a época a decorrer."
+        ),
         "with_injuries": sum(1 for row in leagues if row.get("injuries")),
         "total": len(leagues),
         "leagues": leagues,
