@@ -17,7 +17,10 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
-BASE_URL = "https://bigballsdata.com/v1"
+# Com o "api." à frente. Sem ele não há sequer servidor, e as quatro
+# tentativas de autenticação falhavam todas pela mesma razão errada —
+# o que escondeu o problema atrás de "a chave não foi aceite".
+BASE_URL = "https://api.bigballsdata.com/v1"
 REQUEST_TIMEOUT = 15
 INJURY_TTL = 2 * 60 * 60
 PROBE_TTL = 12 * 60 * 60
@@ -98,8 +101,14 @@ def _rows_of(payload: Any) -> Optional[List[Dict[str, Any]]]:
     return None
 
 
-def _working() -> Optional[Dict[str, str]]:
-    """Que maneira de autenticar e que nome de desporto é que respondem."""
+def _working(attempts: Optional[List[str]] = None) -> Optional[Dict[str, str]]:
+    """Que maneira de autenticar e que nome de desporto é que respondem.
+
+    `attempts` recolhe o que cada tentativa respondeu. Sem isso, quatro
+    falhas por razões diferentes — servidor inexistente, chave recusada,
+    desporto desconhecido — saem todas como "a chave não foi aceite", e
+    foi assim que um domínio mal escrito passou por chave inválida.
+    """
     remembered = _cached("probe", PROBE_TTL)
     if remembered is not None:
         return remembered or None
@@ -108,9 +117,19 @@ def _working() -> Optional[Dict[str, str]]:
         for sport in SPORT_GUESSES:
             try:
                 payload = _fetch(style, "/injuries", {"sport": sport})
-            except Exception:
+            except urllib.error.HTTPError as exc:
+                if attempts is not None:
+                    attempts.append(f"{style}/{sport}: respondeu {exc.code}")
+                continue
+            except Exception as exc:
+                if attempts is not None:
+                    attempts.append(f"{style}/{sport}: {type(exc).__name__} {exc}")
                 continue
             if _rows_of(payload) is None:
+                if attempts is not None:
+                    attempts.append(
+                        f"{style}/{sport}: respondeu sem lista de lesões"
+                    )
                 continue
             answer = {"auth": style, "sport": sport}
             _store("probe", answer)
@@ -128,7 +147,8 @@ def account_status() -> Dict[str, Any]:
             "detail": "Sem chave. Falta a variável BIGBALLS_API_KEY no servidor.",
         }
 
-    found = _working()
+    attempts: List[str] = []
+    found = _working(attempts)
     if not found:
         return {
             "configured": True,
@@ -137,6 +157,7 @@ def account_status() -> Dict[str, Any]:
                 "A BigBalls não aceitou esta chave por nenhuma das formas "
                 "conhecidas, nem para 'football' nem para 'soccer'."
             ),
+            "attempts": attempts,
         }
 
     rows = all_injuries() or []
