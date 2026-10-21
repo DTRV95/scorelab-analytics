@@ -129,6 +129,26 @@ export function historyTotals(entries: HistoryEntry[]): HistoryTotals {
   };
 }
 
+/**
+ * As apostas agrupadas por quem as fez, pela ordem dos jogadores.
+ *
+ * Num desafio a dois, uma lista única com o nome em letra pequena por
+ * cima de cada boletim lê-se como uma lista só — e a pergunta é
+ * precisamente quem escolheu o quê. O nome passa a ser um cabeçalho, como
+ * era na lista lado a lado que isto substituiu.
+ */
+export function byPlayer(
+  entries: HistoryEntry[],
+  players: { id: string; name: string }[],
+): { id: string; name: string; entries: HistoryEntry[] }[] {
+  return players
+    .map((player) => ({
+      ...player,
+      entries: entries.filter((entry) => entry.bet.userId === player.id),
+    }))
+    .filter((group) => group.entries.length > 0);
+}
+
 /** As apostas agrupadas por mês, para a lista ter degraus por onde descer. */
 export function byMonth(
   entries: HistoryEntry[],
