@@ -13,6 +13,7 @@ import {
   MatchForm,
   type PrefillForm,
 } from "@/components/MatchForm";
+import { MatchDossier } from "@/components/MatchDossier";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateNextBankrollBefore } from "@/lib/analysisStorage";
@@ -247,6 +248,17 @@ export default function MatchDeepDive() {
   );
   const picks = useMemo(() => valuePicks(rows), [rows]);
 
+  // Quantas odds já foram escritas: é o que separa uma previsão de uma
+  // decisão, e por isso é uma das linhas do que sabemos deste jogo.
+  const oddsTyped = useMemo(
+    () =>
+      Object.values(odds).filter((value) => {
+        const parsed = Number(value.replace(",", "."));
+        return Number.isFinite(parsed) && parsed > 1;
+      }).length,
+    [odds]
+  );
+
   const setOddsFor = (market: string, value: string) =>
     setOdds((previous) => ({ ...previous, [market]: value }));
 
@@ -328,6 +340,23 @@ export default function MatchDeepDive() {
           </div>
           <p className="sl-meta mt-2 text-[11px]">Golos esperados</p>
         </motion.header>
+
+        {/* Antes do valor, de propósito: o que falta saber muda o que vale
+            a pena fazer com o que se sabe. */}
+        <motion.div variants={fadeUp}>
+          <MatchDossier
+            amostraLabel={match.amostra_label}
+            amostraPct={match.amostra_pct}
+            form={prefill}
+            headline={
+              match.headline_market
+                ? { market: match.headline_market, pct: match.headline_pct }
+                : null
+            }
+            record={record.get(match.headline_market) ?? null}
+            oddsTyped={oddsTyped}
+          />
+        </motion.div>
 
         {picks.length > 0 && (
           <motion.section variants={fadeUp} className="sl-card overflow-hidden">
