@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { COVERED_LEAGUES, leagueCounts } from "@/lib/boardLeagues";
+import {
+  COVERED_LEAGUES,
+  leagueCounts,
+  silentLeagues,
+} from "@/lib/boardLeagues";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
 const game = (league: string, id: number) =>
@@ -42,5 +46,33 @@ describe("counting the board by competition", () => {
     expect(rows.find((row) => row.league === "Liga dos Campeões")?.count).toBe(
       1,
     );
+  });
+});
+
+describe("as competições que não trouxeram jogo nenhum", () => {
+  it("nomeia as que ficaram caladas", () => {
+    // Esta semana o Championship desapareceu três vezes, por três razões
+    // diferentes, e das três o quadro ficou assim: sem a competição e sem
+    // nada no ecrã a dizer que ela faltava.
+    const caladas = silentLeagues([game("Premier League", 1)]);
+
+    expect(caladas).toContain("Championship");
+    expect(caladas).not.toContain("Premier League");
+  });
+
+  it("não repete as que o motor já disse que falharam", () => {
+    // Essas já têm nome no ecrã, e dizê-las duas vezes com duas palavras
+    // diferentes faria parecer que faltam duas coisas.
+    const caladas = silentLeagues([game("Premier League", 1)], [
+      "Championship",
+    ]);
+
+    expect(caladas).not.toContain("Championship");
+  });
+
+  it("fica vazio quando todas puseram alguma coisa", () => {
+    const tudo = COVERED_LEAGUES.map((league, index) => game(league, index));
+
+    expect(silentLeagues(tudo)).toEqual([]);
   });
 });
