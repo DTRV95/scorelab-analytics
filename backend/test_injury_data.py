@@ -347,9 +347,8 @@ def _with_api(payloads, key="chave"):
 
 
 def test_encontra_o_jogo_e_traz_arbitro_e_cidade():
-    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Sporting Lisbon", "Benfica")
-    original_open, original_key, _ = _with_api([catalogo, jogos])
+    original_open, original_key, _ = _with_api([jogos])
     try:
         found = injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
@@ -365,9 +364,8 @@ def test_encontra_o_jogo_e_traz_arbitro_e_cidade():
 
 
 def test_nao_serve_o_jogo_errado_quando_os_nomes_nao_batem():
-    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Rio Ave", "Arouca")
-    original_open, original_key, _ = _with_api([catalogo, jogos])
+    original_open, original_key, _ = _with_api([jogos])
     try:
         found = injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
@@ -383,9 +381,8 @@ def test_nao_serve_o_jogo_errado_quando_os_nomes_nao_batem():
 def test_pede_os_jogos_da_liga_e_da_epoca_certas():
     # Por competição e não pelo dia do mundo inteiro: a resposta global
     # vem paginada e os nossos jogos ficavam fora da primeira página.
-    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Sporting Lisbon", "Benfica")
-    original_open, original_key, pedidos = _with_api([catalogo, jogos])
+    original_open, original_key, pedidos = _with_api([jogos])
     try:
         injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
@@ -402,9 +399,8 @@ def test_pede_os_jogos_da_liga_e_da_epoca_certas():
 
 
 def test_diz_porque_e_que_nao_encontrou():
-    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Rio Ave", "Arouca")
-    original_open, original_key, _ = _with_api([catalogo, jogos])
+    original_open, original_key, _ = _with_api([jogos])
     rastreio = {}
     try:
         injury_data.find_fixture(
@@ -567,7 +563,6 @@ def test_reconhece_os_mesmos_clubes_escritos_de_outra_maneira():
 
 
 def test_dois_jogos_igualmente_parecidos_nao_escolhem_nenhum():
-    catalogo = {"response": [_league("Premier League", "England", lid=39)]}
     jogos = {
         "response": [
             {
@@ -588,7 +583,7 @@ def test_dois_jogos_igualmente_parecidos_nao_escolhem_nenhum():
             },
         ]
     }
-    original_open, original_key, _ = _with_api([catalogo, jogos])
+    original_open, original_key, _ = _with_api([jogos])
     try:
         found = injury_data.find_fixture(
             "Premier League", "Tottenham Hotspur FC", "Chelsea FC", "2026-10-25"
@@ -609,7 +604,6 @@ def test_o_nome_sozinho_nao_chega_mas_o_jogo_inteiro_chega():
     """
     assert injury_data._similar("AC Milan", "Inter Milan") >= injury_data.NAME_MATCH_FLOOR
 
-    catalogo = {"response": [_league("Serie A", "Italy", lid=135)]}
     jogos = {
         "response": [
             {
@@ -622,7 +616,7 @@ def test_o_nome_sozinho_nao_chega_mas_o_jogo_inteiro_chega():
             }
         ]
     }
-    original_open, original_key, _ = _with_api([catalogo, jogos])
+    original_open, original_key, _ = _with_api([jogos])
     try:
         found = injury_data.find_fixture(
             "Serie A", "AC Milan", "Lazio", "2026-10-25"
@@ -633,3 +627,54 @@ def test_o_nome_sozinho_nao_chega_mas_o_jogo_inteiro_chega():
         injury_data.forget()
 
     assert found is None
+
+
+def test_a_tabela_fixa_de_ligas_bate_com_as_nossas_onze():
+    assert set(injury_data.LEAGUE_IDS) == set(injury_data.LEAGUE_NAMES)
+    # Ids distintos: dois nomes no mesmo número era servir sempre a
+    # mesma liga.
+    ids = [row["id"] for row in injury_data.LEAGUE_IDS.values()]
+    assert len(set(ids)) == len(ids)
+
+
+def test_a_liga_resolve_se_sem_ir_buscar_o_catalogo():
+    original = injury_data.get_api_key
+    injury_data.forget()
+    injury_data.get_api_key = lambda: "chave"
+    original_open = urllib.request.urlopen
+
+    def nunca(request, timeout=None):
+        raise AssertionError("não devia ir à rede para saber o id da liga")
+
+    urllib.request.urlopen = nunca
+    try:
+        row = injury_data._league_row("Premier League")
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original
+        injury_data.forget()
+
+    assert row["api_id"] == 39
+    assert row["injuries"] is True
+
+
+def test_a_liga_portugal_fica_marcada_como_sem_lesoes():
+    assert injury_data._league_row("Liga Portugal")["injuries"] is False
+
+
+def test_a_epoca_conta_se_pelo_ano_em_que_comeca():
+    import time as _t
+
+    real = _t.gmtime
+    try:
+        _t.gmtime = lambda *a: real(_t.mktime((2027, 1, 15, 12, 0, 0, 0, 0, 0)))
+        # Janeiro: a europeia ainda é a época que começou em Agosto,
+        # a brasileira já é a do ano novo.
+        assert injury_data._season_for("Premier League") == 2026
+        assert injury_data._season_for("Brasileirão") == 2027
+
+        _t.gmtime = lambda *a: real(_t.mktime((2026, 10, 21, 12, 0, 0, 0, 0, 0)))
+        assert injury_data._season_for("Premier League") == 2026
+        assert injury_data._season_for("Brasileirão") == 2026
+    finally:
+        _t.gmtime = real

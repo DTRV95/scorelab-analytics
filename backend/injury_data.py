@@ -434,11 +434,62 @@ def _similar(ours: str, theirs: str) -> float:
     return worst
 
 
+# O que a fonte respondeu quando lhe perguntámos, a 21/10/2026, pelo
+# /data/injury-coverage. Fica fixo aqui por uma razão prática: o catálogo
+# deles são mil e duzentas ligas, megabytes de resposta, e ir buscá-lo
+# antes de cada jogo estourava o tempo limite — foi assim que o primeiro
+# ensaio em produção falhou. A sonda da cobertura continua a ir lá, e é
+# ela que denuncia se algum destes números mudar.
+#
+# `injuries` é o que o plano gratuito cobre: a Liga Portugal não tem, por
+# mais que nos custe, e o Europeu também não.
+LEAGUE_IDS: Dict[str, Dict[str, Any]] = {
+    "Premier League": {"id": 39, "injuries": True},
+    "Championship": {"id": 40, "injuries": True},
+    "La Liga": {"id": 140, "injuries": True},
+    "Serie A": {"id": 135, "injuries": True},
+    "Bundesliga": {"id": 78, "injuries": True},
+    "Ligue 1": {"id": 61, "injuries": True},
+    "Eredivisie": {"id": 88, "injuries": True},
+    "Liga dos Campeões": {"id": 2, "injuries": True},
+    "Brasileirão": {"id": 71, "injuries": True},
+    "Liga Portugal": {"id": 94, "injuries": False},
+    "Campeonato da Europa": {"id": 4, "injuries": False},
+}
+
+
+def _season_for(league: str) -> int:
+    """O ano por que a fonte trata a época a decorrer.
+
+    Elas contam a época pelo ano em que começa, por isso Outubro de 2026
+    é a época 2026 tanto na Premier League como no Brasileirão. Em Janeiro
+    a europeia ainda é a do ano anterior e a brasileira já é a nova.
+    """
+    now = time.gmtime()
+    if league == "Brasileirão":
+        return now.tm_year
+    return now.tm_year if now.tm_mon >= 7 else now.tm_year - 1
+
+
 def _league_row(league: str) -> Optional[Dict[str, Any]]:
-    for row in league_coverage().get("leagues", []):
-        if row.get("scorelab") == league:
-            return row
-    return None
+    # O que a sonda da cobertura souber vale mais do que a tabela fixa,
+    # mas só se ela já tiver sido consultada: não se vai buscar um
+    # catálogo de megabytes para servir uma página.
+    cached = _cached("coverage", LEAGUES_TTL)
+    if cached:
+        for row in cached.get("leagues", []):
+            if row.get("scorelab") == league and row.get("api_id"):
+                return row
+
+    known = LEAGUE_IDS.get(league)
+    if not known:
+        return None
+    return {
+        "scorelab": league,
+        "api_id": known["id"],
+        "season": _season_for(league),
+        "injuries": known["injuries"],
+    }
 
 
 def find_fixture(
@@ -716,10 +767,7 @@ def match_context(
         detail="",
     )
 
-    covered = any(
-        row.get("scorelab") == league and row.get("injuries")
-        for row in league_coverage().get("leagues", [])
-    )
+    covered = bool((_league_row(league) or {}).get("injuries"))
     answer["injuries_covered"] = covered
     if covered:
         answer["injuries"] = injuries_for(found.get("id"))
