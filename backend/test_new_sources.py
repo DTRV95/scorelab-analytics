@@ -312,3 +312,19 @@ def test_bigballs_aguenta_a_lista_embrulhada_de_outra_maneira():
     )
 
     assert len(got) == 1
+
+
+def test_bigballs_usa_o_dominio_da_api():
+    # O domínio sem "api." não tem servidor nenhum, e as quatro
+    # tentativas falhavam todas pela razão errada.
+    assert bigballs_data.BASE_URL.startswith("https://api.bigballsdata.com/")
+
+
+def test_bigballs_diz_o_que_cada_tentativa_respondeu():
+    answer = _run(bigballs_data, bigballs_data.account_status, {})
+
+    assert answer["accepted"] is False
+    # Quatro combinações: duas formas de autenticar vezes dois nomes de
+    # desporto, cada uma com a sua resposta.
+    assert len(answer["attempts"]) == 4
+    assert all("401" in linha for linha in answer["attempts"])
