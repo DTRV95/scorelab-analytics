@@ -349,7 +349,7 @@ def _with_api(payloads, key="chave"):
 def test_encontra_o_jogo_e_traz_arbitro_e_cidade():
     catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Sporting Lisbon", "Benfica")
-    original_open, original_key, _ = _with_api([jogos, catalogo])
+    original_open, original_key, _ = _with_api([catalogo, jogos])
     try:
         found = injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
@@ -367,7 +367,7 @@ def test_encontra_o_jogo_e_traz_arbitro_e_cidade():
 def test_nao_serve_o_jogo_errado_quando_os_nomes_nao_batem():
     catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
     jogos = _fixture_listing(94, "Rio Ave", "Arouca")
-    original_open, original_key, _ = _with_api([jogos, catalogo])
+    original_open, original_key, _ = _with_api([catalogo, jogos])
     try:
         found = injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
@@ -380,12 +380,14 @@ def test_nao_serve_o_jogo_errado_quando_os_nomes_nao_batem():
     assert found is None
 
 
-def test_ignora_jogos_de_outra_liga_no_mesmo_dia():
+def test_pede_os_jogos_da_liga_e_da_epoca_certas():
+    # Por competição e não pelo dia do mundo inteiro: a resposta global
+    # vem paginada e os nossos jogos ficavam fora da primeira página.
     catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
-    jogos = _fixture_listing(39, "Sporting Lisbon", "Benfica")
-    original_open, original_key, _ = _with_api([jogos, catalogo])
+    jogos = _fixture_listing(94, "Sporting Lisbon", "Benfica")
+    original_open, original_key, pedidos = _with_api([catalogo, jogos])
     try:
-        found = injury_data.find_fixture(
+        injury_data.find_fixture(
             "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
         )
     finally:
@@ -393,7 +395,30 @@ def test_ignora_jogos_de_outra_liga_no_mesmo_dia():
         injury_data.get_api_key = original_key
         injury_data.forget()
 
-    assert found is None
+    pedido = pedidos[-1]
+    assert "league=94" in pedido
+    assert "season=2026" in pedido
+    assert "date=2026-10-25" in pedido
+
+
+def test_diz_porque_e_que_nao_encontrou():
+    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
+    jogos = _fixture_listing(94, "Rio Ave", "Arouca")
+    original_open, original_key, _ = _with_api([catalogo, jogos])
+    rastreio = {}
+    try:
+        injury_data.find_fixture(
+            "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25",
+            trace=rastreio,
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert rastreio["fixtures_seen"] == 1
+    assert "Rio Ave vs Arouca" in rastreio["names"]
+    assert "parece" in rastreio["reason"]
 
 
 # --- lesões -------------------------------------------------------------
@@ -563,7 +588,7 @@ def test_dois_jogos_igualmente_parecidos_nao_escolhem_nenhum():
             },
         ]
     }
-    original_open, original_key, _ = _with_api([jogos, catalogo])
+    original_open, original_key, _ = _with_api([catalogo, jogos])
     try:
         found = injury_data.find_fixture(
             "Premier League", "Tottenham Hotspur FC", "Chelsea FC", "2026-10-25"
@@ -597,7 +622,7 @@ def test_o_nome_sozinho_nao_chega_mas_o_jogo_inteiro_chega():
             }
         ]
     }
-    original_open, original_key, _ = _with_api([jogos, catalogo])
+    original_open, original_key, _ = _with_api([catalogo, jogos])
     try:
         found = injury_data.find_fixture(
             "Serie A", "AC Milan", "Lazio", "2026-10-25"

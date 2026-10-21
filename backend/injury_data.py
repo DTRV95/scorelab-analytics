@@ -434,46 +434,75 @@ def _similar(ours: str, theirs: str) -> float:
     return worst
 
 
+def _league_row(league: str) -> Optional[Dict[str, Any]]:
+    for row in league_coverage().get("leagues", []):
+        if row.get("scorelab") == league:
+            return row
+    return None
+
+
 def find_fixture(
-    league: str, home: str, away: str, day: str
+    league: str, home: str, away: str, day: str, trace: Optional[Dict] = None
 ) -> Optional[Dict[str, Any]]:
     """O jogo deles que é o nosso, ou nada.
 
-    `day` é a data do pontapé de saída em AAAA-MM-DD. Uma chamada por dia
-    traz os jogos todos do mundo nesse dia, por isso abrir dez jogos do
-    mesmo dia custa um pedido, não dez.
+    `day` é a data do pontapé de saída em AAAA-MM-DD. Pedido por
+    competição e não pelo dia do mundo inteiro: um dia de futebol são
+    centenas de jogos e a resposta deles vem paginada, por isso o pedido
+    global trazia a primeira página e os nossos ficavam de fora. Por
+    competição são meia dúzia, e abrir dez jogos da mesma liga no mesmo
+    dia continua a custar um pedido.
+
+    `trace` é preenchido para quem quiser saber porque é que não deu.
     """
     if not is_configured():
+        if trace is not None:
+            trace["reason"] = "Sem chave."
         return None
 
-    key = f"fixtures:{day}"
+    row = _league_row(league)
+    if not row or not row.get("api_id") or not row.get("season"):
+        if trace is not None:
+            trace["reason"] = f"'{league}' não está no catálogo da fonte."
+        return None
+
+    wanted_id, season = row["api_id"], row["season"]
+    key = f"fixtures:{wanted_id}:{season}:{day}"
     listing = _cached(key, FIXTURE_TTL)
     if listing is None:
+        query = urllib.parse.urlencode(
+            {"league": wanted_id, "season": season, "date": day}
+        )
         try:
-            payload = _request(f"/fixtures?date={urllib.parse.quote(day)}")
-        except Exception:
+            payload = _request(f"/fixtures?{query}")
+        except Exception as exc:
+            if trace is not None:
+                trace["reason"] = f"A fonte não respondeu ({exc})."
             return None
-        if _errors_of(payload):
+        complaint = _errors_of(payload)
+        if complaint:
+            if trace is not None:
+                trace["reason"] = f"A fonte recusou: {complaint}"
             return None
         listing = payload.get("response")
         if not isinstance(listing, list):
+            if trace is not None:
+                trace["reason"] = "A fonte respondeu de forma inesperada."
             return None
         _store(key, listing)
 
-    coverage = league_coverage()
-    wanted_id = None
-    for row in coverage.get("leagues", []):
-        if row.get("scorelab") == league:
-            wanted_id = row.get("api_id")
-            break
-    if wanted_id is None:
-        return None
+    if trace is not None:
+        trace["fixtures_seen"] = len(listing)
+        trace["names"] = [
+            f"{((e.get('teams') or {}).get('home') or {}).get('name')} vs "
+            f"{((e.get('teams') or {}).get('away') or {}).get('name')}"
+            for e in listing
+            if isinstance(e, dict)
+        ][:12]
 
     best, best_score, runner_up = None, 0.0, 0.0
     for entry in listing:
         if not isinstance(entry, dict):
-            continue
-        if (entry.get("league") or {}).get("id") != wanted_id:
             continue
         teams = entry.get("teams") or {}
         theirs_home = ((teams.get("home") or {}).get("name")) or ""
@@ -484,13 +513,21 @@ def find_fixture(
         elif score > runner_up:
             runner_up = score
 
+    if trace is not None:
+        trace["best_score"] = round(best_score, 3)
+        trace["runner_up"] = round(runner_up, 3)
+
     if best is None or best_score < NAME_MATCH_FLOOR:
+        if trace is not None:
+            trace["reason"] = "Nenhum jogo deles se parece o suficiente com este."
         return None
 
     # Dois jogos do mesmo dia igualmente parecidos com o nosso: não há
     # maneira de saber qual é, e escolher o mais provável aqui é escolher
     # ao calhas com ar de certeza. Fica sem contexto.
     if runner_up >= NAME_MATCH_FLOOR and best_score - runner_up < 0.1:
+        if trace is not None:
+            trace["reason"] = "Dois jogos deles parecem-se igualmente com este."
         return None
 
     fixture = best.get("fixture") or {}
@@ -660,11 +697,13 @@ def match_context(
         answer["detail"] = "Jogo sem hora marcada."
         return answer
 
-    found = find_fixture(league, home, away, day)
+    trace: Dict[str, Any] = {}
+    found = find_fixture(league, home, away, day, trace=trace)
     if not found:
         # O caso honesto mais comum: os nomes não bateram certo o
         # suficiente. Melhor dizê-lo do que servir o jogo errado.
         answer["detail"] = "Não encontrámos este jogo na fonte de contexto."
+        answer["trace"] = trace
         return answer
 
     answer.update(
