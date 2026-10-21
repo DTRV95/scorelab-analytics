@@ -1,12 +1,13 @@
 import type { PlanBet, PlanRecord } from "@/lib/planStore";
 
 /**
- * Todas as apostas de uma pessoa, de todos os desafios, por ordem.
+ * As apostas de um desafio, por ordem, com de quem são e de onde vêm.
  *
- * Cada desafio mostrava as suas e mais nada. Quem quisesse ver o que tinha
- * feito tinha de abrir os desafios um a um — e os terminados estão atrás de
- * uma prateleira própria, por isso na prática não se via. O registo existia
- * inteiro na base de dados e não existia em lado nenhum no ecrã.
+ * A página do desafio mostrava os dois últimos níveis de cada jogador, lado
+ * a lado, e um botão que abria mais quarenta em linhas de uma linha. Isso
+ * responde a "quem vai à frente" e não a "o que é que nós fizemos": não se
+ * procura, não se filtra, e um boletim de três jogos cabe num nome e um
+ * "+2".
  */
 
 export interface HistoryEntry {
@@ -23,6 +24,8 @@ export type Outcome = "todas" | "ganhas" | "perdidas" | "abertas";
 
 export interface HistoryFilter {
   planId?: string | null;
+  /** De quem são. Dentro de um desafio partilhado há mais do que um dono. */
+  userId?: string | null;
   outcome?: Outcome;
   /** Equipa, mercado ou competição, como se escreve. */
   text?: string;
@@ -76,6 +79,7 @@ export function filterHistory(
 
   return entries.filter((entry) => {
     if (filter.planId && entry.bet.planId !== filter.planId) return false;
+    if (filter.userId && entry.bet.userId !== filter.userId) return false;
     if (outcome === "ganhas" && entry.bet.status !== "green") return false;
     if (outcome === "perdidas" && entry.bet.status !== "red") return false;
     if (outcome === "abertas" && entry.bet.status !== "pending") return false;

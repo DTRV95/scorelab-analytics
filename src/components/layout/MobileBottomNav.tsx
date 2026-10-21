@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { BarChart3, History, Percent, Ticket, Trophy } from "lucide-react";
+import { BarChart3, Globe, Percent, Ticket, Trophy } from "lucide-react";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +21,10 @@ const mobileItems = [
   { title: "Jogos", url: "/probability", icon: Percent },
   { title: "Desafios", url: "/desafios", icon: Trophy },
   { title: "Apostas", url: "/apostas", icon: Ticket },
-  // As Ligas estiveram aqui porque de um telemóvel não se chegava lá de
-  // maneira nenhuma. Agora chega-se: do Início, e da linha do quadro que
-  // diz qual foi a competição que faltou — que é o momento em que se quer
-  // lá ir. O lugar passa ao Histórico, que é a única página que responde a
-  // "o que é que eu tenho feito" e não tinha nenhum.
-  { title: "Histórico", url: "/historico", icon: History },
+  // De um telemóvel não se chega às Ligas de mais lado nenhum que seja um
+  // sítio onde alguém pense em ir procurá-las, por isso o quinto lugar é
+  // delas. O histórico das apostas vive dentro do desafio.
+  { title: "Ligas", url: "/ligas", icon: Globe },
 ];
 
 const HOME = { title: "Início", url: "/dashboard", icon: BarChart3 };

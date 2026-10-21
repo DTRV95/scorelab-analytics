@@ -1145,6 +1145,47 @@ describe("reading the other player's bet", () => {
   });
 });
 
+describe("o histórico dentro do desafio", () => {
+  it("mostra as apostas antigas, que o cartão lado a lado já não mostra", async () => {
+    // O cartão mostra dois níveis por pessoa e responde a "quem vai à
+    // frente". O histórico responde a "o que é que nós fizemos", e é onde
+    // uma aposta de há três semanas continua a existir.
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", {
+        name: /Ver e corrigir a aposta do nível 1 de David/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("procura por equipa", async () => {
+    renderPage();
+    const procura = await screen.findByLabelText(
+      "Procurar no histórico do desafio",
+    );
+
+    fireEvent.change(procura, { target: { value: "não existe nenhuma" } });
+
+    expect(
+      await screen.findByText("Nenhuma aposta corresponde a isto."),
+    ).toBeInTheDocument();
+  });
+
+  it("filtra pelo que aconteceu", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Em aberto" }));
+
+    // Os totais são os da lista filtrada: é a pergunta por que se filtra.
+    expect(
+      screen.queryByRole("button", {
+        name: /Ver e corrigir a aposta do nível 1 de David/,
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("correcting a bet that was typed wrong", () => {
   async function openMine() {
     renderPage();
@@ -1216,12 +1257,12 @@ describe("correcting a bet that was typed wrong", () => {
 
   it("turns a day closed the wrong way round", async () => {
     renderPage();
-    // Day 1 is behind the fold: the list shows the last two days by default.
+    // O cartão lado a lado mostra dois níveis; uma aposta mais antiga
+    // abre-se do histórico, que é onde o resto passou a viver.
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver todos os níveis/ }),
-    );
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de David/ }),
+      await screen.findByRole("button", {
+        name: /Ver e corrigir a aposta do nível 1 de David/,
+      }),
     );
 
     const dialog = await screen.findByRole("dialog");
@@ -1292,10 +1333,9 @@ describe("correcting a bet that was typed wrong", () => {
     // to what that day then won.
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Ver todos os níveis/ }),
-    );
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ver a aposta do nível 1 de David/ }),
+      await screen.findByRole("button", {
+        name: /Ver e corrigir a aposta do nível 1 de David/,
+      }),
     );
 
     const dialog = await screen.findByRole("dialog");
