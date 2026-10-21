@@ -2,12 +2,11 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Wallet,
-  User,
   BarChart3,
+  User,
   ChevronLeft,
   Gauge,
-  Globe,
+  History,
   Trophy,
   Ticket,
   Percent,
@@ -37,18 +36,30 @@ interface NavItem {
  */
 const navItems: NavItem[] = [
   { title: "Início", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Jogos", url: "/probability", icon: Percent },
   // One way in, and everything about the challenges behind it. The menu
   // used to unfold them — each challenge, the full list, the comparison —
   // which put four entries in a sidebar for what is one page.
   { title: "Desafios", url: "/desafios", icon: Trophy, challenges: true },
-  { title: "Jogos", url: "/probability", icon: Percent },
+  { title: "Histórico", url: "/historico", icon: History },
   { title: "Apostas", url: "/apostas", icon: Ticket },
-  { title: "Banca", url: "/bankroll", icon: Wallet },
-  { title: "Ligas", url: "/ligas", icon: Globe },
-  { title: "Análises", url: "/dashboard/analises", icon: BarChart3 },
   { title: "Acerto do modelo", url: "/accuracy", icon: Gauge },
   { title: "Perfil", url: "/settings", icon: User },
 ];
+
+// Três saíram daqui, e nenhuma ficou por alcançar.
+//
+// Eram nove entradas para um ciclo de três passos — ver o quadro, pôr no
+// boletim, fechar o nível — e cada entrada que não se usa é atenção roubada
+// às que se usam. As análises guardadas estão paradas desde 19 de Setembro,
+// e continuam a abrir-se do Início e da Banca. A Banca tem o seu número no
+// topo de todas as páginas, e esse número abre-a. As Ligas abrem-se do
+// Início e da linha do quadro que diz qual é a competição que faltou — que
+// é exactamente o momento em que se quer lá ir.
+//
+// O Histórico fica, e fica alto: é a única página que responde a "o que é
+// que eu tenho feito", e o registo dela já existia inteiro sem ter onde
+// aparecer.
 
 export function AppSidebar() {
   const location = useLocation();
