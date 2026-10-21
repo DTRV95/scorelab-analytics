@@ -297,3 +297,314 @@ def test_cobertura_aguenta_resposta_estranha():
 
     assert answer["leagues"] == []
     assert "inesperada" in answer["detail"]
+
+
+# --- emparelhar nomes ---------------------------------------------------
+
+def test_nomes_iguais_na_pratica_emparelham():
+    assert injury_data._similar("Sporting CP", "Sporting Lisbon") >= injury_data.NAME_MATCH_FLOOR
+    assert injury_data._similar("Wolverhampton Wanderers FC", "Wolves") >= injury_data.NAME_MATCH_FLOOR
+    assert injury_data._similar("Paris Saint-Germain FC", "Paris Saint Germain") >= injury_data.NAME_MATCH_FLOOR
+    assert injury_data._similar("FC Bayern München", "Bayern Munich") >= injury_data.NAME_MATCH_FLOOR
+
+
+def test_equipas_diferentes_nao_emparelham():
+    assert injury_data._similar("Nottingham Forest", "Northampton Town") < injury_data.NAME_MATCH_FLOOR
+    assert injury_data._similar("Real Madrid", "Real Sociedad") < injury_data.NAME_MATCH_FLOOR
+    assert injury_data._similar("Manchester United", "Manchester City") < injury_data.NAME_MATCH_FLOOR
+
+
+def _fixture_listing(league_id, home, away, fid=900):
+    return {
+        "response": [
+            {
+                "fixture": {
+                    "id": fid,
+                    "referee": "A. Árbitro",
+                    "venue": {"name": "Estádio", "city": "Lisboa"},
+                },
+                "league": {"id": league_id},
+                "teams": {"home": {"name": home}, "away": {"name": away}},
+            }
+        ]
+    }
+
+
+def _with_api(payloads, key="chave"):
+    """Serve respostas por ordem de chamada."""
+    original_open = urllib.request.urlopen
+    original_key = injury_data.get_api_key
+    injury_data.forget()
+    injury_data.get_api_key = lambda: key
+    pedidos = []
+
+    def fake_urlopen(request, timeout=None):
+        pedidos.append(request.full_url)
+        return _Answer(json.dumps(payloads.pop(0)).encode("utf-8"))
+
+    urllib.request.urlopen = fake_urlopen
+    return original_open, original_key, pedidos
+
+
+def test_encontra_o_jogo_e_traz_arbitro_e_cidade():
+    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
+    jogos = _fixture_listing(94, "Sporting Lisbon", "Benfica")
+    original_open, original_key, _ = _with_api([jogos, catalogo])
+    try:
+        found = injury_data.find_fixture(
+            "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert found["id"] == 900
+    assert found["referee"] == "A. Árbitro"
+    assert found["city"] == "Lisboa"
+
+
+def test_nao_serve_o_jogo_errado_quando_os_nomes_nao_batem():
+    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
+    jogos = _fixture_listing(94, "Rio Ave", "Arouca")
+    original_open, original_key, _ = _with_api([jogos, catalogo])
+    try:
+        found = injury_data.find_fixture(
+            "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert found is None
+
+
+def test_ignora_jogos_de_outra_liga_no_mesmo_dia():
+    catalogo = {"response": [_league("Primeira Liga", "Portugal", lid=94)]}
+    jogos = _fixture_listing(39, "Sporting Lisbon", "Benfica")
+    original_open, original_key, _ = _with_api([jogos, catalogo])
+    try:
+        found = injury_data.find_fixture(
+            "Liga Portugal", "Sporting CP", "SL Benfica", "2026-10-25"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert found is None
+
+
+# --- lesões -------------------------------------------------------------
+
+def test_lesoes_agrupadas_por_equipa_com_a_duvida_marcada():
+    payload = {
+        "response": [
+            {
+                "team": {"name": "Benfica"},
+                "player": {"name": "Um", "type": "Missing Fixture", "reason": "Injury"},
+            },
+            {
+                "team": {"name": "Benfica"},
+                "player": {"name": "Dois", "type": "Questionable", "reason": "Knock"},
+            },
+        ]
+    }
+    original_open, original_key, _ = _with_api([payload])
+    try:
+        got = injury_data.injuries_for(900)
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert got["Benfica"][0] == {"name": "Um", "certain": True, "reason": "Injury"}
+    assert got["Benfica"][1]["certain"] is False
+
+
+def test_lesoes_sem_resposta_devolvem_nada_e_nao_lista_vazia():
+    # "Não sabemos" não pode passar por "não há lesionados".
+    original_open = urllib.request.urlopen
+    original_key = injury_data.get_api_key
+    injury_data.forget()
+    injury_data.get_api_key = lambda: "chave"
+
+    def exploding(request, timeout=None):
+        raise OSError("sem rede")
+
+    urllib.request.urlopen = exploding
+    try:
+        assert injury_data.injuries_for(900) is None
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+
+# --- odds ---------------------------------------------------------------
+
+def _odds_payload(*prices):
+    return {
+        "response": [
+            {
+                "bookmakers": [
+                    {
+                        "name": f"Casa {i}",
+                        "bets": [
+                            {
+                                "name": "Match Winner",
+                                "values": [{"value": "Home", "odd": str(price)}],
+                            },
+                            {
+                                "name": "Double Chance",
+                                "values": [{"value": "Home/Draw", "odd": "1.25"}],
+                            },
+                        ],
+                    }
+                    for i, price in enumerate(prices)
+                ]
+            }
+        ]
+    }
+
+
+def test_odds_vem_a_mediana_das_casas():
+    original_open, original_key, _ = _with_api([_odds_payload(1.80, 2.00, 5.00)])
+    try:
+        got = injury_data.odds_for(900)
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    # Mediana e não média nem a melhor: os 5.00 de uma casa distraída não
+    # podem puxar o preço do mercado.
+    assert got["Casa"] == 2.00
+    assert got["1X"] == 1.25
+
+
+def test_odds_ignora_mercados_que_nao_sabemos_traduzir():
+    payload = {
+        "response": [
+            {
+                "bookmakers": [
+                    {
+                        "name": "X",
+                        "bets": [
+                            {
+                                "name": "Exact Score",
+                                "values": [{"value": "2:1", "odd": "9.00"}],
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+    original_open, original_key, _ = _with_api([payload])
+    try:
+        got = injury_data.odds_for(900)
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert got is None
+
+
+def test_nao_confunde_clubes_que_partilham_a_primeira_palavra():
+    # Casos reais que a semelhança de texto bruta dava por iguais.
+    for ours, theirs in [
+        ("Manchester United", "Manchester City"),
+        ("Atlético Madrid", "Athletic Bilbao"),
+        ("Real Madrid", "Real Betis"),
+        ("Borussia Dortmund", "Borussia Mönchengladbach"),
+    ]:
+        assert injury_data._similar(ours, theirs) < injury_data.NAME_MATCH_FLOOR, (
+            f"{ours} não é {theirs}"
+        )
+
+
+def test_reconhece_os_mesmos_clubes_escritos_de_outra_maneira():
+    for ours, theirs in [
+        ("Sporting CP", "Sporting Lisbon"),
+        ("Wolverhampton Wanderers FC", "Wolves"),
+        ("Paris Saint-Germain FC", "Paris Saint Germain"),
+        ("FC Bayern München", "Bayern Munich"),
+        ("Tottenham Hotspur FC", "Tottenham"),
+        ("FC Internazionale Milano", "Inter"),
+        ("RB Leipzig", "RB Leipzig"),
+    ]:
+        assert injury_data._similar(ours, theirs) >= injury_data.NAME_MATCH_FLOOR, (
+            f"{ours} é {theirs}"
+        )
+
+
+def test_dois_jogos_igualmente_parecidos_nao_escolhem_nenhum():
+    catalogo = {"response": [_league("Premier League", "England", lid=39)]}
+    jogos = {
+        "response": [
+            {
+                "fixture": {"id": 1, "referee": None, "venue": {}},
+                "league": {"id": 39},
+                "teams": {
+                    "home": {"name": "Tottenham"},
+                    "away": {"name": "Chelsea"},
+                },
+            },
+            {
+                "fixture": {"id": 2, "referee": None, "venue": {}},
+                "league": {"id": 39},
+                "teams": {
+                    "home": {"name": "Tottenham Hotspur"},
+                    "away": {"name": "Chelsea FC"},
+                },
+            },
+        ]
+    }
+    original_open, original_key, _ = _with_api([jogos, catalogo])
+    try:
+        found = injury_data.find_fixture(
+            "Premier League", "Tottenham Hotspur FC", "Chelsea FC", "2026-10-25"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert found is None
+
+
+def test_o_nome_sozinho_nao_chega_mas_o_jogo_inteiro_chega():
+    """"AC Milan" reduz-se a "milan", que está dentro de "Inter Milan".
+
+    Pelo nome não há como decidir. Quem decide é o jogo todo: a equipa de
+    fora não bate, e o jogo do vizinho fica de fora.
+    """
+    assert injury_data._similar("AC Milan", "Inter Milan") >= injury_data.NAME_MATCH_FLOOR
+
+    catalogo = {"response": [_league("Serie A", "Italy", lid=135)]}
+    jogos = {
+        "response": [
+            {
+                "fixture": {"id": 7, "referee": None, "venue": {}},
+                "league": {"id": 135},
+                "teams": {
+                    "home": {"name": "Inter Milan"},
+                    "away": {"name": "AS Roma"},
+                },
+            }
+        ]
+    }
+    original_open, original_key, _ = _with_api([jogos, catalogo])
+    try:
+        found = injury_data.find_fixture(
+            "Serie A", "AC Milan", "Lazio", "2026-10-25"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        injury_data.get_api_key = original_key
+        injury_data.forget()
+
+    assert found is None

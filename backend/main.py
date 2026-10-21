@@ -112,6 +112,22 @@ def data_injury_coverage(request: Request, force: bool = False):
     return injury_data.league_coverage(force=force)
 
 
+@app.get("/data/match-context")
+@limiter.limit("20/minute")
+def data_match_context(
+    request: Request, league: str, home: str, away: str, kickoff: str
+):
+    """O que se sabe à volta de um jogo: quem falta, o árbitro, odds, tempo.
+
+    A pedido e não em lote: o plano gratuito da fonte dá cem chamadas por
+    dia, e enchê-las a pré-carregar um quadro de cem jogos que ninguém
+    abriu era ficar sem nenhuma para os que se abrem mesmo.
+    """
+    return injury_data.match_context(
+        league=league, home=home, away=away, kickoff=kickoff
+    )
+
+
 @app.get("/data/leagues")
 @limiter.limit("6/minute")
 def data_leagues(request: Request, days: int = 7):
