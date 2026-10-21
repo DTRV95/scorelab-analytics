@@ -19,7 +19,7 @@ import os
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 BASE_URL = "https://v3.football.api-sports.io"
 REQUEST_TIMEOUT = 15
@@ -316,4 +316,375 @@ def league_coverage(force: bool = False) -> Dict[str, Any]:
         "leagues": leagues,
     }
     _store("coverage", answer)
+    return answer
+
+
+# --- Emparelhar um jogo nosso com um jogo deles -------------------------
+#
+# As duas fontes escrevem os nomes à maneira delas: "Sporting CP" contra
+# "Sporting Lisbon", "Wolverhampton Wanderers FC" contra "Wolves". Onde não
+# houver certeza, não se inventa — o jogo fica sem contexto e o dossiê
+# mostra-o a cinzento, que é a resposta honesta.
+
+FIXTURE_TTL = 6 * 60 * 60
+# As lesões de hoje mudam durante o dia, mas não de dez em dez minutos.
+INJURY_TTL = 2 * 60 * 60
+# As odds mexem-se a sério. Meia hora é o compromisso entre estar fresco e
+# não gastar os cem pedidos do dia a ver o mesmo jogo.
+ODDS_TTL = 30 * 60
+
+NAME_MATCH_FLOOR = 0.62
+
+# Palavras que só dizem que aquilo é um clube, e que cada fonte põe ou
+# tira à vontade: "Sporting CP" e "Sporting Lisbon" são o mesmo clube.
+_CLUB_WORDS = {
+    "fc", "cf", "sc", "ac", "afc", "sad", "cd", "ss", "as", "ufc", "sv",
+    "bv", "vfb", "vfl", "tsg", "fsv", "rc", "ud", "sd", "ogc", "losc",
+    "calcio", "club", "clube", "futebol", "football", "association",
+    "de", "do", "da", "of", "the", "and",
+}
+
+
+def _norm(name: str) -> str:
+    """Um nome de equipa reduzido ao que as duas fontes têm em comum."""
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", (name or "").lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in text)
+    return " ".join(text.split())
+
+
+def _words(name: str) -> Set[str]:
+    """As palavras que distinguem uma equipa das outras.
+
+    Fora as que só dizem "isto é um clube", e fora as de três letras ou
+    menos, que são quase sempre a mesma coisa noutra língua. Se não
+    sobrar nada, fica o nome inteiro — mais vale comparar mal do que não
+    comparar.
+    """
+    words = _norm(name).split()
+    kept = {w for w in words if len(w) > 3 and w not in _CLUB_WORDS}
+    return kept or set(words)
+
+
+def _pairs(ours: str, theirs: str) -> float:
+    """Se duas palavras são a mesma, e com que confiança."""
+    import difflib
+
+    if ours == theirs:
+        return 1.0
+
+    # Prefixo longo partilhado: é assim que "wolves" e "wolverhampton" se
+    # reconhecem, e "united"/"city" ou "madrid"/"sociedad" não.
+    shared = 0
+    for a, b in zip(ours, theirs):
+        if a != b:
+            break
+        shared += 1
+    if shared >= 5:
+        return 0.9
+
+    ratio = difflib.SequenceMatcher(None, ours, theirs).ratio()
+    # "munchen"/"munich" vive aqui. "atletico"/"athletic" também passaria,
+    # mas o clube inteiro não — ver _similar.
+    return 0.8 if ratio >= 0.75 else 0.0
+
+
+def _similar(ours: str, theirs: str) -> float:
+    """Quanto é que dois nomes são a mesma equipa, de 0 a 1.
+
+    Por palavras e não por letras. A semelhança bruta de texto dava 0,81 a
+    "Manchester United" contra "Manchester City" — o suficiente para
+    servir o jogo errado — e só 0,41 a "Wolverhampton Wanderers" contra
+    "Wolves", que é a mesma equipa. O que separa os dois casos não é
+    quanto texto têm em comum, é se a palavra que os distingue bate certo.
+
+    Por isso: as palavras comuns não contam para nada, e **todas** as
+    restantes do nome mais curto têm de encontrar par. "Atlético Madrid"
+    contra "Athletic Bilbao" cai aqui, porque "madrid" não tem par, por
+    mais parecidos que "atletico" e "athletic" sejam.
+    """
+    a, b = _words(ours), _words(theirs)
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+
+    only_a, only_b = a - b, b - a
+    if not only_a or not only_b:
+        # Um nome é o outro mais umas palavras: "Tottenham" dentro de
+        # "Tottenham Hotspur".
+        #
+        # Aqui mora o limite desta função: "AC Milan" reduz-se a "milan",
+        # que também está dentro de "Inter Milan". Pelo nome não há como
+        # decidir — "Tottenham"/"Tottenham Hotspur" tem exactamente a
+        # mesma forma e é a mesma equipa. Quem resolve isso é o jogo
+        # inteiro em find_fixture: as duas equipas têm de bater, e dois
+        # jogos empatados não escolhem nenhum.
+        return 0.92
+
+    shorter, longer = (only_a, only_b) if len(only_a) <= len(only_b) else (only_b, only_a)
+    worst = 1.0
+    for word in shorter:
+        best = max((_pairs(word, other) for other in longer), default=0.0)
+        if best == 0.0:
+            return 0.0
+        worst = min(worst, best)
+    return worst
+
+
+def find_fixture(
+    league: str, home: str, away: str, day: str
+) -> Optional[Dict[str, Any]]:
+    """O jogo deles que é o nosso, ou nada.
+
+    `day` é a data do pontapé de saída em AAAA-MM-DD. Uma chamada por dia
+    traz os jogos todos do mundo nesse dia, por isso abrir dez jogos do
+    mesmo dia custa um pedido, não dez.
+    """
+    if not is_configured():
+        return None
+
+    key = f"fixtures:{day}"
+    listing = _cached(key, FIXTURE_TTL)
+    if listing is None:
+        try:
+            payload = _request(f"/fixtures?date={urllib.parse.quote(day)}")
+        except Exception:
+            return None
+        if _errors_of(payload):
+            return None
+        listing = payload.get("response")
+        if not isinstance(listing, list):
+            return None
+        _store(key, listing)
+
+    coverage = league_coverage()
+    wanted_id = None
+    for row in coverage.get("leagues", []):
+        if row.get("scorelab") == league:
+            wanted_id = row.get("api_id")
+            break
+    if wanted_id is None:
+        return None
+
+    best, best_score, runner_up = None, 0.0, 0.0
+    for entry in listing:
+        if not isinstance(entry, dict):
+            continue
+        if (entry.get("league") or {}).get("id") != wanted_id:
+            continue
+        teams = entry.get("teams") or {}
+        theirs_home = ((teams.get("home") or {}).get("name")) or ""
+        theirs_away = ((teams.get("away") or {}).get("name")) or ""
+        score = min(_similar(home, theirs_home), _similar(away, theirs_away))
+        if score > best_score:
+            best, best_score, runner_up = entry, score, best_score
+        elif score > runner_up:
+            runner_up = score
+
+    if best is None or best_score < NAME_MATCH_FLOOR:
+        return None
+
+    # Dois jogos do mesmo dia igualmente parecidos com o nosso: não há
+    # maneira de saber qual é, e escolher o mais provável aqui é escolher
+    # ao calhas com ar de certeza. Fica sem contexto.
+    if runner_up >= NAME_MATCH_FLOOR and best_score - runner_up < 0.1:
+        return None
+
+    fixture = best.get("fixture") or {}
+    venue = fixture.get("venue") or {}
+    return {
+        "id": fixture.get("id"),
+        "referee": fixture.get("referee"),
+        "city": venue.get("city"),
+        "stadium": venue.get("name"),
+        "confidence": round(best_score, 3),
+    }
+
+
+def injuries_for(fixture_id: int) -> Optional[Dict[str, List[Dict[str, str]]]]:
+    """Quem falta a este jogo, por equipa. Nada quando não se sabe.
+
+    A diferença entre "não há lesionados" e "não sabemos" é toda: o
+    primeiro é uma informação, o segundo é um buraco, e trocá-los era
+    dizer a alguém que a equipa está inteira quando ninguém olhou.
+    """
+    if not is_configured() or not fixture_id:
+        return None
+
+    key = f"injuries:{fixture_id}"
+    remembered = _cached(key, INJURY_TTL)
+    if remembered is not None:
+        return remembered
+
+    try:
+        payload = _request(f"/injuries?fixture={int(fixture_id)}")
+    except Exception:
+        return None
+    if _errors_of(payload):
+        return None
+
+    rows = payload.get("response")
+    if not isinstance(rows, list):
+        return None
+
+    by_team: Dict[str, List[Dict[str, str]]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        team = ((row.get("team") or {}).get("name")) or "?"
+        player = row.get("player") or {}
+        by_team.setdefault(team, []).append(
+            {
+                "name": player.get("name") or "?",
+                # "Missing Fixture" é certo, "Questionable" é dúvida — e
+                # uma dúvida não vale o mesmo que uma ausência.
+                "certain": (player.get("type") or "") == "Missing Fixture",
+                "reason": player.get("reason") or "",
+            }
+        )
+
+    _store(key, by_team)
+    return by_team
+
+
+# Os mercados deles com os nomes que nós usamos. O que não estiver aqui
+# não é traduzido: uma odd no mercado errado é pior do que odd nenhuma.
+ODDS_MARKETS = {
+    ("Match Winner", "Home"): "Casa",
+    ("Match Winner", "Draw"): "Empate",
+    ("Match Winner", "Away"): "Fora",
+    ("Double Chance", "Home/Draw"): "1X",
+    ("Double Chance", "Draw/Away"): "2X",
+    ("Goals Over/Under", "Over 2.5"): "Mais de 2.5 Golos",
+    ("Goals Over/Under", "Under 2.5"): "Menos de 2.5 Golos",
+    ("Goals Over/Under", "Over 3.5"): "Mais de 3.5 Golos",
+    ("Goals Over/Under", "Under 3.5"): "Menos de 3.5 Golos",
+    ("Both Teams Score", "Yes"): "Ambas Marcam",
+    ("Both Teams Score", "No"): "BTTS No",
+}
+
+
+def _median(values: List[float]) -> float:
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def odds_for(fixture_id: int) -> Optional[Dict[str, float]]:
+    """O preço do mercado por mercado nosso: a mediana das casas.
+
+    Mediana e não a melhor: a melhor odd de uma casa qualquer é muitas
+    vezes um erro dela, e nós queremos saber o que o mercado acha, não
+    onde está a promoção. O que o mercado acha é a opinião mais bem
+    informada que existe sobre um jogo — mais do que a nossa.
+    """
+    if not is_configured() or not fixture_id:
+        return None
+
+    key = f"odds:{fixture_id}"
+    remembered = _cached(key, ODDS_TTL)
+    if remembered is not None:
+        return remembered
+
+    try:
+        payload = _request(f"/odds?fixture={int(fixture_id)}")
+    except Exception:
+        return None
+    if _errors_of(payload):
+        return None
+
+    rows = payload.get("response")
+    if not isinstance(rows, list) or not rows:
+        return None
+
+    gathered: Dict[str, List[float]] = {}
+    for row in rows:
+        for book in (row.get("bookmakers") or []):
+            for bet in (book.get("bets") or []):
+                bet_name = bet.get("name")
+                for value in (bet.get("values") or []):
+                    ours = ODDS_MARKETS.get((bet_name, value.get("value")))
+                    if not ours:
+                        continue
+                    try:
+                        price = float(value.get("odd"))
+                    except (TypeError, ValueError):
+                        continue
+                    if price > 1:
+                        gathered.setdefault(ours, []).append(price)
+
+    if not gathered:
+        return None
+
+    prices = {
+        market: round(_median(values), 2) for market, values in gathered.items()
+    }
+    _store(key, prices)
+    return prices
+
+
+def match_context(
+    league: str, home: str, away: str, kickoff: str
+) -> Dict[str, Any]:
+    """Tudo o que esta fonte sabe sobre um jogo nosso, numa resposta só.
+
+    Cada parte falha por si: pode haver árbitro sem lesões, odds sem
+    tempo. O que falhar vem a null e o dossiê põe-no a cinzento — nunca
+    um valor inventado para a linha não ficar vazia.
+    """
+    import weather_data
+
+    answer: Dict[str, Any] = {
+        "matched": False,
+        "fixture_id": None,
+        "referee": None,
+        "stadium": None,
+        "city": None,
+        "injuries": None,
+        "injuries_covered": False,
+        "odds": None,
+        "weather": None,
+    }
+
+    if not is_configured():
+        answer["detail"] = "Fonte de contexto não configurada."
+        return answer
+
+    day = (kickoff or "")[:10]
+    if len(day) != 10:
+        answer["detail"] = "Jogo sem hora marcada."
+        return answer
+
+    found = find_fixture(league, home, away, day)
+    if not found:
+        # O caso honesto mais comum: os nomes não bateram certo o
+        # suficiente. Melhor dizê-lo do que servir o jogo errado.
+        answer["detail"] = "Não encontrámos este jogo na fonte de contexto."
+        return answer
+
+    answer.update(
+        matched=True,
+        fixture_id=found.get("id"),
+        referee=found.get("referee"),
+        stadium=found.get("stadium"),
+        city=found.get("city"),
+        match_confidence=found.get("confidence"),
+        detail="",
+    )
+
+    covered = any(
+        row.get("scorelab") == league and row.get("injuries")
+        for row in league_coverage().get("leagues", [])
+    )
+    answer["injuries_covered"] = covered
+    if covered:
+        answer["injuries"] = injuries_for(found.get("id"))
+
+    answer["odds"] = odds_for(found.get("id"))
+    answer["weather"] = weather_data.at_kickoff(found.get("city") or "", kickoff)
     return answer
