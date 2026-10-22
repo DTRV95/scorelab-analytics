@@ -90,6 +90,17 @@ describe("ProbabilityBreakdown", () => {
     expect(screen.getByText(/Histórico por trás: Média/)).toBeInTheDocument();
   });
 
+  it("deixa a opinião tomar o lugar do autocolante da amostra", () => {
+    // No quadro, aquela linha passou a ser o que eu faria no jogo — e a
+    // amostra vai lá dentro, onde é ela que põe a fasquia.
+    render(
+      <ProbabilityBreakdown data={data} heading={<p>O que eu faria</p>} />,
+    );
+
+    expect(screen.getByText("O que eu faria")).toBeInTheDocument();
+    expect(screen.queryByText(/Histórico por trás/)).not.toBeInTheDocument();
+  });
+
   it("never renders odds, edge, value or a betting decision", () => {
     render(<ProbabilityBreakdown data={data} />);
 
