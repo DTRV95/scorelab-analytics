@@ -1351,98 +1351,55 @@ export default function Challenges() {
             members={members}
             bets={bets}
             me={user?.id ?? null}
-            openBets={openBets}
-            renderOpen={(bet) => {
-              const manual = bet.legs.some(isManualLeg);
-              return (
-                <BetSlip
-                  key={bet.id}
-                  bet={bet}
-                  // O nome quando há mais do que um: a secção chama-se "o
-                  // que cada um escolheu", e a do lado trazia o nome do
-                  // outro enquanto esta vinha sem o meu.
-                  above={[
-                    members.length > 1 ? me?.name : null,
-                    `Nível ${bet.day}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  state={
-                    bet.status === "red"
-                      ? "Falta dizeres quais"
-                      : manual
-                        ? "À espera de ti"
-                        : "À espera do resultado"
-                  }
-                  action={
-                    <>
-                    {losing === bet.id ? (
-                      <div className="border-t border-border px-4 pb-3">
-                        <FailedPicker
-                          bet={bet}
-                          saving={closing === bet.id}
-                          onSave={(failed) => loseWith(bet, failed)}
-                          onCancel={() => setLosing(null)}
-                        />
-                      </div>
-                    ) : bet.status === "red" ? (
-                      <div className="border-t border-border px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setLosing(bet.id)}
-                          className="sl-tap h-10 w-full rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40"
-                        >
-                          Dizer quais falharam
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2 border-t border-border px-4 py-3">
-                        <button
-                          type="button"
-                          disabled={closing === bet.id}
-                          onClick={() => closeBet(bet, true)}
-                          className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/40 disabled:opacity-40"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          {bet.legs.length === 1 ? "Entrou" : "Entraram todos"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={closing === bet.id}
-                          onClick={() =>
-                            bet.legs.length === 1
-                              ? closeBet(bet, false)
-                              : setLosing(bet.id)
-                          }
-                          className="sl-tap flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-destructive ring-1 ring-destructive/40 disabled:opacity-40"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          {bet.legs.length === 1 ? "Falhou" : "Perdi o nível"}
-                        </button>
-                      </div>
-                    )}
-                    {/* A mesma porta para o diálogo que as fechadas têm.
-                        Antes só a lista lado a lado a abria, e só para os
-                        dois últimos níveis — uma aposta em aberto cujo
-                        preço se tivesse escrito mal não se corrigia. */}
-                    {losing !== bet.id && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenBet({ bet, player: me?.name ?? "" })
-                        }
-                        aria-label={`Ver e corrigir a aposta do nível ${bet.day} de ${me?.name ?? ""}`}
-                        className="sl-tap w-full border-t border-border py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                      >
-                        Ver e corrigir
-                      </button>
-                    )}
-                    </>
-                  }
-                />
-              );
-            }}
             onOpen={(bet, player) => setOpenBet({ bet, player })}
+            renderActions={(bet) =>
+              losing === bet.id ? (
+                // O selector fica aqui, e não no diálogo: o diálogo marca
+                // pernas uma a uma, que é outra coisa. "Perdi o nível,
+                // falharam estas" é um gesto só e tem de continuar a sê-lo.
+                <div className="rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5">
+                  <FailedPicker
+                    bet={bet}
+                    saving={closing === bet.id}
+                    onSave={(failed) => loseWith(bet, failed)}
+                    onCancel={() => setLosing(null)}
+                  />
+                </div>
+              ) : bet.status === "red" ? (
+                <button
+                  type="button"
+                  onClick={() => setLosing(bet.id)}
+                  className="sl-tap h-8 w-full rounded-xl text-[11px] font-bold text-destructive ring-1 ring-destructive/40"
+                >
+                  Dizer quais falharam
+                </button>
+              ) : (
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    disabled={closing === bet.id}
+                    onClick={() => closeBet(bet, true)}
+                    className="sl-tap flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl text-[11px] font-bold text-[hsl(var(--sl-green))] ring-1 ring-[hsl(var(--sl-green))]/40 disabled:opacity-40"
+                  >
+                    <Check className="h-3 w-3" />
+                    {bet.legs.length === 1 ? "Entrou" : "Entraram todos"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={closing === bet.id}
+                    onClick={() =>
+                      bet.legs.length === 1
+                        ? closeBet(bet, false)
+                        : setLosing(bet.id)
+                    }
+                    className="sl-tap flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl text-[11px] font-bold text-destructive ring-1 ring-destructive/40 disabled:opacity-40"
+                  >
+                    <X className="h-3 w-3" />
+                    {bet.legs.length === 1 ? "Falhou" : "Perdi o nível"}
+                  </button>
+                </div>
+              )
+            }
           />
         </motion.div>
 

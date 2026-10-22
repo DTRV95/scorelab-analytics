@@ -1066,9 +1066,10 @@ describe("closing a bet nobody else can close", () => {
     expect(
       await screen.findByRole("tab", { name: /Em aberto/ }),
     ).toHaveAttribute("aria-selected", "true");
-    // O estado passou da linha pequena por cima para a pastilha ao lado,
-    // que é o que se lê sem abrir o boletim.
-    expect(screen.getAllByText(/À espera de ti/).length).toBeGreaterThan(0);
+    // A linha é compacta e o estado cabe numa pastilha: "aberta". O que
+    // o dono tem de fazer está logo por baixo, em dois botões, sem ter
+    // de abrir nada — que é o ponto deste teste.
+    expect(screen.getAllByText("aberta").length).toBeGreaterThan(0);
   });
 
   it("pays out the day when it is marked as won", async () => {

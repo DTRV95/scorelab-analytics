@@ -1,10 +1,10 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Search, Swords } from "lucide-react";
-import { BetSlip } from "@/components/BetSlip";
+import { ChevronRight, Search, Swords } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
+import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { canonicalMarket } from "@/lib/marketNames";
 import {
   buildHistory,
-  byPlayer,
   filterHistory,
   historyTotals,
   type HistoryEntry,
@@ -22,7 +22,7 @@ const eur = new Intl.NumberFormat("pt-PT", {
 const pct = (value: number, casas = 0) =>
   `${value.toFixed(casas).replace(".", ",")}%`;
 
-/** Sem "em aberto": essas têm aba própria, com o que se lhes pode fazer. */
+/** Sem "em aberto": essas têm aba própria. */
 const OUTCOMES: { key: Outcome; label: string }[] = [
   { key: "todas", label: "Todas" },
   { key: "ganhas", label: "Ganhas" },
@@ -82,74 +82,135 @@ function Figure({
 }
 
 /**
- * O nome de quem apostou, como cabeçalho do que ele apostou.
+ * Uma aposta numa linha, que é como esta secção sempre se leu melhor.
  *
- * Em letra pequena por cima de cada boletim, numa lista única, os dois
- * jogadores liam-se como um só — e a pergunta desta secção é exactamente
- * quem escolheu o quê. É o cabeçalho que a lista lado a lado tinha, e a
- * razão por que ela funcionava.
+ * Esteve aqui, durante uns dias, um boletim inteiro por aposta: o nome
+ * do jogador outra vez por dentro, três filas de botões, e duas apostas
+ * a ocuparem um ecrã. Para responder a "quem escolheu o quê" isso é pior
+ * do que uma linha — e fechar um nível continua a fazer-se onde sempre
+ * se fez, ao abrir a aposta.
  */
-function PlayerGroup({
+function BetRow({
+  bet,
+  player,
+  onOpen,
+}: {
+  bet: PlanBet;
+  player: string;
+  onOpen: () => void;
+}) {
+  const first = bet.legs[0];
+  const titulo =
+    bet.legs.length === 1
+      ? (first?.match ?? "—")
+      : `${first?.match ?? "—"} + ${bet.legs.length - 1}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      // "Ver e corrigir", porque é isso que a linha abre: o diálogo lê a
+      // aposta inteira e deixa mudar-lhe a odd, os jogos e o desfecho.
+      aria-label={`Ver e corrigir a aposta do nível ${bet.day} de ${player}`}
+      className="sl-tap flex w-full items-center gap-2.5 rounded-2xl bg-[hsl(var(--sl-surface))] px-3 py-2.5 text-left hover:bg-muted"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold text-foreground">
+          {titulo}
+        </p>
+        <p className="sl-meta truncate text-[11px]">
+          Nível {bet.day} ·{" "}
+          {bet.legs.length === 1 && first
+            ? (MARKET_LABELS[first.market] ?? canonicalMarket(first.market))
+            : `${bet.legs.length} jogos`}{" "}
+          @ {bet.odds.toFixed(2)}
+        </p>
+      </div>
+      <span
+        className={`sl-pill flex-none ${
+          bet.status === "green"
+            ? "sl-pill-win"
+            : bet.status === "red"
+              ? "sl-pill-loss"
+              : "sl-pill-open"
+        }`}
+      >
+        {bet.status === "green"
+          ? `+${bet.profitLoss.toFixed(2)}`
+          : bet.status === "red"
+            ? bet.profitLoss.toFixed(2)
+            : "aberta"}
+      </span>
+      <ChevronRight className="h-3.5 w-3.5 flex-none text-muted-foreground" />
+    </button>
+  );
+}
+
+/** A coluna de um jogador: o nome em cima, as apostas dele por baixo. */
+function PlayerColumn({
   name,
-  count,
-  children,
+  bets,
+  onOpen,
+  renderActions,
 }: {
   name: string;
-  count: number;
-  children: ReactNode;
+  bets: PlanBet[];
+  onOpen: (bet: PlanBet, player: string) => void;
+  /** O que se pode fazer a esta aposta sem a abrir. Só às minhas. */
+  renderActions?: (bet: PlanBet) => ReactNode;
 }) {
   return (
-    <div className="space-y-2">
-      <p className="flex items-baseline gap-2 px-1 text-[13px] font-bold text-foreground">
-        {name}
-        <span className="sl-meta font-mono-data text-[11px] font-semibold">
-          {count}
-        </span>
-      </p>
-      {children}
+    <div className="bg-card p-4">
+      <p className="text-[13px] font-semibold text-foreground">{name}</p>
+      <div className="mt-2 space-y-1.5">
+        {bets.map((bet) => (
+          <div key={bet.id} className="space-y-1">
+            <BetRow bet={bet} player={name} onOpen={() => onOpen(bet, name)} />
+            {renderActions?.(bet)}
+          </div>
+        ))}
+        {bets.length === 0 && (
+          <p className="sl-meta text-[11px]">Nada aqui.</p>
+        )}
+      </div>
     </div>
   );
 }
 
 /**
- * As apostas deste desafio, em aberto e fechadas, agrupadas por quem as fez.
+ * As apostas deste desafio, em aberto e fechadas, uma coluna por jogador.
  *
- * Era isto em dois sítios: as por fechar no topo numa secção âmbar, e as
- * outras aqui, duas por pessoa em linhas de uma linha. Agora são duas abas
- * dentro da secção que já existia, e dentro de cada aba cada jogador tem o
- * seu bloco com o nome por cima.
+ * Duas abas, que é o que separa "o que está por decidir" de "o que já
+ * aconteceu", e dentro de cada uma o arranjo de sempre: cada jogador na
+ * sua coluna, cada aposta na sua linha.
  */
 export function ChallengeBets({
   plan,
   members,
   bets,
   me,
-  openBets,
-  renderOpen,
   onOpen,
+  renderActions,
 }: {
   plan: PlanRecord;
   members: PlanMember[];
   /** As apostas deste desafio, de toda a gente. */
   bets: PlanBet[];
-  /** Quem está a ver. As dela são as únicas que se podem fechar. */
+  /** Quem está a ver, para ficar com a primeira coluna. */
   me: string | null;
-  /** As minhas por fechar, já na ordem em que a página as quer mostrar. */
-  openBets: PlanBet[];
-  /**
-   * Como desenhar uma das minhas por fechar.
-   *
-   * Vem da página em vez de se construir aqui: fechar um nível mexe no
-   * marcador, em quem falhou e no que fica guardado, e trazer isso para
-   * dentro deste componente era mudar de sítio cem linhas que não têm
-   * nada que ver com abas nem com grupos.
-   */
-  renderOpen: (bet: PlanBet) => ReactNode;
-  /** Abrir uma aposta por inteiro, que é onde ela se corrige. */
+  /** Abrir uma aposta: é lá que ela se lê inteira. */
   onOpen: (bet: PlanBet, player: string) => void;
+  /**
+   * Fechar um nível sem abrir a aposta.
+   *
+   * Uma linha compacta e, por baixo das minhas que estão em aberto, dois
+   * botões. Fechar é a coisa que mais vezes se faz aqui: obrigar a abrir
+   * a aposta para isso era trocar um toque por três, todos os dias.
+   */
+  renderActions?: (bet: PlanBet) => ReactNode;
 }) {
   const [tab, setTab] = useState<"abertas" | "fechadas">(() =>
-    openBets.length > 0 ? "abertas" : "fechadas",
+    bets.some((bet) => bet.status === "pending") ? "abertas" : "fechadas",
   );
   const [outcome, setOutcome] = useState<Outcome>("todas");
   const [text, setText] = useState("");
@@ -171,71 +232,32 @@ export function ChallengeBets({
         .sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : 0)),
     [members, me],
   );
-  const naming = useMemo(
-    () => new Map(players.map((player) => [player.id, player.name])),
-    [players],
-  );
 
-  // Nesta aba só entram as que já fecharam: as outras estão na do lado,
-  // com o que se lhes pode fazer.
+  const open = useMemo(
+    () => history.filter((entry) => entry.bet.status === "pending"),
+    [history],
+  );
   const closed = useMemo(
     () => history.filter((entry) => entry.bet.status !== "pending"),
     [history],
   );
-  // Sem filtro por pessoa: cada jogador tem o seu bloco com o nome por
-  // cima, e uma fila de botões a dizer o mesmo era uma linha a mais num
-  // ecrã onde já se escolhe duas vezes antes de chegar às apostas.
   const shown = useMemo(
     () => filterHistory(closed, { outcome, text }),
     [closed, outcome, text],
   );
   const totals = useMemo(() => historyTotals(shown), [shown]);
-  const closedByPlayer = useMemo(
-    () => byPlayer(shown, players),
-    [shown, players],
-  );
-
-  /**
-   * As que o outro tem por fechar, só para ver.
-   *
-   * Fechar uma aposta é de quem a fez, por isso estas não trazem botão
-   * nenhum além do que as abre. Mas saber em que é que o outro está neste
-   * momento é metade da graça de um desafio a dois.
-   */
-  const theirOpen = useMemo(
-    () =>
-      byPlayer(
-        history.filter(
-          (entry) => entry.bet.status === "pending" && entry.bet.userId !== me,
-        ),
-        players.filter((player) => player.id !== me),
-      ),
-    [history, me, players],
-  );
 
   if (history.length === 0) return null;
 
-  const openTotal =
-    openBets.length +
-    theirOpen.reduce((total, group) => total + group.entries.length, 0);
+  const mine = (entries: HistoryEntry[], id: string) =>
+    entries.filter((entry) => entry.bet.userId === id).map((entry) => entry.bet);
 
   const abas: { key: "abertas" | "fechadas"; label: string; n: number }[] = [
-    { key: "abertas", label: "Em aberto", n: openTotal },
+    { key: "abertas", label: "Em aberto", n: open.length },
     { key: "fechadas", label: "Fechadas", n: closed.length },
   ];
 
-  const verEcorrigir = (entry: HistoryEntry, label: string) => (
-    <button
-      type="button"
-      onClick={() => onOpen(entry.bet, naming.get(entry.bet.userId) ?? "—")}
-      aria-label={`${label} a aposta do nível ${entry.bet.day} de ${
-        naming.get(entry.bet.userId) ?? "—"
-      }`}
-      className="sl-tap w-full border-t border-border py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-    >
-      {label}
-    </button>
-  );
+  const lista = tab === "abertas" ? open : shown;
 
   return (
     <section className="sl-card overflow-hidden">
@@ -277,132 +299,78 @@ export function ChallengeBets({
         ))}
       </div>
 
-      {tab === "abertas" ? (
-        openTotal === 0 ? (
-          <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-            Nada por fechar. A banca já conta tudo o que aqui está.
-          </p>
-        ) : (
-          // Um bloco por jogador, lado a lado no ecrã grande e empilhados
-          // no telemóvel. É o arranjo da lista que isto substituiu, com
-          // boletins inteiros em vez de linhas de uma linha.
-          <div className="grid gap-4 p-3 md:grid-cols-2">
-            {openBets.length > 0 && (
-              <PlayerGroup
-                name={naming.get(me ?? "") ?? "As tuas"}
-                count={openBets.length}
+      {tab === "fechadas" && (
+        <div className="space-y-2 border-b border-border px-4 py-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4 sm:items-end">
+            <Figure label="Apostas" value={String(totals.bets)} />
+            <Figure
+              label="Acerto"
+              value={totals.winPct === null ? "—" : pct(totals.winPct)}
+            />
+            <Figure
+              label="Lucro"
+              value={`${totals.profit >= 0 ? "+" : ""}${eur.format(totals.profit)}`}
+              tone={totals.profit >= 0 ? "good" : "bad"}
+            />
+            <Figure
+              // A casa decimal só enquanto couber e disser alguma coisa.
+              label="Retorno"
+              value={
+                totals.roi === null
+                  ? "—"
+                  : pct(totals.roi, Math.abs(totals.roi) < 10 ? 1 : 0)
+              }
+              tone={
+                totals.roi === null ? undefined : totals.roi >= 0 ? "good" : "bad"
+              }
+            />
+          </div>
+
+          <label className="sl-field flex items-center gap-2 px-3">
+            <Search className="h-4 w-4 flex-none text-muted-foreground" />
+            <input
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Equipa, mercado, competição…"
+              aria-label="Procurar no histórico do desafio"
+              className="h-9 min-w-0 flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+          </label>
+
+          <div className="sl-scroll-x flex gap-1.5">
+            {OUTCOMES.map((entry) => (
+              <Pill
+                key={entry.key}
+                on={outcome === entry.key}
+                onClick={() => setOutcome(entry.key)}
               >
-                {openBets.map((bet) => (
-                  <div key={bet.id}>{renderOpen(bet)}</div>
-                ))}
-              </PlayerGroup>
-            )}
-            {theirOpen.map((group) => (
-              <PlayerGroup
-                key={group.id}
-                name={group.name}
-                count={group.entries.length}
-              >
-                {group.entries.map((entry) => (
-                  <BetSlip
-                    key={entry.bet.id}
-                    bet={entry.bet}
-                    above={`Nível ${entry.bet.day}`}
-                    action={verEcorrigir(entry, "Ver")}
-                  />
-                ))}
-              </PlayerGroup>
+                {entry.label}
+              </Pill>
             ))}
           </div>
-        )
+        </div>
+      )}
+
+      {lista.length === 0 ? (
+        <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+          {tab === "abertas"
+            ? "Nada por fechar. A banca já conta tudo o que aqui está."
+            : "Nenhuma aposta corresponde a isto."}
+        </p>
       ) : (
-        <>
-          <div className="space-y-2 border-b border-border px-4 py-3">
-            {/* Dois por linha no telemóvel, quatro no ecrã grande. A quatro
-                num telefone, "+11,92 €" ficava "+11,9…" — um número
-                cortado diz menos do que nenhum. */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4 sm:items-end">
-              <Figure label="Apostas" value={String(totals.bets)} />
-              <Figure
-                label="Acerto"
-                value={totals.winPct === null ? "—" : pct(totals.winPct)}
-              />
-              <Figure
-                label="Lucro"
-                value={`${totals.profit >= 0 ? "+" : ""}${eur.format(
-                  totals.profit,
-                )}`}
-                tone={totals.profit >= 0 ? "good" : "bad"}
-              />
-              <Figure
-                // A casa decimal só enquanto couber e disser alguma coisa:
-                // entre 0,7% e 1% vai uma decisão, entre 100% e 100,0% não
-                // vai nada.
-                label="Retorno"
-                value={
-                  totals.roi === null
-                    ? "—"
-                    : pct(totals.roi, Math.abs(totals.roi) < 10 ? 1 : 0)
-                }
-                tone={
-                  totals.roi === null
-                    ? undefined
-                    : totals.roi >= 0
-                      ? "good"
-                      : "bad"
-                }
-              />
-            </div>
-
-            <label className="sl-field flex items-center gap-2 px-3">
-              <Search className="h-4 w-4 flex-none text-muted-foreground" />
-              <input
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                placeholder="Equipa, mercado, competição…"
-                aria-label="Procurar no histórico do desafio"
-                className="h-9 min-w-0 flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-            </label>
-
-            <div className="sl-scroll-x flex gap-1.5">
-              {OUTCOMES.map((entry) => (
-                <Pill
-                  key={entry.key}
-                  on={outcome === entry.key}
-                  onClick={() => setOutcome(entry.key)}
-                >
-                  {entry.label}
-                </Pill>
-              ))}
-            </div>
-          </div>
-
-          {shown.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-              Nenhuma aposta corresponde a isto.
-            </p>
-          ) : (
-            <div className="grid gap-4 p-3 md:grid-cols-2">
-              {closedByPlayer.map((group) => (
-                <PlayerGroup
-                  key={group.id}
-                  name={group.name}
-                  count={group.entries.length}
-                >
-                  {group.entries.map((entry) => (
-                    <BetSlip
-                      key={entry.bet.id}
-                      bet={entry.bet}
-                      above={`Nível ${entry.bet.day}`}
-                      action={verEcorrigir(entry, "Ver e corrigir")}
-                    />
-                  ))}
-                </PlayerGroup>
-              ))}
-            </div>
-          )}
-        </>
+        <div className="grid gap-px bg-border md:grid-cols-2">
+          {players.map((player) => (
+            <PlayerColumn
+              key={player.id}
+              name={player.name}
+              bets={mine(lista, player.id)}
+              onOpen={onOpen}
+              renderActions={
+                tab === "abertas" && player.id === me ? renderActions : undefined
+              }
+            />
+          ))}
+        </div>
       )}
     </section>
   );
