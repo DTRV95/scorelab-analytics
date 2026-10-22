@@ -24,8 +24,14 @@ REQUEST_TIMEOUT = 15
 EVENTS_TTL = 30 * 60
 PROBE_TTL = 12 * 60 * 60
 
-PATHS = ("/api/v2/events/", "/api/events/")
+# Dois caminhos e duas maneiras de autenticar, porque a documentação
+# mostra ambas. A ordem não decide nada — ver _working.
+PATHS = ("/api/events/", "/api/v2/events/")
 AUTH_STYLES = ("Token", "Bearer")
+
+# E, para os caminhos que não as trazem de origem, as formas conhecidas
+# de pedir as baixas à mistura.
+INCLUDES = (None, "unavailable_players", "unavailable_players,lineups")
 
 _cache: Dict[str, Tuple[float, Any]] = {}
 
@@ -103,38 +109,64 @@ def _shape_of(payload: Any, depth: int = 2) -> str:
     return type(payload).__name__
 
 
-def _working(attempts: Optional[List[str]] = None) -> Optional[Dict[str, str]]:
+def _working(attempts: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+    """O caminho que traz as baixas — e não só o primeiro que responde.
+
+    Um caminho responder não chega. O /api/v2/events/ responde com
+    cinquenta jogos e nenhum deles traz indisponíveis, que é a única
+    coisa por que viemos aqui. Por isso prova-se cada combinação e
+    guarda-se a que trouxer baixas; a que só responde fica como recurso,
+    porque dela ainda sai o árbitro e o estádio.
+    """
     remembered = _cached("probe", PROBE_TTL)
     if remembered is not None:
         return remembered or None
 
+    fallback = None
+
     for path in PATHS:
         for style in AUTH_STYLES:
-            try:
-                payload = _fetch(path, style)
-            except urllib.error.HTTPError as exc:
-                if attempts is not None:
-                    attempts.append(f"{path} {style}: respondeu {exc.code}")
-                continue
-            except Exception as exc:
-                if attempts is not None:
-                    attempts.append(f"{path} {style}: {type(exc).__name__}")
-                continue
+            for include in INCLUDES:
+                params = {"include": include} if include else None
+                rotulo = f"{path} {style}" + (f" +{include}" if include else "")
+                try:
+                    payload = _fetch(path, style, params)
+                except urllib.error.HTTPError as exc:
+                    if attempts is not None:
+                        attempts.append(f"{rotulo}: respondeu {exc.code}")
+                    continue
+                except Exception as exc:
+                    if attempts is not None:
+                        attempts.append(f"{rotulo}: {type(exc).__name__}")
+                    continue
 
-            events = _events_of(payload)
-            if events is None:
+                events = _events_of(payload)
+                if events is None:
+                    if attempts is not None:
+                        attempts.append(
+                            f"{rotulo}: sem lista de jogos, trouxe "
+                            f"{_shape_of(payload)}"
+                        )
+                    continue
+
+                com_baixas = sum(
+                    1 for event in events if _unavailable_of(event) is not None
+                )
                 if attempts is not None:
                     attempts.append(
-                        f"{path} {style}: sem lista de jogos, trouxe "
-                        f"{_shape_of(payload)}"
+                        f"{rotulo}: {len(events)} jogos, {com_baixas} com baixas"
                     )
-                continue
 
-            answer = {"path": path, "style": style}
-            _store("probe", answer)
-            return answer
+                answer = {"path": path, "style": style, "include": include}
+                if com_baixas:
+                    _store("probe", answer)
+                    return answer
+                if fallback is None:
+                    fallback = answer
 
-    return None
+    if fallback is not None:
+        _store("probe", fallback)
+    return fallback
 
 
 def account_status() -> Dict[str, Any]:
@@ -165,6 +197,8 @@ def account_status() -> Dict[str, Any]:
         "detail": "Ligada.",
         "path": found["path"],
         "auth": found["style"],
+        "include": found.get("include"),
+        "attempts": attempts,
         "events": len(events),
         "events_with_absences": len(com_baixas),
         # A forma de um jogo, para se confirmar de onde saem os nomes sem
@@ -191,8 +225,9 @@ def all_events() -> Optional[List[Dict[str, Any]]]:
     if not found:
         return None
 
+    params = {"include": found["include"]} if found.get("include") else None
     try:
-        payload = _fetch(found["path"], found["style"])
+        payload = _fetch(found["path"], found["style"], params)
     except Exception:
         return None
 
