@@ -170,17 +170,26 @@ _OUTCOME_NAMES = {"Draw": "Empate"}
 
 
 def _ours(market: str, outcome: str, home: str, away: str) -> Optional[str]:
-    if market == "h2h":
-        if outcome == home:
-            return "Casa"
-        if outcome == away:
-            return "Fora"
-        if outcome in ("Draw", "draw"):
-            return "Empate"
+    """A que mercado nosso é que este resultado deles corresponde.
+
+    Pelo nome da equipa e não pela posição em que ela aparece. As duas
+    fontes chegam a discordar sobre quem joga em casa — no Porto–Gil
+    Vicente de 24/10 o nosso quadro diz uma coisa e as casas dizem a
+    outra — e aí ler "Casa" como "a nossa casa" dava o preço de uma
+    equipa à outra. Pelo nome, uma troca de posição deixa de importar.
+    """
+    from injury_data import NAME_MATCH_FLOOR, _similar
+
+    if market != "h2h":
         return None
-    if market == "totals":
-        return None  # tratado à parte, que precisa do ponto
-    return None
+    if outcome in ("Draw", "draw"):
+        return "Empate"
+
+    como_casa = _similar(home, outcome)
+    como_fora = _similar(away, outcome)
+    if max(como_casa, como_fora) < NAME_MATCH_FLOOR:
+        return None
+    return "Casa" if como_casa >= como_fora else "Fora"
 
 
 def _median(values: List[float]) -> float:
@@ -287,12 +296,20 @@ def odds_for(
         considered.append(
             f"{game.get('home_team')} vs {game.get('away_team')} ({when[:16]})"
         )
-        score = min(
-            _similar(home, game.get("home_team") or ""),
-            _similar(away, game.get("away_team") or ""),
-        )
+        theirs_home = game.get("home_team") or ""
+        theirs_away = game.get("away_team") or ""
+        # Nas duas orientações: o que identifica o jogo é o par de
+        # equipas, e qual delas recebe é coisa em que as fontes
+        # discordam. O preço vai pelo nome, por isso a troca não
+        # estraga nada — e recusar o jogo por causa dela era deitar
+        # fora o preço por uma discórdia que não nos diz respeito.
+        direct = min(_similar(home, theirs_home), _similar(away, theirs_away))
+        swapped = min(_similar(home, theirs_away), _similar(away, theirs_home))
+        score = max(direct, swapped)
         if score > best_score:
             best, best_score = game, score
+            if trace is not None:
+                trace["swapped"] = swapped > direct
 
     if trace is not None:
         trace["games_seen"] = len(listing)
@@ -304,8 +321,6 @@ def odds_for(
             trace["reason"] = "Nenhum jogo deles se parece o suficiente com este."
         return None
 
-    their_home = best.get("home_team") or ""
-    their_away = best.get("away_team") or ""
     gathered: Dict[str, List[float]] = {}
 
     for book in best.get("bookmakers") or []:
@@ -321,7 +336,7 @@ def odds_for(
                     continue
 
                 if name == "h2h":
-                    ours = _ours("h2h", label, their_home, their_away)
+                    ours = _ours("h2h", label, home, away)
                 elif name == "totals":
                     point = outcome.get("point")
                     if point is None:
@@ -423,4 +438,8 @@ def match_context(
         "odds": prices,
         "implied_pct": implied_pct(prices),
         "detail": "",
+        # As duas fontes discordarem sobre quem joga em casa não estraga
+        # o preço, que vai pelo nome — mas estraga a nossa previsão, que
+        # conta com um deles a jogar em casa. Quem vê o jogo merece saber.
+        "home_away_disagrees": bool(trace.get("swapped")),
     }

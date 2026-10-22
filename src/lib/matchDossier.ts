@@ -82,6 +82,7 @@ export interface DossierInput {
   market?: {
     odds: Record<string, number>;
     implied: Record<string, number>;
+    homeAwayDisagrees?: boolean;
   } | null;
 }
 
@@ -282,6 +283,18 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       )} pontos a mais do que entregámos, em ${
         input.record.samples
       } jogos conferidos.`,
+      grave: true,
+    });
+  }
+
+  if (input.market?.homeAwayDisagrees) {
+    found.push({
+      key: "casa",
+      text:
+        "A nossa fonte e as casas de apostas discordam sobre quem joga em " +
+        "casa neste jogo. O preço aqui ao lado está certo à mesma, porque " +
+        "segue o nome da equipa — mas a nossa previsão conta com uma delas " +
+        "em casa, e se for ao contrário o número está enviesado.",
       grave: true,
     });
   }

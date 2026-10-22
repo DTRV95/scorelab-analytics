@@ -12,6 +12,14 @@ export interface MarketPrice {
   odds: Record<string, number>;
   /** Já sem a margem da casa, retirada no servidor. */
   implied: Record<string, number>;
+  /**
+   * As duas fontes discordam sobre quem joga em casa.
+   *
+   * O preço não sofre com isso, porque vai pelo nome da equipa. A nossa
+   * previsão sofre: ela conta com um deles a jogar em casa, e essa
+   * vantagem vale golos.
+   */
+  homeAwayDisagrees: boolean;
 }
 
 export async function fetchMarketPrice(
@@ -33,5 +41,9 @@ export async function fetchMarketPrice(
   // há" de "não encontrámos", e um vazio apagava essa diferença.
   if (!data?.odds || typeof data.odds !== "object") return null;
 
-  return { odds: data.odds, implied: data.implied_pct ?? {} };
+  return {
+    odds: data.odds,
+    implied: data.implied_pct ?? {},
+    homeAwayDisagrees: Boolean(data.home_away_disagrees),
+  };
 }
