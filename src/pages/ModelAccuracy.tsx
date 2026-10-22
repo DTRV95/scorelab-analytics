@@ -15,6 +15,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { ModelRecordTable } from "@/components/ModelRecordTable";
 import { VerdictRecordCard } from "@/components/VerdictRecordCard";
+import { MarketCalibrationCard } from "@/components/MarketCalibrationCard";
 import { Button } from "@/components/ui/button";
 import {
   measuredAgo,
@@ -468,6 +469,12 @@ export default function ModelAccuracy() {
                 recomendou — e é por esse que ela deve ser julgada. */}
             <motion.section variants={fadeUp}>
               <VerdictRecordCard />
+            </motion.section>
+
+            {/* Onde é que ele exagera, mercado a mercado: é a relação
+                que os dados já sustentam, e é ela que mexe nas contas. */}
+            <motion.section variants={fadeUp}>
+              <MarketCalibrationCard />
             </motion.section>
 
             {/* O registo do próprio quadro, antes do backtest por

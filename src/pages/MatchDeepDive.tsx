@@ -16,6 +16,10 @@ import {
 import { MatchDossier } from "@/components/MatchDossier";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import { decide } from "@/lib/verdict";
+import {
+  adjustments,
+  fetchMarketCalibration,
+} from "@/lib/marketCalibration";
 import { keepVerdict } from "@/lib/verdictRecord";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -160,6 +164,8 @@ export default function MatchDeepDive() {
   const [prefill, setPrefill] = useState<PrefillForm | null>(null);
   const [record, setRecord] = useState<Map<string, AccuracyMarket>>(new Map());
   const [context, setContext] = useState<MatchContext | null>(null);
+  /** O exagero medido de cada mercado. Vazio enquanto não chega. */
+  const [tuning, setTuning] = useState<Record<string, number>>({});
   const [odds, setOdds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -263,6 +269,18 @@ export default function MatchDeepDive() {
 
   // Quantas odds já foram escritas: é o que separa uma previsão de uma
   // decisão, e por isso é uma das linhas do que sabemos deste jogo.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMarketCalibration()
+      .then((rows) => {
+        if (!cancelled) setTuning(adjustments(rows));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const oddsTyped = useMemo(
     () =>
       Object.values(odds).filter((value) => {
@@ -284,6 +302,7 @@ export default function MatchDeepDive() {
         : null,
       amostraPct: match.amostra_pct,
       record: record.get(match.headline_market) ?? null,
+      adjustmentPp: tuning[match.headline_market],
       prices: context.market.odds,
       implied: context.market.implied,
     });
@@ -295,7 +314,7 @@ export default function MatchDeepDive() {
       match.headline_market,
       veredicto,
     ).catch(() => undefined);
-  }, [match, context, record]);
+  }, [match, context, record, tuning]);
 
   const setOddsFor = (market: string, value: string) =>
     setOdds((previous) => ({ ...previous, [market]: value }));
@@ -393,6 +412,9 @@ export default function MatchDeepDive() {
             }
             record={record.get(match.headline_market) ?? null}
             oddsTyped={oddsTyped}
+            adjustmentPp={
+              match.headline_market ? tuning[match.headline_market] : undefined
+            }
             market={context?.market ?? null}
             absences={context?.absences ?? null}
             news={context?.news ?? null}

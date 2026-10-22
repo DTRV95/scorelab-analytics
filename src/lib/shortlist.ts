@@ -81,8 +81,28 @@ const OVERSELL_PP = 11;
 const OVERSELL_FROM = 55;
 const OVERSELL_FULL = 60;
 
-export function measuredPct(pct: number): number {
-  if (!Number.isFinite(pct) || pct <= OVERSELL_FROM) return pct;
+/**
+ * A probabilidade depois de descontado o exagero do modelo.
+ *
+ * `adjustmentPp` é o desvio medido daquele mercado, quando ele já tem
+ * jogos que cheguem para dizer alguma coisa (ver marketCalibration).
+ * Nesse caso manda ele, porque é medição e não suposição: o 1X exagera
+ * dez pontos e meio, o "Mais de 2.5 Golos" não exagera nada, e a curva
+ * única tratava os dois por igual.
+ *
+ * Sem medição por mercado fica a curva, que foi tirada do conjunto todo.
+ * Ela erra para o lado cauteloso de propósito: uma probabilidade
+ * descontada a mais custa uma aposta que se deixou passar, e uma
+ * descontada a menos custa dinheiro.
+ */
+export function measuredPct(pct: number, adjustmentPp?: number): number {
+  if (!Number.isFinite(pct)) return pct;
+
+  if (typeof adjustmentPp === "number" && Number.isFinite(adjustmentPp)) {
+    return Math.min(99, Math.max(1, pct + adjustmentPp));
+  }
+
+  if (pct <= OVERSELL_FROM) return pct;
   const share = Math.min(
     1,
     (pct - OVERSELL_FROM) / (OVERSELL_FULL - OVERSELL_FROM),
@@ -107,9 +127,9 @@ function breakEven(pct: number): number {
   return Math.ceil((100 / pct) * 100) / 100;
 }
 
-export function minimumOdd(pct: number): number {
+export function minimumOdd(pct: number, adjustmentPp?: number): number {
   if (!Number.isFinite(pct) || pct <= 0) return 0;
-  return breakEven(measuredPct(pct));
+  return breakEven(measuredPct(pct, adjustmentPp));
 }
 
 /**
