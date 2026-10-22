@@ -235,7 +235,16 @@ def all_events(day: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
     if found.get("include"):
         params["include"] = found["include"]
     if day:
-        params["date"] = day
+        # date_from+date_to e mais nenhum. Perguntei-lhes as seis
+        # grafias habituais: "date", "event_date", "day",
+        # "start_date+end_date" e "from+to" foram todas aceites sem se
+        # queixarem e todas devolveram a mesma página de sempre. Só este
+        # par mudou a resposta.
+        params["date_from"] = day
+        params["date_to"] = day
+    # A lista vem em páginas de cinquenta, e um sábado de futebol no
+    # mundo inteiro são muito mais do que isso.
+    params["limit"] = 200
 
     try:
         payload = _fetch(found["path"], found["style"], params or None)
