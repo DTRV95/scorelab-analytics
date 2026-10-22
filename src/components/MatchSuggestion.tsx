@@ -3,6 +3,7 @@ import { SuggestionCard } from "@/components/SuggestionCard";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import { adjustments, fetchMarketCalibration } from "@/lib/marketCalibration";
 import { fetchLeagueAccuracy, type AccuracyMarket } from "@/lib/modelAccuracy";
+import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
 /**
@@ -31,6 +32,7 @@ export function MatchSuggestion({
   const [context, setContext] = useState<MatchContext | null>(null);
   const [record, setRecord] = useState<Map<string, AccuracyMarket>>(new Map());
   const [tuning, setTuning] = useState<Record<string, number>>({});
+  const [patterns, setPatterns] = useState<Patterns | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -60,6 +62,12 @@ export function MatchSuggestion({
       })
       .catch(() => undefined);
 
+    fetchSettledLegs()
+      .then((legs) => {
+        if (!cancelled) setPatterns(readPatterns(legs));
+      })
+      .catch(() => undefined);
+
     return () => {
       cancelled = true;
     };
@@ -74,6 +82,10 @@ export function MatchSuggestion({
       derived={context?.market?.derived ?? []}
       record={record}
       adjustments={tuning}
+      absences={context?.absences ?? null}
+      teams={{ home: match.home_name, away: match.away_name }}
+      homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
+      patterns={patterns}
       sample={{ label: match.amostra_label, pct: match.amostra_pct }}
     />
   );

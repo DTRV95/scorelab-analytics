@@ -22,6 +22,7 @@ import {
   fetchMarketCalibration,
 } from "@/lib/marketCalibration";
 import { keepVerdict } from "@/lib/verdictRecord";
+import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateNextBankrollBefore } from "@/lib/analysisStorage";
@@ -167,6 +168,8 @@ export default function MatchDeepDive() {
   const [context, setContext] = useState<MatchContext | null>(null);
   /** O exagero medido de cada mercado. Vazio enquanto não chega. */
   const [tuning, setTuning] = useState<Record<string, number>>({});
+  /** O que o nosso próprio dinheiro já fez em mercados como estes. */
+  const [patterns, setPatterns] = useState<Patterns | null>(null);
   const [odds, setOdds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -275,6 +278,12 @@ export default function MatchDeepDive() {
     fetchMarketCalibration()
       .then((rows) => {
         if (!cancelled) setTuning(adjustments(rows));
+      })
+      .catch(() => undefined);
+
+    fetchSettledLegs()
+      .then((legs) => {
+        if (!cancelled) setPatterns(readPatterns(legs));
       })
       .catch(() => undefined);
     return () => {
@@ -411,6 +420,10 @@ export default function MatchDeepDive() {
             derived={context?.market?.derived ?? []}
             record={record}
             adjustments={tuning}
+            absences={context?.absences ?? null}
+            teams={{ home: match.home_name, away: match.away_name }}
+            homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
+            patterns={patterns}
           />
         </motion.div>
 
