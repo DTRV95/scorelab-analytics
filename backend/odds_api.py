@@ -191,6 +191,28 @@ def _median(values: List[float]) -> float:
     return (ordered[middle - 1] + ordered[middle]) / 2
 
 
+def _days_around(day: str) -> set:
+    """O dia pedido, o anterior e o seguinte.
+
+    Um jogo às 23:00 de sábado em Lisboa é domingo em metade do mundo, e
+    cada fonte arredonda a data por fuso seu. Aceitar os três dias custa
+    uma comparação a mais e evita perder os jogos da noite; o nome das
+    duas equipas continua a ser quem decide.
+    """
+    if len(day) != 10:
+        return set()
+    import datetime
+
+    try:
+        base = datetime.date.fromisoformat(day)
+    except ValueError:
+        return set()
+    return {
+        (base + datetime.timedelta(days=offset)).isoformat()
+        for offset in (-1, 0, 1)
+    }
+
+
 def odds_for(
     league: str, home: str, away: str, kickoff: str, trace: Optional[Dict] = None
 ) -> Optional[Dict[str, float]]:
@@ -245,13 +267,26 @@ def odds_for(
     # devolve nada.
     from injury_data import NAME_MATCH_FLOOR, _similar
 
+    # O dia do pontapé de saída, com o anterior e o seguinte.
+    #
+    # A hora deles é UTC e a nossa também, mas um jogo às 19:30 de sábado
+    # em Lisboa é 23:30 de sábado em São Paulo e 02:30 de domingo em
+    # Tóquio — e cada fonte arredonda a data à sua maneira. Exigir o dia
+    # exacto deixava de fora jogos à noite, que é quando eles são.
     day = (kickoff or "")[:10]
+    nearby = _days_around(day)
+
     best, best_score = None, 0.0
+    considered = []
     for game in listing:
         if not isinstance(game, dict):
             continue
-        if day and not str(game.get("commence_time", "")).startswith(day):
+        when = str(game.get("commence_time", ""))
+        if nearby and when[:10] not in nearby:
             continue
+        considered.append(
+            f"{game.get('home_team')} vs {game.get('away_team')} ({when[:16]})"
+        )
         score = min(
             _similar(home, game.get("home_team") or ""),
             _similar(away, game.get("away_team") or ""),
@@ -261,6 +296,7 @@ def odds_for(
 
     if trace is not None:
         trace["games_seen"] = len(listing)
+        trace["considered"] = considered[:12]
         trace["best_score"] = round(best_score, 3)
 
     if best is None or best_score < NAME_MATCH_FLOOR:
