@@ -10,7 +10,12 @@ import { buildApiUrl } from "@/lib/apiConfig";
 
 export interface Absence {
   name: string;
+  /** Se é certo ou dúvida. */
   status: string;
+  /** Porquê — lesão, castigo, o que for. */
+  reason?: string;
+  /** Quando se espera que volte, quando se sabe. */
+  back?: string;
 }
 
 export interface Headline {
