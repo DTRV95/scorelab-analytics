@@ -212,12 +212,18 @@ def account_status() -> Dict[str, Any]:
     }
 
 
-def all_events() -> Optional[List[Dict[str, Any]]]:
-    """Os jogos que eles têm à mão, com o que vier agarrado."""
+def all_events(day: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
+    """Os jogos de um dia, ou os que eles derem por omissão.
+
+    Sem data vêm os de hoje — cinquenta — e um jogo de sábado não está
+    lá. Pede-se pelo dia; se eles não souberem filtrar, fica a lista de
+    sempre, que é melhor do que nada.
+    """
     if not is_configured():
         return None
 
-    remembered = _cached("events", EVENTS_TTL)
+    key = f"events:{day or 'hoje'}"
+    remembered = _cached(key, EVENTS_TTL)
     if remembered is not None:
         return remembered
 
@@ -225,17 +231,26 @@ def all_events() -> Optional[List[Dict[str, Any]]]:
     if not found:
         return None
 
-    params = {"include": found["include"]} if found.get("include") else None
-    try:
-        payload = _fetch(found["path"], found["style"], params)
-    except Exception:
-        return None
+    params: Dict[str, Any] = {}
+    if found.get("include"):
+        params["include"] = found["include"]
+    if day:
+        params["date"] = day
 
-    events = _events_of(payload)
+    try:
+        payload = _fetch(found["path"], found["style"], params or None)
+    except Exception:
+        payload = None
+
+    events = _events_of(payload) if payload is not None else None
+    if events is None and day:
+        # O filtro pode não existir. A lista de sempre ainda pode ter o
+        # jogo, e a comparação de nomes é que decide.
+        return all_events()
     if events is None:
         return None
 
-    _store("events", events)
+    _store(key, events)
     return events
 
 
@@ -295,7 +310,8 @@ def for_match(
     Como em toda esta casa: nada e lista vazia não são a mesma coisa. Uma
     lista vazia diz "estão todos bons"; nada diz "ninguém olhou".
     """
-    events = all_events()
+    day = (kickoff or "")[:10]
+    events = all_events(day or None)
     if events is None:
         if trace is not None:
             trace["reason"] = "A fonte de baixas não respondeu."
@@ -304,7 +320,7 @@ def for_match(
     from injury_data import NAME_MATCH_FLOOR, _similar
     from odds_api import _days_around
 
-    nearby = _days_around((kickoff or "")[:10])
+    nearby = _days_around(day)
     best, best_score, swapped_at_best = None, 0.0, False
 
     for event in events:
@@ -326,6 +342,11 @@ def for_match(
     if trace is not None:
         trace["events_seen"] = len(events)
         trace["best_score"] = round(best_score, 3)
+        trace["considered"] = [
+            f"{_teams_of(e)[0]} vs {_teams_of(e)[1]}"
+            for e in events
+            if _teams_of(e)[0]
+        ][:10]
 
     if best is None or best_score < NAME_MATCH_FLOOR:
         if trace is not None:

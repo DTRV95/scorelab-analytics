@@ -336,3 +336,45 @@ def test_bzzoiro_jogo_sem_lista_de_baixas_nao_vira_lista_vazia():
 
     assert got is None
     assert "sem lista de indisponíveis" in rastreio["reason"]
+
+
+def test_bzzoiro_pede_os_jogos_do_dia_do_jogo():
+    # Sem data vêm os de hoje, e um jogo de sábado não está lá.
+    calls = []
+    _bzz(
+        {"/api/events/": EVENTS},
+        lambda: bzzoiro_data.for_match(
+            "FC Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
+        ),
+        calls=calls,
+    )
+
+    assert any("date=2026-10-24" in url for url, _ in calls)
+
+
+def test_bzzoiro_volta_a_lista_de_sempre_se_o_filtro_nao_existir():
+    chamadas = {"n": 0}
+
+    def recusa_o_filtro(request, timeout=None):
+        url = request.full_url
+        if "date=" in url:
+            raise urllib.error.HTTPError(url, 400, "sem filtro", None, None)
+        chamadas["n"] += 1
+        return _Answer(json.dumps(EVENTS).encode("utf-8"))
+
+    original_open = urllib.request.urlopen
+    original_key = bzzoiro_data.get_api_key
+    bzzoiro_data.forget()
+    bzzoiro_data.get_api_key = lambda: "chave"
+    urllib.request.urlopen = recusa_o_filtro
+    try:
+        got = bzzoiro_data.for_match(
+            "FC Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        bzzoiro_data.get_api_key = original_key
+        bzzoiro_data.forget()
+
+    assert got is not None
+    assert [p["name"] for p in got["FC Porto"]] == ["Um"]

@@ -146,13 +146,15 @@ def data_match_context(
     abriu era ficar sem nenhuma para os que se abrem mesmo.
     """
     market = odds_api.priced(league, home, away, kickoff)
-    baixas = bzzoiro_data.for_match(home, away, kickoff)
+    baixas_trace: dict = {}
+    baixas = bzzoiro_data.for_match(home, away, kickoff, trace=baixas_trace)
 
     return {
         **market,
         # Nada e lista vazia não são a mesma coisa: a primeira diz que
         # ninguém olhou, a segunda que estão todos bons.
         "absences": baixas,
+        "absences_trace": None if baixas else baixas_trace,
         "news": news_data.for_teams(home, away),
     }
 
