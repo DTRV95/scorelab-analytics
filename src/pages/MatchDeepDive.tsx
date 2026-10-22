@@ -14,6 +14,7 @@ import {
   type PrefillForm,
 } from "@/components/MatchForm";
 import { MatchDossier } from "@/components/MatchDossier";
+import { SuggestionCard } from "@/components/SuggestionCard";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import { decide } from "@/lib/verdict";
 import {
@@ -397,6 +398,20 @@ export default function MatchDeepDive() {
           </div>
           <p className="sl-meta mt-2 text-[11px]">Golos esperados</p>
         </motion.header>
+
+        {/* À cabeça de tudo, logo a seguir ao nome do jogo: o resto da
+            página é material para confirmar uma decisão, e alguém tem de
+            a tomar primeiro. */}
+        <motion.div variants={fadeUp}>
+          <SuggestionCard
+            markets={match.mercados}
+            amostraPct={match.amostra_pct}
+            prices={context?.market?.odds ?? null}
+            implied={context?.market?.implied ?? null}
+            record={record}
+            adjustments={tuning}
+          />
+        </motion.div>
 
         {/* Antes do valor, de propósito: o que falta saber muda o que vale
             a pena fazer com o que se sabe. */}

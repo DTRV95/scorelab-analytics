@@ -77,6 +77,17 @@ export function onShortlist(match: Pick): boolean {
  * A rampa entre 55 e 60 existe para não haver um degrau: sem ela, 59,9%
  * e 60,1% pediriam preços a treze cêntimos de distância.
  */
+/**
+ * Onze pontos, que é o extremo pessimista do que está medido.
+ *
+ * Em 1695 previsões conferidas, acima dos 60% o modelo promete 69,0% e
+ * entrega 62,4%: um desvio de 6,6 pontos com margem de 4,8. O valor
+ * central seria 6,6 e o pior caso plausível é 11,4.
+ *
+ * Fica o pior caso de propósito. Descontar de mais custa uma aposta que
+ * não se fez; descontar de menos custa dinheiro. Entre os dois erros,
+ * só um é recuperável.
+ */
 const OVERSELL_PP = 11;
 const OVERSELL_FROM = 55;
 const OVERSELL_FULL = 60;
