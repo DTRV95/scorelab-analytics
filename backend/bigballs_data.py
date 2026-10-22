@@ -214,6 +214,23 @@ def account_status() -> Dict[str, Any]:
             "attempts": attempts,
         }
 
+    # O embrulho por inteiro, uma vez: a primeira lista que encontrámos
+    # trazia jogadores e não lesões, e sem ver os ramos todos isto são
+    # idas ao ar às cegas, uma por palpite.
+    raw: Dict[str, Any] = {}
+    try:
+        payload = _fetch(found["auth"], "/injuries", {"sport": found["sport"]})
+        inside = ((payload.get("data") or {}).get("injuries")) if isinstance(payload, dict) else None
+        if isinstance(inside, dict):
+            for name, value in list(inside.items())[:12]:
+                raw[name] = (
+                    f"[{len(value)} × {_shape_of(value[0], depth=2)}]"
+                    if isinstance(value, list) and value
+                    else _shape_of(value, depth=2)
+                )
+    except Exception as exc:
+        raw["erro"] = f"{type(exc).__name__}"
+
     rows = all_injuries() or []
     teams = sorted({_team_of(row) for row in rows if _team_of(row)})
     # A forma de uma linha, para se confirmar que estamos a ler os campos
@@ -229,6 +246,7 @@ def account_status() -> Dict[str, Any]:
         "teams_listed": len(teams),
         "sample_teams": teams[:15],
         "row_shape": row_shape,
+        "branches": raw,
         "covered_leagues": sorted(COVERED_LEAGUES),
     }
 
