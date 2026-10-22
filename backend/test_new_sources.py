@@ -349,3 +349,31 @@ def test_a_forma_aguenta_o_que_lhe_derem():
     assert bigballs_data._shape_of([]) == "[]"
     assert bigballs_data._shape_of(None) == "NoneType"
     assert bigballs_data._shape_of(7) == "int"
+
+
+def test_bigballs_acha_a_lista_mesmo_embrulhada_em_objectos():
+    # É assim que a resposta deles vem: data.injuries é um objecto, e a
+    # lista está lá dentro com outro nome.
+    plano = {
+        "data": {"injuries": {"count": 1, "items": [
+            {"player": {"name": "Y", "team": {"name": "Arsenal"}}}
+        ]}},
+        "meta": {"as_of": "2026-10-21"},
+        "error": None,
+    }
+    got = _run(bigballs_data, bigballs_data.all_injuries, {"sport=football": plano})
+
+    assert len(got) == 1
+    assert got[0]["player"]["name"] == "Y"
+
+
+def test_bigballs_nao_confunde_outra_lista_qualquer_com_lesoes():
+    # A lista de lesionados vem primeiro no sítio certo; uma lista de
+    # avisos noutro canto não pode tomar-lhe o lugar.
+    plano = {
+        "warnings": [{"code": "x"}],
+        "data": {"injuries": {"items": [{"player": {"name": "Certo"}}]}},
+    }
+    got = _run(bigballs_data, bigballs_data.all_injuries, {"sport=football": plano})
+
+    assert got[0]["player"]["name"] == "Certo"

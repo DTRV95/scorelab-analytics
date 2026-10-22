@@ -109,17 +109,48 @@ def _shape_of(payload: Any, depth: int = 2) -> str:
     return type(payload).__name__
 
 
+def _first_list_of_rows(node: Any, depth: int = 4) -> Optional[List[Dict[str, Any]]]:
+    """A primeira lista de objectos que houver aqui dentro.
+
+    Eles embrulham a resposta em `data.injuries`, e `injuries` não é a
+    lista — é outro objecto, com a lista algures lá dentro. Em vez de
+    adivinhar o nome do campo e voltar a falhar, procura-se.
+    """
+    if isinstance(node, list):
+        rows = [row for row in node if isinstance(row, dict)]
+        return rows or None
+    if isinstance(node, dict) and depth > 0:
+        for value in node.values():
+            found = _first_list_of_rows(value, depth - 1)
+            if found:
+                return found
+    return None
+
+
 def _rows_of(payload: Any) -> Optional[List[Dict[str, Any]]]:
-    """A lista de lesões lá de dentro, seja como for que a embrulhem."""
+    """A lista de lesões lá de dentro, seja como for que a embrulhem.
+
+    Procura-se do sítio mais provável para o mais largo, para uma lista
+    qualquer noutro canto da resposta não passar por lesionados.
+    """
     if isinstance(payload, list):
         return [row for row in payload if isinstance(row, dict)]
     if not isinstance(payload, dict):
         return None
-    for place in (payload.get("data"), payload):
-        if isinstance(place, dict):
-            rows = place.get("injuries")
-            if isinstance(rows, list):
-                return [row for row in rows if isinstance(row, dict)]
+
+    data = payload.get("data")
+    places = [
+        (data or {}).get("injuries") if isinstance(data, dict) else None,
+        payload.get("injuries"),
+        data,
+        payload,
+    ]
+    for place in places:
+        if place is None:
+            continue
+        found = _first_list_of_rows(place)
+        if found is not None:
+            return found
     return None
 
 
@@ -185,6 +216,9 @@ def account_status() -> Dict[str, Any]:
 
     rows = all_injuries() or []
     teams = sorted({_team_of(row) for row in rows if _team_of(row)})
+    # A forma de uma linha, para se confirmar que estamos a ler os campos
+    # certos sem precisar de outra ida ao ar.
+    row_shape = _shape_of(rows[0], depth=3) if rows else "[]"
     return {
         "configured": True,
         "accepted": True,
@@ -194,6 +228,7 @@ def account_status() -> Dict[str, Any]:
         "rows": len(rows),
         "teams_listed": len(teams),
         "sample_teams": teams[:15],
+        "row_shape": row_shape,
         "covered_leagues": sorted(COVERED_LEAGUES),
     }
 
