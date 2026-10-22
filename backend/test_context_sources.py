@@ -54,16 +54,56 @@ def _news(by_url, fn=None, calls=None):
         news_data.forget()
 
 
-def test_junta_os_titulos_dos_varios_jornais():
+def test_le_a_primeira_pagina_do_jornal():
+    got = _news({"record.pt": _rss("Notícia do Record")})
+
+    assert [item["source"] for item in got] == ["Record"]
+
+
+def test_tira_o_embrulho_do_cdata_ao_titulo():
+    # Chegava ao ecrã como "<![CDATA[ Messi revela... ]]>".
+    embrulhado = _rss("<![CDATA[ Messi revela os dois golos ]]>")
+    got = _news({"record.pt": embrulhado})
+
+    assert got[0]["title"] == "Messi revela os dois golos"
+
+
+def test_procura_por_equipa_e_separa_o_jornal_do_titulo():
+    # O Google põe o jornal no fim do título, a seguir a um travessão.
     got = _news(
         {
-            "record.pt": _rss("Notícia do Record"),
-            "maisfutebol": _rss("Notícia do Maisfutebol"),
-        }
+            "news.google.com": _rss("Porto prepara o clássico - Record"),
+            "record.pt": _rss("Outra coisa qualquer"),
+        },
+        fn=lambda: news_data.about("FC Porto"),
     )
 
-    fontes = {item["source"] for item in got}
-    assert fontes == {"Record", "Maisfutebol"}
+    assert got[0]["title"] == "Porto prepara o clássico"
+    assert got[0]["source"] == "Record"
+
+
+def test_a_pesquisa_leva_o_nome_da_equipa_e_a_janela():
+    calls = []
+    _news(
+        {"news.google.com": _rss("Seja o que for")},
+        fn=lambda: news_data.about("Gil Vicente"),
+        calls=calls,
+    )
+    pedido = calls[0]
+
+    assert "Gil+Vicente" in pedido
+    assert "when%3A7d" in pedido
+    assert "hl=pt-PT" in pedido
+
+
+def test_a_primeira_pagina_entra_de_reforco_quando_a_pesquisa_falha():
+    got = _news(
+        {"record.pt": _rss("Benfica vence fora")},
+        fn=lambda: news_data.for_teams("SL Benfica", "Gil Vicente"),
+    )
+
+    assert [i["title"] for i in got["SL Benfica"]] == ["Benfica vence fora"]
+    assert got["Gil Vicente"] == []
 
 
 def test_um_jornal_em_baixo_nao_leva_os_outros_atras():

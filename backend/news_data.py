@@ -12,6 +12,7 @@ existem, e é precisamente nesta secção que se acredita.
 import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,11 +23,17 @@ FEED_TTL = 30 * 60
 WINDOW_DAYS = 7
 PER_TEAM = 6
 
-FEEDS = (
-    ("Record", "https://www.record.pt/rss/"),
-    ("Maisfutebol", "https://www.maisfutebol.com.pt/rss/all.xml"),
-    ("Maisfutebol", "https://www.maisfutebol.com.pt/rss/noticias.xml"),
-)
+# A primeira página do Record, que serve de pano de fundo. Os feeds do
+# Maisfutebol saíram: vinham onze e oito títulos, velhos e alguns sem
+# sentido ("Tamagnini", "ffgg"), que é um feed abandonado.
+FEEDS = (("Record", "https://www.record.pt/rss/"),)
+
+# E, por equipa, a pesquisa do Google Notícias — sem chave e sem conta.
+#
+# Esperar que uma equipa concreta apareça nos vinte títulos da primeira
+# página de um jornal é esperar sentado: num jogo do Gil Vicente não
+# aparece nenhum. Procurar pelo nome dela resolve isso num pedido.
+SEARCH_URL = "https://news.google.com/rss/search"
 
 _cache: Dict[str, Tuple[float, Any]] = {}
 
@@ -51,7 +58,19 @@ def _store(key: str, value: Any) -> None:
 
 
 def _text(node: Optional[ET.Element]) -> str:
-    return (node.text or "").strip() if node is not None else ""
+    """O texto de um nó, já sem o embrulho.
+
+    Alguns feeds entregam o título dentro de um CDATA que chega aqui como
+    texto literal, "<![CDATA[ Messi revela... ]]>", e era assim que ele
+    ia parar ao ecrã.
+    """
+    if node is None:
+        return ""
+    raw = (node.text or "").strip()
+    match = re.fullmatch(r"<!\[CDATA\[(.*)\]\]>", raw, re.DOTALL)
+    if match:
+        raw = match.group(1)
+    return raw.strip()
 
 
 def _when(raw: str) -> Optional[float]:
@@ -149,22 +168,74 @@ def _mentions(title: str, words: set) -> bool:
     )
 
 
+def about(team: str) -> List[Dict[str, Any]]:
+    """O que se escreveu sobre esta equipa nos últimos sete dias."""
+    if not team.strip():
+        return []
+
+    key = f"team:{team.lower()}"
+    remembered = _cached(key, FEED_TTL)
+    if remembered is not None:
+        return remembered
+
+    params = urllib.parse.urlencode(
+        {
+            "q": f'"{team}" futebol when:{WINDOW_DAYS}d',
+            "hl": "pt-PT",
+            "gl": "PT",
+            "ceid": "PT:pt",
+        }
+    )
+    try:
+        items = _fetch(f"{SEARCH_URL}?{params}")
+    except Exception:
+        return []
+
+    out = []
+    for item in items[:PER_TEAM]:
+        title, _, source = item["title"].rpartition(" - ")
+        out.append(
+            {
+                "title": title or item["title"],
+                "link": item["link"],
+                "at": item["at"],
+                # O Google põe o jornal no fim do título, a seguir a um
+                # travessão. Separado, cada um fica no seu sítio.
+                "source": source.strip() if title else "Google Notícias",
+            }
+        )
+
+    _store(key, out)
+    return out
+
+
 def for_teams(home: str, away: str) -> Dict[str, List[Dict[str, Any]]]:
-    """Os títulos da semana sobre cada uma das duas equipas."""
+    """Os títulos da semana sobre cada uma das duas equipas.
+
+    Procurados pelo nome de cada uma. A primeira página do Record entra
+    como reforço, para o caso de a pesquisa não trazer nada.
+    """
     from injury_data import _words
 
-    out: Dict[str, List[Dict[str, Any]]] = {home: [], away: []}
+    out: Dict[str, List[Dict[str, Any]]] = {}
     todos = headlines()
 
     for team in (home, away):
-        words = {word for word in _words(team) if len(word) > 3}
-        if not words:
-            continue
-        for item in todos:
-            if len(out[team]) >= PER_TEAM:
-                break
-            if _mentions(item["title"], words):
-                out[team].append(item)
+        encontrados = about(team)
+        vistos = {item["title"].lower() for item in encontrados}
+
+        if len(encontrados) < PER_TEAM:
+            words = {word for word in _words(team) if len(word) > 3}
+            for item in todos:
+                if len(encontrados) >= PER_TEAM:
+                    break
+                if item["title"].lower() in vistos:
+                    continue
+                if words and _mentions(item["title"], words):
+                    encontrados.append(item)
+                    vistos.add(item["title"].lower())
+
+        out[team] = encontrados
 
     return out
 
