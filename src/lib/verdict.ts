@@ -34,6 +34,13 @@ export interface Verdict {
 
 export interface VerdictInput {
   headline: { market: string; pct: number } | null;
+  /**
+   * O exagero medido deste mercado, em pontos, quando já se sabe.
+   *
+   * Sem isto, descontava-se o mesmo a todos — e o modelo não erra da
+   * mesma maneira no 1X e no "Mais de 2.5 Golos".
+   */
+  adjustmentPp?: number;
   amostraPct: number;
   record: AccuracyMarket | null;
   /** O preço mediano das casas, por mercado. */
@@ -76,8 +83,8 @@ export function decide(input: VerdictInput): Verdict {
   const { headline } = input;
   if (!headline) return empty;
 
-  const fair = measuredPct(headline.pct);
-  const minimum = minimumOdd(headline.pct);
+  const fair = measuredPct(headline.pct, input.adjustmentPp);
+  const minimum = minimumOdd(headline.pct, input.adjustmentPp);
   const price = input.prices?.[headline.market] ?? null;
   const mercado = input.implied?.[headline.market] ?? null;
   const edge = price && price > 1 ? fair - 100 / price : null;

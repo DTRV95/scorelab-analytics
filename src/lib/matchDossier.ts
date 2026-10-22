@@ -72,6 +72,8 @@ export interface DossierInput {
   record: AccuracyMarket | null;
   /** Quantas odds é que já foram escritas nesta página. */
   oddsTyped: number;
+  /** O exagero medido deste mercado, quando já se sabe qual é. */
+  adjustmentPp?: number;
   /**
    * O que as casas estão a pagar neste jogo, quando se sabe.
    *
@@ -289,7 +291,7 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
   const { headline } = input;
 
   if (headline) {
-    const medido = measuredPct(headline.pct);
+    const medido = measuredPct(headline.pct, input.adjustmentPp);
     const desconto = headline.pct - medido;
     if (desconto >= 1) {
       found.push({
@@ -309,7 +311,7 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
     const mercado = input.market?.implied[headline.market];
 
     if (typeof mercado === "number") {
-      const nosso = measuredPct(headline.pct);
+      const nosso = measuredPct(headline.pct, input.adjustmentPp);
       const gap = nosso - mercado;
       if (Math.abs(gap) >= 5) {
         found.push({

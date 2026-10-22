@@ -93,6 +93,7 @@ export function MatchDossier(props: DossierInput) {
     headline: props.headline,
     amostraPct: props.amostraPct,
     record: props.record,
+    adjustmentPp: props.adjustmentPp,
     prices: props.market?.odds ?? null,
     implied: props.market?.implied ?? null,
   });
