@@ -22,7 +22,7 @@ import {
 import { useFavourites } from "@/hooks/useFavourites";
 import type { ScoredMatch } from "@/lib/boardResults";
 import { useMaybePlanBoard } from "@/hooks/usePlanBoard";
-import { silentLeagues } from "@/lib/boardLeagues";
+import { awayToday, silentLeagues, whenLabel } from "@/lib/boardLeagues";
 import { draftSlip, useDraftSlip } from "@/hooks/useDraftSlip";
 import type { SlipLeg } from "@/lib/draftSlip";
 
@@ -1006,6 +1006,20 @@ export default function ProbabilityRadar() {
     return [...groups.entries()].map(([league, items]) => ({ league, items }));
   }, [currentDay, curtos, onlyShortlist, onlyFavourites, favoritos]);
 
+  /**
+   * As competições que hoje não jogam mas jogam mais à frente.
+   *
+   * O quadro mostra um dia de cada vez, e uma liga sem jogos nesse dia
+   * some-se sem dizer nada. O Brasileirão joga às 20:30 de Brasília,
+   * que em Lisboa é meia-noite do dia seguinte: falta sempre do dia em
+   * que se foi procurá-lo, e isso é indistinguível de uma avaria — que
+   * já lhe aconteceu duas vezes.
+   */
+  const foraHoje = useMemo(
+    () => (currentDay ? awayToday(currentDay.items, board) : []),
+    [currentDay, board],
+  );
+
   /** Quantos dos jogos deste dia estão marcados. */
   const marcadosHoje = useMemo(
     () =>
@@ -1285,6 +1299,18 @@ export default function ProbabilityRadar() {
                       );
                     })}
                   </div>
+
+                  {!yesterdayOpen && foraHoje.length > 0 && (
+                    <p className="sl-meta px-0.5 text-[11px] leading-4">
+                      Não joga hoje:{" "}
+                      {foraHoje
+                        .map(
+                          (row) => `${row.league} (${whenLabel(row.next)})`,
+                        )
+                        .join(" · ")}
+                      .
+                    </p>
+                  )}
 
                   {/* O dia lido pelo registo do próprio quadro: dupla
                       hipótese acima de 70%, que em 102 jogos já jogados e

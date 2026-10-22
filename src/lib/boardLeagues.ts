@@ -76,3 +76,73 @@ export function leagueCounts(matches: BoardMatch[]): LeagueCount[] {
       (a, b) => b.count - a.count || a.league.localeCompare(b.league, "pt")
     );
 }
+
+export interface LeagueLater {
+  league: string;
+  /** O pontapé de saída do próximo jogo dela, em ISO. */
+  next: string;
+}
+
+/**
+ * As competições que não jogam hoje mas jogam mais à frente.
+ *
+ * O quadro mostra um dia de cada vez, e uma liga sem jogos nesse dia
+ * desaparece sem explicação. Para a maioria das semanas isso é
+ * inofensivo — mas o Brasileirão joga às 20:30 de Brasília, que em
+ * Lisboa é meia-noite do dia seguinte, e por isso falta sistematicamente
+ * do dia em que uma pessoa o foi procurar. Já desapareceu duas vezes por
+ * avaria a sério, e da terceira ninguém vai saber distinguir.
+ *
+ * Dizer "não joga hoje, joga sábado" custa uma linha e tira a pergunta
+ * do sítio onde ela não tem resposta.
+ */
+export function awayToday(
+  dayItems: BoardMatch[],
+  board: BoardMatch[],
+  reference?: Date,
+): LeagueLater[] {
+  const present = new Set(dayItems.map((match) => match.league));
+
+  // O dia em causa é o dos jogos que estão no ecrã; sem nenhum, é hoje.
+  const base =
+    reference ??
+    (dayItems[0]?.kickoff ? new Date(dayItems[0].kickoff) : new Date());
+  const cutoff = new Date(base);
+  cutoff.setHours(23, 59, 59, 999);
+
+  const out: LeagueLater[] = [];
+
+  for (const league of COVERED_LEAGUES) {
+    if (present.has(league)) continue;
+
+    const next = board
+      .filter((match) => match.league === league && match.kickoff)
+      .map((match) => match.kickoff as string)
+      .filter((kickoff) => new Date(kickoff).getTime() > cutoff.getTime())
+      .sort()[0];
+
+    if (next) out.push({ league, next });
+  }
+
+  return out;
+}
+
+/** "sábado", "amanhã" — como se diz, e não uma data por extenso. */
+export function whenLabel(kickoff: string, now = new Date()): string {
+  const when = new Date(kickoff);
+  if (Number.isNaN(when.getTime())) return "";
+
+  const dia = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const dias = Math.round((dia(when) - dia(now)) / 86400000);
+
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "amanhã";
+  if (dias < 7) {
+    return new Intl.DateTimeFormat("pt-PT", { weekday: "long" }).format(when);
+  }
+  return new Intl.DateTimeFormat("pt-PT", {
+    day: "numeric",
+    month: "short",
+  }).format(when);
+}
