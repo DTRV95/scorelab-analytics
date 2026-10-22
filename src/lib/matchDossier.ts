@@ -103,7 +103,10 @@ export interface DossierInput {
    */
   absences?: Record<string, { name: string; status: string }[]> | null;
   /** Os títulos da semana sobre cada equipa, como saíram dos jornais. */
-  news?: Record<string, { title: string }[]> | null;
+  news?: Record<
+    string,
+    { title: string; link?: string; source?: string }[]
+  > | null;
 }
 
 /** Quantas pessoas faltam às duas equipas, ao todo. */
