@@ -397,6 +397,34 @@ def test_as_duplas_saem_das_simples_ja_sem_margem():
     assert got["2X"] == round(got["Fora"] + got["Empate"], 1)
 
 
+def test_duplas_hipoteses_ganham_preco_tirado_das_simples():
+    # A fonte só dá 1X2 e totais, e o 1X e o 2X são os dois mercados
+    # que esta casa joga: sem preço, nunca podiam ser sugeridos nem
+    # recusados. Repartir o dinheiro por Casa e Empate a 2,00 e 3,50
+    # paga 1/(0,5 + 0,2857) = 1,27.
+    got = odds_api.with_doubles({"Casa": 2.00, "Empate": 3.50, "Fora": 4.00})
+
+    assert got["1X"] == 1.27
+    assert got["2X"] == round(1 / (1 / 4.00 + 1 / 3.50), 2)
+    # E as simples ficam exactamente como estavam.
+    assert got["Casa"] == 2.00
+
+
+def test_sem_os_tres_resultados_nao_se_inventa_dupla():
+    got = odds_api.with_doubles({"Casa": 2.00, "Mais de 2.5 Golos": 1.90})
+
+    assert "1X" not in got
+    assert "2X" not in got
+
+
+def test_uma_dupla_cotada_a_serio_manda_sobre_a_deduzida():
+    got = odds_api.with_doubles(
+        {"Casa": 2.00, "Empate": 3.50, "Fora": 4.00, "1X": 1.30}
+    )
+
+    assert got["1X"] == 1.30
+
+
 def test_mais_e_menos_de_golos_normalizam_entre_si():
     got = odds_api.implied_pct(
         {"Mais de 2.5 Golos": 1.90, "Menos de 2.5 Golos": 1.95}

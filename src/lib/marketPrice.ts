@@ -42,6 +42,14 @@ export interface MarketPrice {
   /** Já sem a margem da casa, retirada no servidor. */
   implied: Record<string, number>;
   /**
+   * Quais destes preços ninguém cotou.
+   *
+   * A fonte só dá 1X2 e totais. O 1X e o 2X saem exactos das três
+   * simples — e são os dois mercados que esta casa mais joga — mas não
+   * são cotações, são o que as cotações obrigam. Quem lê fica a saber.
+   */
+  derived: string[];
+  /**
    * As duas fontes discordam sobre quem joga em casa.
    *
    * O preço não sofre com isso, porque vai pelo nome da equipa. A nossa
@@ -75,6 +83,7 @@ export async function fetchMatchContext(
       ? {
           odds: data.odds,
           implied: data.implied_pct ?? {},
+          derived: Array.isArray(data.derived) ? data.derived.map(String) : [],
           homeAwayDisagrees: Boolean(data.home_away_disagrees),
         }
       : null;
