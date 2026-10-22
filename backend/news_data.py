@@ -167,3 +167,42 @@ def for_teams(home: str, away: str) -> Dict[str, List[Dict[str, Any]]]:
                 out[team].append(item)
 
     return out
+
+
+def probe() -> Dict[str, Any]:
+    """Que jornais respondem, com quantos títulos e quais.
+
+    Os feeds vêm vazios na página do jogo e daqui não se chega a eles,
+    por isso a pergunta — "é o jornal que não responde ao servidor, ou
+    somos nós que não reconhecemos a equipa no título?" — só se responde
+    de lá.
+    """
+    feeds = []
+    for source, url in FEEDS:
+        try:
+            items = _fetch(url)
+        except urllib.error.HTTPError as exc:
+            feeds.append({"source": source, "url": url, "error": f"HTTP {exc.code}"})
+            continue
+        except Exception as exc:
+            feeds.append(
+                {"source": source, "url": url, "error": f"{type(exc).__name__}: {exc}"}
+            )
+            continue
+        feeds.append(
+            {
+                "source": source,
+                "url": url,
+                "items": len(items),
+                "sample": [item["title"] for item in items[:4]],
+                "dated": sum(1 for item in items if item["at"] is not None),
+            }
+        )
+
+    forget()
+    kept = headlines()
+    return {
+        "feeds": feeds,
+        "kept_after_window": len(kept),
+        "sample_kept": [item["title"] for item in kept[:6]],
+    }

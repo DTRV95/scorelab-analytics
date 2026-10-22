@@ -118,6 +118,7 @@ def data_sources(request: Request):
         "baixas_bzzoiro": bzzoiro_data.account_status(),
         "lesoes_bigballs": bigballs_data.account_status(),
         "lesoes_api_football": injury_data.account_status(),
+        "noticias": news_data.probe(),
     }
 
 
