@@ -1,4 +1,5 @@
-import { ClipboardList, ShieldAlert } from "lucide-react";
+import type { ReactNode } from "react";
+import { ClipboardList, Newspaper, ShieldAlert, UserMinus } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import {
   buildDossier,
@@ -48,11 +49,39 @@ function Line({ line }: { line: DossierLine }) {
   );
 }
 
+function Bloco({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Newspaper;
+  title: string;
+  children: ReactNode;
+}) {
+  // min-w-0: sem isto, uma célula de grelha cresce com o conteúdo em vez
+  // de o cortar, e um título comprido saía pela borda fora sem sequer
+  // mostrar as reticências.
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 export function MatchDossier(props: DossierInput) {
   // Dez linhas e meia dúzia de comparações: não vale a memória de as
   // guardar entre desenhos nem o cuidado de manter as dependências certas.
   const dossier = buildDossier(props);
   const contra = objections(props, dossier);
+  // Só as equipas que têm alguma coisa: um nome com uma lista vazia por
+  // baixo ocupa espaço para não dizer nada.
+  const noticias = Object.entries(props.news ?? {}).filter(
+    ([, items]) => items.length > 0,
+  );
 
   return (
     <section className="sl-card overflow-hidden">
@@ -76,6 +105,58 @@ export function MatchDossier(props: DossierInput) {
           <Line key={line.key} line={line} />
         ))}
       </div>
+
+      {(props.absences || noticias.length > 0) && (
+        <div className="grid gap-4 border-t border-border px-4 py-3 md:grid-cols-2">
+          {props.teams && props.absences && (
+            <Bloco icon={UserMinus} title="Quem está de fora">
+              {[props.teams.home, props.teams.away].map((side) => {
+                const lista = props.absences?.[side] ?? [];
+                return (
+                  <p key={side} className="text-[12px] leading-5">
+                    <span className="font-semibold text-foreground">{side}</span>{" "}
+                    <span className="text-muted-foreground">
+                      {lista.length === 0
+                        ? "ninguém, pelo que se sabe"
+                        : lista
+                            .map((p) =>
+                              p.status ? `${p.name} (${p.status})` : p.name,
+                            )
+                            .join(", ")}
+                    </span>
+                  </p>
+                );
+              })}
+            </Bloco>
+          )}
+
+          {noticias.length > 0 && (
+            <Bloco icon={Newspaper} title="Notícias da semana">
+              {noticias.map(([side, items]) => (
+                <div key={side} className="space-y-1">
+                  <p className="text-[12px] font-semibold text-foreground">
+                    {side}
+                  </p>
+                  {items.slice(0, 3).map((item) => (
+                    <a
+                      key={item.link || item.title}
+                      href={item.link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="sl-tap block truncate text-[12px] leading-5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      {item.title}
+                      {item.source ? (
+                        <span className="sl-meta"> · {item.source}</span>
+                      ) : null}
+                    </a>
+                  ))}
+                </div>
+              ))}
+            </Bloco>
+          )}
+        </div>
+      )}
 
       {contra.length > 0 && (
         <div className="border-t border-border px-4 py-3">
