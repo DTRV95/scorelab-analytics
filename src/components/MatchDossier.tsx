@@ -1,11 +1,20 @@
 import type { ReactNode } from "react";
-import { ClipboardList, Newspaper, ShieldAlert, UserMinus } from "lucide-react";
+import {
+  Check,
+  ClipboardList,
+  Hourglass,
+  Newspaper,
+  ShieldAlert,
+  UserMinus,
+  X,
+} from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import {
   describeAbsence,
   sortAbsences,
   statusLabel,
 } from "@/lib/absences";
+import { CALL_LABEL, callTone, decide } from "@/lib/verdict";
 import {
   buildDossier,
   enumerate,
@@ -80,6 +89,13 @@ function Bloco({
 export function MatchDossier(props: DossierInput) {
   // Dez linhas e meia dúzia de comparações: não vale a memória de as
   // guardar entre desenhos nem o cuidado de manter as dependências certas.
+  const veredicto = decide({
+    headline: props.headline,
+    amostraPct: props.amostraPct,
+    record: props.record,
+    prices: props.market?.odds ?? null,
+    implied: props.market?.implied ?? null,
+  });
   const dossier = buildDossier(props);
   const contra = objections(props, dossier);
   // Só as equipas que têm alguma coisa: um nome com uma lista vazia por
@@ -105,6 +121,56 @@ export function MatchDossier(props: DossierInput) {
 
       {/* Duas colunas no ecrã grande; no telemóvel uma só, que a dez linhas
           lado a lado o que falta deixava de se ler como uma lista. */}
+      {/* O veredicto à cabeça.
+          Por baixo há factos que chegam para quem os quiser ler, e é
+          isso que esta secção sempre fez. Mas às dez da manhã de sábado,
+          com quinze jogos à frente, ninguém faz quinze sínteses — e uma
+          casa que dá factos e nunca se compromete está a empurrar o
+          trabalho todo para quem menos dados tem. */}
+      <div
+        className={`flex items-start gap-3 border-b border-border px-4 py-3 ${
+          callTone(veredicto.call) === "good"
+            ? "bg-[hsl(var(--sl-green))]/[0.06]"
+            : callTone(veredicto.call) === "bad"
+              ? "bg-destructive/[0.05]"
+              : "bg-muted/40"
+        }`}
+      >
+        <span
+          className={`mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full ${
+            callTone(veredicto.call) === "good"
+              ? "bg-[hsl(var(--sl-green))]/15 text-[hsl(var(--sl-green))]"
+              : callTone(veredicto.call) === "bad"
+                ? "bg-destructive/12 text-destructive"
+                : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {veredicto.call === "apostar" ? (
+            <Check className="h-4 w-4" strokeWidth={2.75} />
+          ) : veredicto.call === "passar" ? (
+            <X className="h-4 w-4" strokeWidth={2.75} />
+          ) : (
+            <Hourglass className="h-3.5 w-3.5" strokeWidth={2.5} />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p
+            className={`text-[13px] font-bold ${
+              callTone(veredicto.call) === "good"
+                ? "text-[hsl(var(--sl-green))]"
+                : callTone(veredicto.call) === "bad"
+                  ? "text-destructive"
+                  : "text-foreground"
+            }`}
+          >
+            {CALL_LABEL[veredicto.call]}
+          </p>
+          <p className="mt-0.5 text-[12px] leading-5 text-muted-foreground">
+            {veredicto.because}
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-x-6 gap-y-1.5 px-4 py-3 md:grid-cols-2">
         {dossier.lines.map((line) => (
           <Line key={line.key} line={line} />

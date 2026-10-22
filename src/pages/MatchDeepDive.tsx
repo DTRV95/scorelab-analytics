@@ -15,6 +15,8 @@ import {
 } from "@/components/MatchForm";
 import { MatchDossier } from "@/components/MatchDossier";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
+import { decide } from "@/lib/verdict";
+import { keepVerdict } from "@/lib/verdictRecord";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateNextBankrollBefore } from "@/lib/analysisStorage";
@@ -269,6 +271,31 @@ export default function MatchDeepDive() {
       }).length,
     [odds]
   );
+
+  // O veredicto fica escrito assim que há preço, com o preço desse
+  // momento. Não é para o ecrã — o ecrã já o mostra — é para daqui a um
+  // mês se poder contar quantos acertaram.
+  useEffect(() => {
+    if (!match || !context?.market) return;
+
+    const veredicto = decide({
+      headline: match.headline_market
+        ? { market: match.headline_market, pct: match.headline_pct }
+        : null,
+      amostraPct: match.amostra_pct,
+      record: record.get(match.headline_market) ?? null,
+      prices: context.market.odds,
+      implied: context.market.implied,
+    });
+
+    keepVerdict(
+      match.fixture_id,
+      match.league,
+      match.kickoff,
+      match.headline_market,
+      veredicto,
+    ).catch(() => undefined);
+  }, [match, context, record]);
 
   const setOddsFor = (market: string, value: string) =>
     setOdds((previous) => ({ ...previous, [market]: value }));
