@@ -396,6 +396,27 @@ function BoardMatchRow({
             className="overflow-hidden"
           >
             <div className="space-y-4 border-t border-border bg-[hsl(var(--sl-surface))] px-3.5 py-4 sm:px-4">
+              {/* À cabeça, e não no fim.
+                  Estava debaixo de quinze mercados e de um painel de
+                  forma, depois de um parágrafo a explicá-lo. Mas é a
+                  única coisa aqui que mostra quem está lesionado, o que
+                  os jornais escreveram e a que preço o mercado está a
+                  pôr o jogo — e isso decide-se antes de se olhar para a
+                  lista, não depois de se chegar ao fim dela. */}
+              <div>
+                <Button
+                  className="sl-btn-primary h-10 w-full gap-2 text-xs"
+                  onClick={onContinue}
+                >
+                  Análise avançada
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+                <p className="sl-meta mt-1.5 px-0.5 text-[11px] leading-4">
+                  Lesionados, notícias da semana, preço do mercado e o que
+                  joga contra.
+                </p>
+              </div>
+
               {/* Antes dos quinze mercados: o que o registo do quadro diz
                   desta escolha em concreto — o mercado, a força do número e
                   o jogo, que são três perguntas diferentes. */}
@@ -487,20 +508,6 @@ function BoardMatchRow({
                 </AnimatePresence>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-3.5">
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Queres ver o jogo todo? A análise avançada abre-o numa página
-                  só dele, com as tuas odds em cada mercado para dizer onde
-                  está o valor, e como o modelo se tem portado nestes mercados.
-                </p>
-                <Button
-                  className="sl-btn-primary mt-3 h-10 w-full gap-2 text-xs"
-                  onClick={onContinue}
-                >
-                  Análise avançada
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
             </div>
           </motion.div>
         )}
