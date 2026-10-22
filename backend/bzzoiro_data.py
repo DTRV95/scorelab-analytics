@@ -74,6 +74,35 @@ def _fetch(path: str, style: str, params: Optional[Dict[str, Any]] = None) -> An
         return json.loads(response.read().decode("utf-8"))
 
 
+# Quantas páginas se seguem, no máximo. Um dia de futebol no mundo
+# inteiro passa das cinquenta de uma página; quatro chegam para os
+# nossos jogos sem transformar isto numa raspagem.
+MAX_PAGES = 4
+
+
+def _next_of(payload: Any) -> Optional[str]:
+    """O endereço da página seguinte, quando a resposta é paginada.
+
+    O embrulho com "results" e "next" é o do Django REST Framework, que
+    é o que esta fonte usa. Seguir o "next" é melhor do que inventar um
+    "?page=2": se eles mudarem de maneira de paginar, o endereço deles
+    continua certo e o nosso palpite não.
+    """
+    if isinstance(payload, dict):
+        nxt = payload.get("next")
+        if isinstance(nxt, str) and nxt.startswith("http"):
+            return nxt
+    return None
+
+
+def _fetch_url(url: str, style: str) -> Any:
+    request = urllib.request.Request(
+        url, headers={"Authorization": f"{style} {get_api_key()}"}
+    )
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def _events_of(payload: Any) -> Optional[List[Dict[str, Any]]]:
     """A lista de jogos, seja como for que a embrulhem."""
     if isinstance(payload, list):
@@ -252,6 +281,23 @@ def all_events(day: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
         payload = None
 
     events = _events_of(payload) if payload is not None else None
+
+    # E as páginas seguintes, enquanto as houver: a Liga Portugal fica
+    # para lá das primeiras cinquenta num sábado.
+    pages = 1
+    while events is not None and pages < MAX_PAGES:
+        seguinte = _next_of(payload)
+        if not seguinte:
+            break
+        try:
+            payload = _fetch_url(seguinte, found["style"])
+        except Exception:
+            break
+        mais = _events_of(payload)
+        if not mais:
+            break
+        events = events + mais
+        pages += 1
     if events is None and day:
         # O filtro pode não existir. A lista de sempre ainda pode ter o
         # jogo, e a comparação de nomes é que decide.

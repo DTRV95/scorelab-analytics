@@ -380,3 +380,65 @@ def test_bzzoiro_volta_a_lista_de_sempre_se_o_filtro_nao_existir():
 
     assert got is not None
     assert [p["name"] for p in got["FC Porto"]] == ["Um"]
+
+
+def test_bzzoiro_segue_as_paginas_seguintes():
+    # A Liga Portugal fica para lá das primeiras cinquenta num sábado.
+    pagina1 = {
+        "results": [_event(home="Outro A", away="Outro B")],
+        "next": "https://sports.bzzoiro.com/api/events/?page=2",
+    }
+    pagina2 = {"results": [_event()], "next": None}
+    respostas = [pagina1, pagina2]
+
+    original_open = urllib.request.urlopen
+    original_key = bzzoiro_data.get_api_key
+    bzzoiro_data.forget()
+    bzzoiro_data.get_api_key = lambda: "chave"
+
+    def por_ordem(request, timeout=None):
+        url = request.full_url
+        if "page=2" in url:
+            return _Answer(json.dumps(pagina2).encode("utf-8"))
+        return _Answer(json.dumps(pagina1).encode("utf-8"))
+
+    urllib.request.urlopen = por_ordem
+    try:
+        got = bzzoiro_data.for_match(
+            "FC Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
+        )
+    finally:
+        urllib.request.urlopen = original_open
+        bzzoiro_data.get_api_key = original_key
+        bzzoiro_data.forget()
+
+    assert got is not None
+    assert [p["name"] for p in got["FC Porto"]] == ["Um"]
+
+
+def test_bzzoiro_nao_anda_a_paginar_para_sempre():
+    sempre_mais = {
+        "results": [_event(home="A", away="B")],
+        "next": "https://sports.bzzoiro.com/api/events/?page=9",
+    }
+    chamadas = {"n": 0}
+
+    original_open = urllib.request.urlopen
+    original_key = bzzoiro_data.get_api_key
+    bzzoiro_data.forget()
+    bzzoiro_data.get_api_key = lambda: "chave"
+
+    def infinito(request, timeout=None):
+        chamadas["n"] += 1
+        return _Answer(json.dumps(sempre_mais).encode("utf-8"))
+
+    urllib.request.urlopen = infinito
+    try:
+        bzzoiro_data.all_events("2026-10-24")
+    finally:
+        urllib.request.urlopen = original_open
+        bzzoiro_data.get_api_key = original_key
+        bzzoiro_data.forget()
+
+    # Uma da sonda mais quatro páginas, e pára.
+    assert chamadas["n"] <= 1 + bzzoiro_data.MAX_PAGES
