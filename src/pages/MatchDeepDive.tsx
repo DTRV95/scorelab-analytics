@@ -408,6 +408,7 @@ export default function MatchDeepDive() {
             amostraPct={match.amostra_pct}
             prices={context?.market?.odds ?? null}
             implied={context?.market?.implied ?? null}
+            derived={context?.market?.derived ?? []}
             record={record}
             adjustments={tuning}
           />

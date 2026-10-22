@@ -370,6 +370,36 @@ def odds_for(
 _ONE_X_TWO = ("Casa", "Empate", "Fora")
 
 
+def with_doubles(prices: Dict[str, float]) -> Dict[str, float]:
+    """As duplas hipóteses, tiradas das três simples.
+
+    A fonte só dá 1X2 e totais, por isso o 1X e o 2X chegavam cá sem
+    preço nenhum — e são precisamente os dois mercados que esta casa
+    joga. Sem preço, nunca podiam ser sugeridos nem recusados: ficavam
+    de fora da conversa, que é a pior das três coisas.
+
+    Saem exactos das simples. Apostar ao mesmo tempo em Casa e em
+    Empate, repartindo o dinheiro para receber o mesmo seja qual for o
+    que entra, paga 1/(1/Casa + 1/Empate) — e é isso que uma dupla
+    hipótese é. O preço traz a mesma margem que as três trazem, que é a
+    margem a que esta pessoa tem acesso.
+
+    Não é uma cotação: é o que as cotações desta casa obrigam. Quem o
+    usar fica a saber, pelo campo `derived`.
+    """
+    out = dict(prices)
+    trio = [prices.get(name) for name in _ONE_X_TWO]
+    if not all(isinstance(price, (int, float)) and price > 1 for price in trio):
+        return out
+
+    casa, empate, fora = trio
+    for name, pair in (("1X", (casa, empate)), ("2X", (fora, empate))):
+        if name not in out:
+            out[name] = round(1 / sum(1 / price for price in pair), 2)
+
+    return out
+
+
 def implied_pct(prices: Dict[str, float]) -> Dict[str, float]:
     """O que o preço do mercado diz, em probabilidade, sem a margem.
 
@@ -424,14 +454,20 @@ def priced(
         return {
             "odds": None,
             "implied_pct": None,
+            "derived": [],
             "home_away_disagrees": False,
             "detail": "Sem preço de mercado para este jogo.",
             "trace": trace,
         }
 
+    completo = with_doubles(prices)
+
     return {
-        "odds": prices,
-        "implied_pct": implied_pct(prices),
+        "odds": completo,
+        "implied_pct": implied_pct(completo),
+        # Quais destes preços ninguém cotou e nós deduzimos. Quem lê
+        # tem direito a saber a diferença.
+        "derived": sorted(set(completo) - set(prices)),
         # As duas fontes discordarem sobre quem joga em casa não estraga
         # o preço, que vai pelo nome. Fica guardado, sem alarido: medido
         # em jogos reais, acontece em dois terços deles.
