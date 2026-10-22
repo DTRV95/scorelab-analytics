@@ -424,3 +424,60 @@ def test_contexto_diz_quando_nao_ha_preco():
     assert answer["odds"] is None
     assert "Sem preço" in answer["detail"]
     assert "trace" in answer
+
+
+def test_odds_aceitam_o_jogo_que_a_fonte_poe_no_dia_seguinte():
+    # 23:00 de sábado em Lisboa é domingo noutros fusos, e cada fonte
+    # arredonda a data à sua maneira.
+    got = _run(
+        odds_api,
+        lambda: odds_api.odds_for(
+            "Premier League", "Chelsea", "Tottenham", "2026-10-24T23:00:00Z"
+        ),
+        {
+            "/v4/sports?": SPORTS,
+            "/v4/sports/soccer_epl/odds": [
+                _game("Chelsea", "Tottenham", "2026-10-25T00:00:00Z", 1.90)
+            ],
+        },
+    )
+
+    assert got is not None
+    assert got["Casa"] == 1.90
+
+
+def test_odds_continuam_a_ignorar_outra_jornada():
+    # Três dias de margem seria apanhar o jogo da semana seguinte.
+    got = _run(
+        odds_api,
+        lambda: odds_api.odds_for(
+            "Premier League", "Chelsea", "Tottenham", "2026-10-24T16:30:00Z"
+        ),
+        {
+            "/v4/sports?": SPORTS,
+            "/v4/sports/soccer_epl/odds": [
+                _game("Chelsea", "Tottenham", "2026-10-27T16:30:00Z", 1.90)
+            ],
+        },
+    )
+
+    assert got is None
+
+
+def test_o_rastreio_mostra_os_jogos_que_foram_considerados():
+    rastreio = {}
+    _run(
+        odds_api,
+        lambda: odds_api.odds_for(
+            "Premier League", "Arsenal", "Everton", "2026-10-24T16:30:00Z",
+            trace=rastreio,
+        ),
+        {
+            "/v4/sports?": SPORTS,
+            "/v4/sports/soccer_epl/odds": [
+                _game("Chelsea", "Tottenham", "2026-10-24T16:30:00Z", 1.90)
+            ],
+        },
+    )
+
+    assert "Chelsea vs Tottenham" in rastreio["considered"][0]
