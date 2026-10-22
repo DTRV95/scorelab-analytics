@@ -2,6 +2,11 @@ import type { ReactNode } from "react";
 import { ClipboardList, Newspaper, ShieldAlert, UserMinus } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import {
+  describeAbsence,
+  sortAbsences,
+  statusLabel,
+} from "@/lib/absences";
+import {
   buildDossier,
   enumerate,
   objections,
@@ -47,22 +52,6 @@ function Line({ line }: { line: DossierLine }) {
       </p>
     </div>
   );
-}
-
-/** Um ausente numa linha: o nome e o que lhe sabemos, sem repetições. */
-function describe(player: {
-  name: string;
-  status: string;
-  reason?: string;
-  back?: string;
-}): string {
-  const detalhe = [player.status, player.reason]
-    .map((part) => (part ?? "").trim())
-    .filter(Boolean)
-    // "out, out" acontece quando o motivo repete o estado.
-    .filter((part, index, all) => all.indexOf(part) === index);
-
-  return detalhe.length ? `${player.name} (${detalhe.join(", ")})` : player.name;
 }
 
 function Bloco({
@@ -127,16 +116,44 @@ export function MatchDossier(props: DossierInput) {
           {props.teams && props.absences && (
             <Bloco icon={UserMinus} title="Quem está de fora">
               {[props.teams.home, props.teams.away].map((side) => {
-                const lista = props.absences?.[side] ?? [];
+                const lista = sortAbsences(props.absences?.[side] ?? []);
                 return (
-                  <p key={side} className="text-[12px] leading-5">
-                    <span className="font-semibold text-foreground">{side}</span>{" "}
-                    <span className="text-muted-foreground">
-                      {lista.length === 0
-                        ? "ninguém, pelo que se sabe"
-                        : lista.map(describe).join(", ")}
-                    </span>
-                  </p>
+                  <div key={side} className="space-y-0.5">
+                    <p className="text-[12px] font-semibold text-foreground">
+                      {side}
+                    </p>
+                    {lista.length === 0 ? (
+                      <p className="text-[12px] leading-5 text-muted-foreground">
+                        ninguém, pelo que se sabe
+                      </p>
+                    ) : (
+                      lista.map((player) => {
+                        const duvida =
+                          statusLabel(player.status) === "em dúvida";
+                        return (
+                          /* Texto corrido com entrada pendente, não uma
+                             grelha: em flex, o motivo quebrava para
+                             baixo do próprio motivo e o "volta a 10 nov"
+                             ficava pendurado a meio da linha. */
+                          <p
+                            key={player.name}
+                            className="pl-3.5 text-[12px] leading-5 [text-indent:-0.875rem]"
+                          >
+                            <span
+                              aria-hidden
+                              className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${
+                                duvida ? "bg-muted-foreground/40" : "bg-destructive/70"
+                              }`}
+                            />
+                            <span className="text-foreground">{player.name}</span>{" "}
+                            <span className="sl-meta text-[11px]">
+                              {describeAbsence(player).join(" · ")}
+                            </span>
+                          </p>
+                        );
+                      })
+                    )}
+                  </div>
                 );
               })}
             </Bloco>
@@ -155,11 +172,17 @@ export function MatchDossier(props: DossierInput) {
                       href={item.link}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="sl-tap block truncate text-[12px] leading-5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      /* Sem truncate: um título cortado a meio não se lê,
+                         e ler o título é a razão de isto estar aqui. Duas
+                         linhas chegam para os títulos todos que vi, e o
+                         line-clamp trava os que não chegarem. */
+                      className="sl-tap block text-[12px] leading-5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     >
-                      {item.title}
+                      <span className="line-clamp-2">{item.title}</span>
                       {item.source ? (
-                        <span className="sl-meta"> · {item.source}</span>
+                        <span className="sl-meta block text-[10px] uppercase tracking-[0.1em]">
+                          {item.source}
+                        </span>
                       ) : null}
                     </a>
                   ))}
