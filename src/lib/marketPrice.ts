@@ -8,6 +8,28 @@ import { buildApiUrl } from "@/lib/apiConfig";
  * os dois discordam muito, quem costuma estar errado não é o mercado.
  */
 
+export interface Absence {
+  name: string;
+  status: string;
+}
+
+export interface Headline {
+  title: string;
+  link: string;
+  source: string;
+  at: number | null;
+}
+
+export interface MatchContext {
+  market: MarketPrice | null;
+  /**
+   * Quem falta, por equipa. Null quando ninguém olhou — que não é o
+   * mesmo que uma lista vazia, essa diz que estão todos bons.
+   */
+  absences: Record<string, Absence[]> | null;
+  news: Record<string, Headline[]>;
+}
+
 export interface MarketPrice {
   odds: Record<string, number>;
   /** Já sem a margem da casa, retirada no servidor. */
@@ -22,12 +44,12 @@ export interface MarketPrice {
   homeAwayDisagrees: boolean;
 }
 
-export async function fetchMarketPrice(
+export async function fetchMatchContext(
   league: string,
   home: string,
   away: string,
   kickoff: string | null,
-): Promise<MarketPrice | null> {
+): Promise<MatchContext | null> {
   if (!kickoff) return null;
 
   const query = new URLSearchParams({ league, home, away, kickoff });
@@ -37,13 +59,22 @@ export async function fetchMarketPrice(
   if (!response.ok) return null;
 
   const data = await response.json();
+
   // Sem preço não se devolve um objecto vazio: o dossiê distingue "não
-  // há" de "não encontrámos", e um vazio apagava essa diferença.
-  if (!data?.odds || typeof data.odds !== "object") return null;
+  // há" de "não encontrámos", e um vazio apagava essa diferença. O
+  // mesmo vale para as baixas, e por isso cada parte vem por si.
+  const market =
+    data?.odds && typeof data.odds === "object"
+      ? {
+          odds: data.odds,
+          implied: data.implied_pct ?? {},
+          homeAwayDisagrees: Boolean(data.home_away_disagrees),
+        }
+      : null;
 
   return {
-    odds: data.odds,
-    implied: data.implied_pct ?? {},
-    homeAwayDisagrees: Boolean(data.home_away_disagrees),
+    market,
+    absences: data?.absences ?? null,
+    news: data?.news ?? {},
   };
 }

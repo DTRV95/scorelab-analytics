@@ -14,7 +14,7 @@ import {
   type PrefillForm,
 } from "@/components/MatchForm";
 import { MatchDossier } from "@/components/MatchDossier";
-import { fetchMarketPrice, type MarketPrice } from "@/lib/marketPrice";
+import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { calculateNextBankrollBefore } from "@/lib/analysisStorage";
@@ -157,7 +157,7 @@ export default function MatchDeepDive() {
   const [match, setMatch] = useState<BoardMatch | null>(null);
   const [prefill, setPrefill] = useState<PrefillForm | null>(null);
   const [record, setRecord] = useState<Map<string, AccuracyMarket>>(new Map());
-  const [market, setMarket] = useState<MarketPrice | null>(null);
+  const [context, setContext] = useState<MatchContext | null>(null);
   const [odds, setOdds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -233,9 +233,9 @@ export default function MatchDeepDive() {
     // O preço do mercado, quando o há. Também best effort: o jogo
     // continua a ler-se sem ele, e um jogo que as casas ainda não
     // abriram é o caso normal a três dias de distância.
-    fetchMarketPrice(match.league, match.home_name, match.away_name, match.kickoff)
-      .then((price) => {
-        if (!cancelled) setMarket(price);
+    fetchMatchContext(match.league, match.home_name, match.away_name, match.kickoff)
+      .then((found) => {
+        if (!cancelled) setContext(found);
       })
       .catch(() => undefined);
 
@@ -366,7 +366,10 @@ export default function MatchDeepDive() {
             }
             record={record.get(match.headline_market) ?? null}
             oddsTyped={oddsTyped}
-            market={market}
+            market={context?.market ?? null}
+            absences={context?.absences ?? null}
+            news={context?.news ?? null}
+            teams={{ home: match.home_name, away: match.away_name }}
           />
         </motion.div>
 

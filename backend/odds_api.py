@@ -413,16 +413,10 @@ def implied_pct(prices: Dict[str, float]) -> Dict[str, float]:
     return out
 
 
-def match_context(
+def priced(
     league: str, home: str, away: str, kickoff: str
 ) -> Dict[str, Any]:
-    """O que se sabe à volta de um jogo. Hoje, o preço do mercado.
-
-    Teve lesões, árbitro e tempo enquanto a API-Football pareceu dar
-    para isso. Não dá: o plano gratuito pára em 2024. Ficou o que
-    funciona, e a resposta diz quando não há nada em vez de encher de
-    campos vazios.
-    """
+    """O preço do mercado para este jogo, já sem a margem da casa."""
     trace: Dict[str, Any] = {}
     prices = odds_for(league, home, away, kickoff, trace=trace)
 
@@ -430,6 +424,7 @@ def match_context(
         return {
             "odds": None,
             "implied_pct": None,
+            "home_away_disagrees": False,
             "detail": "Sem preço de mercado para este jogo.",
             "trace": trace,
         }
@@ -437,9 +432,9 @@ def match_context(
     return {
         "odds": prices,
         "implied_pct": implied_pct(prices),
-        "detail": "",
         # As duas fontes discordarem sobre quem joga em casa não estraga
-        # o preço, que vai pelo nome — mas estraga a nossa previsão, que
-        # conta com um deles a jogar em casa. Quem vê o jogo merece saber.
+        # o preço, que vai pelo nome. Fica guardado, sem alarido: medido
+        # em jogos reais, acontece em dois terços deles.
         "home_away_disagrees": bool(trace.get("swapped")),
+        "detail": "",
     }
