@@ -48,7 +48,20 @@ const TOM: Record<Call, { texto: string; fundo: string; chapa: string }> = {
   },
 };
 
-export function SuggestionCard(props: Omit<SuggestionInput, "label">) {
+export function SuggestionCard({
+  sample,
+  ...props
+}: Omit<SuggestionInput, "label"> & {
+  /**
+   * Quanto histórico sustenta isto.
+   *
+   * Vem para dentro do cartão porque é aqui que ele serve para alguma
+   * coisa: é a amostra que põe a fasquia onde ela está. Sozinho num
+   * autocolante, três linhas acima, era um número que ninguém sabia
+   * para que era.
+   */
+  sample?: { label: string; pct: number };
+}) {
   // Quinze mercados e duas ordenações: não vale a memória de os guardar
   // entre desenhos nem o cuidado de manter as dependências certas.
   const { call, pick, because, avoid, avoidBecause } = suggest({
@@ -100,6 +113,13 @@ export function SuggestionCard(props: Omit<SuggestionInput, "label">) {
         <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
           {because}
         </p>
+
+        {sample && (
+          <p className="sl-meta mt-1.5 text-[11px] leading-4">
+            Histórico por trás: {sample.label} ({sample.pct.toFixed(0)}%) —
+            quantidade, não acerto.
+          </p>
+        )}
       </div>
 
       {avoid && (

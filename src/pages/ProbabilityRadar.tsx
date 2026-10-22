@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { MatchSuggestion } from "@/components/MatchSuggestion";
 import { PickReadings } from "@/components/PickReadings";
 import { RecentHits } from "@/components/RecentHits";
 import { SectionCard, FormField, SelectField } from "@/components/AnalysisFormControls";
@@ -444,6 +445,15 @@ function BoardMatchRow({
                 data={match}
                 onPick={verdict ? undefined : onAddToChallenge}
                 verdicts={verdicts}
+                /* No lugar do autocolante da amostra, que dizia um
+                   número sem dizer o que fazer com ele. Um jogo já
+                   jogado não leva opinião nenhuma: o que ia acontecer
+                   já aconteceu. */
+                heading={
+                  verdict ? undefined : (
+                    <MatchSuggestion match={match} active={isExpanded} />
+                  )
+                }
               />
 
               {/* What the forecast was built from, for whoever wants to look

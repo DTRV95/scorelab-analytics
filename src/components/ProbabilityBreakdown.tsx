@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 
@@ -78,6 +79,7 @@ export function ProbabilityBreakdown({
   data,
   onPick,
   verdicts,
+  heading,
 }: {
   data: ProbabilityResult;
   /**
@@ -96,6 +98,15 @@ export function ProbabilityBreakdown({
    * acima. Era a única parte do ecrã onde o que aconteceu não contava.
    */
   verdicts?: Map<string, boolean>;
+  /**
+   * O que fica no lugar do autocolante da amostra.
+   *
+   * No quadro, essa linha passou a ser a opinião sobre o jogo — e a
+   * amostra vai lá dentro, onde finalmente serve para alguma coisa: é
+   * ela que põe a fasquia. Sem isto, quem quisesse a opinião tinha de
+   * abrir a análise avançada.
+   */
+  heading?: ReactNode;
 }) {
   const groups = GROUP_ORDER.map((grupo) => ({
     grupo,
@@ -133,14 +144,19 @@ export function ProbabilityBreakdown({
         </div>
       </div>
 
-      <div
-        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${sampleTone(
-          data.amostra_label
-        )}`}
-      >
-        Histórico por trás: {data.amostra_label} ({data.amostra_pct.toFixed(0)}%)
-        <span className="font-normal opacity-70">— quantidade, não acerto</span>
-      </div>
+      {heading ?? (
+        <div
+          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${sampleTone(
+            data.amostra_label
+          )}`}
+        >
+          Histórico por trás: {data.amostra_label} (
+          {data.amostra_pct.toFixed(0)}%)
+          <span className="font-normal opacity-70">
+            — quantidade, não acerto
+          </span>
+        </div>
+      )}
 
       {groups.map((group) => (
         <div key={group.grupo} className="space-y-2">
