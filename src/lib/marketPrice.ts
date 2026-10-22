@@ -16,6 +16,8 @@ export interface Absence {
   reason?: string;
   /** Quando se espera que volte, quando se sabe. */
   back?: string;
+  /** Que posição faz falta. Não diz se era titular — isso não sabemos. */
+  position?: string;
 }
 
 export interface Headline {

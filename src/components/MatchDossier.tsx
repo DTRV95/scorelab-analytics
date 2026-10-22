@@ -147,7 +147,9 @@ export function MatchDossier(props: DossierInput) {
                             />
                             <span className="text-foreground">{player.name}</span>{" "}
                             <span className="sl-meta text-[11px]">
-                              {describeAbsence(player).join(" · ")}
+                              {[player.position, ...describeAbsence(player)]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </span>
                           </p>
                         );

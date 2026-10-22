@@ -103,13 +103,43 @@ export interface DossierInput {
    */
   absences?: Record<
     string,
-    { name: string; status: string; reason?: string; back?: string }[]
+    {
+      name: string;
+      status: string;
+      reason?: string;
+      back?: string;
+      position?: string;
+    }[]
   > | null;
   /** Os títulos da semana sobre cada equipa, como saíram dos jornais. */
   news?: Record<
     string,
     { title: string; link?: string; source?: string }[]
   > | null;
+}
+
+/**
+ * Que posições é que estão a faltar, quando se sabem.
+ *
+ * É o que esta casa pode dizer sobre a importância de um ausente, e não
+ * é pouco: faltar o guarda-redes não é faltar um extremo. O que não se
+ * pode dizer é se ele era titular — isso precisava de minutos jogados, e
+ * nenhuma fonte nossa os dá.
+ */
+export function positionSummary(
+  players: { position?: string }[],
+): string {
+  const contagem = new Map<string, number>();
+  for (const player of players) {
+    const pos = (player.position ?? "").trim();
+    if (pos) contagem.set(pos, (contagem.get(pos) ?? 0) + 1);
+  }
+  if (contagem.size === 0) return "";
+
+  const partes = [...contagem.entries()].map(([pos, n]) =>
+    n === 1 ? `um ${pos}` : `${n} ${pos}s`,
+  );
+  return ` (${partes.join(", ")})`;
 }
 
 /** Quantas pessoas faltam às duas equipas, ao todo. */
@@ -348,20 +378,45 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
     });
   }
 
-  // Quem falta, dito pelos nomes. Não se pesa a importância de cada um —
-  // não temos minutos nem golos por jogador, e inventar um peso era
-  // exactamente o erro que esta secção existe para evitar. Contam-se e
-  // dizem-se; quem conhece as equipas és tu.
+  // As ausências, ligadas ao mercado — que é a única maneira honesta de
+  // responder a "isto afecta a minha aposta?".
+  //
+  // Não temos minutos jogados nem golos por jogador, por isso não há
+  // como dizer que um ausente é indispensável, e inventar esse peso era
+  // o erro que esta secção existe para evitar. Mas sabemos uma coisa
+  // melhor do que um palpite: as casas conhecem estas baixas e já as
+  // puseram no preço. Quando o nosso número está muito acima do delas,
+  // a diferença é, em boa parte, isto. Dizer as duas coisas na mesma
+  // frase é o que torna uma lista de nomes numa razão para não apostar.
   const baixas = input.absences;
   if (baixas && input.teams) {
+    const mercado = input.headline
+      ? input.market?.implied[input.headline.market]
+      : undefined;
+    const nosso = input.headline ? measuredPct(input.headline.pct) : undefined;
+    const atrasados =
+      typeof mercado === "number" && typeof nosso === "number"
+        ? nosso - mercado
+        : null;
+
     for (const side of [input.teams.home, input.teams.away]) {
       const lista = baixas[side] ?? [];
       if (lista.length === 0) continue;
+
       const nomes = enumerate(lista.slice(0, 4).map((p) => p.name));
       const resto = lista.length > 4 ? ` e mais ${lista.length - 4}` : "";
+      const posicoes = positionSummary(lista);
+
+      const ligacao =
+        atrasados !== null && atrasados >= 5
+          ? ` As casas sabem disto e dão ${num(
+              mercado as number,
+            )}%; nós damos ${num(nosso as number)}% sem saber.`
+          : " O número acima não sabe disto — o modelo lê golos e calendário.";
+
       found.push({
         key: `baixas-${side}`,
-        text: `Fora no ${side}: ${nomes}${resto}. O número acima não sabe disto — o modelo lê golos e calendário.`,
+        text: `Fora no ${side}: ${nomes}${resto}${posicoes}.${ligacao}`,
         grave: lista.length >= 3,
       });
     }

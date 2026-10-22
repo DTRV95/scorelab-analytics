@@ -366,3 +366,80 @@ describe("as baixas", () => {
     );
   });
 });
+
+describe("as ausências e o mercado", () => {
+  const teams = { home: "Chelsea", away: "Tottenham" };
+  const fora = (n: number, position?: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      name: `Jogador ${i + 1}`,
+      status: "injured",
+      position,
+    }));
+
+  it("diz que posições faltam, quando se sabem", () => {
+    const i = input({
+      teams,
+      absences: {
+        Chelsea: [
+          { name: "A", status: "injured", position: "guarda-redes" },
+          { name: "B", status: "injured", position: "defesa" },
+          { name: "C", status: "injured", position: "defesa" },
+        ],
+      },
+    });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-Chelsea",
+    );
+
+    expect(linha?.text).toContain("um guarda-redes, 2 defesas");
+  });
+
+  it("não inventa posições que não vieram", () => {
+    const i = input({ teams, absences: { Chelsea: fora(2) } });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-Chelsea",
+    );
+
+    expect(linha?.text).not.toContain("(");
+  });
+
+  it("liga as baixas ao preço quando estamos acima do mercado", () => {
+    // É esta a resposta honesta a "isto afecta a minha aposta?": as
+    // casas conhecem as baixas e já as puseram no preço.
+    const i = input({
+      teams,
+      absences: { Tottenham: fora(3) },
+      market: mercado({ "1X": 2.05 }, { "1X": 48 }),
+    });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-Tottenham",
+    );
+
+    expect(linha?.text).toContain("As casas sabem disto e dão 48,0%");
+    expect(linha?.text).toContain("nós damos 63,0% sem saber");
+  });
+
+  it("não promete o que não sabe quando não há preço", () => {
+    const i = input({ teams, absences: { Tottenham: fora(3) } });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-Tottenham",
+    );
+
+    expect(linha?.text).toContain("o modelo lê golos e calendário");
+    expect(linha?.text).not.toContain("As casas sabem");
+  });
+
+  it("nunca diz que um ausente era titular", () => {
+    // Precisaria de minutos jogados, que nenhuma fonte nossa dá.
+    const i = input({
+      teams,
+      absences: { Chelsea: fora(3, "avançado") },
+      market: mercado({ "1X": 2.05 }, { "1X": 48 }),
+    });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-Chelsea",
+    );
+
+    expect(linha?.text).not.toMatch(/titular|indispens|melhor jogador/i);
+  });
+});
