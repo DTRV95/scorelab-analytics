@@ -248,22 +248,28 @@ def _unavailable_of(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def _side_names(block: Any) -> List[Dict[str, str]]:
-    """Os jogadores de um lado, venham eles como vierem."""
+    """Os jogadores de um lado, venham eles como vierem.
+
+    Eles dão quatro coisas por jogador — nome, estado, motivo e data
+    prevista de regresso — e as três últimas não são a mesma. "Dúvida"
+    por causa de uma pancada não vale o mesmo que "fora" com regresso
+    marcado para Dezembro, e quem decide a aposta precisa da diferença.
+    """
     out: List[Dict[str, str]] = []
     if not isinstance(block, list):
         return out
     for entry in block:
         if isinstance(entry, str):
-            out.append({"name": entry, "status": ""})
+            out.append({"name": entry, "status": "", "reason": "", "back": ""})
         elif isinstance(entry, dict):
             name = entry.get("name") or entry.get("player") or ""
             if name:
                 out.append(
                     {
                         "name": str(name),
-                        "status": str(
-                            entry.get("status") or entry.get("reason") or ""
-                        ),
+                        "status": str(entry.get("status") or ""),
+                        "reason": str(entry.get("reason") or ""),
+                        "back": str(entry.get("expected_return") or ""),
                     }
                 )
     return out

@@ -49,6 +49,22 @@ function Line({ line }: { line: DossierLine }) {
   );
 }
 
+/** Um ausente numa linha: o nome e o que lhe sabemos, sem repetições. */
+function describe(player: {
+  name: string;
+  status: string;
+  reason?: string;
+  back?: string;
+}): string {
+  const detalhe = [player.status, player.reason]
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    // "out, out" acontece quando o motivo repete o estado.
+    .filter((part, index, all) => all.indexOf(part) === index);
+
+  return detalhe.length ? `${player.name} (${detalhe.join(", ")})` : player.name;
+}
+
 function Bloco({
   icon: Icon,
   title,
@@ -118,11 +134,7 @@ export function MatchDossier(props: DossierInput) {
                     <span className="text-muted-foreground">
                       {lista.length === 0
                         ? "ninguém, pelo que se sabe"
-                        : lista
-                            .map((p) =>
-                              p.status ? `${p.name} (${p.status})` : p.name,
-                            )
-                            .join(", ")}
+                        : lista.map(describe).join(", ")}
                     </span>
                   </p>
                 );

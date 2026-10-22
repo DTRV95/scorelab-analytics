@@ -209,7 +209,14 @@ def _event(home="FC Porto", away="Gil Vicente", when="2026-10-24T19:30:00Z"):
         "away_team": {"name": away},
         "start_time": when,
         "unavailable_players": {
-            "home": [{"name": "Um", "status": "injured"}],
+            "home": [
+                {
+                    "name": "Um",
+                    "status": "out",
+                    "reason": "hamstring",
+                    "expected_return": "2026-12-01",
+                }
+            ],
             "away": [{"name": "Dois", "status": "suspended"}, "Três"],
         },
     }
@@ -285,6 +292,10 @@ def test_bzzoiro_separa_as_baixas_pelas_duas_equipas():
     assert [p["name"] for p in got["FC Porto"]] == ["Um"]
     assert [p["name"] for p in got["Gil Vicente"]] == ["Dois", "Três"]
     assert got["Gil Vicente"][0]["status"] == "suspended"
+    # O motivo e o regresso não se perdem: "dúvida por uma pancada" não
+    # é o mesmo que "fora até Dezembro".
+    assert got["FC Porto"][0]["reason"] == "hamstring"
+    assert got["FC Porto"][0]["back"] == "2026-12-01"
 
 
 def test_bzzoiro_troca_os_lados_quando_o_jogo_vem_ao_contrario():

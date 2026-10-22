@@ -101,7 +101,10 @@ export interface DossierInput {
    * Null é "ninguém olhou"; um objecto com listas vazias é "estão todos
    * bons". São respostas diferentes e o ecrã mostra-as diferentes.
    */
-  absences?: Record<string, { name: string; status: string }[]> | null;
+  absences?: Record<
+    string,
+    { name: string; status: string; reason?: string; back?: string }[]
+  > | null;
   /** Os títulos da semana sobre cada equipa, como saíram dos jornais. */
   news?: Record<
     string,
