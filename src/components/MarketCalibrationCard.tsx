@@ -3,6 +3,7 @@ import { Scale } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import {
   fetchMarketCalibration,
+  noticed,
   speaks,
   MIN_SAMPLE,
   type MarketCalibrationRow,
@@ -11,13 +12,15 @@ import {
 /**
  * Onde é que o modelo exagera, mercado a mercado.
  *
- * É a relação mais útil que os dados já sustentam, e a tabela mostra-a
- * com a margem ao lado — porque um desvio sem margem é uma história, e
- * com margem é uma medição. Hoje, de doze mercados, um fala.
+ * Três estados, e a diferença entre eles é o que separa isto de uma
+ * procura. "Nada a dizer": o desvio cabe na margem. "Por confirmar":
+ * reparámos, e agora esperamos — a partir da data em que se reparou, a
+ * conta é refeita só com jogos que a descoberta não viu. "A contar": a
+ * segunda metade disse o mesmo que a primeira, e só então o número mexe
+ * nas contas.
  *
- * A coluna que interessa é a última. "Ainda não" não quer dizer que o
- * mercado esteja bom: quer dizer que não sabemos, e que não vamos mexer
- * em contas por causa de uma diferença que cabe no acaso.
+ * O estado do meio é o que falta a toda a gente que publica padrões de
+ * futebol. Encontrar é fácil; o difícil é esperar para ver.
  */
 
 const pp = (value: number) =>
@@ -43,6 +46,7 @@ export function MarketCalibrationCard() {
   if (!rows || rows.length === 0) return null;
 
   const usados = rows.filter(speaks);
+  const vistos = rows.filter(noticed);
 
   return (
     <section className="sl-card overflow-hidden">
@@ -51,8 +55,8 @@ export function MarketCalibrationCard() {
         title="Onde o modelo exagera"
         note={
           usados.length === 0
-            ? `Nenhum mercado tem ainda desvio maior do que a sua própria margem. Até lá, aplica-se a correcção geral.`
-            : `${usados.length} de ${rows.length} mercados já dizem alguma coisa. Só esses mexem nas contas.`
+            ? `${vistos.length} de ${rows.length} mercados com desvio fora da margem, nenhum ainda confirmado por jogos posteriores. Até lá vale a correcção geral.`
+            : `${usados.length} de ${rows.length} mercados confirmados fora da amostra. Só esses mexem nas contas.`
         }
         className="border-b border-border px-4 py-3"
       />
@@ -62,6 +66,14 @@ export function MarketCalibrationCard() {
           .filter((row) => row.n >= 10)
           .map((row) => {
             const conta = speaks(row);
+            const reparado = noticed(row);
+            const estado = conta
+              ? "a contar"
+              : reparado
+                ? row.nDesde > 0
+                  ? `por confirmar · ${row.nDesde} jogos desde`
+                  : "por confirmar"
+                : "nada a dizer";
             return (
               <div
                 key={row.mercado}
@@ -85,15 +97,24 @@ export function MarketCalibrationCard() {
                 >
                   {pp(row.desvio)} ± {row.margem.toFixed(1).replace(".", ",")}
                 </p>
+                <p
+                  className={`sl-meta w-[104px] flex-none text-right text-[10px] uppercase tracking-[0.08em] ${
+                    conta ? "text-[hsl(var(--sl-green))]" : ""
+                  }`}
+                >
+                  {estado}
+                </p>
               </div>
             );
           })}
       </div>
 
       <p className="sl-meta border-t border-border px-4 py-2.5 text-[11px] leading-4">
-        Um mercado entra nas contas quando tem {MIN_SAMPLE} jogos ou mais e o
-        desvio ultrapassa a margem. Os outros ficam de fora de propósito: ler
-        onze tabelas até uma parecer interessante não é medir, é procurar.
+        Repara-se num mercado com {MIN_SAMPLE} jogos e desvio acima da
+        margem — mas isso ainda não conta. A partir desse dia a conta é
+        refeita só com jogos que a descoberta não viu, e só se eles
+        disserem o mesmo é que o número passa a mexer no cálculo.
+        Encontrar um padrão é fácil; o difícil é esperar para ver.
       </p>
     </section>
   );

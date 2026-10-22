@@ -11,10 +11,16 @@ import { supabase } from "@/lib/supabaseClient";
  * pontos ao segundo é inventar um defeito que ele não tem, e inventar um
  * defeito custa apostas boas que se deixam passar.
  *
- * Um mercado só entra aqui quando tem jogos que cheguem e quando o
- * desvio é maior do que a própria margem de erro. Dos doze mercados com
- * dados, hoje passa um. É suposto ser assim: a alternativa é ler ruído
- * em onze tabelas e chamar-lhe descoberta.
+ * Mas ter jogos que cheguem e um desvio maior do que a margem não basta,
+ * e é aqui que isto se separa de uma procura. Um desvio encontrado nos
+ * dados que o geraram não prova nada: com doze mercados e meia dúzia de
+ * faixas, aparece sempre alguma coisa. Por isso a data da descoberta
+ * fica guardada, e a partir dela a mesma conta é refeita **só com jogos
+ * que a descoberta não viu**.
+ *
+ * Um mercado só mexe no cálculo depois de a segunda metade dizer o
+ * mesmo que a primeira. Até lá vale a curva geral, que erra para o lado
+ * cauteloso.
  */
 
 /** Abaixo disto, qualquer desvio é compatível com o acaso. */
@@ -27,11 +33,30 @@ export interface MarketCalibrationRow {
   entregue: number;
   desvio: number;
   margem: number;
+  /** Quando reparámos nisto pela primeira vez. */
+  foundAt: string | null;
+  /** Jogos que aconteceram depois disso. */
+  nDesde: number;
+  /** E o que eles dizem, sozinhos. */
+  desvioDesde: number | null;
+  margemDesde: number | null;
+  /** Se a prova de fora da amostra confirma o que se tinha visto. */
+  confirmado: boolean;
 }
 
-/** Se este mercado já diz alguma coisa, ou se ainda é cedo. */
-export function speaks(row: MarketCalibrationRow): boolean {
+/** Se este mercado chegou para se reparar nele. Ainda não é prova. */
+export function noticed(row: MarketCalibrationRow): boolean {
   return row.n >= MIN_SAMPLE && Math.abs(row.desvio) > row.margem;
+}
+
+/**
+ * Se já se pode mexer nas contas por causa dele.
+ *
+ * Reparar não chega: a confirmação vem dos jogos posteriores à
+ * descoberta, que são os únicos que não ajudaram a encontrá-la.
+ */
+export function speaks(row: MarketCalibrationRow): boolean {
+  return noticed(row) && row.confirmado;
 }
 
 /**
@@ -54,8 +79,10 @@ export async function fetchMarketCalibration(): Promise<MarketCalibrationRow[]> 
   if (!supabase) return [];
 
   const { data, error } = await supabase
-    .from("market_calibration")
-    .select("mercado, n, prometido, entregue, desvio, margem")
+    .from("calibration_status")
+    .select(
+      "mercado, n, prometido, entregue, desvio, margem, found_at, n_desde, desvio_desde, margem_desde, confirmado",
+    )
     .order("n", { ascending: false });
 
   if (error || !data) return [];
@@ -68,5 +95,10 @@ export async function fetchMarketCalibration(): Promise<MarketCalibrationRow[]> 
     entregue: Number(row.entregue),
     desvio: Number(row.desvio),
     margem: Number(row.margem),
+    foundAt: row.found_at ? String(row.found_at) : null,
+    nDesde: Number(row.n_desde ?? 0),
+    desvioDesde: row.desvio_desde === null ? null : Number(row.desvio_desde),
+    margemDesde: row.margem_desde === null ? null : Number(row.margem_desde),
+    confirmado: Boolean(row.confirmado),
   }));
 }
