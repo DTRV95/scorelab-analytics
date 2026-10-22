@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   adjustments,
+  noticed,
   speaks,
   MIN_SAMPLE,
   type MarketCalibrationRow,
@@ -14,20 +15,36 @@ const row = (over: Partial<MarketCalibrationRow> = {}): MarketCalibrationRow => 
   entregue: 61.47,
   desvio: -10.56,
   margem: 9.32,
+  foundAt: "2026-10-22T00:00:00Z",
+  // Por omissão, já confirmado pelos jogos de depois: os testes que
+  // tratam da prova dizem-no explicitamente.
+  nDesde: 60,
+  desvioDesde: -9.8,
+  margemDesde: 8.1,
+  confirmado: true,
   ...over,
 });
 
 describe("speaks", () => {
-  it("aceita o mercado cujo desvio ultrapassa a própria margem", () => {
-    // O 1X, como está medido hoje: 109 jogos, −10,56 contra ±9,32.
+  it("aceita o mercado medido e confirmado fora da amostra", () => {
+    // O 1X: 109 jogos, −10,56 contra ±9,32, e os jogos de depois da
+    // descoberta a dizerem o mesmo.
     expect(speaks(row())).toBe(true);
+  });
+
+  it("recusa o desvio que ainda não foi confirmado", () => {
+    // É o estado do 1X no dia em que se reparou nele: o desvio está
+    // fora da margem, mas não há um único jogo posterior. Encontrado
+    // nos dados que o geraram, ainda não prova nada.
+    expect(noticed(row({ nDesde: 0, confirmado: false }))).toBe(true);
+    expect(speaks(row({ nDesde: 0, confirmado: false }))).toBe(false);
   });
 
   it("recusa o desvio que cabe dentro da margem", () => {
     // "Ambas Marcam": −6,78 contra ±9,93. Pode ser o acaso.
-    expect(speaks(row({ mercado: "Ambas Marcam", desvio: -6.78, margem: 9.93 }))).toBe(
-      false,
-    );
+    expect(
+      speaks(row({ mercado: "Ambas Marcam", desvio: -6.78, margem: 9.93 })),
+    ).toBe(false);
   });
 
   it("recusa o mercado com poucos jogos, por maior que seja o desvio", () => {
@@ -44,6 +61,7 @@ describe("adjustments", () => {
     const got = adjustments([
       row(),
       row({ mercado: "Mais de 2.5 Golos", n: 83, desvio: -0.96, margem: 10.38 }),
+      row({ mercado: "Por confirmar", nDesde: 0, confirmado: false }),
       row({ mercado: "Fora", n: 1, desvio: 39.7, margem: 0 }),
     ]);
 
