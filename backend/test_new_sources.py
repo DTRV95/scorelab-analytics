@@ -415,7 +415,7 @@ def test_sem_o_outro_lado_fica_a_leitura_directa():
 def test_contexto_diz_quando_nao_ha_preco():
     answer = _run(
         odds_api,
-        lambda: odds_api.match_context(
+        lambda: odds_api.priced(
             "Premier League", "Arsenal", "Everton", "2026-10-24T16:30:00Z"
         ),
         {"/v4/sports?": SPORTS, "/v4/sports/soccer_epl/odds": []},
@@ -535,7 +535,7 @@ def test_apanha_o_jogo_com_as_equipas_trocadas():
 def test_avisa_quando_as_fontes_discordam_de_quem_joga_em_casa():
     answer = _run(
         odds_api,
-        lambda: odds_api.match_context(
+        lambda: odds_api.priced(
             "Liga Portugal", "Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
         ),
         {
@@ -554,7 +554,7 @@ def test_avisa_quando_as_fontes_discordam_de_quem_joga_em_casa():
 def test_nao_avisa_quando_as_fontes_concordam():
     answer = _run(
         odds_api,
-        lambda: odds_api.match_context(
+        lambda: odds_api.priced(
             "Premier League", "Chelsea", "Tottenham", "2026-10-24T16:30:00Z"
         ),
         {

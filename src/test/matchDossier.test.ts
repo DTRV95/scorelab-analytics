@@ -51,16 +51,19 @@ describe("buildDossier", () => {
   it("conta o que sabemos e o que falta", () => {
     const dossier = buildDossier(input());
 
-    expect(dossier.total).toBe(7);
+    expect(dossier.total).toBe(9);
     // Histórico, forma, casa/fora e média da liga. Registo, preço do
-    // mercado e a odd escrita ficam por preencher.
+    // mercado, baixas, notícias e a odd escrita ficam por preencher.
     expect(dossier.known).toBe(4);
   });
 
-  it("trata o preço do mercado como o buraco que pesa", () => {
+  it("trata o preço e as baixas como os buracos que pesam", () => {
     const dossier = buildDossier(input());
 
-    expect(dossier.heavyMissing).toEqual(["o que as casas estão a pagar"]);
+    expect(dossier.heavyMissing).toEqual([
+      "o que as casas estão a pagar",
+      "quem está de fora",
+    ]);
   });
 
   it("acende o mercado quando as casas abriram o jogo", () => {
@@ -68,7 +71,7 @@ describe("buildDossier", () => {
     const linha = dossier.lines.find((line) => line.key === "mercado");
 
     expect(linha?.value).toBe("3 mercados lidos");
-    expect(dossier.heavyMissing).toEqual([]);
+    expect(dossier.heavyMissing).toEqual(["quem está de fora"]);
   });
 
   it("acende a linha do preço quando já há uma odd escrita", () => {
@@ -250,6 +253,116 @@ describe("quando as fontes discordam de quem joga em casa", () => {
 
     expect(objections(i, buildDossier(i)).map((o) => o.key)).toEqual(
       objections(semDiscordia, buildDossier(semDiscordia)).map((o) => o.key),
+    );
+  });
+});
+
+describe("as baixas", () => {
+  const teams = { home: "FC Porto", away: "Gil Vicente" };
+
+  it("distingue 'ninguém olhou' de 'estão todos bons'", () => {
+    const ninguemOlhou = buildDossier(input({ teams }));
+    const todosBons = buildDossier(
+      input({ teams, absences: { "FC Porto": [], "Gil Vicente": [] } }),
+    );
+
+    expect(
+      ninguemOlhou.lines.find((l) => l.key === "baixas")?.value,
+    ).toBeNull();
+    expect(todosBons.lines.find((l) => l.key === "baixas")?.value).toBe(
+      "ninguém, pelo que se sabe",
+    );
+  });
+
+  it("conta os dois lados numa linha só", () => {
+    const dossier = buildDossier(
+      input({
+        teams,
+        absences: {
+          "FC Porto": [{ name: "Um", status: "injured" }],
+          "Gil Vicente": [
+            { name: "Dois", status: "suspended" },
+            { name: "Três", status: "doubtful" },
+          ],
+        },
+      }),
+    );
+
+    expect(dossier.lines.find((l) => l.key === "baixas")?.value).toBe(
+      "3 jogadores de fora",
+    );
+    expect(dossier.heavyMissing).not.toContain("quem está de fora");
+  });
+
+  it("nomeia quem falta, por equipa", () => {
+    const i = input({
+      teams,
+      absences: {
+        "FC Porto": [
+          { name: "Um", status: "" },
+          { name: "Dois", status: "" },
+          { name: "Três", status: "" },
+        ],
+        "Gil Vicente": [],
+      },
+    });
+    const contra = objections(i, buildDossier(i));
+    const linha = contra.find((item) => item.key === "baixas-FC Porto");
+
+    expect(linha?.text).toContain("Fora no FC Porto: Um, Dois e Três");
+    expect(linha?.grave).toBe(true);
+    // O lado sem baixas não ganha linha nenhuma.
+    expect(
+      contra.find((item) => item.key === "baixas-Gil Vicente"),
+    ).toBeUndefined();
+  });
+
+  it("não inventa o peso de quem falta", () => {
+    const i = input({
+      teams,
+      absences: { "FC Porto": [{ name: "Alguém", status: "injured" }] },
+    });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-FC Porto",
+    );
+
+    // Nada de "pesa 30% do ataque": não temos minutos nem golos por
+    // jogador, e um peso inventado era o erro que isto existe para
+    // evitar.
+    expect(linha?.text).toContain("O número acima não sabe disto");
+    expect(linha?.text).not.toMatch(/%/);
+  });
+
+  it("corta a lista quando são muitos", () => {
+    const i = input({
+      teams,
+      absences: {
+        "FC Porto": ["A", "B", "C", "D", "E", "F"].map((name) => ({
+          name,
+          status: "",
+        })),
+      },
+    });
+    const linha = objections(i, buildDossier(i)).find(
+      (item) => item.key === "baixas-FC Porto",
+    );
+
+    expect(linha?.text).toContain("A, B, C e D e mais 2");
+  });
+
+  it("conta as notícias sem as interpretar", () => {
+    const dossier = buildDossier(
+      input({
+        teams,
+        news: {
+          "FC Porto": [{ title: "Porto prepara o jogo" }],
+          "Gil Vicente": [],
+        },
+      }),
+    );
+
+    expect(dossier.lines.find((l) => l.key === "noticias")?.value).toBe(
+      "1 notícia",
     );
   });
 });

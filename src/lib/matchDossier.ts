@@ -93,6 +93,30 @@ export interface DossierInput {
      */
     homeAwayDisagrees?: boolean;
   } | null;
+  /** Os nomes das duas equipas, que são as chaves do que vem a seguir. */
+  teams?: { home: string; away: string };
+  /**
+   * Quem falta, por equipa.
+   *
+   * Null é "ninguém olhou"; um objecto com listas vazias é "estão todos
+   * bons". São respostas diferentes e o ecrã mostra-as diferentes.
+   */
+  absences?: Record<string, { name: string; status: string }[]> | null;
+  /** Os títulos da semana sobre cada equipa, como saíram dos jornais. */
+  news?: Record<string, { title: string }[]> | null;
+}
+
+/** Quantas pessoas faltam às duas equipas, ao todo. */
+export function absenceCount(
+  absences: DossierInput["absences"],
+): number | null {
+  if (!absences) return null;
+  return Object.values(absences).reduce((total, list) => total + list.length, 0);
+}
+
+function newsCount(news: DossierInput["news"]): number {
+  if (!news) return 0;
+  return Object.values(news).reduce((total, list) => total + list.length, 0);
 }
 
 const plural = (n: number, um: string, muitos: string) =>
@@ -158,6 +182,28 @@ export function buildDossier(input: DossierInput): Dossier {
       missing: "não encontrámos este jogo nas casas",
       heavy: true,
       short: "o que as casas estão a pagar",
+    },
+    {
+      key: "baixas",
+      label: "Quem está de fora",
+      value: (() => {
+        const total = absenceCount(input.absences);
+        if (total === null) return null;
+        return total === 0
+          ? "ninguém, pelo que se sabe"
+          : plural(total, "jogador de fora", "jogadores de fora");
+      })(),
+      missing: "não encontrámos este jogo na fonte de baixas",
+      heavy: true,
+      short: "quem está de fora",
+    },
+    {
+      key: "noticias",
+      label: "Notícias da semana",
+      value: newsCount(input.news)
+        ? plural(newsCount(input.news), "notícia", "notícias")
+        : null,
+      missing: "nada nos jornais sobre estas equipas",
     },
     {
       key: "preco",
@@ -294,6 +340,25 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       } jogos conferidos.`,
       grave: true,
     });
+  }
+
+  // Quem falta, dito pelos nomes. Não se pesa a importância de cada um —
+  // não temos minutos nem golos por jogador, e inventar um peso era
+  // exactamente o erro que esta secção existe para evitar. Contam-se e
+  // dizem-se; quem conhece as equipas és tu.
+  const baixas = input.absences;
+  if (baixas && input.teams) {
+    for (const side of [input.teams.home, input.teams.away]) {
+      const lista = baixas[side] ?? [];
+      if (lista.length === 0) continue;
+      const nomes = enumerate(lista.slice(0, 4).map((p) => p.name));
+      const resto = lista.length > 4 ? ` e mais ${lista.length - 4}` : "";
+      found.push({
+        key: `baixas-${side}`,
+        text: `Fora no ${side}: ${nomes}${resto}. O número acima não sabe disto — o modelo lê golos e calendário.`,
+        grave: lista.length >= 3,
+      });
+    }
   }
 
   if (dossier.heavyMissing.length > 0) {

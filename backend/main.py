@@ -17,6 +17,8 @@ from model import analisar_jogo, model_self_check, probabilidades_jogo
 import football_data
 import injury_data
 import bigballs_data
+import bzzoiro_data
+import news_data
 import odds_api
 
 MAX_RESULT_LOOKUPS = 200
@@ -112,9 +114,10 @@ def data_sources(request: Request):
     respostas traz chaves nem dados de conta — só se a porta abre.
     """
     return {
-        "lesoes_api_football": injury_data.account_status(),
-        "lesoes_bigballs": bigballs_data.account_status(),
         "odds": odds_api.account_status(),
+        "baixas_bzzoiro": bzzoiro_data.account_status(),
+        "lesoes_bigballs": bigballs_data.account_status(),
+        "lesoes_api_football": injury_data.account_status(),
     }
 
 
@@ -141,9 +144,16 @@ def data_match_context(
     dia, e enchê-las a pré-carregar um quadro de cem jogos que ninguém
     abriu era ficar sem nenhuma para os que se abrem mesmo.
     """
-    return odds_api.match_context(
-        league=league, home=home, away=away, kickoff=kickoff
-    )
+    market = odds_api.priced(league, home, away, kickoff)
+    baixas = bzzoiro_data.for_match(home, away, kickoff)
+
+    return {
+        **market,
+        # Nada e lista vazia não são a mesma coisa: a primeira diz que
+        # ninguém olhou, a segunda que estão todos bons.
+        "absences": baixas,
+        "news": news_data.for_teams(home, away),
+    }
 
 
 @app.get("/data/leagues")
