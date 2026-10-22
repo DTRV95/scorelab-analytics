@@ -366,3 +366,76 @@ def for_match(
         home: _side_names(block.get(first)),
         away: _side_names(block.get(second)),
     }
+
+
+# As grafias por que uma API costuma aceitar uma data. Qual delas esta
+# entende, descobre-se perguntando — adivinhar já me custou caro.
+DATE_PARAMS = (
+    ("date",),
+    ("event_date",),
+    ("day",),
+    ("date_from", "date_to"),
+    ("start_date", "end_date"),
+    ("from", "to"),
+)
+
+
+def date_probe(day: str) -> Dict[str, Any]:
+    """Que parâmetro é que filtra mesmo por data, se algum.
+
+    Sem data vêm sempre os mesmos cinquenta jogos — Al-Hazem, Kairat
+    Almaty — que é uma página fixa de uma lista enorme. Por isso a
+    pergunta não é "respondeu?", é "mudou?": compara-se cada tentativa
+    com a resposta sem filtro nenhum.
+    """
+    if not is_configured():
+        return {"configured": False}
+
+    found = _working()
+    if not found:
+        return {"configured": True, "accepted": False}
+
+    def datas(events: List[Dict[str, Any]]) -> List[str]:
+        vistos = []
+        for event in events:
+            when = str(
+                event.get("event_date") or event.get("start_time") or ""
+            )[:10]
+            if when and when not in vistos:
+                vistos.append(when)
+        return vistos[:4]
+
+    base = _events_of(_fetch(found["path"], found["style"])) or []
+    out: Dict[str, Any] = {
+        "sem_filtro": {"events": len(base), "dates": datas(base)},
+        "tentativas": [],
+    }
+
+    for names in DATE_PARAMS:
+        params = {name: day for name in names}
+        rotulo = "+".join(names)
+        try:
+            events = _events_of(_fetch(found["path"], found["style"], params))
+        except urllib.error.HTTPError as exc:
+            out["tentativas"].append({"params": rotulo, "erro": f"HTTP {exc.code}"})
+            continue
+        except Exception as exc:
+            out["tentativas"].append({"params": rotulo, "erro": type(exc).__name__})
+            continue
+
+        if events is None:
+            out["tentativas"].append({"params": rotulo, "erro": "sem lista"})
+            continue
+
+        out["tentativas"].append(
+            {
+                "params": rotulo,
+                "events": len(events),
+                "dates": datas(events),
+                # O que interessa: mudou alguma coisa, ou devolveu a
+                # mesma página de sempre?
+                "mudou": datas(events) != datas(base),
+            }
+        )
+
+    return out
