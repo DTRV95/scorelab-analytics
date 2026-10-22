@@ -242,22 +242,14 @@ describe("o mercado como contraditório", () => {
 });
 
 describe("quando as fontes discordam de quem joga em casa", () => {
-  it("avisa, e diz porque é que o preço continua bom", () => {
-    const i = input({
-      market: { ...mercado(), homeAwayDisagrees: true },
-    });
-    const contra = objections(i, buildDossier(i));
-    const linha = contra.find((item) => item.key === "casa");
+  it("não arma escândalo: o preço vai pelo nome e o aviso seria ruído", () => {
+    // Medido em três jogos reais, isto dispara em dois. Um aviso grave
+    // que aparece em dois terços dos jogos ensina a ignorar os avisos.
+    const i = input({ market: { ...mercado(), homeAwayDisagrees: true } });
+    const semDiscordia = input({ market: mercado() });
 
-    expect(linha?.grave).toBe(true);
-    expect(linha?.text).toContain("segue o nome da equipa");
-    expect(linha?.text).toContain("enviesado");
-  });
-
-  it("cala-se quando elas concordam", () => {
-    const i = input({ market: mercado() });
-    const contra = objections(i, buildDossier(i));
-
-    expect(contra.find((item) => item.key === "casa")).toBeUndefined();
+    expect(objections(i, buildDossier(i)).map((o) => o.key)).toEqual(
+      objections(semDiscordia, buildDossier(semDiscordia)).map((o) => o.key),
+    );
   });
 });

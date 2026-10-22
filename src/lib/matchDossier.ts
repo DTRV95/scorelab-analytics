@@ -82,6 +82,15 @@ export interface DossierInput {
   market?: {
     odds: Record<string, number>;
     implied: Record<string, number>;
+    /**
+     * As duas fontes listam este jogo com as equipas ao contrário.
+     *
+     * Não dá objecção nenhuma, de propósito. Medido em três jogos
+     * reais, dispara em dois — e não sei qual das fontes está errada
+     * sobre quem recebe. Um aviso grave que aparece em dois terços dos
+     * jogos, apoiado num campo em que não confio, ensina a ignorar os
+     * avisos todos. Fica guardado até haver com que o julgar.
+     */
     homeAwayDisagrees?: boolean;
   } | null;
 }
@@ -283,18 +292,6 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       )} pontos a mais do que entregámos, em ${
         input.record.samples
       } jogos conferidos.`,
-      grave: true,
-    });
-  }
-
-  if (input.market?.homeAwayDisagrees) {
-    found.push({
-      key: "casa",
-      text:
-        "A nossa fonte e as casas de apostas discordam sobre quem joga em " +
-        "casa neste jogo. O preço aqui ao lado está certo à mesma, porque " +
-        "segue o nome da equipa — mas a nossa previsão conta com uma delas " +
-        "em casa, e se for ao contrário o número está enviesado.",
       grave: true,
     });
   }
