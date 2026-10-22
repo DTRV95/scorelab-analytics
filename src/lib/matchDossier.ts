@@ -303,37 +303,10 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       });
     }
 
-    const minima = minimumOdd(headline.pct);
-    const price = input.market?.odds[headline.market];
+    // A odd mínima contra o preço era aqui uma objecção. Deixou de ser:
+    // o veredicto, que está por cima, diz exactamente isso e com mais
+    // força. Repetida, só ensinava a saltar a secção.
     const mercado = input.market?.implied[headline.market];
-
-    if (typeof price === "number") {
-      // A objecção mais útil que esta casa sabe dar: o preço que está
-      // mesmo na mesa contra o preço de que precisarias.
-      found.push({
-        key: "minima",
-        text:
-          price < minima
-            ? `O mercado está a pagar ${num(price, 2)} e tu precisavas de pelo menos ${num(
-                minima,
-                2,
-              )}. A esta odd não há aposta — mesmo acertando a maioria das vezes, perdes.`
-            : `O mercado está a pagar ${num(price, 2)} e a tua conta fecha a partir de ${num(
-                minima,
-                2,
-              )}.`,
-        grave: price < minima,
-      });
-    } else {
-      found.push({
-        key: "minima",
-        text: `A esta probabilidade, abaixo de ${num(
-          minima,
-          2,
-        )} perdes dinheiro mesmo acertando a maioria das vezes.`,
-        grave: false,
-      });
-    }
 
     if (typeof mercado === "number") {
       const nosso = measuredPct(headline.pct);
@@ -399,6 +372,8 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
         ? nosso - mercado
         : null;
 
+    let jaDisse = false;
+
     for (const side of [input.teams.home, input.teams.away]) {
       const lista = baixas[side] ?? [];
       if (lista.length === 0) continue;
@@ -407,12 +382,16 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       const resto = lista.length > 4 ? ` e mais ${lista.length - 4}` : "";
       const posicoes = positionSummary(lista);
 
-      const ligacao =
-        atrasados !== null && atrasados >= 5
+      // A comparação com o mercado vale uma vez. Repetida na segunda
+      // equipa, com os mesmos dois números, lê-se como enchimento.
+      const ligacao = jaDisse
+        ? ""
+        : atrasados !== null && atrasados >= 5
           ? ` As casas sabem disto e dão ${num(
               mercado as number,
             )}%; nós damos ${num(nosso as number)}% sem saber.`
           : " O número acima não sabe disto — o modelo lê golos e calendário.";
+      jaDisse = true;
 
       found.push({
         key: `baixas-${side}`,

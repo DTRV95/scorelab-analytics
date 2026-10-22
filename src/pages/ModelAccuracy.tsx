@@ -14,6 +14,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { ModelRecordTable } from "@/components/ModelRecordTable";
+import { VerdictRecordCard } from "@/components/VerdictRecordCard";
 import { Button } from "@/components/ui/button";
 import {
   measuredAgo,
@@ -460,6 +461,13 @@ export default function ModelAccuracy() {
                   </p>
                 )}
               </div>
+            </motion.section>
+
+            {/* O currículo do veredicto antes do registo do modelo: o
+                modelo é uma ferramenta, o veredicto é o que esta casa
+                recomendou — e é por esse que ela deve ser julgada. */}
+            <motion.section variants={fadeUp}>
+              <VerdictRecordCard />
             </motion.section>
 
             {/* O registo do próprio quadro, antes do backtest por

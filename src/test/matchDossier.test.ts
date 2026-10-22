@@ -131,15 +131,14 @@ describe("objections", () => {
     expect(contra.find((item) => item.key === "topo")).toBeUndefined();
   });
 
-  it("diz sempre a odd abaixo da qual se perde", () => {
+  it("não repete a odd mínima, que o veredicto já diz", () => {
+    // Estava aqui como objecção. O veredicto, que ficou por cima, diz
+    // exactamente isso e com mais força; repetida, ensinava a saltar a
+    // secção.
     const i = input();
     const contra = objections(i, buildDossier(i));
-    const minima = contra.find((item) => item.key === "minima");
 
-    // 63% medidos pedem 1,59: é esse o número que tem de aparecer, não o
-    // 1,36 que os 74% prometidos dariam.
-    expect(minima?.text).toContain("1,59");
-    expect(minima?.grave).toBe(false);
+    expect(contra.find((item) => item.key === "minima")).toBeUndefined();
   });
 
   it("avisa de histórico curto", () => {
@@ -166,11 +165,15 @@ describe("objections", () => {
   });
 
   it("põe as graves à frente", () => {
-    const i = input();
+    const i = input({
+      teams: { home: "Casa", away: "Fora" },
+      absences: { Casa: [{ name: "Um", status: "injured" }] },
+    });
     const contra = objections(i, buildDossier(i));
     const primeiraLeve = contra.findIndex((item) => !item.grave);
     const ultimaGrave = contra.map((item) => item.grave).lastIndexOf(true);
 
+    expect(primeiraLeve).toBeGreaterThan(-1);
     expect(ultimaGrave).toBeLessThan(primeiraLeve);
   });
 });
@@ -185,27 +188,6 @@ describe("enumerate", () => {
 });
 
 describe("o mercado como contraditório", () => {
-  it("põe o preço que está na mesa ao lado do que farias falta", () => {
-    const i = input({ market: mercado({ "1X": 1.80 }, { "1X": 56 }) });
-    const contra = objections(i, buildDossier(i));
-    const linha = contra.find((item) => item.key === "minima");
-
-    // 74% prometidos valem 63% medidos, que pedem 1,59. A 1,80 a conta
-    // fecha, por isso isto não é uma objecção grave.
-    expect(linha?.text).toContain("1,80");
-    expect(linha?.text).toContain("1,59");
-    expect(linha?.grave).toBe(false);
-  });
-
-  it("trava a aposta quando o mercado paga menos do que a mínima", () => {
-    const i = input({ market: mercado({ "1X": 1.40 }, { "1X": 71 }) });
-    const contra = objections(i, buildDossier(i));
-    const linha = contra.find((item) => item.key === "minima");
-
-    expect(linha?.text).toContain("não há aposta");
-    expect(linha?.grave).toBe(true);
-  });
-
   it("avisa quando discordamos muito do mercado", () => {
     // Nós medimos 63%; o mercado dá 48%.
     const i = input({ market: mercado({ "1X": 2.05 }, { "1X": 48 }) });
@@ -232,15 +214,6 @@ describe("o mercado como contraditório", () => {
     const contra = objections(i, buildDossier(i));
 
     expect(contra.find((item) => item.key === "mercado")).toBeUndefined();
-  });
-
-  it("volta à frase sem preço quando as casas não abriram o jogo", () => {
-    const i = input();
-    const contra = objections(i, buildDossier(i));
-
-    expect(contra.find((item) => item.key === "minima")?.text).toContain(
-      "abaixo de 1,59",
-    );
   });
 });
 
@@ -441,5 +414,30 @@ describe("as ausências e o mercado", () => {
     );
 
     expect(linha?.text).not.toMatch(/titular|indispens|melhor jogador/i);
+  });
+});
+
+describe("a ligação ao mercado nas baixas", () => {
+  it("diz-se uma vez, não uma por equipa", () => {
+    // Com as duas equipas desfalcadas, a mesma frase com os mesmos dois
+    // números aparecia duas vezes seguidas — enchimento puro.
+    const i = input({
+      teams: { home: "Casa", away: "Fora" },
+      absences: {
+        Casa: [{ name: "Um", status: "injured" }],
+        Fora: [{ name: "Dois", status: "injured" }],
+      },
+      market: mercado({ "1X": 2.05 }, { "1X": 48 }),
+    });
+    const contra = objections(i, buildDossier(i));
+    const comMercado = contra.filter((item) =>
+      item.text.includes("As casas sabem disto"),
+    );
+
+    expect(comMercado).toHaveLength(1);
+    // E a segunda equipa continua a ter a sua linha com os nomes.
+    expect(contra.find((item) => item.key === "baixas-Fora")?.text).toContain(
+      "Dois",
+    );
   });
 });
