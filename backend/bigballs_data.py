@@ -87,6 +87,28 @@ def _fetch(style: str, path: str, params: Dict[str, Any]) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
+def _shape_of(payload: Any, depth: int = 2) -> str:
+    """A forma de uma resposta, sem o seu conteúdo.
+
+    Para quando o servidor responde mas não com o que esperávamos: saber
+    que campos vieram resolve num minuto o que à distância são horas de
+    tentativa e erro. Só nomes de campos e tamanhos — nenhum valor, que
+    é o que podia trazer dados de conta para dentro de uma resposta
+    pública.
+    """
+    if isinstance(payload, dict):
+        if depth <= 0:
+            return "{…}"
+        inner = ", ".join(
+            f"{name}: {_shape_of(value, depth - 1)}"
+            for name, value in list(payload.items())[:12]
+        )
+        return "{" + inner + "}"
+    if isinstance(payload, list):
+        return f"[{len(payload)} × {_shape_of(payload[0], depth - 1)}]" if payload else "[]"
+    return type(payload).__name__
+
+
 def _rows_of(payload: Any) -> Optional[List[Dict[str, Any]]]:
     """A lista de lesões lá de dentro, seja como for que a embrulhem."""
     if isinstance(payload, list):
@@ -128,7 +150,8 @@ def _working(attempts: Optional[List[str]] = None) -> Optional[Dict[str, str]]:
             if _rows_of(payload) is None:
                 if attempts is not None:
                     attempts.append(
-                        f"{style}/{sport}: respondeu sem lista de lesões"
+                        f"{style}/{sport}: respondeu sem lista de lesões, "
+                        f"trouxe {_shape_of(payload)}"
                     )
                 continue
             answer = {"auth": style, "sport": sport}
