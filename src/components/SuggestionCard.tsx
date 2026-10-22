@@ -56,10 +56,8 @@ export function SuggestionCard({
 }) {
   // Quinze mercados e duas ordenações: não vale a memória de os guardar
   // entre desenhos nem o cuidado de manter as dependências certas.
-  const { call, pick, because, avoid, avoidBecause } = suggest({
-    ...props,
-    label,
-  });
+  const { call, pick, because, raised, required, avoid, avoidBecause } =
+    suggest({ ...props, label });
   const tom = TOM[call];
 
   return (
@@ -100,7 +98,21 @@ export function SuggestionCard({
           {because}
         </p>
 
-        {sample && (
+        {/* O raciocínio, por baixo da decisão e não dentro dela.
+            A frase diz o que fazer e tem de caber num telemóvel; isto
+            é o que me fez pedir mais do que o costume neste jogo, e é
+            o que separa um juízo de um número do modelo. */}
+        {raised.length > 0 && (
+          <p
+            className="sl-meta mt-1.5 text-[11px] leading-4"
+            title="O chão são três pontos. Estas são as razões que o levantaram, e nenhuma delas o modelo vê."
+          >
+            Peço {required.toFixed(1).replace(".", ",")} pontos aqui:{" "}
+            {raised.map((item) => item.what).join(", ")}.
+          </p>
+        )}
+
+        {sample && raised.length === 0 && (
           <p
             className="sl-meta mt-1.5 text-[11px] leading-4"
             title="Quantidade de histórico por trás da previsão, não a taxa de acerto dela"

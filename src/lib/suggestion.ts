@@ -1,5 +1,9 @@
 import { recordVerdict } from "@/lib/matchValue";
 import { measuredPct } from "@/lib/shortlist";
+import { losing, patternFor, type Patterns } from "@/lib/betPatterns";
+import { canonicalMarket } from "@/lib/marketNames";
+import { statusLabel } from "@/lib/absences";
+import type { Absence } from "@/lib/marketPrice";
 import type { AccuracyMarket } from "@/lib/modelAccuracy";
 
 /**
@@ -71,8 +75,16 @@ export interface Suggestion {
    * diz muito mais do que um não em branco.
    */
   pick: MarketQuote | null;
-  /** A vantagem que este jogo tinha de ter, dado o histórico que tem. */
+  /** A vantagem que este jogo tinha de ter para eu lhe pegar. */
   required: number;
+  /**
+   * O que levantou essa fasquia acima do chão.
+   *
+   * Vem em campo próprio e não na frase. A frase diz o que fazer, e
+   * tem de caber num ecrã de telemóvel; isto é o meu raciocínio, que
+   * quem quiser conferir lê por baixo e quem não quiser salta.
+   */
+  raised: Reason[];
   because: string;
   /** O mercado mais tentador e mais perigoso deste jogo. */
   avoid: MarketQuote | null;
@@ -88,6 +100,19 @@ export interface SuggestionInput {
   adjustments: Record<string, number>;
   /** Os mercados cujo preço foi deduzido das simples, não cotado. */
   derived?: string[];
+  /** Quem falta, por equipa. Null quando ninguém olhou. */
+  absences?: Record<string, Absence[]> | null;
+  /** Os nomes das duas equipas, para se saber de quem são as baixas. */
+  teams?: { home: string; away: string } | null;
+  /**
+   * As duas fontes discordam sobre quem joga em casa.
+   *
+   * O preço não sofre, que vai pelo nome. A previsão sofre: ela deu a
+   * vantagem de casa a uma equipa, e pode tê-la dado à errada.
+   */
+  homeAwayDisagrees?: boolean;
+  /** O que o nosso próprio dinheiro já fez em mercados como este. */
+  patterns?: Patterns | null;
   /**
    * Como se escreve o nome de um mercado para quem lê.
    *
@@ -126,20 +151,114 @@ function fairOdd(pct: number): number {
   return Math.ceil((100 / pct) * 100) / 100;
 }
 
+/** Uma coisa que me fez pedir mais do que o costume, e quanto. */
+export interface Reason {
+  what: string;
+  pp: number;
+}
+
+export interface Demand {
+  /** A vantagem que este jogo tem de ter para eu lhe pegar. */
+  points: number;
+  /** E quem a levantou acima do chão. */
+  because: Reason[];
+}
+
+/** Quantos faltam de certeza, por equipa. "Em dúvida" não conta como falta. */
+export function missing(
+  absences: Record<string, Absence[]> | null | undefined,
+  side: string | null | undefined,
+): number {
+  if (!absences || !side) return 0;
+  return (absences[side] ?? []).filter(
+    (player) => statusLabel(player.status) !== "em dúvida",
+  ).length;
+}
+
+/** A partir de quantas ausências certas uma equipa deixa de ser a que foi medida. */
+const SQUAD_HOLE = 3;
+
 /**
  * A vantagem que este jogo tem de ter para eu lhe pegar.
  *
  * Três pontos é o chão: abaixo disso a vantagem não se distingue do
- * erro do próprio modelo. O que o histórico curto faz é subir esse
- * chão, porque uma conta feita sobre dez jogos erra mais do que a
- * mesma conta feita sobre cem — e o preço de errar é o mesmo.
+ * erro do próprio modelo. O que vem a seguir não está medido em lado
+ * nenhum — é juízo meu, e por isso tem uma regra que o torna seguro:
+ * **só pode subir a fasquia, nunca baixá-la**. Um juízo errado para
+ * cima custa uma aposta que não se fez; para baixo custa dinheiro, e
+ * entre os dois erros só um é recuperável.
  *
- * Um ponto por cada dez que faltam para os setenta, até nove. Com 33%
- * de histórico, que é o que um sábado normal traz, pede-se 6,7.
+ * Quatro coisas a levantam, e nenhuma delas o modelo vê:
+ *
+ * O histórico curto, que é a única medida das quatro: uma conta feita
+ * sobre dez jogos erra mais do que a mesma conta sobre cem. Um ponto
+ * por cada dez que faltam para os setenta, até seis.
+ *
+ * As baixas. O modelo conta golos de uma época inteira e não sabe que
+ * faltam quatro titulares hoje — a equipa que ele mediu não é a que vai
+ * jogar. Um ponto por cada lado com três ou mais ausências certas.
+ *
+ * O nosso próprio dinheiro. Se já perdemos em mercados desta família,
+ * isso não prova nada sobre o próximo, mas é razão para exigir mais
+ * antes de lá voltar. Ponto e meio.
+ *
+ * E a confusão de casa e fora, que vale por si e está mais abaixo: essa
+ * não sobe a fasquia, tira o mercado de questão.
+ */
+export function demand(input: SuggestionInput, market?: string): Demand {
+  const because: Reason[] = [];
+
+  const falta = Math.max(0, SAMPLE_FULL - (input.amostraPct || 0));
+  if (falta > 0) {
+    because.push({
+      what: `${Math.round(input.amostraPct)}% de histórico`,
+      pp: Math.min(EXTRA_MAX, falta / 10),
+    });
+  }
+
+  const fora = [
+    { side: input.teams?.home, nome: input.teams?.home },
+    { side: input.teams?.away, nome: input.teams?.away },
+  ].filter((team) => missing(input.absences, team.side) >= SQUAD_HOLE);
+
+  for (const team of fora) {
+    because.push({
+      what: `${team.nome} com ${missing(input.absences, team.side)} baixas`,
+      pp: 1,
+    });
+  }
+
+  if (market) {
+    const nosso = patternFor(market, input.patterns ?? null);
+    if (nosso && losing(nosso)) {
+      because.push({
+        what: `o nosso dinheiro perde em "${nosso.key}"`,
+        pp: 1.5,
+      });
+    }
+  }
+
+  return {
+    points: EDGE_FLOOR + because.reduce((sum, item) => sum + item.pp, 0),
+    because,
+  };
+}
+
+/**
+ * A fasquia de um jogo, sem olhar a mercado nenhum.
+ *
+ * É a que se escreve quando ainda não há um mercado escolhido, e a que
+ * os testes do histórico usam.
  */
 export function required(amostraPct: number): number {
-  const falta = Math.max(0, SAMPLE_FULL - (amostraPct || 0));
-  return EDGE_FLOOR + Math.min(EXTRA_MAX, falta / 10);
+  return demand({
+    markets: [],
+    amostraPct,
+    prices: null,
+    implied: null,
+    record: new Map(),
+    adjustments: {},
+  }).points;
 }
 
 export function quotes(input: SuggestionInput): MarketQuote[] {
@@ -174,10 +293,21 @@ function badRecord(
   return recordVerdict(found) === "over" && Math.abs(found?.gap_pp ?? 0) >= 10;
 }
 
+/**
+ * Os mercados que deixam de fazer sentido quando as fontes discordam
+ * sobre quem joga em casa.
+ *
+ * Jogar em casa vale golos, e a previsão deu essa vantagem a uma das
+ * equipas. Se foi à errada, o 1X e o Casa estão trocados com o 2X e o
+ * Fora — e um mercado trocado não é um mercado menos certo, é outro
+ * mercado. Os golos aguentam: a conta de quantos se marcam não muda
+ * por se trocarem os lados.
+ */
+const SIDED = /^(Casa|Fora|1X|2X|12)$/i;
+
 export function suggest(input: SuggestionInput): Suggestion {
   const all = quotes(input);
   const name = input.label ?? ((market: string) => market);
-  const exigido = required(input.amostraPct);
 
   // O que evitar diz-se sempre que houver, mesmo quando há uma boa: é
   // nos mercados em que estamos muito acima do mercado que o dinheiro
@@ -196,7 +326,8 @@ export function suggest(input: SuggestionInput): Suggestion {
   const feito = (call: Call, pick: MarketQuote | null, because: string) => ({
     call,
     pick,
-    required: exigido,
+    required: pedido(pick?.market).points,
+    raised: pedido(pick?.market).because,
     // Quando a escolha é ela própria o mercado em que mais discordamos
     // das casas, o aviso não pode desaparecer só porque não cabe na
     // linha de baixo — era exactamente aí que ele fazia falta. Fica
@@ -216,9 +347,18 @@ export function suggest(input: SuggestionInput): Suggestion {
     avoidBecause: avoid && avoid.market !== pick?.market ? avoidBecause : "",
   });
 
-  const usable = all.filter(
-    (q) => (q.gap ?? 0) < GAP_VETO && !badRecord(input.record, q.market),
-  );
+  // A fasquia depende do mercado, porque uma das razões que a levanta é
+  // o que o nosso dinheiro já fez na família dele.
+  const pedido = (market?: string) => demand(input, market);
+
+  const usable = all.filter((q) => {
+    if ((q.gap ?? 0) >= GAP_VETO) return false;
+    if (badRecord(input.record, q.market)) return false;
+    // Fontes a discordar sobre quem joga em casa: os mercados de
+    // resultado saem, e os de golos ficam.
+    if (input.homeAwayDisagrees && SIDED.test(canonicalMarket(q.market))) return false;
+    return true;
+  });
 
   if (usable.length === 0) {
     return feito(
@@ -226,7 +366,9 @@ export function suggest(input: SuggestionInput): Suggestion {
       null,
       all.length === 0
         ? "Ainda não há contas feitas para este jogo."
-        : "Em todos os mercados ou estamos acima das casas ou temos mau registo. Nada a fazer aqui.",
+        : input.homeAwayDisagrees
+          ? "As fontes discordam sobre quem joga em casa, e sem isso o resultado não se calcula."
+          : "Em todos os mercados ou estamos acima das casas ou temos mau registo. Nada a fazer aqui.",
     );
   }
 
@@ -247,6 +389,7 @@ export function suggest(input: SuggestionInput): Suggestion {
   const porVantagem = [...priced].sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
   const melhor = porVantagem[0];
   const vantagem = melhor.edge ?? 0;
+  const exigido = pedido(melhor.market).points;
 
   const lado = `Damos ${pct(melhor.ours)}, o mercado ${pct(
     melhor.marketPct as number,
@@ -273,9 +416,9 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "pequena",
       melhor,
-      `${lado} Paga ${num(vantagem)} pontos a mais, e com ${pct(
-        input.amostraPct,
-      )} de histórico eu queria ${num(exigido)}. Entra com metade.`,
+      `${lado} Paga ${num(vantagem)} pontos a mais e eu queria ${num(
+        exigido,
+      )}. Entra com metade.`,
     );
   }
 

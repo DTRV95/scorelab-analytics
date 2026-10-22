@@ -15,6 +15,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { ModelRecordTable } from "@/components/ModelRecordTable";
 import { VerdictRecordCard } from "@/components/VerdictRecordCard";
+import { BetPatternsCard } from "@/components/BetPatternsCard";
 import { MarketCalibrationCard } from "@/components/MarketCalibrationCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -475,6 +476,10 @@ export default function ModelAccuracy() {
                 que os dados já sustentam, e é ela que mexe nas contas. */}
             <motion.section variants={fadeUp}>
               <MarketCalibrationCard />
+
+              {/* O modelo mede previsões; isto mede dinheiro. São duas
+                  perguntas diferentes, e ficam uma debaixo da outra. */}
+              <BetPatternsCard />
             </motion.section>
 
             {/* O registo do próprio quadro, antes do backtest por

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { quotes, required, suggest, type SuggestionInput } from "@/lib/suggestion";
+import { readPatterns } from "@/lib/betPatterns";
 import type { AccuracyMarket } from "@/lib/modelAccuracy";
 
 /** O cartão de amanhã, com os números que a fonte deu mesmo. */
@@ -97,10 +98,11 @@ describe("suggest", () => {
 
     expect(got.pick).not.toBeNull();
     expect(got.call).toBe("pequena");
-    expect(got.because).toContain("33%");
     expect(got.because).toContain("6,7");
     // Uma instrução no fim, e não um adjectivo.
     expect(got.because).toContain("Entra com metade");
+    // E o porquê da fasquia em campo próprio, não na frase.
+    expect(got.raised.map((r) => r.what)).toEqual(["33% de histórico"]);
   });
 
   it("é o histórico, e só ele, que separa a aposta da aposta pequena", () => {
@@ -298,5 +300,141 @@ describe("suggest", () => {
 
     expect(got.avoid?.market).toBe("Menos de 3.5 Golos");
     expect(got.pick?.market).toBe("Casa");
+  });
+});
+
+describe("o juízo por cima do modelo", () => {
+  /** Um jogo que, só pelo modelo e pelo preço, seria aposta. */
+  const bom = {
+    markets: [{ mercado: "Casa", probabilidade_pct: 67 }],
+    prices: { Casa: 2.0 },
+    implied: { Casa: 50 },
+    amostraPct: 80,
+  };
+
+  const falta = (quantos: number) =>
+    Array.from({ length: quantos }, (_, i) => ({
+      name: `Jogador ${i}`,
+      status: "out",
+    }));
+
+  it("pede mais a uma equipa desfalcada, que o modelo não sabe que está", () => {
+    // O modelo conta golos de uma época inteira. Não sabe que faltam
+    // quatro hoje, e a equipa que ele mediu não é a que vai jogar.
+    const inteiro = suggest(input(bom));
+    const desfalcado = suggest(
+      input({
+        ...bom,
+        teams: { home: "Alavés", away: "Málaga" },
+        absences: { Alavés: falta(4), Málaga: [] },
+      }),
+    );
+
+    expect(inteiro.call).toBe("apostar");
+    expect(desfalcado.required).toBeGreaterThan(inteiro.required);
+    expect(desfalcado.raised.map((r) => r.what)).toContain(
+      "Alavés com 4 baixas",
+    );
+  });
+
+  it("não conta como falta quem está em dúvida", () => {
+    const got = suggest(
+      input({
+        ...bom,
+        teams: { home: "Alavés", away: "Málaga" },
+        absences: {
+          Alavés: [
+            { name: "A", status: "doubtful" },
+            { name: "B", status: "doubtful" },
+            { name: "C", status: "doubtful" },
+          ],
+          Málaga: [],
+        },
+      }),
+    );
+
+    expect(got.required).toBeCloseTo(3, 5);
+  });
+
+  it("tira o resultado de questão quando as fontes trocam casa e fora", () => {
+    // Jogar em casa vale golos, e a previsão deu essa vantagem a
+    // alguém. Se foi ao errado, o 1X e o 2X estão trocados — e um
+    // mercado trocado não é menos certo, é outro mercado.
+    const got = suggest(
+      input({
+        markets: [
+          { mercado: "1X", probabilidade_pct: 82 },
+          { mercado: "Mais de 2.5 Golos", probabilidade_pct: 67 },
+        ],
+        prices: { "1X": 1.5, "Mais de 2.5 Golos": 2.0 },
+        implied: { "1X": 70, "Mais de 2.5 Golos": 50 },
+        homeAwayDisagrees: true,
+      }),
+    );
+
+    // Os golos aguentam: quantos se marcam não muda por se trocarem
+    // os lados.
+    expect(got.pick?.market).toBe("Mais de 2.5 Golos");
+  });
+
+  it("diz que não há nada quando só havia mercados de resultado", () => {
+    const got = suggest(
+      input({
+        markets: [{ mercado: "1X", probabilidade_pct: 82 }],
+        prices: { "1X": 1.5 },
+        implied: { "1X": 70 },
+        homeAwayDisagrees: true,
+      }),
+    );
+
+    expect(got.pick).toBeNull();
+    expect(got.because).toContain("quem joga em casa");
+  });
+
+  it("pede mais onde o nosso próprio dinheiro já se perdeu", () => {
+    const perdedor = readPatterns([
+      ...Array.from({ length: 10 }, () => ({
+        market: "Menos de 3.5 Golos",
+        odds: 1.3,
+        won: true,
+      })),
+      ...Array.from({ length: 6 }, () => ({
+        market: "Menos de 3.5 Golos",
+        odds: 1.3,
+        won: false,
+      })),
+    ]);
+
+    const got = suggest(
+      input({
+        markets: [{ mercado: "Menos de 3.5 Golos", probabilidade_pct: 67 }],
+        prices: { "Menos de 3.5 Golos": 2.0 },
+        implied: { "Menos de 3.5 Golos": 50 },
+        patterns: perdedor,
+      }),
+    );
+
+    expect(got.required).toBeCloseTo(4.5, 5);
+    expect(got.raised.map((r) => r.what)).toContain(
+      'o nosso dinheiro perde em "menos de X golos"',
+    );
+  });
+
+  it("o juízo só pode subir a fasquia, nunca baixá-la", () => {
+    // É esta regra que torna seguro usar um número que não está
+    // medido: enganar-me para cima custa uma aposta que não se fez.
+    const chao = suggest(input({ ...bom, amostraPct: 100 })).required;
+
+    expect(chao).toBeCloseTo(3, 5);
+    expect(
+      suggest(
+        input({
+          ...bom,
+          amostraPct: 100,
+          teams: { home: "A", away: "B" },
+          absences: { A: falta(5), B: falta(5) },
+        }),
+      ).required,
+    ).toBeGreaterThan(chao);
   });
 });
