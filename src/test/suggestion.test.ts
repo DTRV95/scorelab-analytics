@@ -84,8 +84,9 @@ describe("suggest", () => {
 
     expect(got.call).toBe("apostar");
     expect(got.pick?.market).toBe("Menos de 3.5 Golos");
-    expect(got.because).toContain("1,90");
-    expect(got.because).toContain("pontos a teu favor");
+    // O preço está em cima, em letra grande; a frase não o repete.
+    expect(got.pick?.price).toBe(1.9);
+    expect(got.because).toContain("pontos a mais");
   });
 
   it("dá uma opinião quando o histórico é curto, em vez de calar", () => {
@@ -98,6 +99,8 @@ describe("suggest", () => {
     expect(got.call).toBe("pequena");
     expect(got.because).toContain("33%");
     expect(got.because).toContain("6,7");
+    // Uma instrução no fim, e não um adjectivo.
+    expect(got.because).toContain("Entra com metade");
   });
 
   it("é o histórico, e só ele, que separa a aposta da aposta pequena", () => {
@@ -137,7 +140,7 @@ describe("suggest", () => {
     expect(got.call).toBe("passar");
     // O mais seguro dos dois, não o menos mau ao preço.
     expect(got.pick?.market).toBe("Menos de 3.5 Golos");
-    expect(got.because).toContain("abaixo do que isto vale");
+    expect(got.because).toContain("Não vale o preço");
   });
 
   it("põe de parte o mercado em que estamos muito acima das casas", () => {
@@ -191,7 +194,7 @@ describe("suggest", () => {
 
     expect(got.call).toBe("esperar");
     expect(got.pick?.market).toBe("1X");
-    expect(got.because).toContain("ainda não abriram");
+    expect(got.because).toContain("Sem preço ainda");
     expect(got.because).toContain("só paga acima de");
   });
 
@@ -214,8 +217,8 @@ describe("suggest", () => {
     );
 
     expect(certo.call).toBe("passar");
-    expect(certo.because).toContain("paga o que vale e mais nada");
-    expect(barato.because).toContain("abaixo do que isto vale");
+    expect(certo.because).toContain("paga o que vale e nada mais");
+    expect(barato.because).toContain("Não vale o preço");
   });
 
   it("não cala o aviso quando a aposta sugerida é a própria armadilha", () => {
@@ -232,7 +235,7 @@ describe("suggest", () => {
 
     expect(got.pick?.market).toBe("Mais de 2.5 Golos");
     expect(got.avoid).toBeNull();
-    expect(got.because).toContain("vai contra as casas");
+    expect(got.because).toContain("Vai contra as casas");
     expect(got.because).toContain("8,1 pontos acima");
   });
 
