@@ -15,6 +15,14 @@ export interface Absence {
   status: string;
   reason?: string;
   back?: string;
+  /**
+   * Que posição faz falta.
+   *
+   * É o mais perto que chegamos de dizer se o ausente conta: faltar o
+   * guarda-redes não é faltar um extremo. Se era titular, não sabemos —
+   * isso precisava de minutos jogados, e nenhuma fonte nossa os dá.
+   */
+  position?: string;
 }
 
 const STATUS: Record<string, string> = {

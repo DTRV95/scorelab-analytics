@@ -417,9 +417,14 @@ def for_match(
     # As chaves deles são "home"/"away"; as nossas são os nomes das
     # equipas. Se o jogo veio ao contrário, os lados trocam com ele.
     first, second = ("away", "home") if swapped_at_best else ("home", "away")
+
+    def team_id(side: str) -> Any:
+        obj = best.get(f"{side}_team_obj")
+        return obj.get("id") if isinstance(obj, dict) else None
+
     return {
-        home: _side_names(block.get(first)),
-        away: _side_names(block.get(second)),
+        home: _with_positions(_side_names(block.get(first)), team_id(first)),
+        away: _with_positions(_side_names(block.get(second)), team_id(second)),
     }
 
 
@@ -556,3 +561,88 @@ def squad_probe(event_id: Any = None, team_id: Any = None) -> Dict[str, Any]:
         out["tentativas"].append({"path": path, "forma": _shape_of(payload, depth=3)})
 
     return out
+
+
+SQUAD_TTL = 24 * 60 * 60
+
+# A posição como eles a escrevem, em português.
+POSITIONS = {
+    "goalkeeper": "guarda-redes",
+    "defender": "defesa",
+    "midfielder": "médio",
+    "attacker": "avançado",
+    "forward": "avançado",
+    "striker": "avançado",
+}
+
+
+def squad(team_id: Any) -> Dict[str, str]:
+    """O plantel de uma equipa: nome -> posição.
+
+    É o que esta fonte dá sobre jogadores, e é menos do que se queria:
+    não há minutos jogados nem jogos feitos, por isso daqui não sai
+    nenhuma medida de quem é importante. Sai a posição, que já é
+    bastante — faltar o guarda-redes não é faltar um extremo.
+    """
+    if not is_configured() or not team_id:
+        return {}
+
+    key = f"squad:{team_id}"
+    remembered = _cached(key, SQUAD_TTL)
+    if remembered is not None:
+        return remembered
+
+    found = _working()
+    if not found:
+        return {}
+
+    try:
+        payload = _fetch("/api/players/", found["style"], {"team": team_id})
+    except Exception:
+        return {}
+
+    rows = payload.get("results") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return {}
+
+    out: Dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        if not name:
+            continue
+        raw = str(row.get("position") or "").strip().lower()
+        out[name] = POSITIONS.get(raw, raw)
+
+    _store(key, out)
+    return out
+
+
+def _with_positions(
+    players: List[Dict[str, str]], team_id: Any
+) -> List[Dict[str, str]]:
+    """A posição de cada ausente, quando o plantel a souber."""
+    if not players or not team_id:
+        return players
+
+    plantel = squad(team_id)
+    if not plantel:
+        return players
+
+    from injury_data import NAME_MATCH_FLOOR, _similar
+
+    for player in players:
+        posicao = plantel.get(player["name"])
+        if posicao is None:
+            # O nome na ficha de lesões nem sempre é o do plantel:
+            # "Sávio" contra "Sávio Moreira de Oliveira".
+            melhor, nota = "", 0.0
+            for nome, pos in plantel.items():
+                parecenca = _similar(player["name"], nome)
+                if parecenca > nota:
+                    melhor, nota = pos, parecenca
+            posicao = melhor if nota >= NAME_MATCH_FLOOR else ""
+        player["position"] = posicao or ""
+
+    return players
