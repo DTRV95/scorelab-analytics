@@ -156,6 +156,56 @@ def headlines() -> List[Dict[str, Any]]:
     return gathered
 
 
+# Sítios que não escrevem notícias: guias de transmissão, agregadores de
+# resultados e casas de apostas. O que eles publicam sobre um jogo é
+# sempre a mesma página gerada, e ela nunca diz nada sobre a equipa.
+LIXO_FONTES = (
+    "dazn", "disney", "sofascore", "flashscore", "fotmob", "365scores",
+    "bet365", "betano", "placard", "betclic", "solverde", "esc online",
+    "onefootball", "livescore", "scores24", "footystats",
+)
+
+# E os títulos que essas páginas usam, para quando a fonte vem noutro
+# nome. "H2H e escalações" nunca foi uma notícia.
+LIXO_TITULOS = (
+    "placar ao vivo", "h2h", "assistir", "onde ver", "onde assistir",
+    "transmissão", "em direto online", "ao vivo e online", "resumos da",
+    "palpites", "prognóstico", "prognósticos", "dicas de aposta",
+    "melhores odds", "apostar em", "escalações", "classificação",
+    "tabela da", "calendário completo",
+)
+
+# O que faz de um título uma informação para quem vai apostar: alguma
+# coisa que muda quem joga. Tudo o resto — declarações, bilheteira,
+# aniversários do clube — é texto bonito que não move uma probabilidade.
+RELEVANTE = (
+    "lesão", "lesao", "lesionado", "lesionada", "lesionados",
+    "baixa", "baixas", "falha", "falhar", "falham", "ausência", "ausente",
+    "regressa", "regresso", "recupera", "recuperado", "recuperação",
+    "dúvida", "duvida", "castigo", "castigado", "suspenso", "suspensão",
+    "expulso", "vermelho", "convocados", "convocatória", "convocatoria",
+    "onze provável", "onze provavel", "titular", "titulares",
+    "contratempo", "problema físico", "problema fisico", "paragem",
+    "cirurgia", "operado", "treino condicionado", "fora dos convocados",
+    "desfalque", "desfalques", "retorno", "volta a", "poupado",
+)
+
+
+def _junk(item: Dict[str, Any]) -> bool:
+    """Se isto é uma página gerada em vez de uma notícia."""
+    fonte = (item.get("source") or "").lower()
+    if any(nome in fonte for nome in LIXO_FONTES):
+        return True
+    titulo = (item.get("title") or "").lower()
+    return any(marca in titulo for marca in LIXO_TITULOS)
+
+
+def _useful(title: str) -> bool:
+    """Se o título fala de alguém entrar ou sair da equipa."""
+    lowered = title.lower()
+    return any(palavra in lowered for palavra in RELEVANTE)
+
+
 def _mentions(title: str, words: set) -> bool:
     """Se o título fala desta equipa.
 
@@ -192,18 +242,26 @@ def about(team: str) -> List[Dict[str, Any]]:
         return []
 
     out = []
-    for item in items[:PER_TEAM]:
+    for item in items:
+        if len(out) >= PER_TEAM:
+            break
         title, _, source = item["title"].rpartition(" - ")
-        out.append(
-            {
-                "title": title or item["title"],
-                "link": item["link"],
-                "at": item["at"],
-                # O Google põe o jornal no fim do título, a seguir a um
-                # travessão. Separado, cada um fica no seu sítio.
-                "source": source.strip() if title else "Google Notícias",
-            }
-        )
+        # O Google põe o jornal no fim do título, a seguir a um travessão.
+        candidato = {
+            "title": title or item["title"],
+            "link": item["link"],
+            "at": item["at"],
+            "source": source.strip() if title else "Google Notícias",
+        }
+        # Dois crivos, e são apertados de propósito.
+        #
+        # Sem eles, um jogo do Go Ahead Eagles trazia "Portugal: Go-ahead
+        # given for Sines hydrogen projects" e três guias de transmissão.
+        # Ruído com ar de informação é pior do que não ter nada: ocupa o
+        # ecrã e ensina a não ler a secção.
+        if _junk(candidato) or not _useful(candidato["title"]):
+            continue
+        out.append(candidato)
 
     _store(key, out)
     return out
@@ -230,6 +288,8 @@ def for_teams(home: str, away: str) -> Dict[str, List[Dict[str, Any]]]:
                 if len(encontrados) >= PER_TEAM:
                     break
                 if item["title"].lower() in vistos:
+                    continue
+                if _junk(item) or not _useful(item["title"]):
                     continue
                 if words and _mentions(item["title"], words):
                     encontrados.append(item)

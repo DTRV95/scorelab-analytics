@@ -72,13 +72,13 @@ def test_procura_por_equipa_e_separa_o_jornal_do_titulo():
     # O Google põe o jornal no fim do título, a seguir a um travessão.
     got = _news(
         {
-            "news.google.com": _rss("Porto prepara o clássico - Record"),
+            "news.google.com": _rss("Pepê lesionado falha o clássico - Record"),
             "record.pt": _rss("Outra coisa qualquer"),
         },
         fn=lambda: news_data.about("FC Porto"),
     )
 
-    assert got[0]["title"] == "Porto prepara o clássico"
+    assert got[0]["title"] == "Pepê lesionado falha o clássico"
     assert got[0]["source"] == "Record"
 
 
@@ -98,11 +98,13 @@ def test_a_pesquisa_leva_o_nome_da_equipa_e_a_janela():
 
 def test_a_primeira_pagina_entra_de_reforco_quando_a_pesquisa_falha():
     got = _news(
-        {"record.pt": _rss("Benfica vence fora")},
+        {"record.pt": _rss("Otamendi castigado, Benfica sem ele em Barcelos")},
         fn=lambda: news_data.for_teams("SL Benfica", "Gil Vicente"),
     )
 
-    assert [i["title"] for i in got["SL Benfica"]] == ["Benfica vence fora"]
+    assert [i["title"] for i in got["SL Benfica"]] == [
+        "Otamendi castigado, Benfica sem ele em Barcelos"
+    ]
     assert got["Gil Vicente"] == []
 
 
@@ -143,16 +145,20 @@ def test_separa_as_noticias_pelas_duas_equipas():
     got = _news(
         {
             "record.pt": _rss(
-                "Benfica vence fora",
-                "Porto prepara o clássico",
+                "Benfica com duas baixas para o jogo",
+                "Porto recupera Pepê a tempo do clássico",
                 "Notícia de ténis",
             )
         },
         fn=lambda: news_data.for_teams("SL Benfica", "FC Porto"),
     )
 
-    assert [i["title"] for i in got["SL Benfica"]] == ["Benfica vence fora"]
-    assert [i["title"] for i in got["FC Porto"]] == ["Porto prepara o clássico"]
+    assert [i["title"] for i in got["SL Benfica"]] == [
+        "Benfica com duas baixas para o jogo"
+    ]
+    assert [i["title"] for i in got["FC Porto"]] == [
+        "Porto recupera Pepê a tempo do clássico"
+    ]
 
 
 def test_nao_apanha_a_equipa_dentro_de_outra_palavra():
@@ -164,6 +170,53 @@ def test_nao_apanha_a_equipa_dentro_de_outra_palavra():
 
     assert got["FC Porto"] == []
     assert got["SC Braga"] == []
+
+
+def test_deita_fora_as_paginas_de_transmissao():
+    # Foi isto que encheu o ecrã: guias do DAZN e do Sofascore.
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Assistir a Telstar x Feyenoord - Disney Plus",
+                "SC Telstar x Feyenoord placar ao vivo, H2H e escalações - Sofascore",
+                "Vê Resumos da 4.ª jornada | Eredivisie em Direto - DAZN",
+            )
+        },
+        fn=lambda: news_data.about("Telstar"),
+    )
+
+    assert got == []
+
+
+def test_deita_fora_a_noticia_que_so_calhou_ter_o_nome():
+    # Caso real: um jogo do Go Ahead Eagles trouxe uma notícia sobre
+    # hidrogénio, porque a equipa se chama "Go Ahead".
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Portugal: Go-ahead given for Sines hydrogen projects - LUSA"
+            )
+        },
+        fn=lambda: news_data.about("Go Ahead"),
+    )
+
+    assert got == []
+
+
+def test_guarda_so_o_que_muda_a_equipa():
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Treinador elogia adeptos e fala do futuro do clube - Record",
+                "Pedro Porro fora por lesão nos isquiotibiais - A Bola",
+            )
+        },
+        fn=lambda: news_data.about("Tottenham"),
+    )
+
+    assert [i["title"] for i in got] == [
+        "Pedro Porro fora por lesão nos isquiotibiais"
+    ]
 
 
 def test_nao_le_nem_interpreta_o_titulo():

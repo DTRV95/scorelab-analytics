@@ -494,3 +494,65 @@ def date_probe(day: str) -> Dict[str, Any]:
         )
 
     return out
+
+
+# Os sítios onde uma fonte destas costuma guardar quem jogou. Saber que
+# um ausente foi titular nos últimos dez jogos é a diferença entre "falta
+# um jogador" e "falta o jogador" — e é a pergunta que o utilizador faz.
+SQUAD_PATHS = (
+    "/api/lineups/",
+    "/api/events/{event}/lineups/",
+    "/api/events/{event}/",
+    "/api/teams/{team}/players/",
+    "/api/players/",
+)
+
+
+def squad_probe(event_id: Any = None, team_id: Any = None) -> Dict[str, Any]:
+    """Se há maneira de saber quem costuma ser titular.
+
+    Diagnóstico. Lista o que cada caminho responde, para se decidir com
+    dados em vez de com palpites — que nesta fonte já me custaram cinco.
+    """
+    if not is_configured():
+        return {"configured": False}
+
+    found = _working()
+    if not found:
+        return {"configured": True, "accepted": False}
+
+    # Sem ids à mão, tira-se um jogo da lista para ter por onde pegar.
+    if event_id is None or team_id is None:
+        events = all_events() or []
+        if events:
+            event_id = event_id or events[0].get("id")
+            casa = events[0].get("home_team_obj")
+            if isinstance(casa, dict):
+                team_id = team_id or casa.get("id")
+
+    out: Dict[str, Any] = {
+        "event_id": event_id,
+        "team_id": team_id,
+        "tentativas": [],
+    }
+
+    for template in SQUAD_PATHS:
+        path = template.format(event=event_id, team=team_id)
+        if "{" in path or "None" in path:
+            out["tentativas"].append({"path": template, "erro": "sem id"})
+            continue
+        params = {"event": event_id} if path == "/api/lineups/" else None
+        if path == "/api/players/":
+            params = {"team": team_id}
+        try:
+            payload = _fetch(path, found["style"], params)
+        except urllib.error.HTTPError as exc:
+            out["tentativas"].append({"path": path, "erro": f"HTTP {exc.code}"})
+            continue
+        except Exception as exc:
+            out["tentativas"].append({"path": path, "erro": type(exc).__name__})
+            continue
+
+        out["tentativas"].append({"path": path, "forma": _shape_of(payload, depth=3)})
+
+    return out
