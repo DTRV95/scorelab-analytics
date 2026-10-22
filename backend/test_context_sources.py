@@ -495,3 +495,47 @@ def test_bzzoiro_nao_anda_a_paginar_para_sempre():
 
     # Uma da sonda mais quatro páginas, e pára.
     assert chamadas["n"] <= 1 + bzzoiro_data.MAX_PAGES
+
+
+def test_nao_apanha_a_palavra_dentro_de_outra():
+    # "rebaixamento" contém "baixa", e foi assim que uma vitória do
+    # Tottenham passou por notícia de baixas.
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Tottenham vence o Coventry e sai da zona de rebaixamento - UOL"
+            )
+        },
+        fn=lambda: news_data.about("Tottenham"),
+    )
+
+    assert got == []
+
+
+def test_deita_fora_declaracoes_e_mercado_de_transferencias():
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Técnico do Tottenham volta a falar sobre Richarlison - UOL",
+                "Tottenham ainda deixa dúvidas, mas encerra jejum - Trivela",
+                "Tottenham e Aston Villa de olho em titular das águias - Glorioso",
+            )
+        },
+        fn=lambda: news_data.about("Tottenham"),
+    )
+
+    assert got == []
+
+
+def test_guarda_a_baixa_e_o_regresso_de_verdade():
+    got = _news(
+        {
+            "news.google.com": _rss(
+                "Dibu Martínez sofre fratura na mandíbula e é operado - ge",
+                "Kulusevski volta ao Tottenham após 526 dias de lesão - Record",
+            )
+        },
+        fn=lambda: news_data.about("Tottenham"),
+    )
+
+    assert len(got) == 2

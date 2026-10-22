@@ -566,7 +566,13 @@ def squad_probe(event_id: Any = None, team_id: Any = None) -> Dict[str, Any]:
 SQUAD_TTL = 24 * 60 * 60
 
 # A posição como eles a escrevem, em português.
+# Eles dão uma letra — "g", "d", "m", "f" — e não a palavra. Sem isto, o
+# ecrã mostrava "Reece James · d · lesionado".
 POSITIONS = {
+    "g": "guarda-redes",
+    "d": "defesa",
+    "m": "médio",
+    "f": "avançado",
     "goalkeeper": "guarda-redes",
     "defender": "defesa",
     "midfielder": "médio",

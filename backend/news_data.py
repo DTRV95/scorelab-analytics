@@ -178,16 +178,23 @@ LIXO_TITULOS = (
 # O que faz de um título uma informação para quem vai apostar: alguma
 # coisa que muda quem joga. Tudo o resto — declarações, bilheteira,
 # aniversários do clube — é texto bonito que não move uma probabilidade.
+# Afinadas contra o que elas deixaram passar à primeira.
+#
+# Saíram "volta a" ("Técnico volta a falar sobre Richarlison"), "dúvida"
+# solta ("Tottenham ainda deixa dúvidas") e "titular" ("Tottenham de
+# olho em titular das águias" — mercado de transferências, não baixas).
+# Ficam as que só aparecem quando alguém entra ou sai mesmo.
 RELEVANTE = (
-    "lesão", "lesao", "lesionado", "lesionada", "lesionados",
-    "baixa", "baixas", "falha", "falhar", "falham", "ausência", "ausente",
-    "regressa", "regresso", "recupera", "recuperado", "recuperação",
-    "dúvida", "duvida", "castigo", "castigado", "suspenso", "suspensão",
-    "expulso", "vermelho", "convocados", "convocatória", "convocatoria",
-    "onze provável", "onze provavel", "titular", "titulares",
-    "contratempo", "problema físico", "problema fisico", "paragem",
-    "cirurgia", "operado", "treino condicionado", "fora dos convocados",
-    "desfalque", "desfalques", "retorno", "volta a", "poupado",
+    "lesão", "lesao", "lesionado", "lesionada", "lesionados", "lesionadas",
+    "baixa", "baixas", "desfalque", "desfalques",
+    "ausência", "ausencia", "ausente", "ausentes",
+    "castigo", "castigado", "suspenso", "suspensa", "suspensão", "suspensao",
+    "expulso", "convocados", "convocatória", "convocatoria",
+    "cirurgia", "operado", "contratempo",
+    "regressa", "recupera", "recuperado", "recuperada", "poupado",
+    "em dúvida", "em duvida", "onze provável", "onze provavel",
+    "problema físico", "problema fisico", "fora dos convocados",
+    "treino condicionado",
 )
 
 
@@ -201,9 +208,17 @@ def _junk(item: Dict[str, Any]) -> bool:
 
 
 def _useful(title: str) -> bool:
-    """Se o título fala de alguém entrar ou sair da equipa."""
+    """Se o título fala de alguém entrar ou sair da equipa.
+
+    Por palavra inteira, que é o que faltava: "baixa" apanhada dentro de
+    "rebaixamento" meteu cá dentro "Tottenham vence o Coventry e sai da
+    zona de rebaixamento", que não é uma baixa de ninguém.
+    """
     lowered = title.lower()
-    return any(palavra in lowered for palavra in RELEVANTE)
+    return any(
+        re.search(rf"(?<![0-9a-zà-ÿ]){re.escape(palavra)}(?![0-9a-zà-ÿ])", lowered)
+        for palavra in RELEVANTE
+    )
 
 
 def _mentions(title: str, words: set) -> bool:
