@@ -122,6 +122,17 @@ def data_sources(request: Request):
     }
 
 
+@app.get("/data/bzzoiro-probe")
+@limiter.limit("4/minute")
+def data_bzzoiro_probe(request: Request, day: str):
+    """Qual é o parâmetro que filtra os jogos por data nesta fonte.
+
+    Diagnóstico, não funcionalidade: daqui não se fala com a fonte, só
+    através deste servidor, e uma pergunta mal feita custa um deploy.
+    """
+    return bzzoiro_data.date_probe(day)
+
+
 @app.get("/data/injury-coverage")
 @limiter.limit("4/minute")
 def data_injury_coverage(request: Request, force: bool = False):
