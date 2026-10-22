@@ -133,6 +133,13 @@ def data_bzzoiro_probe(request: Request, day: str):
     return bzzoiro_data.date_probe(day)
 
 
+@app.get("/data/squad-probe")
+@limiter.limit("4/minute")
+def data_squad_probe(request: Request):
+    """Se a fonte dá convocatórias — para se saber quem é titular."""
+    return bzzoiro_data.squad_probe()
+
+
 @app.get("/data/injury-coverage")
 @limiter.limit("4/minute")
 def data_injury_coverage(request: Request, force: bool = False):
