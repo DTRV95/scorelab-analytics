@@ -349,7 +349,9 @@ def test_bzzoiro_pede_os_jogos_do_dia_do_jogo():
         calls=calls,
     )
 
-    assert any("date=2026-10-24" in url for url, _ in calls)
+    # date_from+date_to: foi o único par que a fonte respeitou.
+    assert any("date_from=2026-10-24" in url for url, _ in calls)
+    assert any("date_to=2026-10-24" in url for url, _ in calls)
 
 
 def test_bzzoiro_volta_a_lista_de_sempre_se_o_filtro_nao_existir():
@@ -357,7 +359,7 @@ def test_bzzoiro_volta_a_lista_de_sempre_se_o_filtro_nao_existir():
 
     def recusa_o_filtro(request, timeout=None):
         url = request.full_url
-        if "date=" in url:
+        if "date_from=" in url:
             raise urllib.error.HTTPError(url, 400, "sem filtro", None, None)
         chamadas["n"] += 1
         return _Answer(json.dumps(EVENTS).encode("utf-8"))
