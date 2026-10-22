@@ -231,22 +231,49 @@ def test_bzzoiro_sem_chave_nao_toca_na_rede():
 
 
 def test_bzzoiro_descobre_o_caminho_e_o_cabecalho():
-    calls = []
-    answer = _bzz(
-        {"/api/events/": EVENTS}, bzzoiro_data.account_status, calls=calls
-    )
+    answer = _bzz({"/api/events/": EVENTS}, bzzoiro_data.account_status)
 
-    # O /api/v2/ é tentado primeiro e recusado; o cliente chega ao outro.
     assert answer["accepted"] is True
     assert answer["path"] == "/api/events/"
     assert answer["events_with_absences"] == 1
+
+
+def test_bzzoiro_escolhe_o_caminho_que_traz_baixas_e_nao_o_primeiro():
+    # Caso real: o /api/v2/events/ responde com cinquenta jogos e nenhum
+    # traz indisponíveis, que é a única coisa por que viemos aqui.
+    sem_baixas = {
+        "results": [
+            {k: v for k, v in _event().items() if k != "unavailable_players"}
+        ]
+    }
+    answer = _bzz(
+        {"/api/v2/events/": sem_baixas, "/api/events/": EVENTS},
+        bzzoiro_data.account_status,
+    )
+
+    assert answer["path"] == "/api/events/"
+    assert answer["events_with_absences"] == 1
+
+
+def test_bzzoiro_fica_pelo_que_responde_quando_nenhum_traz_baixas():
+    sem_baixas = {
+        "results": [
+            {k: v for k, v in _event().items() if k != "unavailable_players"}
+        ]
+    }
+    answer = _bzz({"/api/v2/events/": sem_baixas}, bzzoiro_data.account_status)
+
+    assert answer["accepted"] is True
+    assert answer["events_with_absences"] == 0
 
 
 def test_bzzoiro_diz_o_que_cada_caminho_respondeu():
     answer = _bzz({}, bzzoiro_data.account_status)
 
     assert answer["accepted"] is False
-    assert len(answer["attempts"]) == 4
+    # Dois caminhos x duas autenticações x três formas de pedir as
+    # baixas, cada uma com a sua resposta.
+    assert len(answer["attempts"]) == 12
 
 
 def test_bzzoiro_separa_as_baixas_pelas_duas_equipas():
