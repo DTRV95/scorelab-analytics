@@ -27,6 +27,13 @@ function input(over: Partial<DossierInput> = {}): DossierInput {
   };
 }
 
+function mercado(
+  odds: Record<string, number> = { "1X": 1.45, Casa: 1.90, Empate: 3.60 },
+  implied: Record<string, number> = { "1X": 70, Casa: 50, Empate: 20 },
+) {
+  return { odds, implied };
+}
+
 function record(over: Partial<AccuracyMarket> = {}): AccuracyMarket {
   return {
     market: "1X",
@@ -44,20 +51,24 @@ describe("buildDossier", () => {
   it("conta o que sabemos e o que falta", () => {
     const dossier = buildDossier(input());
 
-    expect(dossier.total).toBe(10);
-    // Histórico, forma, casa/fora e média da liga. Registo, preço, lesões,
-    // notícias, árbitro e tempo ficam por preencher.
+    expect(dossier.total).toBe(7);
+    // Histórico, forma, casa/fora e média da liga. Registo, preço do
+    // mercado e a odd escrita ficam por preencher.
     expect(dossier.known).toBe(4);
   });
 
-  it("trata lesões e notícias como buracos que pesam, e o árbitro não", () => {
+  it("trata o preço do mercado como o buraco que pesa", () => {
     const dossier = buildDossier(input());
 
-    // Pelo nome curto: "lesões e castigos e notícias da semana" tropeça.
-    expect(dossier.heavyMissing).toEqual([
-      "quem está de fora",
-      "as notícias da semana",
-    ]);
+    expect(dossier.heavyMissing).toEqual(["o que as casas estão a pagar"]);
+  });
+
+  it("acende o mercado quando as casas abriram o jogo", () => {
+    const dossier = buildDossier(input({ market: mercado() }));
+    const linha = dossier.lines.find((line) => line.key === "mercado");
+
+    expect(linha?.value).toBe("3 mercados lidos");
+    expect(dossier.heavyMissing).toEqual([]);
   });
 
   it("acende a linha do preço quando já há uma odd escrita", () => {
@@ -167,5 +178,65 @@ describe("enumerate", () => {
     expect(enumerate(["lesões"])).toBe("lesões");
     expect(enumerate(["lesões", "notícias"])).toBe("lesões e notícias");
     expect(enumerate(["a", "b", "c"])).toBe("a, b e c");
+  });
+});
+
+describe("o mercado como contraditório", () => {
+  it("põe o preço que está na mesa ao lado do que farias falta", () => {
+    const i = input({ market: mercado({ "1X": 1.80 }, { "1X": 56 }) });
+    const contra = objections(i, buildDossier(i));
+    const linha = contra.find((item) => item.key === "minima");
+
+    // 74% prometidos valem 63% medidos, que pedem 1,59. A 1,80 a conta
+    // fecha, por isso isto não é uma objecção grave.
+    expect(linha?.text).toContain("1,80");
+    expect(linha?.text).toContain("1,59");
+    expect(linha?.grave).toBe(false);
+  });
+
+  it("trava a aposta quando o mercado paga menos do que a mínima", () => {
+    const i = input({ market: mercado({ "1X": 1.40 }, { "1X": 71 }) });
+    const contra = objections(i, buildDossier(i));
+    const linha = contra.find((item) => item.key === "minima");
+
+    expect(linha?.text).toContain("não há aposta");
+    expect(linha?.grave).toBe(true);
+  });
+
+  it("avisa quando discordamos muito do mercado", () => {
+    // Nós medimos 63%; o mercado dá 48%.
+    const i = input({ market: mercado({ "1X": 2.05 }, { "1X": 48 }) });
+    const contra = objections(i, buildDossier(i));
+    const linha = contra.find((item) => item.key === "mercado");
+
+    expect(linha?.text).toContain("63,0%");
+    expect(linha?.text).toContain("48,0%");
+    expect(linha?.text).toContain("quem costuma estar errado somos nós");
+    expect(linha?.grave).toBe(true);
+  });
+
+  it("diz o contrário quando é o mercado a estar mais confiante", () => {
+    const i = input({ market: mercado({ "1X": 1.25 }, { "1X": 78 }) });
+    const contra = objections(i, buildDossier(i));
+
+    expect(contra.find((item) => item.key === "mercado")?.text).toContain(
+      "sabem alguma coisa",
+    );
+  });
+
+  it("cala-se quando estamos de acordo com o mercado", () => {
+    const i = input({ market: mercado({ "1X": 1.60 }, { "1X": 62 }) });
+    const contra = objections(i, buildDossier(i));
+
+    expect(contra.find((item) => item.key === "mercado")).toBeUndefined();
+  });
+
+  it("volta à frase sem preço quando as casas não abriram o jogo", () => {
+    const i = input();
+    const contra = objections(i, buildDossier(i));
+
+    expect(contra.find((item) => item.key === "minima")?.text).toContain(
+      "abaixo de 1,59",
+    );
   });
 });

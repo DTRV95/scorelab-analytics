@@ -141,7 +141,7 @@ def data_match_context(
     dia, e enchê-las a pré-carregar um quadro de cem jogos que ninguém
     abriu era ficar sem nenhuma para os que se abrem mesmo.
     """
-    return injury_data.match_context(
+    return odds_api.match_context(
         league=league, home=home, away=away, kickoff=kickoff
     )
 
