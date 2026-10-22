@@ -61,19 +61,12 @@ export interface MarketQuote {
  */
 export type Call = "apostar" | "pequena" | "passar" | "esperar";
 
-export const CALL_LABEL: Record<Call, string> = {
-  apostar: "aposto",
-  pequena: "aposto pouco",
-  passar: "não punha",
-  esperar: "sem preço",
-};
-
 export interface Suggestion {
   call: Call;
   /**
    * O mercado de que estamos a falar.
    *
-   * Vem preenchido mesmo quando a resposta é "não punha": a opinião é
+   * Vem preenchido mesmo quando a resposta é não: a opinião é
    * sobre alguma coisa, e "o melhor deste jogo é este e nem esse presta"
    * diz muito mais do que um não em branco.
    */
@@ -117,6 +110,16 @@ const EXTRA_MAX = 6;
 
 const num = (value: number, casas = 1) =>
   value.toFixed(casas).replace(".", ",");
+
+/**
+ * Percentagens inteiras, preços com os dois cêntimos.
+ *
+ * O "54,0%" tinha uma casa decimal que ninguém usa para decidir nada e
+ * que ocupava o espaço de uma palavra em cada frase. Num preço a casa
+ * decimal é dinheiro, por isso essa fica.
+ */
+const pct = (value: number) => `${Math.round(value)}%`;
+const odd = (value: number) => value.toFixed(2).replace(".", ",");
 
 function fairOdd(pct: number): number {
   if (pct <= 0) return 0;
@@ -185,9 +188,9 @@ export function suggest(input: SuggestionInput): Suggestion {
 
   const avoid = trap ?? null;
   const avoidBecause = avoid
-    ? `Damos ${num(avoid.ours)}% e o mercado dá ${num(
+    ? `Damos ${pct(avoid.ours)} e o mercado ${pct(
         avoid.marketPct as number,
-      )}%. É onde o nosso registo mostra que nos enganamos.`
+      )}. É onde o nosso registo mostra que nos enganamos.`
     : "";
 
   const feito = (call: Call, pick: MarketQuote | null, because: string) => ({
@@ -202,9 +205,9 @@ export function suggest(input: SuggestionInput): Suggestion {
       (call === "apostar" || call === "pequena") &&
       pick &&
       (pick.gap ?? 0) >= GAP_WARN
-        ? `${because} E vai contra as casas: estamos ${num(
+        ? `${because} Vai contra as casas: ${num(
             pick.gap as number,
-          )} pontos acima delas aqui.`
+          )} pontos acima delas.`
         : because,
     // O que se evita nunca é o que se escolhe, mas a regra de um não
     // obriga a do outro: oito pontos nomeiam uma armadilha, doze
@@ -223,7 +226,7 @@ export function suggest(input: SuggestionInput): Suggestion {
       null,
       all.length === 0
         ? "Ainda não há contas feitas para este jogo."
-        : "Em todos os mercados deste jogo ou estamos acima das casas ou temos mau registo. Não há aqui nada que eu jogasse.",
+        : "Em todos os mercados ou estamos acima das casas ou temos mau registo. Nada a fazer aqui.",
     );
   }
 
@@ -235,9 +238,9 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "esperar",
       maisProvavel,
-      `As casas ainda não abriram este jogo. Quando abrirem é aqui que olho: damos ${num(
+      `Sem preço ainda. Damos ${pct(
         maisProvavel.ours,
-      )}% e só paga acima de ${num(maisProvavel.fairPrice, 2)}.`,
+      )} — quando abrir, só paga acima de ${odd(maisProvavel.fairPrice)}.`,
     );
   }
 
@@ -245,10 +248,9 @@ export function suggest(input: SuggestionInput): Suggestion {
   const melhor = porVantagem[0];
   const vantagem = melhor.edge ?? 0;
 
-  const lado = `Nós damos ${num(melhor.ours)}% e o mercado ${num(
+  const lado = `Damos ${pct(melhor.ours)}, o mercado ${pct(
     melhor.marketPct as number,
-  )}%.`;
-  const preco = num(melhor.price as number, 2);
+  )}.`;
 
   if (vantagem >= exigido) {
     return feito(
@@ -256,28 +258,24 @@ export function suggest(input: SuggestionInput): Suggestion {
       melhor,
       // Sem repetir o nome do mercado nem o preço, que estão em cima em
       // letra grande: o que falta aqui é porque é que isso é uma aposta.
-      `${lado} A ${preco} o justo seria ${num(
-        melhor.fairPrice,
-        2,
-      )} — ${num(vantagem)} pontos a teu favor.`,
+      `${lado} Justo a ${odd(melhor.fairPrice)} — paga ${num(
+        vantagem,
+      )} pontos a mais.`,
     );
   }
 
   // Três pontos também aqui, e não "acima de zero". Um azarão a 4,20
-  // que paga um ponto acima do justo cabia na folga, e "aposto pouco
-  // em Vitória Fora a 4,20" não é coisa que eu diga: abaixo dos 55% a
+  // que paga um ponto acima do justo cabia na folga, e meio boletim
+  // num Vitória Fora a 4,20 não é coisa que eu diga: abaixo dos 55% a
   // probabilidade não leva desconto nenhum, por isso essa vantagem é o
   // ruído da própria medição e não uma vantagem.
   if (vantagem >= EDGE_FLOOR) {
     return feito(
       "pequena",
       melhor,
-      `${lado} A ${preco} paga ${num(
-        vantagem,
-      )} pontos acima do justo, e com ${num(
+      `${lado} Paga ${num(vantagem)} pontos a mais, e com ${pct(
         input.amostraPct,
-        0,
-      )}% de histórico eu queria ${num(exigido)}. Dá, mas pouco.`,
+      )} de histórico eu queria ${num(exigido)}. Entra com metade.`,
     );
   }
 
@@ -303,20 +301,16 @@ export function suggest(input: SuggestionInput): Suggestion {
   const sobra = firme.edge ?? 0;
   const remate =
     sobra >= 0
-      ? `O justo era ${num(firme.fairPrice, 2)} e pagam ${num(
+      ? `A ${odd(firme.price as number)} paga o que vale e nada mais. Não chega.`
+      : `Justo a ${odd(firme.fairPrice)}, pagam ${odd(
           firme.price as number,
-          2,
-        )}: paga o que vale e mais nada, e não é por isso que eu arriscava.`
-      : `O justo era ${num(firme.fairPrice, 2)} e pagam só ${num(
-          firme.price as number,
-          2,
-        )} — ${num(Math.abs(sobra))} pontos abaixo do que isto vale.`;
+        )}. Não vale o preço.`;
 
   return feito(
     "passar",
     firme,
-    `Nós damos ${num(firme.ours)}% e o mercado ${num(
+    `Damos ${pct(firme.ours)}, o mercado ${pct(
       firme.marketPct as number,
-    )}%. ${remate}`,
+    )}. ${remate}`,
   );
 }

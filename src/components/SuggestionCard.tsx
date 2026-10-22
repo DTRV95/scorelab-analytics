@@ -1,9 +1,9 @@
-import { Ban, Crosshair } from "lucide-react";
+import { Ban, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { CALL_LABEL, suggest, type Call, type SuggestionInput } from "@/lib/suggestion";
+import { suggest, type Call, type SuggestionInput } from "@/lib/suggestion";
 
 /**
- * O que eu faria neste jogo, à cabeça da página.
+ * A sugestão para este jogo, à cabeça.
  *
  * Tudo o que vem por baixo é material: quinze mercados, o preço de cada
  * um, o que falta saber. Isso serve para confirmar uma decisão, não para
@@ -11,9 +11,11 @@ import { CALL_LABEL, suggest, type Call, type SuggestionInput } from "@/lib/sugg
  * sínteses. Esta é a síntese, com o número que a sustenta ao lado para
  * não ter de se acreditar nela.
  *
- * Há sempre uma opinião, e ela não é sim ou não. Um mercado nomeado e
- * quanto é que eu lhe punha: aposto, aposto pouco, não punha. Oito
- * cartões a dizer "não aposto neste jogo" não são oito opiniões.
+ * Um mercado, um preço, e uma frase que acaba sempre em alguma coisa
+ * para fazer: paga tanto a mais; entra com metade; não vale o preço.
+ * Houve aqui uma etiqueta a dizer "aposto pouco", que é um adjectivo
+ * onde devia estar uma instrução — a força da opinião lê-se na cor e no
+ * fim da frase, e a frase ficou mais curta sem ela.
  *
  * E diz-se também o que evitar, que é a pergunta que ninguém faz: o
  * mercado em que mais discordamos das casas parece sempre o melhor do
@@ -25,27 +27,17 @@ const label = (market: string) => MARKET_LABELS[market] ?? market;
 const odd = (value: number) => value.toFixed(2).replace(".", ",");
 
 /** Verde onde se decide, azul onde se mede, cinzento onde não se mexe. */
-const TOM: Record<Call, { texto: string; fundo: string; chapa: string }> = {
+const TOM: Record<Call, { texto: string; fundo: string }> = {
   apostar: {
     texto: "text-[hsl(var(--sl-green))]",
     fundo: "bg-[hsl(var(--sl-green))]/[0.07]",
-    chapa: "bg-[hsl(var(--sl-green))]/15 text-[hsl(var(--sl-green))]",
   },
   pequena: {
-    texto: "text-foreground",
+    texto: "text-[hsl(var(--sl-cool))]",
     fundo: "bg-[hsl(var(--sl-cool))]/[0.07]",
-    chapa: "bg-[hsl(var(--sl-cool))]/15 text-[hsl(var(--sl-cool))]",
   },
-  passar: {
-    texto: "text-foreground",
-    fundo: "bg-muted/40",
-    chapa: "bg-muted text-muted-foreground",
-  },
-  esperar: {
-    texto: "text-foreground",
-    fundo: "bg-muted/40",
-    chapa: "bg-muted text-muted-foreground",
-  },
+  passar: { texto: "text-foreground", fundo: "bg-muted/40" },
+  esperar: { texto: "text-foreground", fundo: "bg-muted/40" },
 };
 
 export function SuggestionCard({
@@ -73,16 +65,10 @@ export function SuggestionCard({
   return (
     <section className="sl-card overflow-hidden">
       <div className={`px-4 py-3.5 ${tom.fundo}`}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            <Crosshair className="h-3.5 w-3.5" />O que eu faria
-          </p>
-          <span
-            className={`flex-none rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${tom.chapa}`}
-          >
-            {CALL_LABEL[call]}
-          </span>
-        </div>
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" />
+          Sugestão de IA
+        </p>
 
         <div className="mt-1.5 flex items-baseline gap-3">
           <h2
@@ -115,9 +101,11 @@ export function SuggestionCard({
         </p>
 
         {sample && (
-          <p className="sl-meta mt-1.5 text-[11px] leading-4">
-            Histórico por trás: {sample.label} ({sample.pct.toFixed(0)}%) —
-            quantidade, não acerto.
+          <p
+            className="sl-meta mt-1.5 text-[11px] leading-4"
+            title="Quantidade de histórico por trás da previsão, não a taxa de acerto dela"
+          >
+            Histórico: {sample.label} ({sample.pct.toFixed(0)}%)
           </p>
         )}
       </div>
