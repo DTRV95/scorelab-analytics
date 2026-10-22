@@ -328,3 +328,24 @@ def test_bigballs_diz_o_que_cada_tentativa_respondeu():
     # desporto, cada uma com a sua resposta.
     assert len(answer["attempts"]) == 4
     assert all("401" in linha for linha in answer["attempts"])
+
+
+def test_a_forma_mostra_campos_e_nao_valores():
+    forma = bigballs_data._shape_of(
+        {
+            "meta": {"as_of": "2026-10-21", "count": 3},
+            "results": [{"player": "Segredo", "status": "out"}],
+        }
+    )
+
+    assert "meta" in forma and "results" in forma
+    assert "1 ×" in forma
+    # Nenhum valor passa: é a forma que se quer, não o conteúdo.
+    assert "Segredo" not in forma
+    assert "2026-10-21" not in forma
+
+
+def test_a_forma_aguenta_o_que_lhe_derem():
+    assert bigballs_data._shape_of([]) == "[]"
+    assert bigballs_data._shape_of(None) == "NoneType"
+    assert bigballs_data._shape_of(7) == "int"
