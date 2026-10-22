@@ -240,3 +240,24 @@ describe("o mercado como contraditório", () => {
     );
   });
 });
+
+describe("quando as fontes discordam de quem joga em casa", () => {
+  it("avisa, e diz porque é que o preço continua bom", () => {
+    const i = input({
+      market: { ...mercado(), homeAwayDisagrees: true },
+    });
+    const contra = objections(i, buildDossier(i));
+    const linha = contra.find((item) => item.key === "casa");
+
+    expect(linha?.grave).toBe(true);
+    expect(linha?.text).toContain("segue o nome da equipa");
+    expect(linha?.text).toContain("enviesado");
+  });
+
+  it("cala-se quando elas concordam", () => {
+    const i = input({ market: mercado() });
+    const contra = objections(i, buildDossier(i));
+
+    expect(contra.find((item) => item.key === "casa")).toBeUndefined();
+  });
+});

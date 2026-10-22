@@ -481,3 +481,88 @@ def test_o_rastreio_mostra_os_jogos_que_foram_considerados():
     )
 
     assert "Chelsea vs Tottenham" in rastreio["considered"][0]
+
+
+def _swapped_game(home, away, when, price_home, price_away):
+    """O jogo como a outra fonte o vê: as mesmas equipas, trocadas."""
+    return {
+        "home_team": away,
+        "away_team": home,
+        "commence_time": when,
+        "bookmakers": [
+            {
+                "key": "casa",
+                "markets": [
+                    {
+                        "key": "h2h",
+                        "outcomes": [
+                            {"name": away, "price": price_away},
+                            {"name": "Draw", "price": 3.4},
+                            {"name": home, "price": price_home},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_apanha_o_jogo_com_as_equipas_trocadas():
+    # Caso real: o nosso quadro diz Porto em casa, as casas dizem Gil
+    # Vicente em casa. É o mesmo jogo.
+    got = _run(
+        odds_api,
+        lambda: odds_api.odds_for(
+            "Liga Portugal", "Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
+        ),
+        {
+            "/v4/sports?": [{"key": "soccer_portugal_primeira_liga"}],
+            "/v4/sports/soccer_portugal_primeira_liga/odds": [
+                _swapped_game(
+                    "FC Porto", "Gil Vicente", "2026-10-24T19:30:00Z", 1.40, 7.00
+                )
+            ],
+        },
+    )
+
+    assert got is not None
+    # E o preço vai para a equipa certa: 1,40 é do Porto, que para nós é
+    # a casa. Ler pela posição deles dava-lhe 7,00.
+    assert got["Casa"] == 1.40
+    assert got["Fora"] == 7.00
+
+
+def test_avisa_quando_as_fontes_discordam_de_quem_joga_em_casa():
+    answer = _run(
+        odds_api,
+        lambda: odds_api.match_context(
+            "Liga Portugal", "Porto", "Gil Vicente", "2026-10-24T19:30:00Z"
+        ),
+        {
+            "/v4/sports?": [{"key": "soccer_portugal_primeira_liga"}],
+            "/v4/sports/soccer_portugal_primeira_liga/odds": [
+                _swapped_game(
+                    "FC Porto", "Gil Vicente", "2026-10-24T19:30:00Z", 1.40, 7.00
+                )
+            ],
+        },
+    )
+
+    assert answer["home_away_disagrees"] is True
+
+
+def test_nao_avisa_quando_as_fontes_concordam():
+    answer = _run(
+        odds_api,
+        lambda: odds_api.match_context(
+            "Premier League", "Chelsea", "Tottenham", "2026-10-24T16:30:00Z"
+        ),
+        {
+            "/v4/sports?": SPORTS,
+            "/v4/sports/soccer_epl/odds": [
+                _game("Chelsea", "Tottenham", "2026-10-24T16:30:00Z", 1.90)
+            ],
+        },
+    )
+
+    assert answer["home_away_disagrees"] is False
