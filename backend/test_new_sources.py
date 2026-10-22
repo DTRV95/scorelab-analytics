@@ -377,3 +377,50 @@ def test_bigballs_nao_confunde_outra_lista_qualquer_com_lesoes():
     got = _run(bigballs_data, bigballs_data.all_injuries, {"sport=football": plano})
 
     assert got[0]["player"]["name"] == "Certo"
+
+
+# --- probabilidade implícita --------------------------------------------
+
+def test_tira_a_margem_da_casa_aos_tres_resultados():
+    # 2,00 / 3,50 / 4,00 somam 110,7% de probabilidade "bruta": os 10,7
+    # são a margem da casa e não podem contar como certeza dela.
+    got = odds_api.implied_pct({"Casa": 2.00, "Empate": 3.50, "Fora": 4.00})
+
+    assert abs(sum(got[n] for n in ("Casa", "Empate", "Fora")) - 100) < 0.3
+    assert got["Casa"] > got["Empate"] > got["Fora"]
+
+
+def test_as_duplas_saem_das_simples_ja_sem_margem():
+    got = odds_api.implied_pct({"Casa": 2.00, "Empate": 3.50, "Fora": 4.00})
+
+    assert got["1X"] == round(got["Casa"] + got["Empate"], 1)
+    assert got["2X"] == round(got["Fora"] + got["Empate"], 1)
+
+
+def test_mais_e_menos_de_golos_normalizam_entre_si():
+    got = odds_api.implied_pct(
+        {"Mais de 2.5 Golos": 1.90, "Menos de 2.5 Golos": 1.95}
+    )
+
+    assert abs(got["Mais de 2.5 Golos"] + got["Menos de 2.5 Golos"] - 100) < 0.3
+
+
+def test_sem_o_outro_lado_fica_a_leitura_directa():
+    got = odds_api.implied_pct({"Mais de 2.5 Golos": 2.00})
+
+    # 50% em bruto: peca por excesso, e o excesso nunca nos favorece.
+    assert got["Mais de 2.5 Golos"] == 50.0
+
+
+def test_contexto_diz_quando_nao_ha_preco():
+    answer = _run(
+        odds_api,
+        lambda: odds_api.match_context(
+            "Premier League", "Arsenal", "Everton", "2026-10-24T16:30:00Z"
+        ),
+        {"/v4/sports?": SPORTS, "/v4/sports/soccer_epl/odds": []},
+    )
+
+    assert answer["odds"] is None
+    assert "Sem preço" in answer["detail"]
+    assert "trace" in answer

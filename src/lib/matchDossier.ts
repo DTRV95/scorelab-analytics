@@ -11,9 +11,13 @@ import type { AccuracyMarket } from "@/lib/modelAccuracy";
  * fazemos ideia — o modelo lê golos e calendário, mais nada.
  *
  * Por isso os buracos aparecem com o mesmo peso visual que o resto. Uma
- * linha cinzenta a dizer "lesões: sem fonte ligada" não é uma falha do
- * ecrã, é a informação mais útil que lá está: diz-te quanto é que aquele
- * número merece.
+ * linha cinzenta não é uma falha do ecrã, é a informação mais útil que lá
+ * está: diz-te quanto é que aquele número merece.
+ *
+ * Teve aqui linhas para lesões, árbitro e tempo, enquanto houve esperança
+ * de uma fonte que as desse. Não há: o plano gratuito da que prometia
+ * pára em 2024, e a outra não tem futebol em condições. Saíram, porque
+ * uma linha a dizer "sem fonte ligada" para sempre é ruído, não aviso.
  */
 
 /** A forma por trás da previsão, no que este resumo precisa dela. */
@@ -68,6 +72,17 @@ export interface DossierInput {
   record: AccuracyMarket | null;
   /** Quantas odds é que já foram escritas nesta página. */
   oddsTyped: number;
+  /**
+   * O que as casas estão a pagar neste jogo, quando se sabe.
+   *
+   * `implied` já vem sem a margem da casa, calculada no servidor: uma
+   * odd de 2,00 não é 50%, e comparar a nossa probabilidade com a leitura
+   * bruta era dar-nos razão de graça.
+   */
+  market?: {
+    odds: Record<string, number>;
+    implied: Record<string, number>;
+  } | null;
 }
 
 const plural = (n: number, um: string, muitos: string) =>
@@ -121,41 +136,27 @@ export function buildDossier(input: DossierInput): Dossier {
       missing: "ainda não o conferimos vezes que cheguem",
     },
     {
+      key: "mercado",
+      label: "Preço do mercado",
+      value: input.market
+        ? `${plural(
+            Object.keys(input.market.odds).length,
+            "mercado lido",
+            "mercados lidos",
+          )}`
+        : null,
+      missing: "não encontrámos este jogo nas casas",
+      heavy: true,
+      short: "o que as casas estão a pagar",
+    },
+    {
       key: "preco",
-      label: "Preço da casa de apostas",
+      label: "A tua odd",
       value:
         input.oddsTyped > 0
           ? `${plural(input.oddsTyped, "odd escrita", "odds escritas")}`
           : null,
       missing: "escreve a odd lá em baixo e eu comparo",
-    },
-    {
-      key: "lesoes",
-      label: "Lesões e castigos",
-      value: null,
-      missing: "sem fonte ligada",
-      heavy: true,
-      short: "quem está de fora",
-    },
-    {
-      key: "noticias",
-      label: "Notícias da semana",
-      value: null,
-      missing: "sem fonte ligada",
-      heavy: true,
-      short: "as notícias da semana",
-    },
-    {
-      key: "arbitro",
-      label: "Árbitro",
-      value: null,
-      missing: "sem fonte ligada",
-    },
-    {
-      key: "tempo",
-      label: "Tempo e relvado",
-      value: null,
-      missing: "sem fonte ligada",
     },
   ];
 
@@ -210,14 +211,56 @@ export function objections(input: DossierInput, dossier: Dossier): Objection[] {
       });
     }
 
-    found.push({
-      key: "minima",
-      text: `A esta probabilidade, abaixo de ${num(
-        minimumOdd(headline.pct),
-        2,
-      )} perdes dinheiro mesmo acertando a maioria das vezes.`,
-      grave: false,
-    });
+    const minima = minimumOdd(headline.pct);
+    const price = input.market?.odds[headline.market];
+    const mercado = input.market?.implied[headline.market];
+
+    if (typeof price === "number") {
+      // A objecção mais útil que esta casa sabe dar: o preço que está
+      // mesmo na mesa contra o preço de que precisarias.
+      found.push({
+        key: "minima",
+        text:
+          price < minima
+            ? `O mercado está a pagar ${num(price, 2)} e tu precisavas de pelo menos ${num(
+                minima,
+                2,
+              )}. A esta odd não há aposta — mesmo acertando a maioria das vezes, perdes.`
+            : `O mercado está a pagar ${num(price, 2)} e a tua conta fecha a partir de ${num(
+                minima,
+                2,
+              )}.`,
+        grave: price < minima,
+      });
+    } else {
+      found.push({
+        key: "minima",
+        text: `A esta probabilidade, abaixo de ${num(
+          minima,
+          2,
+        )} perdes dinheiro mesmo acertando a maioria das vezes.`,
+        grave: false,
+      });
+    }
+
+    if (typeof mercado === "number") {
+      const nosso = measuredPct(headline.pct);
+      const gap = nosso - mercado;
+      if (Math.abs(gap) >= 5) {
+        found.push({
+          key: "mercado",
+          text:
+            gap > 0
+              ? `Nós damos ${num(nosso)}% a isto e o mercado dá ${num(
+                  mercado,
+                )}%. Quando discordamos tanto de milhares de pessoas com dinheiro em cima, quem costuma estar errado somos nós.`
+              : `O mercado dá ${num(mercado)}% a isto e nós só ${num(
+                  nosso,
+                )}%. Eles sabem alguma coisa que o nosso modelo não lê — lesões, equipa, notícias.`,
+          grave: Math.abs(gap) >= 12,
+        });
+      }
+    }
   }
 
   if (input.amostraPct < 60) {

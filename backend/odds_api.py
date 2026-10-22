@@ -313,3 +313,78 @@ def odds_for(
     return {
         market: round(_median(values), 2) for market, values in gathered.items()
     }
+
+
+# Os mercados 1X2, que são os que se podem normalizar em conjunto.
+_ONE_X_TWO = ("Casa", "Empate", "Fora")
+
+
+def implied_pct(prices: Dict[str, float]) -> Dict[str, float]:
+    """O que o preço do mercado diz, em probabilidade, sem a margem.
+
+    Uma odd de 2,00 não quer dizer 50%: a casa cobra a sua margem e a
+    soma dos três resultados dá sempre mais de 100. Comparar a nossa
+    probabilidade com a odd em bruto era dar-nos razão de graça, por isso
+    a margem é retirada onde os três preços existem.
+
+    Nos mercados em que não dá para normalizar — porque falta o outro
+    lado — devolve-se a leitura directa, que peca por excesso e portanto
+    nunca nos favorece.
+    """
+    out: Dict[str, float] = {}
+
+    trio = [prices.get(name) for name in _ONE_X_TWO]
+    if all(isinstance(price, (int, float)) and price > 1 for price in trio):
+        overround = sum(100 / price for price in trio)
+        for name, price in zip(_ONE_X_TWO, trio):
+            out[name] = round((100 / price) / overround * 100, 1)
+
+    # Duplas hipóteses saem das simples, quando as há: 1X é Casa ou
+    # Empate, e somar duas probabilidades já sem margem é exacto.
+    if {"Casa", "Empate", "Fora"} <= set(out):
+        out["1X"] = round(out["Casa"] + out["Empate"], 1)
+        out["2X"] = round(out["Fora"] + out["Empate"], 1)
+
+    for pair in (
+        ("Mais de 2.5 Golos", "Menos de 2.5 Golos"),
+        ("Mais de 3.5 Golos", "Menos de 3.5 Golos"),
+    ):
+        both = [prices.get(name) for name in pair]
+        if all(isinstance(price, (int, float)) and price > 1 for price in both):
+            overround = sum(100 / price for price in both)
+            for name, price in zip(pair, both):
+                out[name] = round((100 / price) / overround * 100, 1)
+
+    for name, price in prices.items():
+        if name not in out and isinstance(price, (int, float)) and price > 1:
+            out[name] = round(100 / price, 1)
+
+    return out
+
+
+def match_context(
+    league: str, home: str, away: str, kickoff: str
+) -> Dict[str, Any]:
+    """O que se sabe à volta de um jogo. Hoje, o preço do mercado.
+
+    Teve lesões, árbitro e tempo enquanto a API-Football pareceu dar
+    para isso. Não dá: o plano gratuito pára em 2024. Ficou o que
+    funciona, e a resposta diz quando não há nada em vez de encher de
+    campos vazios.
+    """
+    trace: Dict[str, Any] = {}
+    prices = odds_for(league, home, away, kickoff, trace=trace)
+
+    if not prices:
+        return {
+            "odds": None,
+            "implied_pct": None,
+            "detail": "Sem preço de mercado para este jogo.",
+            "trace": trace,
+        }
+
+    return {
+        "odds": prices,
+        "implied_pct": implied_pct(prices),
+        "detail": "",
+    }
