@@ -87,7 +87,7 @@ describe("suggest", () => {
     expect(got.pick?.market).toBe("Menos de 3.5 Golos");
     // O preço está em cima, em letra grande; a frase não o repete.
     expect(got.pick?.price).toBe(1.9);
-    expect(got.because).toContain("pontos a mais");
+    expect(got.because).toContain("estão a pagar mais do que isso");
   });
 
   it("dá uma opinião quando o histórico é curto, em vez de calar", () => {
@@ -98,11 +98,12 @@ describe("suggest", () => {
 
     expect(got.pick).not.toBeNull();
     expect(got.call).toBe("pequena");
-    expect(got.because).toContain("6,7");
     // Uma instrução no fim, e não um adjectivo.
-    expect(got.because).toContain("Entra com metade");
-    // E o porquê da fasquia em campo próprio, não na frase.
-    expect(got.raised.map((r) => r.what)).toEqual(["33% de histórico"]);
+    expect(got.because).toContain("aposta menos do que o costume");
+    // E o porquê em campo próprio, dito como quem fala.
+    expect(got.raised.map((r) => r.what)).toEqual([
+      "só temos 33% dos jogos passados que queríamos",
+    ]);
   });
 
   it("é o histórico, e só ele, que separa a aposta da aposta pequena", () => {
@@ -142,7 +143,7 @@ describe("suggest", () => {
     expect(got.call).toBe("passar");
     // O mais seguro dos dois, não o menos mau ao preço.
     expect(got.pick?.market).toBe("Menos de 3.5 Golos");
-    expect(got.because).toContain("Não vale o preço");
+    expect(got.because).toContain("menos do que vale");
   });
 
   it("põe de parte o mercado em que estamos muito acima das casas", () => {
@@ -188,7 +189,7 @@ describe("suggest", () => {
 
     expect(got.call).toBe("passar");
     expect(got.pick).toBeNull();
-    expect(got.because).toContain("acima das casas");
+    expect(got.because).toContain("mais optimistas do que as casas");
   });
 
   it("espera quando as casas ainda não abriram, mas já diz onde vai olhar", () => {
@@ -196,8 +197,8 @@ describe("suggest", () => {
 
     expect(got.call).toBe("esperar");
     expect(got.pick?.market).toBe("1X");
-    expect(got.because).toContain("Sem preço ainda");
-    expect(got.because).toContain("só paga acima de");
+    expect(got.because).toContain("ainda não abriram");
+    expect(got.because).toContain("só vale a pena acima de");
   });
 
   it("separa pagar o que vale de pagar menos do que vale", () => {
@@ -219,8 +220,8 @@ describe("suggest", () => {
     );
 
     expect(certo.call).toBe("passar");
-    expect(certo.because).toContain("paga o que vale e nada mais");
-    expect(barato.because).toContain("Não vale o preço");
+    expect(certo.because).toContain("pagam exactamente o que isto vale");
+    expect(barato.because).toContain("menos do que vale");
   });
 
   it("não cala o aviso quando a aposta sugerida é a própria armadilha", () => {
@@ -237,8 +238,7 @@ describe("suggest", () => {
 
     expect(got.pick?.market).toBe("Mais de 2.5 Golos");
     expect(got.avoid).toBeNull();
-    expect(got.because).toContain("Vai contra as casas");
-    expect(got.because).toContain("8,1 pontos acima");
+    expect(got.because).toContain("mais optimistas do que as casas");
   });
 
   it("marca o preço que ninguém cotou", () => {
@@ -267,7 +267,7 @@ describe("suggest", () => {
     );
 
     expect(got.avoid?.market).toBe("Menos de 3.5 Golos");
-    expect(got.avoidBecause).toContain("onde o nosso registo mostra");
+    expect(got.avoidBecause).toContain("quem costuma ter razão são elas");
   });
 
   it("não aponta como armadilha a aposta que acabou de sugerir", () => {
@@ -333,7 +333,7 @@ describe("o juízo por cima do modelo", () => {
     expect(inteiro.call).toBe("apostar");
     expect(desfalcado.required).toBeGreaterThan(inteiro.required);
     expect(desfalcado.raised.map((r) => r.what)).toContain(
-      "Alavés com 4 baixas",
+      "o Alavés leva 4 jogadores de fora",
     );
   });
 
@@ -388,7 +388,7 @@ describe("o juízo por cima do modelo", () => {
     );
 
     expect(got.pick).toBeNull();
-    expect(got.because).toContain("quem joga em casa");
+    expect(got.because).toContain("qual é a equipa da casa");
   });
 
   it("pede mais onde o nosso próprio dinheiro já se perdeu", () => {
@@ -416,7 +416,7 @@ describe("o juízo por cima do modelo", () => {
 
     expect(got.required).toBeCloseTo(4.5, 5);
     expect(got.raised.map((r) => r.what)).toContain(
-      'o nosso dinheiro perde em "menos de X golos"',
+      "já perdemos dinheiro em apostas destas",
     );
   });
 
