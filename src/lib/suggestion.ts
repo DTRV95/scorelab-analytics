@@ -3,6 +3,7 @@ import { measuredPct } from "@/lib/shortlist";
 import { losing, patternFor, type Patterns } from "@/lib/betPatterns";
 import { canonicalMarket } from "@/lib/marketNames";
 import { statusLabel } from "@/lib/absences";
+import { noteOf } from "@/lib/matchNote";
 import type { Absence } from "@/lib/marketPrice";
 import type { AccuracyMarket } from "@/lib/modelAccuracy";
 
@@ -113,6 +114,10 @@ export interface SuggestionInput {
   homeAwayDisagrees?: boolean;
   /** O que o nosso próprio dinheiro já fez em mercados como este. */
   patterns?: Patterns | null;
+  /** Os golos que o modelo espera de cada lado, para a frase ter jogo. */
+  goals?: { home: number; away: number; total: number } | null;
+  /** O mercado que o quadro pôs à frente, que nem sempre é o escolhido. */
+  headline?: string | null;
   /**
    * Como se escreve o nome de um mercado para quem lê.
    *
@@ -158,6 +163,8 @@ function fairOdd(pct: number): number {
 
 /** Uma coisa que me fez pedir mais do que o costume, e quanto. */
 export interface Reason {
+  /** De que família é, para não se dizer duas vezes no mesmo cartão. */
+  key: "amostra" | "baixas" | "dinheiro";
   what: string;
   pp: number;
 }
@@ -216,6 +223,7 @@ export function demand(input: SuggestionInput, market?: string): Demand {
   const falta = Math.max(0, SAMPLE_FULL - (input.amostraPct || 0));
   if (falta > 0) {
     because.push({
+      key: "amostra",
       what: `só temos ${Math.round(input.amostraPct)}% dos jogos passados que queríamos`,
       pp: Math.min(EXTRA_MAX, falta / 10),
     });
@@ -228,6 +236,7 @@ export function demand(input: SuggestionInput, market?: string): Demand {
 
   for (const team of fora) {
     because.push({
+      key: "baixas",
       what: `o ${team.nome} leva ${missing(
         input.absences,
         team.side,
@@ -240,6 +249,7 @@ export function demand(input: SuggestionInput, market?: string): Demand {
     const nosso = patternFor(market, input.patterns ?? null);
     if (nosso && losing(nosso)) {
       because.push({
+        key: "dinheiro",
         what: "já perdemos dinheiro em apostas destas",
         pp: 1.5,
       });
@@ -292,6 +302,26 @@ export function quotes(input: SuggestionInput): MarketQuote[] {
   });
 }
 
+/**
+ * A forma do jogo, tirada dos mercados simples.
+ *
+ * Em bruto, de propósito: serve para dizer se alguém é favorito, e
+ * isso é uma leitura do jogo e não uma aposta. O desconto existe para
+ * não se pagar de mais por uma probabilidade, não para descrever um
+ * jogo a quem o vai ver.
+ */
+function chances(
+  input: SuggestionInput,
+): { home: number; away: number } | null {
+  const of = (market: string) =>
+    input.markets.find((entry) => entry.mercado === market)
+      ?.probabilidade_pct ?? null;
+
+  const home = of("Casa");
+  const away = of("Fora");
+  return home === null || away === null ? null : { home, away };
+}
+
 /** Um mercado em que o modelo já provou prometer mais do que entrega. */
 function badRecord(
   record: Map<string, AccuracyMarket>,
@@ -331,21 +361,54 @@ export function suggest(input: SuggestionInput): Suggestion {
       )}. Quando a diferença é assim, quem costuma ter razão são elas.`
     : "";
 
+  /**
+   * A frase começa pelo que é próprio deste jogo.
+   *
+   * Sem isto, oito jogos davam oito frases com a mesma forma e números
+   * diferentes — e uma carta-tipo deixa de se ler ao terceiro cartão.
+   */
+  const nota = (pick: MarketQuote | null) =>
+    noteOf({
+      teams: input.teams,
+      goals: input.goals,
+      chances: chances(input),
+      headline: input.headline,
+      absences: input.absences,
+      pick: pick ? { market: pick.market, gap: pick.gap } : null,
+      label: name,
+    });
+
+  /**
+   * A mesma coisa não se diz duas vezes no mesmo cartão.
+   *
+   * Quando a observação já abriu com as baixas, repeti-las na linha da
+   * exigência é dizer "o Chelsea leva 8 jogadores de fora" a seguir a
+   * "8 fora no Chelsea". Elas continuam a contar para a fasquia — o
+   * que sai é a repetição, não a razão.
+   */
+
   const feito = (call: Call, pick: MarketQuote | null, because: string) => ({
     call,
     pick,
     required: pedido(pick?.market).points,
-    raised: pedido(pick?.market).because,
+    raised: pedido(pick?.market).because.filter(
+      (item) => item.key !== "baixas" || nota(pick).kind !== "baixas",
+    ),
     // Quando a escolha é ela própria o mercado em que mais discordamos
     // das casas, o aviso não pode desaparecer só porque não cabe na
     // linha de baixo — era exactamente aí que ele fazia falta. Fica
     // dito na mesma frase: é aposta, e é aposta contra o mercado.
-    because:
+    because: [
+      nota(pick).text,
+      because,
       (call === "apostar" || call === "pequena") &&
       pick &&
       (pick.gap ?? 0) >= GAP_WARN
-        ? `${because} E atenção: aqui estamos mais optimistas do que as casas, que é quando costumamos enganar-nos.`
-        : because,
+        ? "E atenção: aqui estamos mais optimistas do que as casas, que é quando costumamos enganar-nos."
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
     // O que se evita nunca é o que se escolhe, mas a regra de um não
     // obriga a do outro: oito pontos nomeiam uma armadilha, doze
     // desqualificam o mercado, e entre os dois há folga.
@@ -424,7 +487,7 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "pequena",
       melhor,
-      `${lado} O preço já compensa, mas por pouco — e neste jogo quero mais folga. Se apostares, aposta menos do que o costume.`,
+      `${lado} Compensa, mas por pouco: se apostares, aposta menos do que o costume.`,
     );
   }
 
