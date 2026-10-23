@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronRight, Search, Swords } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Swords } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { canonicalMarket } from "@/lib/marketNames";
@@ -146,6 +146,17 @@ function BetRow({
   );
 }
 
+/**
+ * Quantas se mostram antes de ser preciso pedir mais.
+ *
+ * Um desafio de trinta níveis punha trinta linhas por jogador em cima
+ * de quem só queria ver as últimas, e o jogador seguinte ficava a um
+ * ecrã e meio de distância — numa secção que existe para comparar os
+ * dois lado a lado. Quatro são as últimas quatro, que é o que se olha;
+ * o resto fica a um toque.
+ */
+const PRIMEIRAS = 4;
+
 /** A coluna de um jogador: o nome em cima, as apostas dele por baixo. */
 function PlayerColumn({
   name,
@@ -159,11 +170,15 @@ function PlayerColumn({
   /** O que se pode fazer a esta aposta sem a abrir. Só às minhas. */
   renderActions?: (bet: PlanBet) => ReactNode;
 }) {
+  const [todas, setTodas] = useState(false);
+  const escondidas = Math.max(0, bets.length - PRIMEIRAS);
+  const lista = todas ? bets : bets.slice(0, PRIMEIRAS);
+
   return (
     <div className="bg-card p-4">
       <p className="text-[13px] font-semibold text-foreground">{name}</p>
       <div className="mt-2 space-y-1.5">
-        {bets.map((bet) => (
+        {lista.map((bet) => (
           <div key={bet.id} className="space-y-1">
             <BetRow bet={bet} player={name} onOpen={() => onOpen(bet, name)} />
             {renderActions?.(bet)}
@@ -171,6 +186,26 @@ function PlayerColumn({
         ))}
         {bets.length === 0 && (
           <p className="sl-meta text-[11px]">Nada aqui.</p>
+        )}
+
+        {escondidas > 0 && (
+          <button
+            type="button"
+            onClick={() => setTodas((aberto) => !aberto)}
+            aria-expanded={todas}
+            className="sl-tap flex w-full items-center justify-center gap-1.5 rounded-2xl px-3 py-2 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {todas
+              ? "Mostrar menos"
+              : `Mostrar mais ${escondidas} ${
+                  escondidas === 1 ? "aposta" : "apostas"
+                }`}
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${
+                todas ? "rotate-180" : ""
+              }`}
+            />
+          </button>
         )}
       </div>
     </div>
