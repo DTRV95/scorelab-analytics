@@ -133,17 +133,22 @@ const SAMPLE_FULL = 70;
 /** E o máximo que a falta dele chega a pedir, por mais curta que seja. */
 const EXTRA_MAX = 6;
 
-const num = (value: number, casas = 1) =>
-  value.toFixed(casas).replace(".", ",");
-
 /**
- * Percentagens inteiras, preços com os dois cêntimos.
+ * Uma probabilidade como quem a diz em voz alta.
  *
- * O "54,0%" tinha uma casa decimal que ninguém usa para decidir nada e
- * que ocupava o espaço de uma palavra em cada frase. Num preço a casa
- * decimal é dinheiro, por isso essa fica.
+ * "Damos 54%" é a linguagem de quem fez a conta, e esteve aqui durante
+ * uns dias. "Damos-lhe 54 hipóteses em 100" é a mesma coisa dita a
+ * quem vai pôr o dinheiro — e é esse que está a ler. Pelo mesmo
+ * motivo saiu daqui tudo o que se contava em "pontos": a vantagem
+ * sobre o preço justo é uma medida de quem faz o modelo, não de quem
+ * aposta, e diz-se melhor comparando duas odds.
  */
-const pct = (value: number) => `${Math.round(value)}%`;
+const hip = (value: number) => `${Math.round(value)} hipóteses em 100`;
+
+/** O mesmo número quando a frase já disse em quantas. */
+const hips = (value: number) => String(Math.round(value));
+
+/** Um preço com os dois cêntimos, que num preço são dinheiro. */
 const odd = (value: number) => value.toFixed(2).replace(".", ",");
 
 function fairOdd(pct: number): number {
@@ -211,7 +216,7 @@ export function demand(input: SuggestionInput, market?: string): Demand {
   const falta = Math.max(0, SAMPLE_FULL - (input.amostraPct || 0));
   if (falta > 0) {
     because.push({
-      what: `${Math.round(input.amostraPct)}% de histórico`,
+      what: `só temos ${Math.round(input.amostraPct)}% dos jogos passados que queríamos`,
       pp: Math.min(EXTRA_MAX, falta / 10),
     });
   }
@@ -223,7 +228,10 @@ export function demand(input: SuggestionInput, market?: string): Demand {
 
   for (const team of fora) {
     because.push({
-      what: `${team.nome} com ${missing(input.absences, team.side)} baixas`,
+      what: `o ${team.nome} leva ${missing(
+        input.absences,
+        team.side,
+      )} jogadores de fora`,
       pp: 1,
     });
   }
@@ -232,7 +240,7 @@ export function demand(input: SuggestionInput, market?: string): Demand {
     const nosso = patternFor(market, input.patterns ?? null);
     if (nosso && losing(nosso)) {
       because.push({
-        what: `o nosso dinheiro perde em "${nosso.key}"`,
+        what: "já perdemos dinheiro em apostas destas",
         pp: 1.5,
       });
     }
@@ -318,9 +326,9 @@ export function suggest(input: SuggestionInput): Suggestion {
 
   const avoid = trap ?? null;
   const avoidBecause = avoid
-    ? `Damos ${pct(avoid.ours)} e o mercado ${pct(
+    ? `Damos-lhe ${hip(avoid.ours)} e as casas dão ${hips(
         avoid.marketPct as number,
-      )}. É onde o nosso registo mostra que nos enganamos.`
+      )}. Quando a diferença é assim, quem costuma ter razão são elas.`
     : "";
 
   const feito = (call: Call, pick: MarketQuote | null, because: string) => ({
@@ -336,9 +344,7 @@ export function suggest(input: SuggestionInput): Suggestion {
       (call === "apostar" || call === "pequena") &&
       pick &&
       (pick.gap ?? 0) >= GAP_WARN
-        ? `${because} Vai contra as casas: ${num(
-            pick.gap as number,
-          )} pontos acima delas.`
+        ? `${because} E atenção: aqui estamos mais optimistas do que as casas, que é quando costumamos enganar-nos.`
         : because,
     // O que se evita nunca é o que se escolhe, mas a regra de um não
     // obriga a do outro: oito pontos nomeiam uma armadilha, doze
@@ -367,8 +373,8 @@ export function suggest(input: SuggestionInput): Suggestion {
       all.length === 0
         ? "Ainda não há contas feitas para este jogo."
         : input.homeAwayDisagrees
-          ? "As fontes discordam sobre quem joga em casa, e sem isso o resultado não se calcula."
-          : "Em todos os mercados ou estamos acima das casas ou temos mau registo. Nada a fazer aqui.",
+          ? "As fontes não concordam sobre qual é a equipa da casa, e sem isso não dá para confiar em quem ganha."
+          : "Em todos os mercados deste jogo estamos mais optimistas do que as casas, ou já nos enganámos muito neles. Não arriscava nada aqui.",
     );
   }
 
@@ -380,9 +386,11 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "esperar",
       maisProvavel,
-      `Sem preço ainda. Damos ${pct(
+      `As casas ainda não abriram este jogo. Damos-lhe ${hip(
         maisProvavel.ours,
-      )} — quando abrir, só paga acima de ${odd(maisProvavel.fairPrice)}.`,
+      )}, por isso quando abrirem só vale a pena acima de ${odd(
+        maisProvavel.fairPrice,
+      )}.`,
     );
   }
 
@@ -391,7 +399,7 @@ export function suggest(input: SuggestionInput): Suggestion {
   const vantagem = melhor.edge ?? 0;
   const exigido = pedido(melhor.market).points;
 
-  const lado = `Damos ${pct(melhor.ours)}, o mercado ${pct(
+  const lado = `Damos-lhe ${hip(melhor.ours)} e as casas dão ${hips(
     melhor.marketPct as number,
   )}.`;
 
@@ -401,9 +409,9 @@ export function suggest(input: SuggestionInput): Suggestion {
       melhor,
       // Sem repetir o nome do mercado nem o preço, que estão em cima em
       // letra grande: o que falta aqui é porque é que isso é uma aposta.
-      `${lado} Justo a ${odd(melhor.fairPrice)} — paga ${num(
-        vantagem,
-      )} pontos a mais.`,
+      `${lado} Só compensava acima de ${odd(
+        melhor.fairPrice,
+      )} e estão a pagar mais do que isso.`,
     );
   }
 
@@ -416,9 +424,7 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "pequena",
       melhor,
-      `${lado} Paga ${num(vantagem)} pontos a mais e eu queria ${num(
-        exigido,
-      )}. Entra com metade.`,
+      `${lado} O preço já compensa, mas por pouco — e neste jogo quero mais folga. Se apostares, aposta menos do que o costume.`,
     );
   }
 
@@ -444,15 +450,17 @@ export function suggest(input: SuggestionInput): Suggestion {
   const sobra = firme.edge ?? 0;
   const remate =
     sobra >= 0
-      ? `A ${odd(firme.price as number)} paga o que vale e nada mais. Não chega.`
-      : `Justo a ${odd(firme.fairPrice)}, pagam ${odd(
+      ? `A ${odd(
           firme.price as number,
-        )}. Não vale o preço.`;
+        )} pagam exactamente o que isto vale, e não é por isso que eu arriscava.`
+      : `Só compensava acima de ${odd(firme.fairPrice)} e pagam ${odd(
+          firme.price as number,
+        )} — menos do que vale.`;
 
   return feito(
     "passar",
     firme,
-    `Damos ${pct(firme.ours)}, o mercado ${pct(
+    `Damos-lhe ${hip(firme.ours)} e as casas dão ${hips(
       firme.marketPct as number,
     )}. ${remate}`,
   );

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Ban, Loader2, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
+import { enumerate } from "@/lib/matchDossier";
 import {
   suggest,
   type Call,
@@ -86,7 +87,7 @@ export function SuggestionCard({
   // Quinze mercados e duas ordenações: não vale a memória de os guardar
   // entre desenhos nem o cuidado de manter as dependências certas.
   const decided = suggest({ ...props, label });
-  const { call, pick, because, raised, required, avoid, avoidBecause } = decided;
+  const { call, pick, because, raised, avoid, avoidBecause } = decided;
 
   // Só quando há mercado e preço: sem isso não há nada que se possa
   // conferir depois, e o registo encheria de linhas por verificar.
@@ -171,10 +172,10 @@ export function SuggestionCard({
         {raised.length > 0 && (
           <p
             className="sl-meta mt-1.5 text-[11px] leading-4"
-            title="O chão são três pontos. Estas são as razões que o levantaram, e nenhuma delas o modelo vê."
+            title="Razões para pedir mais a este jogo do que ao normal. Nenhuma delas o modelo vê."
           >
-            Peço {required.toFixed(1).replace(".", ",")} pontos aqui:{" "}
-            {raised.map((item) => item.what).join(", ")}.
+            Sou mais exigente neste jogo: {enumerate(raised.map((r) => r.what))}
+            .
           </p>
         )}
 
