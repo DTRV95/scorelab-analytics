@@ -14,13 +14,12 @@ import {
   type PrefillForm,
 } from "@/components/MatchForm";
 import { MatchDossier } from "@/components/MatchDossier";
-import { SuggestionCard } from "@/components/SuggestionCard";
+import { MatchSuggestion } from "@/components/MatchSuggestion";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import {
   adjustments,
   fetchMarketCalibration,
 } from "@/lib/marketCalibration";
-import { keepSuggestion } from "@/lib/suggestionRecord";
 import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -385,27 +384,7 @@ export default function MatchDeepDive() {
             página é material para confirmar uma decisão, e alguém tem de
             a tomar primeiro. */}
         <motion.div variants={fadeUp}>
-          <SuggestionCard
-            markets={match.mercados}
-            amostraPct={match.amostra_pct}
-            prices={context?.market?.odds ?? null}
-            implied={context?.market?.implied ?? null}
-            derived={context?.market?.derived ?? []}
-            record={record}
-            adjustments={tuning}
-            absences={context?.absences ?? null}
-            teams={{ home: match.home_name, away: match.away_name }}
-            homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
-            patterns={patterns}
-            onDecided={(decided) =>
-              void keepSuggestion(
-                match.fixture_id,
-                match.league,
-                match.kickoff,
-                decided,
-              ).catch(() => undefined)
-            }
-          />
+          <MatchSuggestion match={match} />
         </motion.div>
 
         {/* Antes do valor, de propósito: o que falta saber muda o que vale

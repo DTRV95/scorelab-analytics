@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Ban, Sparkles } from "lucide-react";
+import { Ban, Loader2, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import {
   suggest,
@@ -49,8 +49,21 @@ const TOM: Record<Call, { texto: string; fundo: string }> = {
 export function SuggestionCard({
   sample,
   onDecided,
+  loading,
   ...props
 }: Omit<SuggestionInput, "label"> & {
+  /**
+   * Ainda falta chegar alguma coisa que muda a resposta.
+   *
+   * O preço, o registo do modelo, o exagero por mercado e as nossas
+   * pernas fechadas chegam todos depois do primeiro desenho. Sem isto,
+   * o cartão decidia com o que tinha — ou seja, só com o número do
+   * modelo — e dois segundos depois mudava de ideias à frente de quem
+   * estava a ler. A primeira coisa que se vê tem de ser a resposta, e
+   * entre uma resposta errada já e a certa daqui a um instante, é a
+   * certa que vale.
+   */
+  loading?: boolean;
   /**
    * A decisão, assim que está tomada.
    *
@@ -80,11 +93,38 @@ export function SuggestionCard({
   const mercado = pick?.market ?? null;
   const preco = pick?.price ?? null;
   useEffect(() => {
-    if (mercado && preco) onDecided?.(decided);
+    if (!loading && mercado && preco) onDecided?.(decided);
     // A decisão muda quando o jogo muda, e é isso que a identifica.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mercado, preco, call]);
+  }, [mercado, preco, call, loading]);
   const tom = TOM[call];
+
+  if (loading) {
+    return (
+      <section className="sl-card overflow-hidden">
+        <div className="bg-muted/40 px-4 py-3.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            Sugestão de IA
+          </p>
+          <div className="mt-2 flex items-center gap-2.5">
+            <Loader2
+              className="h-4 w-4 flex-none animate-spin text-muted-foreground"
+              aria-hidden
+            />
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              A ver os preços, as baixas e o nosso registo…
+            </p>
+          </div>
+          {sample && (
+            <p className="sl-meta mt-1.5 text-[11px] leading-4">
+              Histórico: {sample.label} ({sample.pct.toFixed(0)}%)
+            </p>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="sl-card overflow-hidden">
