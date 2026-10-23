@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { askOnce } from "@/lib/askOnce";
 
 /**
  * O que as casas estão a pagar num jogo, pedido ao nosso motor.
@@ -60,15 +61,13 @@ export interface MarketPrice {
 }
 
 /**
- * O que já se pediu nesta sessão, para não se pedir outra vez.
+ * Pede-se uma vez por sessão.
  *
- * Isto agora aparece no quadro, dentro de uma linha que abre e fecha —
- * e abrir e fechar a mesma linha três vezes gastava três chamadas a uma
+ * Isto aparece no quadro, dentro de uma linha que abre e fecha — e
+ * abrir e fechar a mesma linha três vezes gastava três chamadas a uma
  * fonte de quinhentas por mês. O motor guarda vinte minutos do seu
  * lado; isto guarda a ida.
  */
-const held = new Map<string, Promise<MatchContext | null>>();
-
 export async function fetchMatchContext(
   league: string,
   home: string,
@@ -77,17 +76,9 @@ export async function fetchMatchContext(
 ): Promise<MatchContext | null> {
   if (!kickoff) return null;
 
-  const key = `${league}|${home}|${away}|${kickoff}`;
-  const seen = held.get(key);
-  if (seen) return seen;
-
-  const asking = askFor(league, home, away, kickoff);
-  held.set(key, asking);
-  // Uma falha não fica guardada: a próxima vez que a linha abrir, volta
-  // a tentar. Guardar o "não deu" era deixar o jogo sem preço até se
-  // recarregar a página.
-  asking.catch(() => held.delete(key));
-  return asking;
+  return askOnce(`contexto|${league}|${home}|${away}|${kickoff}`, () =>
+    askFor(league, home, away, kickoff),
+  );
 }
 
 async function askFor(

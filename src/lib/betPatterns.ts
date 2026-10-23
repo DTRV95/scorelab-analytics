@@ -1,5 +1,6 @@
 import { canonicalMarket } from "@/lib/marketNames";
 import { supabase } from "@/lib/supabaseClient";
+import { askOnce } from "@/lib/askOnce";
 import type { PlanBetPayload } from "@/lib/planStore";
 
 /**
@@ -223,6 +224,12 @@ export function patternFor(
  * é quem joga melhor: é que mercados é que pagam o risco que têm.
  */
 export async function fetchSettledLegs(): Promise<SettledLeg[]> {
+  // Uma vez por sessão. Fecha-se uma aposta por dia, não uma por
+  // toque, e isto é lido sempre que uma linha do quadro abre.
+  return askOnce("pernas-fechadas", askSettledLegs);
+}
+
+async function askSettledLegs(): Promise<SettledLeg[]> {
   if (!supabase) return [];
 
   const { data, error } = await supabase

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { askOnce } from "@/lib/askOnce";
 
 /**
  * Quanto é que o modelo exagera, mercado a mercado, medido.
@@ -76,6 +77,12 @@ export function adjustments(
 }
 
 export async function fetchMarketCalibration(): Promise<MarketCalibrationRow[]> {
+  // Uma vez por sessão: isto é refeito por um trabalho nocturno, não
+  // entre dois toques numa linha do quadro.
+  return askOnce("calibracao", askCalibration);
+}
+
+async function askCalibration(): Promise<MarketCalibrationRow[]> {
   if (!supabase) return [];
 
   const { data, error } = await supabase

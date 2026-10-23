@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { askOnce } from "@/lib/askOnce";
 
 export interface AccuracyMarket {
   market: string;
@@ -194,6 +195,17 @@ export function bandVerdict(band: AccuracyBand): "sharp" | "over" | "under" | "t
 }
 
 export async function fetchLeagueAccuracy(
+  league: string,
+  season?: number
+): Promise<LeagueAccuracy> {
+  // Uma vez por sessão e por liga: o registo de uma época muda quando
+  // os jogos do dia são marcados, não entre dois toques numa linha.
+  return askOnce(`registo|${league}|${season ?? ""}`, () =>
+    askLeagueAccuracy(league, season),
+  );
+}
+
+async function askLeagueAccuracy(
   league: string,
   season?: number
 ): Promise<LeagueAccuracy> {
