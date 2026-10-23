@@ -1,6 +1,12 @@
+import { useEffect } from "react";
 import { Ban, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { suggest, type Call, type SuggestionInput } from "@/lib/suggestion";
+import {
+  suggest,
+  type Call,
+  type Suggestion,
+  type SuggestionInput,
+} from "@/lib/suggestion";
 
 /**
  * A sugestão para este jogo, à cabeça.
@@ -42,8 +48,18 @@ const TOM: Record<Call, { texto: string; fundo: string }> = {
 
 export function SuggestionCard({
   sample,
+  onDecided,
   ...props
 }: Omit<SuggestionInput, "label"> & {
+  /**
+   * A decisão, assim que está tomada.
+   *
+   * Quem monta o cartão é que sabe de que jogo ele é, e é quem a pode
+   * guardar. O cartão decide e não escreve em lado nenhum: um
+   * componente que desenha e grava ao mesmo tempo grava duas vezes
+   * mal alguém mude o desenho.
+   */
+  onDecided?: (decided: Suggestion) => void;
   /**
    * Quanto histórico sustenta isto.
    *
@@ -56,8 +72,18 @@ export function SuggestionCard({
 }) {
   // Quinze mercados e duas ordenações: não vale a memória de os guardar
   // entre desenhos nem o cuidado de manter as dependências certas.
-  const { call, pick, because, raised, required, avoid, avoidBecause } =
-    suggest({ ...props, label });
+  const decided = suggest({ ...props, label });
+  const { call, pick, because, raised, required, avoid, avoidBecause } = decided;
+
+  // Só quando há mercado e preço: sem isso não há nada que se possa
+  // conferir depois, e o registo encheria de linhas por verificar.
+  const mercado = pick?.market ?? null;
+  const preco = pick?.price ?? null;
+  useEffect(() => {
+    if (mercado && preco) onDecided?.(decided);
+    // A decisão muda quando o jogo muda, e é isso que a identifica.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mercado, preco, call]);
   const tom = TOM[call];
 
   return (

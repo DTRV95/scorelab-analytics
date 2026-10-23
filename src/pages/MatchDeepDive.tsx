@@ -16,12 +16,11 @@ import {
 import { MatchDossier } from "@/components/MatchDossier";
 import { SuggestionCard } from "@/components/SuggestionCard";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
-import { decide } from "@/lib/verdict";
 import {
   adjustments,
   fetchMarketCalibration,
 } from "@/lib/marketCalibration";
-import { keepVerdict } from "@/lib/verdictRecord";
+import { keepSuggestion } from "@/lib/suggestionRecord";
 import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
 import { Button } from "@/components/ui/button";
 import { buildApiUrl } from "@/lib/apiConfig";
@@ -300,32 +299,6 @@ export default function MatchDeepDive() {
     [odds]
   );
 
-  // O veredicto fica escrito assim que há preço, com o preço desse
-  // momento. Não é para o ecrã — o ecrã já o mostra — é para daqui a um
-  // mês se poder contar quantos acertaram.
-  useEffect(() => {
-    if (!match || !context?.market) return;
-
-    const veredicto = decide({
-      headline: match.headline_market
-        ? { market: match.headline_market, pct: match.headline_pct }
-        : null,
-      amostraPct: match.amostra_pct,
-      record: record.get(match.headline_market) ?? null,
-      adjustmentPp: tuning[match.headline_market],
-      prices: context.market.odds,
-      implied: context.market.implied,
-    });
-
-    keepVerdict(
-      match.fixture_id,
-      match.league,
-      match.kickoff,
-      match.headline_market,
-      veredicto,
-    ).catch(() => undefined);
-  }, [match, context, record, tuning]);
-
   const setOddsFor = (market: string, value: string) =>
     setOdds((previous) => ({ ...previous, [market]: value }));
 
@@ -424,6 +397,14 @@ export default function MatchDeepDive() {
             teams={{ home: match.home_name, away: match.away_name }}
             homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
             patterns={patterns}
+            onDecided={(decided) =>
+              void keepSuggestion(
+                match.fixture_id,
+                match.league,
+                match.kickoff,
+                decided,
+              ).catch(() => undefined)
+            }
           />
         </motion.div>
 

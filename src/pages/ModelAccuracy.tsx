@@ -14,7 +14,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { ModelRecordTable } from "@/components/ModelRecordTable";
-import { VerdictRecordCard } from "@/components/VerdictRecordCard";
+import { SuggestionRecordCard } from "@/components/SuggestionRecordCard";
 import { BetPatternsCard } from "@/components/BetPatternsCard";
 import { MarketCalibrationCard } from "@/components/MarketCalibrationCard";
 import { Button } from "@/components/ui/button";
@@ -469,7 +469,7 @@ export default function ModelAccuracy() {
                 modelo é uma ferramenta, o veredicto é o que esta casa
                 recomendou — e é por esse que ela deve ser julgada. */}
             <motion.section variants={fadeUp}>
-              <VerdictRecordCard />
+              <SuggestionRecordCard />
             </motion.section>
 
             {/* Onde é que ele exagera, mercado a mercado: é a relação
