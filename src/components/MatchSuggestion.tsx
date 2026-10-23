@@ -4,6 +4,7 @@ import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
 import { adjustments, fetchMarketCalibration } from "@/lib/marketCalibration";
 import { fetchLeagueAccuracy, type AccuracyMarket } from "@/lib/modelAccuracy";
 import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
+import { keepSuggestion } from "@/lib/suggestionRecord";
 import type { BoardMatch } from "@/lib/probabilityBoardCache";
 
 /**
@@ -87,6 +88,17 @@ export function MatchSuggestion({
       homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
       patterns={patterns}
       sample={{ label: match.amostra_label, pct: match.amostra_pct }}
+      /* O que se diz fica escrito com o preço do dia, para daqui a um
+         mês se saber se valeu alguma coisa. A primeira é a que conta:
+         a tabela não aceita correcções. */
+      onDecided={(decided) =>
+        void keepSuggestion(
+          match.fixture_id,
+          match.league,
+          match.kickoff,
+          decided,
+        ).catch(() => undefined)
+      }
     />
   );
 }
