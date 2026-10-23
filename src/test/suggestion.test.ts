@@ -332,9 +332,11 @@ describe("o juízo por cima do modelo", () => {
 
     expect(inteiro.call).toBe("apostar");
     expect(desfalcado.required).toBeGreaterThan(inteiro.required);
-    expect(desfalcado.raised.map((r) => r.what)).toContain(
-      "o Alavés leva 4 jogadores de fora",
-    );
+    // As baixas contam para a fasquia e são ditas na frase, à cabeça.
+    // Repeti-las na linha da exigência era dizer o mesmo duas vezes no
+    // mesmo cartão, por isso saem de lá.
+    expect(desfalcado.because).toContain("O Alavés leva 4 jogadores de fora");
+    expect(desfalcado.raised.map((r) => r.key)).not.toContain("baixas");
   });
 
   it("não conta como falta quem está em dúvida", () => {

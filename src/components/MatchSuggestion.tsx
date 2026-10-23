@@ -93,6 +93,12 @@ export function MatchSuggestion({
       teams={{ home: match.home_name, away: match.away_name }}
       homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
       patterns={patterns}
+      goals={{
+        home: match.lambda_casa,
+        away: match.lambda_fora,
+        total: match.total_golos_esperados,
+      }}
+      headline={match.headline_market}
       sample={{ label: match.amostra_label, pct: match.amostra_pct }}
       /* O que se diz fica escrito com o preço do dia, para daqui a um
          mês se saber se valeu alguma coisa. A primeira é a que conta:
