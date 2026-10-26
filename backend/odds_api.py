@@ -316,6 +316,13 @@ def odds_for(
         trace["considered"] = considered[:12]
         trace["best_score"] = round(best_score, 3)
 
+    if trace is not None and best is not None:
+        trace["matched"] = (
+            f"{best.get('home_team')} vs {best.get('away_team')}"
+            f" ({str(best.get('commence_time', ''))[:16]})"
+        )
+        trace["books"] = len(best.get("bookmakers") or [])
+
     if best is None or best_score < NAME_MATCH_FLOOR:
         if trace is not None:
             trace["reason"] = "Nenhum jogo deles se parece o suficiente com este."
@@ -468,6 +475,17 @@ def priced(
         # Quais destes preços ninguém cotou e nós deduzimos. Quem lê
         # tem direito a saber a diferença.
         "derived": sorted(set(completo) - set(prices)),
+        # De que jogo deles veio este preço, e de quantas casas.
+        #
+        # Isto faltava, e a falta custou caro: durante um dia a mesma
+        # previsão saiu com preços que não podiam ser do mesmo jogo —
+        # um 1,67 em casa que no dia seguinte era 4,45 — e não havia
+        # maneira de saber se o motor tinha casado o jogo errado ou se
+        # era o mercado a mexer. Um preço sem proveniência não se pode
+        # defender nem desmentir.
+        "matched": trace.get("matched"),
+        "match_score": trace.get("best_score"),
+        "books": trace.get("books"),
         # As duas fontes discordarem sobre quem joga em casa não estraga
         # o preço, que vai pelo nome. Fica guardado, sem alarido: medido
         # em jogos reais, acontece em dois terços deles.
