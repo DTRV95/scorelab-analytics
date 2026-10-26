@@ -594,3 +594,48 @@ def test_nao_avisa_quando_as_fontes_concordam():
     )
 
     assert answer["home_away_disagrees"] is False
+
+
+def test_o_preco_diz_de_que_jogo_veio(monkeypatch):
+    """Proveniência, que faltava e custou caro.
+
+    Durante um dia a mesma previsão saiu com preços que não podiam ser
+    do mesmo jogo — um 1,67 em casa que no dia seguinte era 4,45 — e
+    não havia maneira de saber se o motor tinha casado o jogo errado ou
+    se era o mercado a mexer. Um preço sem proveniência não se pode
+    defender nem desmentir.
+    """
+    listagem = [
+        {
+            "home_team": "Deportivo Alavés",
+            "away_team": "Málaga CF",
+            "commence_time": "2026-10-23T19:00:00Z",
+            "bookmakers": [
+                {
+                    "markets": [
+                        {
+                            "key": "h2h",
+                            "outcomes": [
+                                {"name": "Deportivo Alavés", "price": 1.67},
+                                {"name": "Málaga CF", "price": 5.5},
+                                {"name": "Draw", "price": 3.75},
+                            ],
+                        }
+                    ]
+                }
+            ],
+        }
+    ]
+
+    monkeypatch.setattr(odds_api, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        odds_api, "_working_flavour", lambda: {"flavour": {}, "ok": True}
+    )
+    monkeypatch.setattr(odds_api, "_cached", lambda *a, **k: listagem)
+
+    got = odds_api.priced("La Liga", "Alavés", "Málaga", "2026-10-23T19:00:00Z")
+
+    assert got["matched"] == "Deportivo Alavés vs Málaga CF (2026-10-23T19:00)"
+    assert got["books"] == 1
+    assert got["match_score"] >= 0.62
+    assert got["odds"]["Casa"] == 1.67
