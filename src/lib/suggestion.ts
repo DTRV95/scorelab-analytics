@@ -449,9 +449,7 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "esperar",
       maisProvavel,
-      `As casas ainda não abriram este jogo. Damos-lhe ${hip(
-        maisProvavel.ours,
-      )}, por isso quando abrirem só vale a pena acima de ${odd(
+      `As casas ainda não abriram este jogo. Quando abrirem, só vale a pena acima de ${odd(
         maisProvavel.fairPrice,
       )}.`,
     );
@@ -462,17 +460,13 @@ export function suggest(input: SuggestionInput): Suggestion {
   const vantagem = melhor.edge ?? 0;
   const exigido = pedido(melhor.market).points;
 
-  const lado = `Damos-lhe ${hip(melhor.ours)} e as casas dão ${hips(
-    melhor.marketPct as number,
-  )}.`;
-
   if (vantagem >= exigido) {
     return feito(
       "apostar",
       melhor,
       // Sem repetir o nome do mercado nem o preço, que estão em cima em
       // letra grande: o que falta aqui é porque é que isso é uma aposta.
-      `${lado} Só compensava acima de ${odd(
+      `Só compensava acima de ${odd(
         melhor.fairPrice,
       )} e estão a pagar mais do que isso.`,
     );
@@ -487,7 +481,7 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "pequena",
       melhor,
-      `${lado} Compensa, mas por pouco: se apostares, aposta menos do que o costume.`,
+      `Compensa, mas por pouco: se apostares, aposta menos do que o costume.`,
     );
   }
 
@@ -523,8 +517,6 @@ export function suggest(input: SuggestionInput): Suggestion {
   return feito(
     "passar",
     firme,
-    `Damos-lhe ${hip(firme.ours)} e as casas dão ${hips(
-      firme.marketPct as number,
-    )}. ${remate}`,
+    remate,
   );
 }
