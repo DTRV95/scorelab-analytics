@@ -3,6 +3,7 @@ import { Scale } from "lucide-react";
 import { SectionHeader } from "@/components/Section";
 import {
   fetchMarketCalibration,
+  measuredOnly,
   noticed,
   speaks,
   MIN_SAMPLE,
@@ -67,7 +68,10 @@ export function MarketCalibrationCard() {
           .map((row) => {
             const conta = speaks(row);
             const reparado = noticed(row);
-            const estado = conta
+            const soMedido = measuredOnly(row);
+            const estado = soMedido
+              ? "medido, não conta"
+              : conta
               ? "a contar"
               : reparado
                 ? row.nDesde > 0
@@ -81,7 +85,9 @@ export function MarketCalibrationCard() {
               >
                 <p
                   className={`min-w-0 flex-1 truncate text-[12px] ${
-                    conta ? "font-semibold text-foreground" : "text-muted-foreground"
+                    conta && !soMedido
+                      ? "font-semibold text-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {row.mercado}
@@ -91,7 +97,9 @@ export function MarketCalibrationCard() {
                 </p>
                 <p
                   className={`font-mono-data w-[92px] flex-none text-right text-[12px] ${
-                    conta ? "font-bold text-destructive" : "text-muted-foreground"
+                    conta && !soMedido
+                      ? "font-bold text-destructive"
+                      : "text-muted-foreground"
                   }`}
                   title="Desvio medido e margem de erro a dois sigmas"
                 >
@@ -99,7 +107,7 @@ export function MarketCalibrationCard() {
                 </p>
                 <p
                   className={`sl-meta w-[104px] flex-none text-right text-[10px] uppercase tracking-[0.08em] ${
-                    conta ? "text-[hsl(var(--sl-green))]" : ""
+                    conta && !soMedido ? "text-[hsl(var(--sl-green))]" : ""
                   }`}
                 >
                   {estado}
@@ -114,7 +122,14 @@ export function MarketCalibrationCard() {
         margem — mas isso ainda não conta. A partir desse dia a conta é
         refeita só com jogos que a descoberta não viu, e só se eles
         disserem o mesmo é que o número passa a mexer no cálculo.
-        Encontrar um padrão é fácil; o difícil é esperar para ver.
+        Encontrar um padrão é fácil; o difícil é esperar para ver.{" "}
+        <span className="text-foreground">
+          E um desvio positivo nunca mexe:
+        </span>{" "}
+        o modelo subestimar faria subir a nossa probabilidade e baixar o
+        preço mínimo que exigimos, ou seja aceitar odds piores por causa
+        de uma medição. Descontar onde ele exagera só nos faz pedir
+        mais. Dos dois erros só um é recuperável.
       </p>
     </section>
   );
