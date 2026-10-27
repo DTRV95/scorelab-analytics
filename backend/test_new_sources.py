@@ -639,3 +639,48 @@ def test_o_preco_diz_de_que_jogo_veio(monkeypatch):
     assert got["books"] == 1
     assert got["match_score"] >= 0.62
     assert got["odds"]["Casa"] == 1.67
+
+
+def test_o_estado_nao_diz_ligada_quando_o_saldo_acabou(monkeypatch):
+    """A lista de desportos é gratuita e mente sobre o mês.
+
+    Ela continua a responder depois de o saldo acabar, e o painel dizia
+    "Ligada" enquanto todos os pedidos de preço levavam 401. Ninguém viu
+    o mês acabar porque o sítio onde se olhava não era o sítio onde se
+    gasta.
+    """
+    monkeypatch.setattr(odds_api, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        odds_api,
+        "_working_flavour",
+        lambda: {"flavour": {"name": "the-odds-api.com"}, "keys": ["soccer_epl"]},
+    )
+    monkeypatch.setattr(
+        odds_api,
+        "meter",
+        lambda: {"ok": False, "status": 401, "detail": "O saldo mensal de chamadas acabou."},
+    )
+
+    got = odds_api.account_status()
+
+    assert got["accepted"] is False
+    assert "saldo" in got["detail"]
+
+
+def test_sem_preco_separa_recusa_de_ausencia(monkeypatch):
+    monkeypatch.setattr(odds_api, "odds_for", lambda *a, **k: None)
+
+    monkeypatch.setattr(odds_api, "meter", lambda: {"ok": True, "remaining": 300})
+    ausente = odds_api.priced("Serie A", "Sassuolo", "Lazio", "2026-10-27T17:30:00Z")
+
+    monkeypatch.setattr(
+        odds_api,
+        "meter",
+        lambda: {"ok": False, "detail": "O saldo mensal de chamadas acabou."},
+    )
+    recusado = odds_api.priced("Serie A", "Sassuolo", "Lazio", "2026-10-27T17:30:00Z")
+
+    assert ausente["blocked"] is False
+    assert "Sem preço de mercado" in ausente["detail"]
+    assert recusado["blocked"] is True
+    assert "saldo" in recusado["detail"]

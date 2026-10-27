@@ -118,6 +118,8 @@ export interface SuggestionInput {
   goals?: { home: number; away: number; total: number } | null;
   /** O mercado que o quadro pôs à frente, que nem sempre é o escolhido. */
   headline?: string | null;
+  /** Não há preço porque a fonte nos recusou, não porque o jogo não o tenha. */
+  blocked?: boolean;
   /**
    * Como se escreve o nome de um mercado para quem lê.
    *
@@ -449,9 +451,13 @@ export function suggest(input: SuggestionInput): Suggestion {
     return feito(
       "esperar",
       maisProvavel,
-      `As casas ainda não abriram este jogo. Quando abrirem, só vale a pena acima de ${odd(
-        maisProvavel.fairPrice,
-      )}.`,
+      input.blocked
+        ? `Não consegui ir buscar o preço — a fonte recusou o pedido. Sem ele só sei que isto só vale a pena acima de ${odd(
+            maisProvavel.fairPrice,
+          )}.`
+        : `As casas ainda não abriram este jogo. Quando abrirem, só vale a pena acima de ${odd(
+            maisProvavel.fairPrice,
+          )}.`,
     );
   }
 

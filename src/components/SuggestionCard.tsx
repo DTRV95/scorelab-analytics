@@ -179,6 +179,7 @@ export function SuggestionCard({
   const trial = tribunal(
     {
       record: props.record,
+      blocked: props.blocked,
       patterns: props.patterns,
       absences: props.absences,
       teams: props.teams,

@@ -440,3 +440,21 @@ describe("o juízo por cima do modelo", () => {
     ).toBeGreaterThan(chao);
   });
 });
+
+describe("quando a fonte nos recusa o preço", () => {
+  it("não põe a culpa nas casas", () => {
+    // "As casas ainda não abriram" e "não consegui perguntar" são
+    // coisas diferentes, e durante um tempo disseram a mesma frase —
+    // que escondia um saldo esgotado atrás de uma frase normal.
+    const calado = suggest(input({ prices: null, implied: null }));
+    const recusado = suggest(
+      input({ prices: null, implied: null, blocked: true }),
+    );
+
+    expect(calado.because).toContain("ainda não abriram");
+    expect(recusado.because).toContain("a fonte recusou");
+    expect(recusado.because).not.toContain("ainda não abriram");
+    // E em qualquer dos casos continua a dizer a que preço valeria.
+    expect(recusado.because).toContain("só vale a pena acima de");
+  });
+});

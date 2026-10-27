@@ -54,6 +54,8 @@ const pct = (value: number) => `${Math.round(value)}%`;
 
 export interface TrialInput {
   record: Map<string, AccuracyMarket>;
+  /** A fonte recusou-nos o preço; não é o jogo que não o tem. */
+  blocked?: boolean;
   patterns?: Patterns | null;
   absences?: Record<string, Absence[]> | null;
   teams?: { home: string; away: string } | null;
@@ -77,7 +79,9 @@ export function tribunal(input: TrialInput, pick: MarketQuote | null): Trial {
     judges.push({
       who: "Modelo",
       vote: "cala-se",
-      because: "sem preço não há nada que o modelo possa dizer",
+      because: input.blocked
+        ? "sem preço, e o preço é que faltou"
+        : "sem preço não há nada que o modelo possa dizer",
     });
   } else if (pick.edge > 0) {
     judges.push({
@@ -100,7 +104,9 @@ export function tribunal(input: TrialInput, pick: MarketQuote | null): Trial {
     judges.push({
       who: "Mercado",
       vote: "cala-se",
-      because: "as casas ainda não abriram este mercado",
+      because: input.blocked
+        ? "não consegui ir buscar o preço à fonte"
+        : "as casas ainda não abriram este mercado",
     });
   } else if (gap >= GAP_WARN) {
     judges.push({
