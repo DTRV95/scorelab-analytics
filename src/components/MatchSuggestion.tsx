@@ -92,6 +92,7 @@ export function MatchSuggestion({
       absences={context?.absences ?? null}
       teams={{ home: match.home_name, away: match.away_name }}
       homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
+      blocked={context?.blocked ?? false}
       patterns={patterns}
       goals={{
         home: match.lambda_casa,

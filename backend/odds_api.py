@@ -83,6 +83,20 @@ def _store(key: str, value: Any) -> None:
     _cache[key] = (time.time(), value)
 
 
+# O que a fonte respondeu da última vez a uma chamada que gasta saldo.
+#
+# Isto existe porque o estado da ligação estava a ser medido no sítio
+# errado. A lista de desportos é gratuita e continua a responder depois
+# de o saldo acabar, por isso o painel dizia "Ligada" enquanto todos os
+# pedidos de preço levavam 401 — e ninguém viu o mês acabar.
+_meter: Dict[str, Any] = {}
+
+
+def meter() -> Dict[str, Any]:
+    """Quantas chamadas restam no mês, e como correu a última."""
+    return dict(_meter)
+
+
 def _fetch(flavour: Dict[str, str], path: str, params: Dict[str, Any]) -> Any:
     api_key = get_api_key()
     query = dict(params)
@@ -92,10 +106,58 @@ def _fetch(flavour: Dict[str, str], path: str, params: Dict[str, Any]) -> Any:
     else:
         headers["x-api-key"] = api_key
 
+    # Só as chamadas de preço gastam saldo; a lista de desportos é de
+    # graça e não tem nada a dizer sobre o mês.
+    metered = "/odds" in path
+
     url = f"{flavour['base']}{path}?{urllib.parse.urlencode(query)}"
     request = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+            # Contar chamadas nunca pode estragar uma chamada que
+            # correu bem: a conta é um acessório e o preço é o que ali
+            # se foi buscar.
+            if metered:
+                cabecas = getattr(response, "headers", None)
+                leitura = (
+                    (lambda nome: cabecas.get(nome))
+                    if hasattr(cabecas, "get")
+                    else (lambda _nome: None)
+                )
+                _meter.update(
+                    {
+                        "remaining": _number(leitura("x-requests-remaining")),
+                        "used": _number(leitura("x-requests-used")),
+                        "last_cost": _number(leitura("x-requests-last")),
+                        "ok": True,
+                        "at": time.time(),
+                    }
+                )
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if metered:
+            # 401 numa chamada de preço com uma chave que a lista de
+            # desportos aceita quer dizer uma coisa só: o mês acabou.
+            _meter.update(
+                {
+                    "ok": False,
+                    "status": exc.code,
+                    "detail": (
+                        "O saldo mensal de chamadas acabou."
+                        if exc.code == 401
+                        else f"A fonte respondeu {exc.code}."
+                    ),
+                    "at": time.time(),
+                }
+            )
+        raise
+
+
+def _number(value: Optional[str]) -> Optional[int]:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
 
 
 def _working_flavour() -> Optional[Dict[str, Any]]:
@@ -154,14 +216,26 @@ def account_status() -> Dict[str, Any]:
     }
     missing = sorted(set(SPORT_KEYS) - set(ours))
 
+    # A chave ser aceite pela lista de desportos não quer dizer que
+    # sirva para pedir preços: a lista é gratuita e continua a
+    # responder depois de o saldo do mês acabar. Quem manda aqui é a
+    # última chamada que gastou saldo.
+    gasto = meter()
+    travado = gasto.get("ok") is False
+
     return {
         "configured": True,
-        "accepted": True,
-        "detail": "Ligada.",
+        "accepted": not travado,
+        "detail": (
+            gasto.get("detail") or "A fonte recusou o último pedido de preço."
+            if travado
+            else "Ligada."
+        ),
         "service": found["flavour"]["name"],
         "our_leagues": sorted(ours),
         "missing_leagues": missing,
         "sports_listed": len(available),
+        "quota": gasto or None,
     }
 
 
@@ -256,7 +330,13 @@ def odds_for(
                 found["flavour"],
                 f"/sports/{sport}/odds",
                 {
-                    "regions": "eu,uk",
+                    # Uma região e não duas. Cada região é uma chamada
+                    # cobrada, e a casa europeia cobre estas ligas — o
+                    # que se perde é uma ou outra casa inglesa a entrar
+                    # na mediana, o que a mexe aos cêntimos. Pagar o
+                    # dobro do saldo por isso era trocar o mês por
+                    # cêntimos.
+                    "regions": "eu",
                     "markets": "h2h,totals",
                     "oddsFormat": "decimal",
                 },
@@ -458,12 +538,23 @@ def priced(
     prices = odds_for(league, home, away, kickoff, trace=trace)
 
     if not prices:
+        # Não é a mesma coisa este jogo não ter preço e nós não termos
+        # conseguido perguntar. Dizer "as casas ainda não abriram"
+        # quando o que houve foi um 401 é pôr a culpa em quem não a
+        # tem, e esconde um saldo esgotado atrás de uma frase que
+        # parece normal.
+        travado = meter().get("ok") is False
         return {
             "odds": None,
             "implied_pct": None,
             "derived": [],
             "home_away_disagrees": False,
-            "detail": "Sem preço de mercado para este jogo.",
+            "blocked": travado,
+            "detail": (
+                meter().get("detail") or "A fonte recusou o pedido."
+                if travado
+                else "Sem preço de mercado para este jogo."
+            ),
             "trace": trace,
         }
 

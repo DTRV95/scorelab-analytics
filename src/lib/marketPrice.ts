@@ -31,6 +31,16 @@ export interface Headline {
 export interface MatchContext {
   market: MarketPrice | null;
   /**
+   * Não houve preço porque a fonte nos recusou, e não porque o jogo
+   * não o tenha.
+   *
+   * São duas coisas diferentes e durante um tempo disseram a mesma
+   * frase: "as casas ainda não abriram este jogo", quando o que havia
+   * era um 401 por saldo esgotado. Pôr a culpa em quem não a tem
+   * esconde o problema atrás de uma frase que parece normal.
+   */
+  blocked: boolean;
+  /**
    * Quem falta, por equipa. Null quando ninguém olhou — que não é o
    * mesmo que uma lista vazia, essa diz que estão todos bons.
    */
@@ -110,6 +120,7 @@ async function askFor(
 
   return {
     market,
+    blocked: Boolean(data?.blocked),
     absences: data?.absences ?? null,
     news: data?.news ?? {},
   };
