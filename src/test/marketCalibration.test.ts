@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_SAMPLE,
   adjustments,
+  measuredOnly,
   noticed,
   speaks,
-  MIN_SAMPLE,
   type MarketCalibrationRow,
 } from "@/lib/marketCalibration";
 import { measuredPct, minimumOdd } from "@/lib/shortlist";
@@ -109,5 +110,49 @@ describe("minimumOdd com ajuste", () => {
 
   it("mantém a exigência onde ele exagera mesmo", () => {
     expect(minimumOdd(72, -10.56)).toBe(1.63);
+  });
+});
+
+describe("o sentido do ajuste", () => {
+  const linha = (
+    mercado: string,
+    desvio: number,
+  ): MarketCalibrationRow => ({
+    mercado,
+    n: 202,
+    prometido: 50,
+    entregue: 50 + desvio,
+    desvio,
+    margem: 7,
+    foundAt: "2026-10-01",
+    nDesde: 60,
+    desvioDesde: desvio,
+    margemDesde: 5,
+    confirmado: true,
+  });
+
+  it("desconta onde o modelo exagera", () => {
+    const got = adjustments([linha("Ambas Marcam", -7.6)]);
+
+    expect(got["Ambas Marcam"]).toBe(-7.6);
+  });
+
+  it("mede onde ele subestima, mas não mexe na conta", () => {
+    // Subir a nossa probabilidade baixa o preço mínimo que exigimos, ou
+    // seja manda aceitar odds piores por causa de uma medição de
+    // duzentos jogos. Descontar só nos faz pedir mais. Dos dois erros
+    // só um é recuperável.
+    const btts = linha("BTTS No", 7.6);
+
+    expect(adjustments([btts])).toEqual({});
+    expect(measuredOnly(btts)).toBe(true);
+    expect(speaks(btts)).toBe(true);
+  });
+
+  it("não chama 'só medido' a um que ainda não se provou", () => {
+    const porConfirmar = { ...linha("Fora", 7.0), confirmado: false };
+
+    expect(measuredOnly(porConfirmar)).toBe(false);
+    expect(adjustments([porConfirmar])).toEqual({});
   });
 });

@@ -61,17 +61,40 @@ export function speaks(row: MarketCalibrationRow): boolean {
 }
 
 /**
+ * Se este mercado é medido mas não mexe nas contas.
+ *
+ * A medição passou a cobrir a tabela toda e não só as previsões acima
+ * dos 55%, e isso trouxe à vista os dois enviesamentos mais fortes do
+ * registo — o "BTTS No" promete 36,5% e entrega 44,1%, o "Fora"
+ * promete 29,1% e entrega 36,1%. Os dois dizem que o modelo está a
+ * **subestimar**, e é aí que esta casa pára.
+ *
+ * Aplicar uma subestimação sobe a nossa probabilidade, e subir a
+ * probabilidade baixa o preço mínimo que exigimos — ou seja, manda
+ * aceitar odds piores por causa de uma medição de duzentos jogos. O
+ * contrário, descontar onde o modelo exagera, só nos faz pedir mais.
+ *
+ * Dos dois erros só um é recuperável: pedir de mais custa uma aposta
+ * que não se fez, pedir de menos custa dinheiro. Por isso estes ficam
+ * medidos, ficam no ecrã, e não entram na conta.
+ */
+export function measuredOnly(row: MarketCalibrationRow): boolean {
+  return speaks(row) && row.desvio > 0;
+}
+
+/**
  * O ajuste por mercado, em pontos, só para os que já se provaram.
  *
- * Negativo quer dizer que o modelo promete a mais e que a probabilidade
- * tem de descer.
+ * Negativo quer dizer que o modelo promete a mais e que a
+ * probabilidade tem de descer. Só os negativos entram: ver
+ * `measuredOnly` para o porquê de os outros ficarem de fora.
  */
 export function adjustments(
   rows: MarketCalibrationRow[],
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const row of rows) {
-    if (speaks(row)) out[row.mercado] = row.desvio;
+    if (speaks(row) && row.desvio < 0) out[row.mercado] = row.desvio;
   }
   return out;
 }
