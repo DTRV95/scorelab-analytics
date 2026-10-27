@@ -155,15 +155,28 @@ def data_injury_coverage(request: Request, force: bool = False):
 @app.get("/data/match-context")
 @limiter.limit("20/minute")
 def data_match_context(
-    request: Request, league: str, home: str, away: str, kickoff: str
+    request: Request,
+    league: str,
+    home: str,
+    away: str,
+    kickoff: str,
+    odds: bool = True,
 ):
     """O que se sabe à volta de um jogo: quem falta, o árbitro, odds, tempo.
 
     A pedido e não em lote: o plano gratuito da fonte dá cem chamadas por
     dia, e enchê-las a pré-carregar um quadro de cem jogos que ninguém
     abriu era ficar sem nenhuma para os que se abrem mesmo.
+
+    `odds=0` deixa o preço de fora. Quem já o foi buscar à liga inteira
+    não tem de o pedir outra vez jogo a jogo — e cada pedido repetido é
+    saldo mensal gasto a saber o mesmo.
     """
-    market = odds_api.priced(league, home, away, kickoff)
+    market = (
+        odds_api.priced(league, home, away, kickoff)
+        if odds
+        else {"odds": None, "implied_pct": None, "derived": [], "blocked": False}
+    )
     baixas_trace: dict = {}
     baixas = bzzoiro_data.for_match(home, away, kickoff, trace=baixas_trace)
 
@@ -174,6 +187,64 @@ def data_match_context(
         "absences": baixas,
         "absences_trace": None if baixas else baixas_trace,
         "news": news_data.for_teams(home, away),
+    }
+
+
+@app.get("/data/league-odds")
+@limiter.limit("10/minute")
+def data_league_odds(request: Request, league: str, days: int = 3):
+    """O preço de todos os jogos de uma liga, de uma vez só.
+
+    Esta é a chamada que o saldo mensal suporta. A fonte cobra por
+    listagem de liga, não por jogo: pedir trinta jogos um a um e pedir a
+    liga inteira custam o mesmo se forem na mesma visita, e custam
+    trinta vezes mais se forem em trinta. Como o motor dorme entre
+    visitas e acorda sem memória, era o segundo caso que estava a
+    acontecer — e o mês acabou a meio.
+
+    Aqui a listagem é buscada uma vez e serve todos os jogos da liga,
+    porque o que está em memória durante este pedido chega para todos
+    eles. Quem chama guarda o resultado e volta amanhã.
+    """
+    if not football_data.is_configured():
+        raise HTTPException(status_code=503, detail="Fonte de dados não configurada.")
+
+    try:
+        board = football_data.probability_board(days, limit=MAX_BOARD_MATCHES)
+    except football_data.ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    nossos = [
+        match
+        for match in (board.get("matches") or [])
+        if str(match.get("league")) == league
+    ]
+
+    precos: dict = {}
+    for match in nossos:
+        found = odds_api.priced(
+            league,
+            str(match.get("home_name")),
+            str(match.get("away_name")),
+            str(match.get("kickoff")),
+        )
+        if found.get("odds"):
+            precos[str(match.get("fixture_id"))] = {
+                "odds": found["odds"],
+                "implied_pct": found["implied_pct"],
+                "derived": found.get("derived") or [],
+                "home_away_disagrees": found.get("home_away_disagrees", False),
+                "matched": found.get("matched"),
+            }
+
+    gasto = odds_api.meter()
+    return {
+        "league": league,
+        "matches": precos,
+        "asked": len(nossos),
+        "priced": len(precos),
+        "blocked": gasto.get("ok") is False,
+        "quota": gasto or None,
     }
 
 

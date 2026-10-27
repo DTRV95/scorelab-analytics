@@ -97,7 +97,15 @@ async function askFor(
   away: string,
   kickoff: string,
 ): Promise<MatchContext | null> {
-  const query = new URLSearchParams({ league, home, away, kickoff });
+  // Sem o preço: esse vem da liga inteira, uma vez por dia, porque a
+  // fonte cobra por listagem e não por jogo.
+  const query = new URLSearchParams({
+    league,
+    home,
+    away,
+    kickoff,
+    odds: "0",
+  });
   const response = await fetch(
     buildApiUrl(`/data/match-context?${query.toString()}`),
   );

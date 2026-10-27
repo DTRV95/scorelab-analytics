@@ -16,6 +16,7 @@ import {
 import { MatchDossier } from "@/components/MatchDossier";
 import { MatchSuggestion } from "@/components/MatchSuggestion";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
+import { fetchLeagueOdds, priceOf, type LeagueOdds } from "@/lib/oddsDay";
 import {
   adjustments,
   fetchMarketCalibration,
@@ -168,6 +169,8 @@ export default function MatchDeepDive() {
   const [tuning, setTuning] = useState<Record<string, number>>({});
   /** O que o nosso próprio dinheiro já fez em mercados como estes. */
   const [patterns, setPatterns] = useState<Patterns | null>(null);
+  /** O preço vem da liga toda, uma vez por dia, e não deste jogo. */
+  const [leagueOdds, setLeagueOdds] = useState<LeagueOdds | null>(null);
   const [odds, setOdds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +254,14 @@ export default function MatchDeepDive() {
 
     // Best effort: the forecast stands without it, this only adds the
     // model's history on these markets next to it.
+    // O preço vem da liga toda e não deste jogo: a fonte cobra por
+    // listagem, e uma vez por dia chega para os jogos todos dela.
+    fetchLeagueOdds(match.league)
+      .then((found) => {
+        if (!cancelled) setLeagueOdds(found);
+      })
+      .catch(() => undefined);
+
     fetchLeagueAccuracy(match.league)
       .then((report) => {
         if (cancelled) return;
@@ -404,7 +415,7 @@ export default function MatchDeepDive() {
             adjustmentPp={
               match.headline_market ? tuning[match.headline_market] : undefined
             }
-            market={context?.market ?? null}
+            market={priceOf(leagueOdds, match.fixture_id)}
             absences={context?.absences ?? null}
             news={context?.news ?? null}
             teams={{ home: match.home_name, away: match.away_name }}

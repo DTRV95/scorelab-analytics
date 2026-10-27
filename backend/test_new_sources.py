@@ -684,3 +684,73 @@ def test_sem_preco_separa_recusa_de_ausencia(monkeypatch):
     assert "Sem preço de mercado" in ausente["detail"]
     assert recusado["blocked"] is True
     assert "saldo" in recusado["detail"]
+
+
+def test_a_liga_inteira_custa_uma_ida_a_fonte(monkeypatch):
+    """É esta a chamada que o saldo mensal suporta.
+
+    A fonte cobra por listagem de liga e não por jogo. Trinta jogos
+    pedidos na mesma visita custam o mesmo que um; os mesmos trinta em
+    trinta visitas custam trinta vezes mais. Era o segundo caso que
+    estava a acontecer, porque o motor dorme entre visitas e acorda sem
+    memória — e o mês acabou a meio.
+    """
+    idas = {"n": 0}
+
+    def _uma_ida(flavour, path, params):
+        if "/odds" in path:
+            idas["n"] += 1
+        return [
+            {
+                "home_team": "Deportivo Alavés",
+                "away_team": "Málaga CF",
+                "commence_time": "2026-10-23T19:00:00Z",
+                "bookmakers": [
+                    {
+                        "markets": [
+                            {
+                                "key": "h2h",
+                                "outcomes": [
+                                    {"name": "Deportivo Alavés", "price": 1.67},
+                                    {"name": "Málaga CF", "price": 5.5},
+                                    {"name": "Draw", "price": 3.75},
+                                ],
+                            }
+                        ]
+                    }
+                ],
+            },
+            {
+                "home_team": "Sevilla",
+                "away_team": "Valencia",
+                "commence_time": "2026-10-23T21:00:00Z",
+                "bookmakers": [
+                    {
+                        "markets": [
+                            {
+                                "key": "h2h",
+                                "outcomes": [
+                                    {"name": "Sevilla", "price": 2.0},
+                                    {"name": "Valencia", "price": 3.6},
+                                    {"name": "Draw", "price": 3.3},
+                                ],
+                            }
+                        ]
+                    }
+                ],
+            },
+        ]
+
+    odds_api.forget()
+    monkeypatch.setattr(odds_api, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        odds_api, "_working_flavour", lambda: {"flavour": {}, "keys": []}
+    )
+    monkeypatch.setattr(odds_api, "_fetch", _uma_ida)
+
+    primeiro = odds_api.priced("La Liga", "Alavés", "Málaga", "2026-10-23T19:00:00Z")
+    segundo = odds_api.priced("La Liga", "Sevilla", "Valencia", "2026-10-23T21:00:00Z")
+
+    assert primeiro["odds"]["Casa"] == 1.67
+    assert segundo["odds"]["Casa"] == 2.00
+    assert idas["n"] == 1

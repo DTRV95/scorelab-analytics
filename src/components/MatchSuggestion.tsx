@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SuggestionCard } from "@/components/SuggestionCard";
 import { fetchMatchContext, type MatchContext } from "@/lib/marketPrice";
+import { fetchLeagueOdds, priceOf, type LeagueOdds } from "@/lib/oddsDay";
 import { adjustments, fetchMarketCalibration } from "@/lib/marketCalibration";
 import { fetchLeagueAccuracy, type AccuracyMarket } from "@/lib/modelAccuracy";
 import { fetchSettledLegs, readPatterns, type Patterns } from "@/lib/betPatterns";
@@ -42,6 +43,8 @@ export function MatchSuggestion({
   const [record, setRecord] = useState<Map<string, AccuracyMarket>>(new Map());
   const [tuning, setTuning] = useState<Record<string, number>>({});
   const [patterns, setPatterns] = useState<Patterns | null>(null);
+  /** O preço vem da liga toda, uma vez por dia, e não deste jogo. */
+  const [odds, setOdds] = useState<LeagueOdds | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export function MatchSuggestion({
         ),
         setContext,
       ),
+      vai(fetchLeagueOdds(match.league), setOdds),
       vai(fetchLeagueAccuracy(match.league), (report) =>
         setRecord(new Map(report.markets.map((row) => [row.market, row]))),
       ),
@@ -79,20 +83,22 @@ export function MatchSuggestion({
     };
   }, [active, match.league, match.home_name, match.away_name, match.kickoff]);
 
+  const preco = priceOf(odds, match.fixture_id);
+
   return (
     <SuggestionCard
       loading={!ready}
       markets={match.mercados}
       amostraPct={match.amostra_pct}
-      prices={context?.market?.odds ?? null}
-      implied={context?.market?.implied ?? null}
-      derived={context?.market?.derived ?? []}
+      prices={preco?.odds ?? null}
+      implied={preco?.implied ?? null}
+      derived={preco?.derived ?? []}
       record={record}
       adjustments={tuning}
       absences={context?.absences ?? null}
       teams={{ home: match.home_name, away: match.away_name }}
-      homeAwayDisagrees={context?.market?.homeAwayDisagrees ?? false}
-      blocked={context?.blocked ?? false}
+      homeAwayDisagrees={preco?.homeAwayDisagrees ?? false}
+      blocked={odds?.blocked ?? false}
       patterns={patterns}
       goals={{
         home: match.lambda_casa,
