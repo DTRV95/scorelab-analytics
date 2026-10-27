@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Ban, Loader2, Sparkles } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
 import { enumerate } from "@/lib/matchDossier";
+import { getKellyPct } from "@/lib/calibrationEngine";
+import { tribunal, type Vote } from "@/lib/tribunal";
 import {
   suggest,
   type Call,
@@ -30,6 +32,78 @@ import {
  */
 
 const label = (market: string) => MARKET_LABELS[market] ?? market;
+
+/**
+ * Duas barras, uma por cima da outra.
+ *
+ * O que o cartão sempre disse em palavras — "damos-lhe 54 hipóteses em
+ * 100 e as casas dão 46" — visto de uma vez. Uma frase obriga a
+ * comparar dois números de cabeça; duas barras já estão comparadas.
+ */
+function Bar({
+  who,
+  pct,
+  tone,
+}: {
+  who: string;
+  pct: number;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <p className="sl-meta w-[62px] flex-none text-[9.5px] uppercase tracking-[0.06em]">
+        {who}
+      </p>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${tone}`}
+          style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+        />
+      </div>
+      <p className="font-mono-data w-[34px] flex-none text-right text-[12px] font-bold text-foreground">
+        {Math.round(pct)}%
+      </p>
+    </div>
+  );
+}
+
+/** Um número com o nome por cima e o que ele quer dizer por baixo. */
+function Figure({
+  label: nome,
+  value,
+  note,
+  tone,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  tone?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border bg-[hsl(var(--sl-surface))] px-1 py-1.5 text-center">
+      <p className="sl-meta truncate text-[9px] uppercase tracking-[0.02em]">
+        {nome}
+      </p>
+      <p
+        className={`font-mono-data mt-0.5 truncate text-[14px] font-bold ${
+          tone ?? "text-foreground"
+        }`}
+      >
+        {value}
+      </p>
+      <p className="sl-meta truncate text-[9px]">{note}</p>
+    </div>
+  );
+}
+
+const VOTO: Record<Vote, { ponto: string; texto: string }> = {
+  bate: {
+    ponto: "bg-[hsl(var(--sl-green))]",
+    texto: "text-foreground",
+  },
+  falha: { ponto: "bg-destructive", texto: "text-foreground" },
+  "cala-se": { ponto: "bg-muted-foreground/30", texto: "text-muted-foreground" },
+};
 
 const odd = (value: number) => value.toFixed(2).replace(".", ",");
 
@@ -100,6 +174,24 @@ export function SuggestionCard({
   }, [mercado, preco, call, loading]);
   const tom = TOM[call];
 
+  // As mesmas provas que entraram na decisão, agora à vista. Não é um
+  // segundo juízo: é o primeiro, por dentro.
+  const trial = tribunal(
+    {
+      record: props.record,
+      patterns: props.patterns,
+      absences: props.absences,
+      teams: props.teams,
+    },
+    pick,
+  );
+
+  /** O que cada euro apostado devolve, pela nossa conta. É a margem. */
+  const retorno =
+    pick?.price && pick.price > 1 ? (pick.ours / 100) * pick.price - 1 : null;
+  const aposta =
+    pick?.price && pick.price > 1 ? getKellyPct(pick.ours, pick.price) : null;
+
   if (loading) {
     return (
       <section className="sl-card overflow-hidden">
@@ -165,6 +257,43 @@ export function SuggestionCard({
           {because}
         </p>
 
+        {pick && pick.marketPct !== null && (
+          <div className="mt-2.5 space-y-1">
+            <Bar who="Nós" pct={pick.ours} tone="bg-primary" />
+            <Bar
+              who="Mercado"
+              pct={pick.marketPct}
+              tone="bg-[hsl(var(--sl-cool))]"
+            />
+          </div>
+        )}
+
+        {pick && pick.price && retorno !== null && aposta !== null && (
+          <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+            <Figure
+              label="Odd"
+              value={`${pick.derived ? "≈" : ""}${odd(pick.price)}`}
+              note={pick.derived ? "deduzida" : "mediana"}
+            />
+            <Figure label="Justa" value={odd(pick.fairPrice)} note="o justo" />
+            <Figure
+              label="Retorno"
+              value={`${retorno >= 0 ? "+" : "−"}${Math.abs(retorno * 100).toFixed(0)}%`}
+              note="por euro"
+              tone={
+                retorno >= 0
+                  ? "text-[hsl(var(--sl-green))]"
+                  : "text-destructive"
+              }
+            />
+            <Figure
+              label="Aposta"
+              value={aposta > 0 ? `${aposta.toFixed(1).replace(".", ",")}%` : "—"}
+              note="da banca"
+            />
+          </div>
+        )}
+
         {/* O raciocínio, por baixo da decisão e não dentro dela.
             A frase diz o que fazer e tem de caber num telemóvel; isto
             é o que me fez pedir mais do que o costume neste jogo, e é
@@ -187,6 +316,42 @@ export function SuggestionCard({
             Histórico: {sample.label} ({sample.pct.toFixed(0)}%)
           </p>
         )}
+      </div>
+
+      {/* As cinco provas que entraram na conta, cada uma com o seu voto.
+          Não é um segundo juízo sobre o jogo — é o primeiro, por
+          dentro. E quem não tem nada a dizer aparece a dizer isso,
+          porque num tribunal a falta de prova não é prova de nada. */}
+      <div className="border-t border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <p className="sl-meta flex-1 text-[10px] uppercase tracking-[0.12em]">
+            Tribunal
+          </p>
+          <p className="font-mono-data text-[12px] font-bold text-foreground">
+            {trial.favour}–{trial.against}
+          </p>
+        </div>
+
+        <ul className="mt-1.5 space-y-1">
+          {trial.judges.map((judge) => (
+            <li key={judge.who} className="flex items-baseline gap-2">
+              <span
+                aria-hidden
+                className={`mt-[1px] h-1.5 w-1.5 flex-none rounded-full ${
+                  VOTO[judge.vote].ponto
+                }`}
+              />
+              <p
+                className={`min-w-0 flex-1 text-[11px] leading-4 ${
+                  VOTO[judge.vote].texto
+                }`}
+              >
+                <span className="font-semibold">{judge.who}</span>
+                <span className="sl-meta"> · {judge.because}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {avoid && (
