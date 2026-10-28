@@ -14,6 +14,24 @@ const eur = new Intl.NumberFormat("pt-PT", {
   maximumFractionDigits: 0,
 });
 
+/**
+ * Quantas vezes a banca, escrito como quem o diz.
+ *
+ * 100000× é um número que ninguém lê de relance e 100 000× é. E abaixo
+ * de dez a casa decimal faz falta: um desafio de 50 € para 75 € não
+ * multiplica por 2, e arredondá-lo para lá é prometer vinte e cinco
+ * euros que não estão no plano.
+ */
+function multiple(times: number): string {
+  if (times < 10) {
+    return times
+      .toFixed(1)
+      .replace(/[.,]0$/, "")
+      .replace(".", ",");
+  }
+  return Math.round(times).toLocaleString("pt-PT");
+}
+
 export interface ChallengeLine {
   label: string;
   value: string;
@@ -46,8 +64,7 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
     },
     {
       label: "Quanto multiplica",
-      // 100000× is a number nobody can read at a glance; 100 000× is.
-      value: `${Math.round(target / startingBankroll).toLocaleString("pt-PT")}× a banca`,
+      value: `${multiple(target / startingBankroll)}× a banca`,
     },
     { label: "Níveis", value: `${rules.days}` },
     {
@@ -70,6 +87,15 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
             : "a que quiseres",
     },
     {
+      label: "Jogos por boletim",
+      value:
+        rules.maxLegs === 1
+          ? "um só"
+          : rules.maxLegs
+            ? `até ${rules.maxLegs}`
+            : "sem limite",
+    },
+    {
       label: "Primeira aposta",
       value: first ? eur.format(first.stake) : "—",
     },
@@ -90,7 +116,7 @@ export function challengeLines(template: ChallengeTemplate): ChallengeLine[] {
  * long shots on the chase, and neither pretends to be the other.
  */
 export function challengePitch(template: ChallengeTemplate): string {
-  const multiple = Math.round(template.target / template.startingBankroll);
+  const times = multiple(template.target / template.startingBankroll);
   const growth = expectedGrowth(template.rules, ASSUMED_WIN_RATE);
 
   if (template.longShot) {
@@ -98,10 +124,10 @@ export function challengePitch(template: ChallengeTemplate): string {
   }
 
   if (Number.isFinite(growth) && growth > 0) {
-    return `Multiplicar por ${multiple} sem nunca arriscar o suficiente para uma má semana acabar com tudo. É o tipo de desafio que se pode perder e recomeçar na mesma banca.`;
+    return `Multiplicar por ${times} sem nunca arriscar o suficiente para uma má semana acabar com tudo. É o tipo de desafio que se pode perder e recomeçar na mesma banca.`;
   }
 
-  return `Multiplicar por ${multiple} em ${template.rules.days} níveis.`;
+  return `Multiplicar por ${times} em ${template.rules.days} níveis.`;
 }
 
 export interface ChallengeIntro {

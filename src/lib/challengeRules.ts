@@ -26,6 +26,17 @@ export interface ChallengeRules {
   oddsMax: number | null;
   /** One bet per day, or as many as you like. */
   onePerDay: boolean;
+  /**
+   * Quantos jogos pode levar um boletim. Null é sem limite.
+   *
+   * É a regra que faltava e a que custou mais dinheiro. Das 74 apostas
+   * fechadas destes dois, 47 eram duplas e levaram 465,81 € — 71% de todo
+   * o dinheiro posto — e devolveram menos 66,13 €. A conta por trás disso
+   * não é azar nem sorte: a casa cobra a sua margem em cada jogo, e um
+   * boletim de dois paga-a duas vezes. Cinco por cento numa perna são
+   * 10,3% em duas, antes de a bola rolar.
+   */
+  maxLegs?: number | null;
   /** Losses in a row after which the challenge says to stop. Null = never. */
   lossStreakPause: number | null;
   /**
@@ -112,6 +123,43 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
       onePerDay: true,
       lossStreakPause: 3,
       oddsPlan: { first: 2, cycle: [2] },
+    },
+  },
+  {
+    // O único destes que não foi desenhado a partir de um objectivo, mas
+    // a partir do extracto.
+    //
+    // Fecharam-se 74 apostas: 657,86 € postos, 649,68 € devolvidos. Nem
+    // uma fortuna perdida nem lucro nenhum — o empate de quem está a
+    // pagar a margem da casa e mais nada. Mas dentro desses 74 há uma
+    // divisão que não é opinião: 47 duplas levaram 465,81 € e devolveram
+    // menos 66,13 €, e as duplas são o único sítio onde se sabe, antes
+    // do jogo começar, que se está a pagar a dobrar. Uma perna a 1,41
+    // leva cerca de cinco por cento de margem; duas levam 10,3%. Em 71%
+    // do dinheiro, portanto, começava-se o dia a dever o dobro.
+    //
+    // Este desafio tira isso e mais nada: um jogo por boletim, 1,70 para
+    // cima (abaixo disso estão 137 das 160 pernas fechadas, e devolveram
+    // −4,3%), e 4% da banca de cada vez em vez de metade. Não promete
+    // vantagem nenhuma — ninguém tem vantagem medida aqui, e a ficha ao
+    // lado di-lo. Promete parar de pagar a margem duas vezes, e durar os
+    // sessenta níveis que são precisos para se saber se há mais alguma
+    // coisa por baixo.
+    key: "so-simples",
+    name: "Só simples",
+    blurb:
+      "60 níveis a 4% da banca, um jogo por boletim, odd 1.70+. 50 € → 75 €. 71% do vosso dinheiro foi em duplas, e uma dupla paga a margem da casa a dobrar.",
+    startingBankroll: 50,
+    target: 75,
+    rules: {
+      days: 60,
+      stakeBands: [{ untilDay: null, pct: 0.04 }],
+      oddsMin: 1.7,
+      oddsMax: null,
+      onePerDay: true,
+      lossStreakPause: 4,
+      oddsPlan: { first: 1.95, cycle: [1.95] },
+      maxLegs: 1,
     },
   },
   {
@@ -692,6 +740,9 @@ export function describeRules(rules: ChallengeRules): string {
   } else {
     parts.push("sem limite de odd");
   }
+
+  if (rules.maxLegs === 1) parts.push("só simples");
+  else if (rules.maxLegs) parts.push(`até ${rules.maxLegs} jogos por boletim`);
 
   parts.push(rules.onePerDay ? "uma aposta por dia" : "apostas sem limite diário");
 

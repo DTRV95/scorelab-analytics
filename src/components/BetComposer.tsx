@@ -425,23 +425,30 @@ export function BetComposer({
   const edgeLine =
     edge && aguenta !== null ? (
       <p className="sl-meta text-[11px] leading-5">
+        {/* No dinheiro e não na taxa de acerto. Dizer "acertaste 52,7% a
+            2,05" e a seguir "cada euro devolve 0,99 €" é pôr no mesmo
+            ecrã duas coisas que não fecham uma com a outra — e quem
+            multiplica fica com 1,08, que é o número que não aconteceu. */}
         {edge.stakePct <= 0 ? (
           <>
-            Em {edge.settled} apostas acertaste{" "}
-            <b className="font-mono-data text-foreground">{edge.winPct}%</b> a{" "}
+            Em {edge.settled} apostas puseste{" "}
             <b className="font-mono-data text-foreground">
-              {edge.odds.toFixed(2)}
+              {eur.format(edge.staked)}
+            </b>{" "}
+            e voltaram{" "}
+            <b className="font-mono-data text-foreground">
+              {eur.format(edge.returned)}
             </b>
-            : a esse preço cada euro devolve{" "}
+            :{" "}
             <b className="font-mono-data text-destructive">
               {edge.perEuro.toFixed(2)} €
-            </b>
-            , e não há quantia que aguente.
+            </b>{" "}
+            por cada euro, e não há quantia que aguente.
           </>
         ) : (
           <>
-            O teu registo ({edge.settled} apostas, {edge.winPct}% a{" "}
-            {edge.odds.toFixed(2)}) aguenta{" "}
+            O teu registo ({edge.settled} apostas,{" "}
+            {edge.perEuro.toFixed(2)} € por euro posto) aguenta{" "}
             <b className="font-mono-data text-foreground">
               {eur.format(aguenta)}
             </b>

@@ -24,10 +24,10 @@ import type { AccuracyMarket } from "@/lib/modelAccuracy";
  *
  * O critério, por ordem:
  *
- * 1. Fora de questão o mercado em que estamos doze pontos acima das
- *    casas, e aquele onde o nosso registo é comprovadamente mau. Doze
- *    pontos acima de milhares de pessoas com dinheiro em cima não é uma
- *    oportunidade, é um aviso.
+ * 1. Fora de questão o mercado em que estamos muito acima das casas, e
+ *    aquele onde o nosso registo é comprovadamente mau. Estar acima de
+ *    milhares de pessoas com dinheiro em cima não é uma oportunidade, é
+ *    um aviso.
  * 2. Do que sobra, a fasquia: três pontos de vantagem com histórico
  *    cheio, e até nove quando quase não há histórico.
  * 3. Quem a passa é aposta. Quem paga acima do justo mas não chega à
@@ -35,6 +35,17 @@ import type { AccuracyMarket } from "@/lib/modelAccuracy";
  *    — nomeado na mesma, com a razão por que não lhe punha dinheiro.
  * 4. E diz-se também o que evitar, que é a pergunta que ninguém faz e
  *    que custa mais dinheiro do que a outra.
+ *
+ * "Muito acima" conta-se de duas maneiras, e basta uma. Em pontos, como
+ * sempre se contou. E em vezes — um terço acima do número deles — que é
+ * a que faltava, e por falta dela este motor passou meses a recomendar
+ * azarões. As trinta primeiras sugestões que ficaram escritas dizem-no
+ * sem margem: nas seis que mandaram apostar, a odd média era 5,53 e
+ * cinco das seis eram azarões; nas nove que mandaram passar, odds de
+ * 1,20 a 1,61, sete entraram. Doze pontos de discordância num mercado
+ * de 70% é um desacordo de um sexto; os mesmos doze pontos num mercado
+ * de 10% é dizer que as casas estão enganadas por mais do dobro — e era
+ * esse que passava, porque em pontos parecia igual.
  */
 
 export interface MarketQuote {
@@ -135,6 +146,19 @@ const EDGE_FLOOR = 3;
 const GAP_VETO = 12;
 /** E a partir daqui já merece ser nomeado como armadilha. */
 const GAP_WARN = 8;
+/** O mesmo, em vezes: um terço acima do número deles tira de questão. */
+const VETO_RATIO = 1.35;
+/** E um quinto acima já merece ser nomeado. */
+const WARN_RATIO = 1.2;
+/**
+ * Abaixo de dois pontos não se conta em vezes.
+ *
+ * Num mercado de 3% um número de 4,5% é uma vez e meia o deles e não é
+ * nada: é um ponto e meio, que é menos do que a casa de arredondamento
+ * de qualquer um dos dois. Sem este chão, as vezes faziam armadilhas de
+ * mercados que ninguém joga.
+ */
+const GAP_MIN = 2;
 /** O histórico a partir do qual não se pede nada de especial. */
 const SAMPLE_FULL = 70;
 /** E o máximo que a falta dele chega a pedir, por mais curta que seja. */
@@ -345,6 +369,42 @@ function badRecord(
  */
 const SIDED = /^(Casa|Fora|1X|2X|12)$/i;
 
+/**
+ * Quantas vezes o nosso número é o das casas.
+ *
+ * Um é concordar. Dois é dizer que elas estão enganadas para o dobro —
+ * e isso diz-se sobre um mercado de 10% com sete pontos de diferença,
+ * que em pontos não dava nas vistas nenhumas.
+ */
+function excess(q: MarketQuote): number {
+  if (q.marketPct === null || q.marketPct <= 0) return 1;
+  if ((q.gap ?? 0) < GAP_MIN) return 1;
+  return q.ours / q.marketPct;
+}
+
+/** Estamos acima das casas ao ponto de isto merecer ser nomeado. */
+function risky(q: MarketQuote): boolean {
+  return (q.gap ?? 0) >= GAP_WARN || excess(q) >= WARN_RATIO;
+}
+
+/**
+ * Quanto do bolso é que isto merecia, pela regra de Kelly.
+ *
+ * Serve para ordenar e não para apostar — quem aposta é quem lê, e a
+ * fracção que o cartão mostra é um quarto desta. Mas ordenar por ela
+ * em vez de ordenar por pontos de vantagem muda tudo, e é a segunda
+ * metade da correcção: entre um 4,00 que paga cinco pontos acima do
+ * justo e um 1,95 que paga quatro, os pontos escolhem o 4,00 e o
+ * dinheiro escolhe o outro. O que faz crescer uma banca não é ter
+ * razão em pontos, é ter razão muitas vezes — e a mesma vantagem numa
+ * odd alta vem com uma variância que come o que ela paga.
+ */
+function growth(q: MarketQuote): number {
+  const price = q.price ?? 0;
+  if (price <= 1) return -1;
+  return ((q.ours / 100) * price - 1) / (price - 1);
+}
+
 export function suggest(input: SuggestionInput): Suggestion {
   const all = quotes(input);
   const name = input.label ?? ((market: string) => market);
@@ -353,8 +413,8 @@ export function suggest(input: SuggestionInput): Suggestion {
   // nos mercados em que estamos muito acima do mercado que o dinheiro
   // desaparece, e são precisamente os que parecem melhores.
   const trap = all
-    .filter((q) => q.gap !== null && q.gap >= GAP_WARN)
-    .sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0))[0];
+    .filter((q) => q.gap !== null && risky(q))
+    .sort((a, b) => excess(b) - excess(a) || (b.gap ?? 0) - (a.gap ?? 0))[0];
 
   const avoid = trap ?? null;
   const avoidBecause = avoid
@@ -403,9 +463,7 @@ export function suggest(input: SuggestionInput): Suggestion {
     because: [
       nota(pick).text,
       because,
-      (call === "apostar" || call === "pequena") &&
-      pick &&
-      (pick.gap ?? 0) >= GAP_WARN
+      (call === "apostar" || call === "pequena") && pick && risky(pick)
         ? "E atenção: aqui estamos mais optimistas do que as casas, que é quando costumamos enganar-nos."
         : "",
     ]
@@ -423,7 +481,11 @@ export function suggest(input: SuggestionInput): Suggestion {
   const pedido = (market?: string) => demand(input, market);
 
   const usable = all.filter((q) => {
+    // Em pontos e em vezes, e basta uma das duas. A primeira apanha o
+    // mercado grande em que nos afastámos; a segunda apanha o pequeno,
+    // onde o mesmo afastamento cabe em meia dúzia de pontos e passava.
     if ((q.gap ?? 0) >= GAP_VETO) return false;
+    if (excess(q) >= VETO_RATIO) return false;
     if (badRecord(input.record, q.market)) return false;
     // Fontes a discordar sobre quem joga em casa: os mercados de
     // resultado saem, e os de golos ficam.
@@ -461,8 +523,11 @@ export function suggest(input: SuggestionInput): Suggestion {
     );
   }
 
-  const porVantagem = [...priced].sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
-  const melhor = porVantagem[0];
+  // Pelo que faz crescer a banca, e não pelos pontos de vantagem. Os
+  // pontos põem sempre o azarão à frente: a mesma vantagem numa odd de
+  // 5,00 e numa de 1,60 é o mesmo número e não é o mesmo dinheiro.
+  const porCrescimento = [...priced].sort((a, b) => growth(b) - growth(a));
+  const melhor = porCrescimento[0];
   const vantagem = melhor.edge ?? 0;
   const exigido = pedido(melhor.market).points;
 
@@ -504,7 +569,7 @@ export function suggest(input: SuggestionInput): Suggestion {
   // discordamos deles.
   const porSegurança = (lista: MarketQuote[]) =>
     [...lista].sort((a, b) => b.ours - a.ours)[0];
-  const calmos = priced.filter((q) => (q.gap ?? 0) < GAP_WARN);
+  const calmos = priced.filter((q) => !risky(q));
   const firme = porSegurança(calmos.length > 0 ? calmos : priced);
 
   // Pagar exactamente o que vale e pagar menos do que vale não são a

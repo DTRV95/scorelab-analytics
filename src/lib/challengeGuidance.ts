@@ -204,13 +204,19 @@ export function nextMove({
   const band =
     rules.oddsMin !== null && rules.oddsMax !== null
       ? ` · odd entre ${rules.oddsMin.toFixed(2)} e ${rules.oddsMax.toFixed(2)}`
-      : "";
+      : rules.oddsMin !== null
+        ? ` · odd ${rules.oddsMin.toFixed(2)} ou mais`
+        : "";
+
+  // A regra que só se lembra depois de a ter quebrado. Fica na linha de
+  // todos os dias e não só na ficha de entrada.
+  const legs = rules.maxLegs === 1 ? " · um jogo só" : "";
 
   const detail = short
     ? `O quadro pede ${eur.format(row?.stake ?? 0)}, só tens ${eur.format(
         standing.bankroll,
-      )}: vai tudo${band}`
-    : `Nível ${day} de ${rules.days}${band}`;
+      )}: vai tudo${band}${legs}`
+    : `Nível ${day} de ${rules.days}${band}${legs}`;
 
   return {
     ...base,

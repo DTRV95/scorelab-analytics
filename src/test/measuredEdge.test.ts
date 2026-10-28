@@ -7,8 +7,7 @@ import {
 } from "@/lib/measuredEdge";
 import type { PlanBet } from "@/lib/planStore";
 
-function bet(won: boolean, odds: number, index: number): PlanBet {
-  const stake = 5;
+function bet(won: boolean, odds: number, index: number, stake = 5): PlanBet {
   return {
     id: `b${index}`,
     userId: "u1",
@@ -67,6 +66,25 @@ describe("a vantagem medida no registo de quem aposta", () => {
     expect(edge?.perEuro).toBeLessThan(1);
     expect(edge?.stakePct).toBe(0);
     expect(sustainableStake(edge!, 100)).toBe(0);
+  });
+
+  it("conta o dinheiro e não as apostas, quando as quantias são diferentes", () => {
+    // O caso real: 52,7% de acerto a 2,05 davam 1,08 € por euro, e o que
+    // saiu da conta bancária foram 0,99 €. A diferença é que as apostas
+    // que se perderam eram as maiores — e nas contas pesavam uma cada.
+    const desigual = [
+      ...Array.from({ length: 11 }, (_, i) => bet(true, 2, i, 5)),
+      ...Array.from({ length: 9 }, (_, i) => bet(false, 2, 11 + i, 20)),
+    ];
+    const got = measuredEdge(desigual)!;
+
+    // Onze em vinte: mais de metade.
+    expect(got.winPct).toBe(55);
+    expect(got.staked).toBeCloseTo(235, 2);
+    expect(got.returned).toBeCloseTo(110, 2);
+    // E ainda assim menos de metade do dinheiro voltou.
+    expect(got.perEuro).toBeCloseTo(0.468, 3);
+    expect(got.stakePct).toBe(0);
   });
 
   it("dá a fracção que a vantagem aguenta quando ela existe", () => {
