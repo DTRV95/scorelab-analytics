@@ -14,7 +14,11 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { CreateChallenge } from "@/components/ChallengeSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanBoard } from "@/hooks/usePlanBoard";
-import { measuredEdge, type MeasuredEdge } from "@/lib/measuredEdge";
+import {
+  measuredEdge,
+  moneyWinRate,
+  type MeasuredEdge,
+} from "@/lib/measuredEdge";
 import { newsByPlan, planNews } from "@/lib/planNews";
 import { seenByPlan } from "@/lib/seenStore";
 import {
@@ -95,7 +99,12 @@ function ChallengeCard({
   // Julgado com a taxa de quem está a ler, quando ela existe. Era sempre
   // com 55% assumidos — uma frase sobre um apostador imaginário, e a
   // pessoa que a lê tem um registo onde a resposta está escrita.
-  const rate = edge ? edge.winPct / 100 : ASSUMED_WIN_RATE;
+  //
+  // E é a taxa que o dinheiro viu, não a que as apostas contam: um
+  // desafio é uma pergunta sobre uma banca, e a banca não sabe quantas
+  // apostas entraram, sabe quanto voltou.
+  const rate = edge ? moneyWinRate(edge) : ASSUMED_WIN_RATE;
+  const ratePct = Math.round(rate * 100);
   const viable = isViable(template.rules, rate);
   const lines = challengeLines(template);
 
@@ -163,7 +172,7 @@ function ChallengeCard({
               <Check className="mt-0.5 h-3 w-3 flex-none" strokeWidth={3} />
               <span>
                 {edge
-                  ? `Com os teus ${edge.winPct}% de acerto, esta banca cresce ao longo do tempo.`
+                  ? `Com os teus ${ratePct}% por euro posto, esta banca cresce ao longo do tempo.`
                   : `Matematicamente viável: com ${Math.round(
                       ASSUMED_WIN_RATE * 100,
                     )}% de acerto, a banca cresce ao longo do tempo.`}
@@ -176,7 +185,7 @@ function ChallengeCard({
                 {template.longShot
                   ? "Bilhete de lotaria, e de propósito: todos os níveis têm de entrar, e uma falha acaba com ele."
                   : edge
-                    ? `Com os teus ${edge.winPct}% de acerto, a aposta é grande de mais para a odd: esta banca desce ao longo do tempo.`
+                    ? `Com os teus ${ratePct}% por euro posto, a aposta é grande de mais para a odd: esta banca desce ao longo do tempo.`
                     : "A aposta é grande de mais para a odd: a banca desce ao longo do tempo."}
               </span>
             </p>

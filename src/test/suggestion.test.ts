@@ -303,6 +303,68 @@ describe("suggest", () => {
   });
 });
 
+describe("o azarão", () => {
+  // Trinta sugestões ficaram escritas antes disto e dizem a mesma
+  // coisa: das seis que mandaram apostar, cinco eram azarões e a odd
+  // média era 5,53; das nove que mandaram passar, odds de 1,20 a 1,61,
+  // sete entraram. O motor estava a recusar as boas e a recomendar as
+  // outras, e a causa estava em contar a discordância em pontos.
+
+  it("põe de parte o mercado pequeno em que dizemos que as casas erram por muito", () => {
+    // Sete pontos. Em pontos não chegava aos doze e passava; em vezes
+    // é dizer que um 15% vale quase 22%, quase metade acima delas.
+    const got = suggest(
+      input({
+        markets: [
+          { mercado: "Fora", probabilidade_pct: 22 },
+          { mercado: "Casa", probabilidade_pct: 50 },
+        ],
+        prices: { Fora: 6.0, Casa: 2.05 },
+        implied: { Fora: 15, Casa: 48 },
+      }),
+    );
+
+    expect(got.pick?.market).not.toBe("Fora");
+    expect(got.avoid?.market).toBe("Fora");
+  });
+
+  it("não faz uma armadilha de um ponto e meio num mercado que ninguém joga", () => {
+    // Um 3,5% contra um 5% é vezes e meia o número deles e não é nada:
+    // é menos do que o arredondamento de qualquer um dos dois.
+    const got = suggest(
+      input({
+        markets: [
+          { mercado: "Fora", probabilidade_pct: 5 },
+          { mercado: "Casa", probabilidade_pct: 50 },
+        ],
+        prices: { Fora: 25, Casa: 2.05 },
+        implied: { Fora: 3.5, Casa: 48 },
+      }),
+    );
+
+    expect(got.avoid).toBeNull();
+  });
+
+  it("escolhe o que faz crescer a banca, e não o que soma mais pontos", () => {
+    // Cinco pontos a 4,00 contra menos de quatro a 1,95. Em pontos
+    // ganha o primeiro; em dinheiro ganha o segundo, e é o segundo que
+    // tem entrado.
+    const got = suggest(
+      input({
+        markets: [
+          { mercado: "Fora", probabilidade_pct: 30 },
+          { mercado: "Menos de 3.5 Golos", probabilidade_pct: 66 },
+        ],
+        prices: { Fora: 4.0, "Menos de 3.5 Golos": 1.95 },
+        implied: { Fora: 26, "Menos de 3.5 Golos": 52 },
+      }),
+    );
+
+    expect(got.call).toBe("apostar");
+    expect(got.pick?.market).toBe("Menos de 3.5 Golos");
+  });
+});
+
 describe("o juízo por cima do modelo", () => {
   /** Um jogo que, só pelo modelo e pelo preço, seria aposta. */
   const bom = {

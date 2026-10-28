@@ -67,6 +67,37 @@ describe("saying what a challenge is, on the way in", () => {
     expect(intro.terms).not.toContain("1.50–1.50");
   });
 
+  it("diz quantos jogos cabem num boletim, que é a regra que custou mais dinheiro", () => {
+    const simples = challengeIntro({
+      startingBankroll: 50,
+      target: 75,
+      rules: { ...dobrar.rules, maxLegs: 1 },
+      templateKey: null,
+    });
+    const livre = challengeIntro({
+      startingBankroll: 50,
+      target: 75,
+      rules: { ...dobrar.rules, maxLegs: null },
+      templateKey: null,
+    });
+
+    expect(simples.terms).toContain("só simples");
+    expect(livre.terms).not.toContain("só simples");
+  });
+
+  it("não arredonda meia banca a mais", () => {
+    // 50 € para 75 € não multiplica por 2, e dizê-lo é prometer vinte e
+    // cinco euros que não estão no plano.
+    const intro = challengeIntro({
+      startingBankroll: 50,
+      target: 75,
+      rules: dobrar.rules,
+      templateKey: null,
+    });
+
+    expect(intro.sentence).not.toContain("por 2");
+  });
+
   it("still says something about a challenge made from no model at all", () => {
     const intro = challengeIntro({
       startingBankroll: 50,
