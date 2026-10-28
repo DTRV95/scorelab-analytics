@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { hitRate, type ScoredMatch } from "@/lib/boardResults";
+import { hitRate, namesInWords, type ScoredMatch } from "@/lib/boardResults";
 import type { BoardResultsState } from "@/hooks/useBoardResults";
 
 type Span = "ontem" | "semana";
@@ -76,6 +76,22 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
   const rate = hitRate(matches);
   const shown = all ? matches : matches.slice(0, SHOWN);
 
+  /**
+   * As competições que não responderam quando isto foi contado.
+   *
+   * Vêm na resposta desde sempre e este cartão deitava-as fora, o que lhe
+   * permitia dizer uma coisa mais forte do que sabia. A 27 de Outubro a
+   * Serie A não respondeu à marcação da noite e foi a única competição que
+   * jogou nesse dia: três jogos, os três acertados. O cartão, sem nenhum
+   * deles, escreveu "ontem não se jogou nada" — que não é uma versão
+   * cautelosa da verdade, é o contrário dela.
+   *
+   * Não saber e não ter havido são respostas diferentes, e a diferença
+   * pertence a quem lê.
+   */
+  const missing = results?.unavailable ?? [];
+  const absent = missing.length > 0 ? namesInWords(missing) : null;
+
   if (!results) {
     return (
       <div className="sl-card px-4 py-4">
@@ -109,9 +125,13 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
     <div className="sl-card overflow-hidden">
       {rate.pct === null ? (
         <p className="sl-meta px-4 py-4 text-[12.5px] leading-[1.5]">
-          {span === "ontem"
-            ? "Ontem não se jogou nada nas competições com dados automáticos."
-            : "Nenhum jogo marcado nos últimos sete dias."}
+          {absent
+            ? `Não há nada marcado ${
+                span === "ontem" ? "de ontem" : "destes sete dias"
+              }, e faltou contar ${absent}: não respondeu. Pode ter sido quem jogou — toca em "Incluir os de hoje" para contar outra vez.`
+            : span === "ontem"
+              ? "Ontem não se jogou nada nas competições com dados automáticos."
+              : "Nenhum jogo marcado nos últimos sete dias."}
         </p>
       ) : (
         <>
@@ -137,6 +157,10 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
             certos {span === "ontem" ? "ontem" : "nos últimos sete dias"}, no
             mercado que o modelo destacou em cada jogo. Dizia, em média,{" "}
             {rate.said}%.
+            {/* Uma conta a que falta uma competição ainda é uma conta, mas
+                não é esta conta — e quem a lê tem de saber qual das duas
+                está a ler. */}
+            {absent && ` Sem ${absent}, que não respondeu.`}
           </p>
 
           <div className="divide-y divide-border border-t border-border">
