@@ -63,7 +63,10 @@ function scored(
   };
 }
 
-function results(matches: ScoredMatch[]): BoardResults {
+function results(
+  matches: ScoredMatch[],
+  unavailable: string[] = [],
+): BoardResults {
   const hits = matches.filter((match) => match.landed).length;
   return {
     matches,
@@ -71,7 +74,7 @@ function results(matches: ScoredMatch[]): BoardResults {
     hits,
     hit_pct: matches.length ? (hits / matches.length) * 100 : 0,
     predicted_pct: 78,
-    unavailable: [],
+    unavailable,
     skipped: 0,
     at: Date.now(),
     source: "snapshot",
@@ -128,6 +131,46 @@ describe("how the board did", () => {
 
     expect(
       await screen.findByText(/Ontem não se jogou nada/),
+    ).toBeInTheDocument();
+  });
+
+  it("não diz que não se jogou nada quando o que faltou foi perguntar", async () => {
+    // 27 de Outubro: a Serie A não respondeu à marcação da noite e foi a
+    // única competição que jogou nesse dia — três jogos, os três
+    // acertados. O cartão escreveu "ontem não se jogou nada", que não é
+    // uma versão cautelosa da verdade, é o contrário dela.
+    api.snapshot.mockResolvedValue(
+      results([scored(true, { daysAgo: 5, home: "Braga" })], ["Serie A"]),
+    );
+
+    render(<Hits />);
+
+    expect(await screen.findByText(/faltou contar Serie A/)).toBeInTheDocument();
+    expect(screen.queryByText(/não se jogou nada/)).not.toBeInTheDocument();
+  });
+
+  it("diz que a conta está incompleta quando até há jogos marcados", async () => {
+    api.snapshot.mockResolvedValue(
+      results([scored(true), scored(false, { home: "Porto" })], ["Serie A"]),
+    );
+
+    render(<Hits />);
+
+    expect(await screen.findByText("1 de 2")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sem Serie A, que não respondeu/),
+    ).toBeInTheDocument();
+  });
+
+  it("junta as competições em falta numa frase só", async () => {
+    api.snapshot.mockResolvedValue(
+      results([], ["Serie A", "Bundesliga", "Eredivisie"]),
+    );
+
+    render(<Hits />);
+
+    expect(
+      await screen.findByText(/Serie A, Bundesliga e Eredivisie/),
     ).toBeInTheDocument();
   });
 

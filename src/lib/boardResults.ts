@@ -214,6 +214,17 @@ export function playedYesterday(matches: ScoredMatch[]): ScoredMatch[] {
   });
 }
 
+/**
+ * Uma lista de competições como quem a diz em voz alta.
+ *
+ * Sem artigo à frente de propósito: são "Serie A", "La Liga" e
+ * "Brasileirão" na mesma lista, e não há artigo que sirva aos três.
+ */
+export function namesInWords(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+}
+
 export interface HitRate {
   played: number;
   hits: number;
