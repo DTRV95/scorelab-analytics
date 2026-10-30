@@ -271,10 +271,17 @@ describe("ProbabilityRadar board", () => {
     await screen.findByText("Porto vs Nacional");
     fireEvent.click(screen.getByRole("button", { name: /^Resto da semana/ }));
 
-    // Os dois jogos: o de ontem e o de há quatro dias.
+    // Os dois jogos: o de ontem e o de há quatro dias, um dia cada.
     expect(await screen.findByText("1 de 2")).toBeInTheDocument();
+    const dias = screen.getAllByRole("button", { expanded: false });
+    expect(dias).toHaveLength(2);
+    expect(dias[0]).toHaveTextContent("1 de 1");
+    expect(dias[1]).toHaveTextContent("0 de 1");
+
+    // E os jogos por baixo do dia a que pertencem.
+    fireEvent.click(dias[0]);
     expect(screen.getByText(/Braga/)).toBeInTheDocument();
-    expect(screen.getByText(/Famalicão/)).toBeInTheDocument();
+    expect(screen.queryByText(/Famalicão/)).toBeNull();
     // The games still to play are out of the way while the past is open.
     expect(screen.queryByText("Porto vs Nacional")).toBeNull();
   });
