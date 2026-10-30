@@ -200,17 +200,39 @@ function dayKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-/** The games played yesterday, by this phone's calendar. */
-export function playedYesterday(matches: ScoredMatch[]): ScoredMatch[] {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const key = dayKey(yesterday);
+/**
+ * Quantos dias para trás é o "resto da semana".
+ *
+ * Cinco, a contar de ontem. Era um só — e um dia de futebol não chega
+ * para dizer nada: numa terça-feira jogou a Serie A e mais ninguém, e
+ * três jogos certos dão uns 100% que no sábado seguinte são 58%. A
+ * mesma conta sobre cinco dias apanha sempre um fim-de-semana.
+ */
+export const RECENT_DAYS = 5;
+
+/**
+ * Os jogos dos últimos dias, pelo calendário deste telemóvel.
+ *
+ * De ontem para trás, e nunca hoje: as tabs ao lado desta começam em
+ * hoje e vão para a frente, e um jogo não pode estar nas duas. Hoje é
+ * previsão; isto é o que já aconteceu.
+ */
+export function playedRecently(
+  matches: ScoredMatch[],
+  days = RECENT_DAYS,
+): ScoredMatch[] {
+  const keys = new Set<string>();
+  for (let back = 1; back <= Math.max(1, days); back += 1) {
+    const day = new Date();
+    day.setDate(day.getDate() - back);
+    keys.add(dayKey(day));
+  }
 
   return matches.filter((match) => {
     if (!match.kickoff) return false;
     const when = new Date(match.kickoff);
     if (Number.isNaN(when.getTime())) return false;
-    return dayKey(when) === key;
+    return keys.has(dayKey(when));
   });
 }
 

@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchResultsSnapshot,
   loadBoardResults,
-  playedYesterday,
+  playedRecently,
   type BoardResults,
   type ScoredMatch,
 } from "@/lib/boardResults";
 
 export interface BoardResultsState {
   results: BoardResults | null;
-  /** Of those, the ones played yesterday by this phone's calendar. */
-  yesterday: ScoredMatch[];
+  /** Of those, the last five days by this phone's calendar, up to yesterday. */
+  recent: ScoredMatch[];
   /** Still looking for what the nightly job left in the database. */
   loading: boolean;
   /** The engine is scoring the week right now, because somebody asked. */
@@ -61,10 +61,10 @@ export function useBoardResults(): BoardResultsState {
       .finally(() => setAsking(false));
   }, []);
 
-  const yesterday = useMemo(
-    () => (results ? playedYesterday(results.matches) : []),
+  const recent = useMemo(
+    () => (results ? playedRecently(results.matches) : []),
     [results],
   );
 
-  return { results, yesterday, loading, asking, error, ask };
+  return { results, recent, loading, asking, error, ask };
 }

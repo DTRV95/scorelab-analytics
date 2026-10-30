@@ -22,7 +22,7 @@ vi.mock("@/lib/supabaseClient", () => ({
   },
 }));
 
-import { hitRate, loadBoardResults, playedYesterday } from "@/lib/boardResults";
+import { hitRate, loadBoardResults, playedRecently } from "@/lib/boardResults";
 
 let id = 0;
 function scored(
@@ -97,28 +97,56 @@ describe("how often the board was right", () => {
   });
 });
 
-describe("ontem", () => {
-  it("takes yesterday by this phone's calendar, not by the clock", () => {
-    // A game at 22:00 yesterday is 26 hours ago at midday and 10 hours ago at
-    // 08:00; both are yesterday, and only a calendar day says so.
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(20, 0, 0, 0);
+/** Um jogo a esta hora, há tantos dias. */
+function daysAgo(back: number, hour = 20): string {
+  const when = new Date();
+  when.setDate(when.getDate() - back);
+  when.setHours(hour, 0, 0, 0);
+  return when.toISOString();
+}
 
-    const older = new Date();
-    older.setDate(older.getDate() - 3);
+describe("o resto da semana", () => {
+  it("conta os dias pelo calendário deste telemóvel, não pelo relógio", () => {
+    // Um jogo às 22:00 de ontem é há 26 horas ao meio-dia e há 10 horas
+    // às 08:00; os dois são de ontem, e só um dia de calendário o diz.
+    const found = playedRecently(
+      [
+        { ...scored(true), kickoff: daysAgo(1) },
+        { ...scored(true), kickoff: daysAgo(1, 22) },
+      ],
+      1,
+    );
 
+    expect(found).toHaveLength(2);
+  });
+
+  it("apanha cinco dias, que é o que chega para a média dizer alguma coisa", () => {
+    // Era um dia só. Numa terça jogou a Serie A e mais ninguém: três
+    // jogos certos davam 100%, um número sobre o calendário e não sobre
+    // o modelo. Cinco dias apanham sempre um fim-de-semana.
+    const found = playedRecently([
+      { ...scored(true), kickoff: daysAgo(1) },
+      { ...scored(true), kickoff: daysAgo(3) },
+      { ...scored(false), kickoff: daysAgo(5) },
+      { ...scored(true), kickoff: daysAgo(6) },
+    ]);
+
+    expect(found).toHaveLength(3);
+  });
+
+  it("não traz hoje, que é do lado das previsões", () => {
+    // As tabs ao lado desta começam em hoje e vão para a frente. Um jogo
+    // não pode estar nas duas.
     const today = new Date();
     today.setHours(Math.max(1, today.getHours() - 1), 0, 0, 0);
 
-    const found = playedYesterday([
-      { ...scored(true), kickoff: yesterday.toISOString() },
-      { ...scored(true), kickoff: older.toISOString() },
+    const found = playedRecently([
       { ...scored(false), kickoff: today.toISOString() },
+      { ...scored(true), kickoff: daysAgo(1) },
     ]);
 
     expect(found).toHaveLength(1);
-    expect(new Date(found[0].kickoff!).getDate()).toBe(yesterday.getDate());
+    expect(found[0].landed).toBe(true);
   });
 });
 

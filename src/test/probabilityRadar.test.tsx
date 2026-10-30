@@ -183,29 +183,34 @@ function renderPage() {
   );
 }
 
-function yesterdayScored() {
-  const when = new Date();
-  when.setDate(when.getDate() - 1);
-  when.setHours(20, 0, 0, 0);
+function pastScored() {
+  const when = (back: number) => {
+    const day = new Date();
+    day.setDate(day.getDate() - back);
+    day.setHours(20, 0, 0, 0);
+    return day.toISOString();
+  };
+
+  const game = (id: number, home: string, back: number, landed: boolean) => ({
+    fixture_id: id,
+    league: "Liga Portugal",
+    home_name: home,
+    away_name: "Estoril",
+    kickoff: when(back),
+    home_goals: landed ? 2 : 0,
+    away_goals: 1,
+    headline_market: "Casa",
+    headline_pct: 71,
+    landed,
+  });
 
   return {
-    matches: [
-      {
-        fixture_id: 77,
-        league: "Liga Portugal",
-        home_name: "Braga",
-        away_name: "Estoril",
-        kickoff: when.toISOString(),
-        home_goals: 2,
-        away_goals: 1,
-        headline_market: "Casa",
-        headline_pct: 71,
-        landed: true,
-      },
-    ],
-    played: 1,
+    // Ontem e há quatro dias: os dois entram no resto da semana, e é por
+    // isso que a tab deixou de ser um dia só.
+    matches: [game(77, "Braga", 1, true), game(78, "Famalicão", 4, false)],
+    played: 2,
     hits: 1,
-    hit_pct: 100,
+    hit_pct: 50,
     predicted_pct: 71,
     unavailable: [],
     skipped: 0,
@@ -258,16 +263,18 @@ describe("ProbabilityRadar board", () => {
     expect(screen.queryByText("Porto vs Nacional")).not.toBeInTheDocument();
   });
 
-  it("puts yesterday in the same row of days, with what it got right", async () => {
-    scoring.snapshot.mockResolvedValue(yesterdayScored());
+  it("puts the days behind in the same row as the days ahead, with what they got right", async () => {
+    scoring.snapshot.mockResolvedValue(pastScored());
     mockFetchSequence();
     renderPage();
 
     await screen.findByText("Porto vs Nacional");
-    fireEvent.click(screen.getByRole("button", { name: /^Ontem/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Resto da semana/ }));
 
-    expect(await screen.findByText("1 de 1")).toBeInTheDocument();
+    // Os dois jogos: o de ontem e o de há quatro dias.
+    expect(await screen.findByText("1 de 2")).toBeInTheDocument();
     expect(screen.getByText(/Braga/)).toBeInTheDocument();
+    expect(screen.getByText(/Famalicão/)).toBeInTheDocument();
     // The games still to play are out of the way while the past is open.
     expect(screen.queryByText("Porto vs Nacional")).toBeNull();
   });

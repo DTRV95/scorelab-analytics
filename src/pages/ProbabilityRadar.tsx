@@ -663,7 +663,7 @@ export default function ProbabilityRadar() {
   const [activeDay, setActiveDay] = useState(0);
   // Yesterday sits in the same row of chips as today and tomorrow, and is
   // the one of them that has already happened.
-  const [yesterdayOpen, setYesterdayOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
   // The shortlist is the day read through the board's own record. Off by
   // default: the whole day is still what the page is for.
   const [onlyShortlist, setOnlyShortlist] = useState(false);
@@ -1268,27 +1268,29 @@ export default function ProbabilityRadar() {
             {(dayGroups.length > 0 || !hits.loading) && (
                 <>
                   <div className="sl-scroll-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                    {/* The day before, in the same row as the days after.
-                        It is the one day on this page with an answer rather
-                        than a forecast, and it belongs where somebody is
-                        already tapping. */}
+                    {/* Os dias de trás, na mesma fila que os da frente.
+                        São os únicos nesta página com resposta em vez de
+                        previsão, e pertencem onde alguém já está a tocar.
+                        Era só ontem, e um dia de futebol não chega para
+                        dizer nada: numa terça jogou a Serie A e mais
+                        ninguém, três jogos certos, e a tab dizia 100%. */}
                     <button
                       type="button"
-                      data-active={yesterdayOpen}
-                      onClick={() => setYesterdayOpen(true)}
+                      data-active={pastOpen}
+                      onClick={() => setPastOpen(true)}
                       className="sl-chip flex-none"
                     >
-                      Ontem
-                      {hits.yesterday.length > 0 && (
+                      Resto da semana
+                      {hits.recent.length > 0 && (
                         <span className="text-[11px] opacity-65">
-                          {hits.yesterday.length}
+                          {hits.recent.length}
                         </span>
                       )}
                     </button>
 
                     {dayGroups.map((day, index) => {
                       const isActive =
-                        !yesterdayOpen &&
+                        !pastOpen &&
                         index === Math.min(activeDay, dayGroups.length - 1);
                       return (
                         <button
@@ -1296,7 +1298,7 @@ export default function ProbabilityRadar() {
                           type="button"
                           data-active={isActive}
                           onClick={() => {
-                            setYesterdayOpen(false);
+                            setPastOpen(false);
                             setActiveDay(index);
                           }}
                           className="sl-chip flex-none capitalize"
@@ -1310,7 +1312,7 @@ export default function ProbabilityRadar() {
                     })}
                   </div>
 
-                  {!yesterdayOpen && foraHoje.length > 0 && (
+                  {!pastOpen && foraHoje.length > 0 && (
                     <p className="sl-meta px-0.5 text-[11px] leading-4">
                       Não joga hoje:{" "}
                       {foraHoje
@@ -1333,7 +1335,7 @@ export default function ProbabilityRadar() {
                       dois teriam empurrado os jogos para fora do ecrã outra
                       vez. A explicação de cada um só se lê quando está
                       ligado. */}
-                  {!yesterdayOpen && (
+                  {!pastOpen && (
                     <>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <button
@@ -1378,7 +1380,7 @@ export default function ProbabilityRadar() {
                     </>
                   )}
 
-                  {yesterdayOpen ? (
+                  {pastOpen ? (
                     <div className="mt-4">
                       <RecentHits state={hits} />
                     </div>
