@@ -273,3 +273,56 @@ export function hitRate(matches: ScoredMatch[]): HitRate {
     said: Number(said.toFixed(0)),
   };
 }
+
+export interface DayOfResults {
+  /** O dia, pelo calendário de quem lê. */
+  key: string;
+  /** "quinta-feira", para a linha. */
+  weekday: string;
+  /** "29 out", para quem já não sabe que quinta-feira foi essa. */
+  date: string;
+  matches: ScoredMatch[];
+  rate: HitRate;
+}
+
+/**
+ * Os mesmos jogos, arrumados por dia.
+ *
+ * Uma lista corrida de catorze jogos responde "quantos é que entraram" e
+ * esconde a pergunta a seguir, que é onde. Cinco dias de futebol não são
+ * cinco amostras do mesmo: um sábado são quarenta jogos de nove
+ * competições e uma terça são três da Serie A, e a conta de um não diz
+ * nada sobre o outro. Por dia vê-se logo se os 79% são uma semana
+ * inteira ou um sábado bom a carregar quatro dias maus.
+ *
+ * Do mais recente para o mais antigo, como a fila de dias lá em cima.
+ */
+export function byDay(matches: ScoredMatch[]): DayOfResults[] {
+  const days = new Map<string, { at: Date; matches: ScoredMatch[] }>();
+
+  for (const match of matches) {
+    if (!match.kickoff) continue;
+    const at = new Date(match.kickoff);
+    if (Number.isNaN(at.getTime())) continue;
+
+    const key = dayKey(at);
+    const found = days.get(key);
+    if (found) found.matches.push(match);
+    else days.set(key, { at, matches: [match] });
+  }
+
+  return [...days.entries()]
+    .sort((a, b) => b[1].at.getTime() - a[1].at.getTime())
+    .map(([key, day]) => ({
+      key,
+      weekday: new Intl.DateTimeFormat("pt-PT", { weekday: "long" }).format(
+        day.at,
+      ),
+      date: new Intl.DateTimeFormat("pt-PT", {
+        day: "numeric",
+        month: "short",
+      }).format(day.at),
+      matches: day.matches,
+      rate: hitRate(day.matches),
+    }));
+}

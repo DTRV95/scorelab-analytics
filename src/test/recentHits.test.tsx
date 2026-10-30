@@ -81,6 +81,15 @@ function results(
   };
 }
 
+/**
+ * A conta grande, lá em cima.
+ *
+ * Um dia sozinho repete-a na linha dele — "1 de 1" no topo e "1 de 1" na
+ * quinta-feira são o mesmo número duas vezes e as duas verdadeiras. O
+ * topo é o primeiro.
+ */
+const total = (texto: string) => screen.getAllByText(texto)[0];
+
 beforeEach(() => {
   vi.clearAllMocks();
   api.snapshot.mockResolvedValue(null);
@@ -110,6 +119,56 @@ describe("how the board did", () => {
     expect(screen.queryByText(/Braga/)).toBeNull();
   });
 
+  it("dá a conta de cada dia por baixo da conta de todos", async () => {
+    // Dois dias com a mesma percentagem geral de 50% e nada em comum: um
+    // sábado de quatro jogos a 75% e uma terça de dois a zero. A conta de
+    // cima não distingue os dois, e é essa a pergunta a seguir.
+    api.snapshot.mockResolvedValue(
+      results([
+        scored(true, { daysAgo: 1 }),
+        scored(true, { daysAgo: 1, home: "Porto" }),
+        scored(true, { daysAgo: 1, home: "Sporting" }),
+        scored(false, { daysAgo: 1, home: "Braga" }),
+        scored(false, { daysAgo: 4, home: "Vitória" }),
+        scored(false, { daysAgo: 4, home: "Chaves" }),
+      ]),
+    );
+
+    render(<Hits />);
+
+    // No topo, os seis jogos de todos os dias.
+    expect(await screen.findByText("3 de 6")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+
+    // E depois, um dia de cada vez, do mais recente para o mais antigo.
+    const dias = screen.getAllByRole("button", { expanded: false });
+    expect(dias).toHaveLength(2);
+    expect(dias[0]).toHaveTextContent("3 de 4");
+    expect(dias[0]).toHaveTextContent("75%");
+    expect(dias[1]).toHaveTextContent("0 de 2");
+    expect(dias[1]).toHaveTextContent("0%");
+  });
+
+  it("abre um dia nos jogos dele, e só nos dele", async () => {
+    api.snapshot.mockResolvedValue(
+      results([
+        scored(true, { daysAgo: 1, home: "Benfica" }),
+        scored(false, { daysAgo: 4, home: "Chaves" }),
+      ]),
+    );
+
+    render(<Hits />);
+    await screen.findByText(/nos últimos 5 dias/);
+
+    // Fechados à entrada: a conta vem primeiro, os jogos vêm a um toque.
+    expect(screen.queryByText(/Benfica/)).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { expanded: false })[0]);
+
+    expect(screen.getByText(/Benfica/)).toBeInTheDocument();
+    expect(screen.queryByText(/Chaves/)).toBeNull();
+  });
+
   it("não conta os jogos de hoje, que são do lado das previsões", async () => {
     const hoje = new Date();
     hoje.setHours(Math.max(1, hoje.getHours() - 1), 0, 0, 0);
@@ -123,7 +182,8 @@ describe("how the board did", () => {
 
     render(<Hits />);
 
-    expect(await screen.findByText("1 de 1")).toBeInTheDocument();
+    await screen.findByText(/nos últimos 5 dias/);
+    expect(total("1 de 1")).toBeInTheDocument();
     expect(screen.queryByText(/Chaves/)).toBeNull();
   });
 
@@ -137,7 +197,13 @@ describe("how the board did", () => {
       await screen.findByRole("button", { name: /Ver os últimos sete dias/ }),
     );
 
-    expect(await screen.findByText("1 de 2")).toBeInTheDocument();
+    await screen.findByText(/nos últimos sete dias/);
+    expect(total("1 de 2")).toBeInTheDocument();
+    // Os jogos vivem dentro do dia deles.
+    expect(screen.queryByText(/Braga/)).toBeNull();
+    // O Braga é de há seis dias, logo é o dia mais antigo: o último.
+    const dias = screen.getAllByRole("button", { expanded: false });
+    fireEvent.click(dias[dias.length - 1]);
     expect(screen.getByText(/Braga/)).toBeInTheDocument();
     expect(api.load).not.toHaveBeenCalled();
   });
@@ -176,7 +242,8 @@ describe("how the board did", () => {
 
     render(<Hits />);
 
-    expect(await screen.findByText("1 de 2")).toBeInTheDocument();
+    await screen.findByText(/nos últimos 5 dias/);
+    expect(total("1 de 2")).toBeInTheDocument();
     expect(
       screen.getByText(/Sem Serie A, que não respondeu/),
     ).toBeInTheDocument();
@@ -216,7 +283,8 @@ describe("how the board did", () => {
       await screen.findByRole("button", { name: /Ver como correram/ }),
     );
 
-    expect(await screen.findByText("2 de 2")).toBeInTheDocument();
+    await screen.findByText(/nos últimos 5 dias/);
+    expect(total("2 de 2")).toBeInTheDocument();
     expect(api.load).toHaveBeenCalledWith(7, { force: true });
   });
 

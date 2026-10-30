@@ -22,7 +22,12 @@ vi.mock("@/lib/supabaseClient", () => ({
   },
 }));
 
-import { hitRate, loadBoardResults, playedRecently } from "@/lib/boardResults";
+import {
+  byDay,
+  hitRate,
+  loadBoardResults,
+  playedRecently,
+} from "@/lib/boardResults";
 
 let id = 0;
 function scored(
@@ -147,6 +152,49 @@ describe("o resto da semana", () => {
 
     expect(found).toHaveLength(1);
     expect(found[0].landed).toBe(true);
+  });
+});
+
+describe("por dia", () => {
+  it("arruma os jogos por dia, do mais recente para o mais antigo", () => {
+    const dias = byDay([
+      { ...scored(true), kickoff: daysAgo(3) },
+      { ...scored(true), kickoff: daysAgo(1) },
+      { ...scored(false), kickoff: daysAgo(1, 17) },
+    ]);
+
+    expect(dias).toHaveLength(2);
+    expect(dias[0].matches).toHaveLength(2);
+    expect(dias[1].matches).toHaveLength(1);
+  });
+
+  it("dá a conta de cada dia, que não é a de todos juntos", () => {
+    // Quatro jogos, dois certos: 50% ao todo, e 100% num dia e 0% no
+    // outro. Os 50% não existem em dia nenhum.
+    const dias = byDay([
+      { ...scored(true), kickoff: daysAgo(1) },
+      { ...scored(true), kickoff: daysAgo(1, 17) },
+      { ...scored(false), kickoff: daysAgo(2) },
+      { ...scored(false), kickoff: daysAgo(2, 17) },
+    ]);
+
+    expect(dias[0].rate.pct).toBe(100);
+    expect(dias[1].rate.pct).toBe(0);
+  });
+
+  it("diz de que dia se trata, por nome e por data", () => {
+    const [dia] = byDay([{ ...scored(true), kickoff: daysAgo(1) }]);
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+
+    expect(dia.weekday).toMatch(
+      /segunda|terça|quarta|quinta|sexta|sábado|domingo/,
+    );
+    expect(dia.date).toContain(String(ontem.getDate()));
+  });
+
+  it("deixa de fora um jogo sem hora, que não é de dia nenhum", () => {
+    expect(byDay([{ ...scored(true), kickoff: null }])).toHaveLength(0);
   });
 });
 
