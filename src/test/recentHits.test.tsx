@@ -88,14 +88,16 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("how the board did", () => {
-  it("counts yesterday's games, and says what the model claimed", async () => {
+  it("abre nos últimos cinco dias, com a média de acerto à cabeça", async () => {
+    // Era ontem e mais nada, e um dia de futebol não chega para uma
+    // média: três jogos certos de uma terça-feira davam 100%.
     api.snapshot.mockResolvedValue(
       results([
         scored(true, { pct: 80 }),
-        scored(true, { pct: 70, home: "Porto" }),
-        scored(false, { pct: 60, home: "Sporting" }),
-        // Three days ago: in the week, not in yesterday.
-        scored(false, { daysAgo: 3, home: "Braga" }),
+        scored(true, { pct: 70, daysAgo: 3, home: "Porto" }),
+        scored(false, { pct: 60, daysAgo: 5, home: "Sporting" }),
+        // Há seis dias: está na semana, não está nestes cinco.
+        scored(false, { daysAgo: 6, home: "Braga" }),
       ]),
     );
 
@@ -103,13 +105,31 @@ describe("how the board did", () => {
 
     expect(await screen.findByText("2 de 3")).toBeInTheDocument();
     expect(screen.getByText("67%")).toBeInTheDocument();
+    expect(screen.getByText(/nos últimos 5 dias/)).toBeInTheDocument();
     expect(screen.getByText(/Dizia, em média, 70%/)).toBeInTheDocument();
     expect(screen.queryByText(/Braga/)).toBeNull();
   });
 
-  it("opens the whole week behind yesterday, without asking anybody again", async () => {
+  it("não conta os jogos de hoje, que são do lado das previsões", async () => {
+    const hoje = new Date();
+    hoje.setHours(Math.max(1, hoje.getHours() - 1), 0, 0, 0);
+
     api.snapshot.mockResolvedValue(
-      results([scored(true), scored(false, { daysAgo: 4, home: "Braga" })]),
+      results([
+        { ...scored(false, { home: "Chaves" }), kickoff: hoje.toISOString() },
+        scored(true),
+      ]),
+    );
+
+    render(<Hits />);
+
+    expect(await screen.findByText("1 de 1")).toBeInTheDocument();
+    expect(screen.queryByText(/Chaves/)).toBeNull();
+  });
+
+  it("opens the whole week behind the five days, without asking anybody again", async () => {
+    api.snapshot.mockResolvedValue(
+      results([scored(true), scored(false, { daysAgo: 6, home: "Braga" })]),
     );
 
     render(<Hits />);
@@ -124,13 +144,13 @@ describe("how the board did", () => {
 
   it("says so when nothing was played, instead of showing 0%", async () => {
     api.snapshot.mockResolvedValue(
-      results([scored(true, { daysAgo: 5, home: "Braga" })]),
+      results([scored(true, { daysAgo: 6, home: "Braga" })]),
     );
 
     render(<Hits />);
 
     expect(
-      await screen.findByText(/Ontem não se jogou nada/),
+      await screen.findByText(/Não se jogou nada nos últimos 5 dias/),
     ).toBeInTheDocument();
   });
 
@@ -140,7 +160,7 @@ describe("how the board did", () => {
     // acertados. O cartão escreveu "ontem não se jogou nada", que não é
     // uma versão cautelosa da verdade, é o contrário dela.
     api.snapshot.mockResolvedValue(
-      results([scored(true, { daysAgo: 5, home: "Braga" })], ["Serie A"]),
+      results([scored(true, { daysAgo: 6, home: "Braga" })], ["Serie A"]),
     );
 
     render(<Hits />);

@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { MARKET_LABELS } from "@/components/ProbabilityBreakdown";
-import { hitRate, namesInWords, type ScoredMatch } from "@/lib/boardResults";
+import {
+  hitRate,
+  namesInWords,
+  RECENT_DAYS,
+  type ScoredMatch,
+} from "@/lib/boardResults";
 import type { BoardResultsState } from "@/hooks/useBoardResults";
 
-type Span = "ontem" | "semana";
+type Span = "recente" | "semana";
 
-/** The week unrolled is a hundred rows; the day is never more than a dozen. */
+/** Dois dias a mais do que o resto da semana, e podem ser quarenta jogos. */
 const SHOWN = 12;
 
 function when(kickoff: string | null): string {
@@ -56,23 +61,29 @@ function Row({ match }: { match: ScoredMatch }) {
 }
 
 /**
- * Yesterday, in the same row of days as today and tomorrow.
+ * O resto da semana, na mesma fila de dias que hoje e amanhã.
  *
- * The board is all forecast and no record: it says what is about to happen,
- * and by the time anybody could check, it has moved on to the next week. The
- * day before belongs in the same place as the days after — one tick or one
- * cross per game, on the very market the board led with.
+ * O quadro é todo previsão e nenhum registo: diz o que está prestes a
+ * acontecer e, quando alguém o podia conferir, já passou à semana
+ * seguinte. Os dias de trás pertencem ao mesmo sítio que os da frente —
+ * um certo ou um errado por jogo, no mercado que o quadro pôs à frente.
  *
- * What is on screen was scored during the night. The engine is only asked
- * when somebody presses for it, because scoring a week means simulating
- * every game in it again.
+ * Era um dia só, ontem, e um dia de futebol não chega para dizer nada.
+ * Numa terça-feira jogou a Serie A e mais ninguém: três jogos, os três
+ * certos, e a tab mostrava 100% — um número que não é sobre o modelo, é
+ * sobre o calendário. Cinco dias apanham sempre um fim-de-semana, e a
+ * média à cabeça passa a ser uma média de alguma coisa.
+ *
+ * O que está no ecrã foi marcado durante a noite. O motor só é chamado
+ * quando alguém carrega, porque marcar uma semana é simular outra vez
+ * todos os jogos dela.
  */
 export function RecentHits({ state }: { state: BoardResultsState }) {
-  const { results, yesterday, asking, error, ask } = state;
-  const [span, setSpan] = useState<Span>("ontem");
+  const { results, recent, asking, error, ask } = state;
+  const [span, setSpan] = useState<Span>("recente");
   const [all, setAll] = useState(false);
 
-  const matches = span === "ontem" ? yesterday : (results?.matches ?? []);
+  const matches = span === "recente" ? recent : (results?.matches ?? []);
   const rate = hitRate(matches);
   const shown = all ? matches : matches.slice(0, SHOWN);
 
@@ -127,10 +138,12 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
         <p className="sl-meta px-4 py-4 text-[12.5px] leading-[1.5]">
           {absent
             ? `Não há nada marcado ${
-                span === "ontem" ? "de ontem" : "destes sete dias"
+                span === "recente"
+                  ? `destes ${RECENT_DAYS} dias`
+                  : "destes sete dias"
               }, e faltou contar ${absent}: não respondeu. Pode ter sido quem jogou — toca em "Incluir os de hoje" para contar outra vez.`
-            : span === "ontem"
-              ? "Ontem não se jogou nada nas competições com dados automáticos."
+            : span === "recente"
+              ? `Não se jogou nada nos últimos ${RECENT_DAYS} dias nas competições com dados automáticos.`
               : "Nenhum jogo marcado nos últimos sete dias."}
         </p>
       ) : (
@@ -154,8 +167,11 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
               fifteen of twenty is a different thing when it said 75% than
               when it said 95%. */}
           <p className="sl-meta px-4 pb-3 pt-0.5 text-[11px] leading-5">
-            certos {span === "ontem" ? "ontem" : "nos últimos sete dias"}, no
-            mercado que o modelo destacou em cada jogo. Dizia, em média,{" "}
+            certos{" "}
+            {span === "recente"
+              ? `nos últimos ${RECENT_DAYS} dias`
+              : "nos últimos sete dias"}
+            , no mercado que o modelo destacou em cada jogo. Dizia, em média,{" "}
             {rate.said}%.
             {/* Uma conta a que falta uma competição ainda é uma conta, mas
                 não é esta conta — e quem a lê tem de saber qual das duas
@@ -169,8 +185,8 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
             ))}
           </div>
 
-          {/* A quiet week is a dozen games and a busy one is a hundred and
-              forty. The day never needs this; the week always would. */}
+          {/* Uma semana parada são doze jogos e uma cheia são cento e
+              quarenta. Cinco dias já passam quase sempre dos doze. */}
           {matches.length > shown.length && (
             <button
               type="button"
@@ -183,21 +199,21 @@ export function RecentHits({ state }: { state: BoardResultsState }) {
         </>
       )}
 
-      {/* The week lives behind yesterday rather than beside it: a day is what
-          anybody checks, and a chip for every window would be a row of
-          chips about the past in front of the games still to play. */}
+      {/* Os sete dias vivem atrás destes cinco e não ao lado deles: uma
+          fila de chips sobre o passado à frente dos jogos que ainda se
+          vão jogar era pôr o retrovisor no pára-brisas. */}
       <div className="flex items-center gap-3 border-t border-border px-4">
         <button
           type="button"
           onClick={() => {
-            setSpan(span === "ontem" ? "semana" : "ontem");
+            setSpan(span === "recente" ? "semana" : "recente");
             setAll(false);
           }}
           className="flex-1 py-2.5 text-left text-[11px] font-semibold text-primary"
         >
-          {span === "ontem"
+          {span === "recente"
             ? "Ver os últimos sete dias"
-            : "Ver só os jogos de ontem"}
+            : `Ver só os últimos ${RECENT_DAYS} dias`}
         </button>
         <button
           type="button"
