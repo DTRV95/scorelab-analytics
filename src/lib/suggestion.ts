@@ -159,6 +159,40 @@ const WARN_RATIO = 1.2;
  * mercados que ninguém joga.
  */
 const GAP_MIN = 2;
+/**
+ * Abaixo deste preço não se recomenda nada, por melhor que pareça.
+ *
+ * É o mesmo 1,70 do desafio "Só simples", e pelo mesmo motivo: das 160
+ * pernas fechadas destes dois, 137 foram abaixo dele e devolveram
+ * −4,3% por dois caminhos independentes. Mas há uma razão melhor do
+ * que a medição, e é aritmética.
+ *
+ * A margem para estar enganado encolhe com o preço. A 1,11 é preciso
+ * acertar 90,1 em cada 100 só para empatar, e o erro medido do nosso
+ * modelo é de sete pontos — a faixa entre "dá dinheiro" e "é ruína"
+ * tem dois pontos de largura e o nosso erro tem sete. A 2,02 bastam
+ * 49,5, e errar três pontos para baixo ainda deixa lucro.
+ *
+ * E o que uma perda custa: a 1,11 ganham-se onze cêntimos por euro
+ * arriscado, por isso uma perda precisa de nove acertos para se repor.
+ * Nove acertos pagos pelo preço de um engano.
+ */
+const PRICE_FLOOR = 1.7;
+/**
+ * E abaixo destas hipóteses também não, por muito que o preço pague.
+ *
+ * O outro lado da mesma moeda. O chão do preço tira as quase-certezas
+ * que não pagam o risco; este tira os azarões que pagam muito porque
+ * quase nunca entram. Quarenta em cem é onde os dois se encontram: a
+ * 2,50 bastam exactamente quarenta para empatar, por isso um mercado
+ * que dê quarenta e tenha preço justo paga 2,50 — e acima disso só
+ * entra o que tiver vantagem a sério.
+ *
+ * O que sobra é a faixa de 1,70 a cerca de 2,60, que é onde estão as
+ * apostas que se defendem: pagam o dobro e a probabilidade ainda está
+ * à vista.
+ */
+const CHANCE_FLOOR = 40;
 /** O histórico a partir do qual não se pede nada de especial. */
 const SAMPLE_FULL = 70;
 /** E o máximo que a falta dele chega a pedir, por mais curta que seja. */
@@ -388,22 +422,33 @@ function risky(q: MarketQuote): boolean {
 }
 
 /**
- * Quanto do bolso é que isto merecia, pela regra de Kelly.
+ * O que este euro devolve, em média, se o nosso número estiver certo.
  *
- * Serve para ordenar e não para apostar — quem aposta é quem lê, e a
- * fracção que o cartão mostra é um quarto desta. Mas ordenar por ela
- * em vez de ordenar por pontos de vantagem muda tudo, e é a segunda
- * metade da correcção: entre um 4,00 que paga cinco pontos acima do
- * justo e um 1,95 que paga quatro, os pontos escolhem o 4,00 e o
- * dinheiro escolhe o outro. O que faz crescer uma banca não é ter
- * razão em pontos, é ter razão muitas vezes — e a mesma vantagem numa
- * odd alta vem com uma variância que come o que ela paga.
+ * Zero é pagar o que vale. Um décimo é dez cêntimos de lucro por euro
+ * arriscado.
+ *
+ * Esteve aqui a fracção de Kelly, que divide isto pelo risco, e era
+ * uma escolha defensável que deu mal. Kelly é a regra certa para
+ * decidir **quanto** apostar e é uma regra péssima para decidir **em
+ * quê**: divide por `odd − 1`, e esse denominador fica minúsculo nas
+ * quase-certezas, por isso uma vantagem de nada num 1,11 ganha sempre
+ * a uma vantagem a sério num 2,00. O cartão passou a recomendar
+ * "Casa ou Empate a 1,11" — que é a aposta de quem não quer apostar,
+ * e a que precisa de nove acertos para repor um engano.
+ *
+ * Em cima há um tecto (nenhum mercado passa de um terço acima das
+ * casas) e em baixo há um chão (preço nenhum abaixo de 1,70). Entre os
+ * dois, a pergunta é simplesmente qual paga mais — e aí o azarão já
+ * não entra, porque o tecto não o deixa entrar.
  */
-function growth(q: MarketQuote): number {
+function perEuro(q: MarketQuote): number {
   const price = q.price ?? 0;
   if (price <= 1) return -1;
-  return ((q.ours / 100) * price - 1) / (price - 1);
+  return (q.ours / 100) * price - 1;
 }
+
+/** Quantos acertos é preciso para repor um engano, a este preço. */
+const repoe = (price: number) => Math.round(1 / Math.max(price - 1, 0.01));
 
 export function suggest(input: SuggestionInput): Suggestion {
   const all = quotes(input);
@@ -523,37 +568,61 @@ export function suggest(input: SuggestionInput): Suggestion {
     );
   }
 
-  // Pelo que faz crescer a banca, e não pelos pontos de vantagem. Os
-  // pontos põem sempre o azarão à frente: a mesma vantagem numa odd de
-  // 5,00 e numa de 1,60 é o mesmo número e não é o mesmo dinheiro.
-  const porCrescimento = [...priced].sort((a, b) => growth(b) - growth(a));
-  const melhor = porCrescimento[0];
-  const vantagem = melhor.edge ?? 0;
-  const exigido = pedido(melhor.market).points;
+  /**
+   * A faixa em que uma aposta se defende.
+   *
+   * Dois chãos, e os dois são sobre a mesma coisa: quanto é que o preço
+   * paga pelo risco que se corre.
+   *
+   * Um 1,11 não é uma aposta segura — é uma aposta cuja margem para
+   * estar enganado é mais estreita do que o erro do nosso modelo. Pede
+   * 90 acertos em 100 só para empatar e nós sabemos o nosso número a
+   * sete pontos de distância, e um engano só se repõe com nove
+   * acertos.
+   *
+   * E um 10,00 paga muito porque quase nunca entra. Quarenta hipóteses
+   * em cem é o mínimo para a probabilidade ainda estar à vista.
+   *
+   * Fora da faixa ninguém é recomendado. Continua a poder ser nomeado
+   * como o melhor que o jogo tem, que é uma recusa e não um conselho.
+   */
+  const pagaveis = priced.filter(
+    (q) => (q.price ?? 0) >= PRICE_FLOOR && q.ours >= CHANCE_FLOOR,
+  );
 
-  if (vantagem >= exigido) {
-    return feito(
-      "apostar",
-      melhor,
-      // Sem repetir o nome do mercado nem o preço, que estão em cima em
-      // letra grande: o que falta aqui é porque é que isso é uma aposta.
-      `Só compensava acima de ${odd(
-        melhor.fairPrice,
-      )} e estão a pagar mais do que isso.`,
-    );
-  }
+  // Pelo que cada euro devolve, entre os que pagam o risco. Dentro da
+  // faixa a pergunta que sobra é simplesmente qual paga mais.
+  const melhor =
+    pagaveis.length > 0
+      ? [...pagaveis].sort((a, b) => perEuro(b) - perEuro(a))[0]
+      : null;
 
-  // Três pontos também aqui, e não "acima de zero". Um azarão a 4,20
-  // que paga um ponto acima do justo cabia na folga, e meio boletim
-  // num Vitória Fora a 4,20 não é coisa que eu diga: abaixo dos 55% a
-  // probabilidade não leva desconto nenhum, por isso essa vantagem é o
-  // ruído da própria medição e não uma vantagem.
-  if (vantagem >= EDGE_FLOOR) {
-    return feito(
-      "pequena",
-      melhor,
-      `Compensa, mas por pouco: se apostares, aposta menos do que o costume.`,
-    );
+  if (melhor) {
+    const vantagem = melhor.edge ?? 0;
+    const exigido = pedido(melhor.market).points;
+
+    if (vantagem >= exigido) {
+      return feito(
+        "apostar",
+        melhor,
+        // Sem repetir o nome do mercado nem o preço, que estão em cima
+        // em letra grande: o que falta aqui é porque é que isso é uma
+        // aposta.
+        `Só compensava acima de ${odd(
+          melhor.fairPrice,
+        )} e estão a pagar mais do que isso.`,
+      );
+    }
+
+    // Três pontos também aqui, e não "acima de zero". Uma vantagem de
+    // um ponto é o ruído da própria medição e não uma vantagem.
+    if (vantagem >= EDGE_FLOOR) {
+      return feito(
+        "pequena",
+        melhor,
+        `Compensa, mas por pouco: se apostares, aposta menos do que o costume.`,
+      );
+    }
   }
 
   // Nem isso. Nomeia-se o melhor que o jogo tem na mesma — e aqui o
@@ -567,23 +636,43 @@ export function suggest(input: SuggestionInput): Suggestion {
   // nossa própria probabilidade, sem o mercado a confirmar nada — e a
   // probabilidade de que mais duvidamos é exactamente a daquele em que
   // discordamos deles.
+  //
+  // E dentro da faixa enquanto houver faixa. Pôr "Casa ou Empate" em
+  // letra grande com um 1,11 ao lado é o que o cartão fazia, e quem lê
+  // fica com o nome muito depois de ter esquecido a recusa. Quando o
+  // jogo tem uma aposta a sério, é essa que se nomeia, mesmo para
+  // dizer que não. Quando não tem nenhuma, nomeia-se o que há — aí
+  // descrever o jogo é tudo o que resta.
   const porSegurança = (lista: MarketQuote[]) =>
     [...lista].sort((a, b) => b.ours - a.ours)[0];
-  const calmos = priced.filter((q) => !risky(q));
-  const firme = porSegurança(calmos.length > 0 ? calmos : priced);
+  const campo = pagaveis.length > 0 ? pagaveis : priced;
+  const calmos = campo.filter((q) => !risky(q));
+  const firme = porSegurança(calmos.length > 0 ? calmos : campo);
 
   // Pagar exactamente o que vale e pagar menos do que vale não são a
   // mesma recusa, e dizer "o preço come a vantagem" sobre uma odd que
   // está em cima do justo é dizer uma coisa falsa.
+  //
+  // E há uma terceira, que era a que faltava: pagar o que vale a um
+  // preço que não paga o risco. É o caso do 1X a 1,11 — não está caro
+  // nem barato, está curto, e dizer "pagam exactamente o que isto
+  // vale" sobre ele é verdade e não é a razão.
   const sobra = firme.edge ?? 0;
+  const curto = (firme.price ?? 0) < PRICE_FLOOR;
   const remate =
-    sobra >= 0
-      ? `A ${odd(
+    sobra < 0
+      ? `Só compensava acima de ${odd(firme.fairPrice)} e pagam ${odd(
           firme.price as number,
-        )} pagam exactamente o que isto vale, e não é por isso que eu arriscava.`
-      : `Só compensava acima de ${odd(firme.fairPrice)} e pagam ${odd(
-          firme.price as number,
-        )} — menos do que vale.`;
+        )} — menos do que vale.`
+      : curto
+        ? `A ${odd(
+            firme.price as number,
+          )} um engano precisa de ${repoe(
+            firme.price as number,
+          )} acertos para se repor. Não é risco que se justifique.`
+        : `A ${odd(
+            firme.price as number,
+          )} pagam exactamente o que isto vale, e não é por isso que eu arriscava.`;
 
   return feito(
     "passar",

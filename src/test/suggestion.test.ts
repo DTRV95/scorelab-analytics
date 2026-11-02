@@ -365,6 +365,83 @@ describe("o azarão", () => {
   });
 });
 
+describe("a faixa em que uma aposta se defende", () => {
+  // Nem quase-certezas que não pagam o risco, nem azarões que pagam
+  // muito porque quase nunca entram. 1,70 para cima, 40 hipóteses em
+  // 100 para cima — o que sobra paga perto do dobro e ainda tem a
+  // probabilidade à vista.
+
+  it("não põe um 1X a 1,11 no cartão quando o jogo tem uma aposta a sério", () => {
+    // A aposta de quem não quer apostar: pede 90 acertos em 100 para
+    // empatar, e um engano só se repõe com nove.
+    const got = suggest(
+      input({
+        markets: [
+          { mercado: "1X", probabilidade_pct: 93 },
+          { mercado: "Mais de 2.5 Golos", probabilidade_pct: 66 },
+        ],
+        prices: { "1X": 1.11, "Mais de 2.5 Golos": 2.05 },
+        implied: { "1X": 90, "Mais de 2.5 Golos": 48 },
+      }),
+    );
+
+    expect(got.call).toBe("apostar");
+    expect(got.pick?.market).toBe("Mais de 2.5 Golos");
+    expect(got.pick?.price).toBe(2.05);
+  });
+
+  it("não recomenda um azarão que paga muito porque quase nunca entra", () => {
+    // Trinta hipóteses em cem a 3,20 é meio euro de lucro esperado por
+    // euro — no papel. Na prática é uma aposta que falha sete vezes em
+    // dez e cuja probabilidade nós sabemos a sete pontos de distância.
+    const got = suggest(
+      input({
+        markets: [{ mercado: "Fora", probabilidade_pct: 35 }],
+        prices: { Fora: 3.2 },
+        implied: { Fora: 29 },
+      }),
+    );
+
+    expect(got.call).toBe("passar");
+  });
+
+  it("diz que um preço curto não serve, em vez de dizer que está justo", () => {
+    // "Pagam exactamente o que isto vale" é verdade e não é a razão. A
+    // razão é o que um engano custa a repor.
+    const got = suggest(
+      input({
+        markets: [{ mercado: "Casa", probabilidade_pct: 99 }],
+        prices: { Casa: 1.15 },
+        implied: { Casa: 86 },
+      }),
+    );
+
+    expect(got.call).toBe("passar");
+    expect(got.because).toContain("acertos para se repor");
+    expect(got.because).not.toContain("exactamente o que isto vale");
+  });
+
+  it("deixa passar o 1,70 e a aposta que paga o dobro", () => {
+    const limite = suggest(
+      input({
+        markets: [{ mercado: "Menos de 3.5 Golos", probabilidade_pct: 74 }],
+        prices: { "Menos de 3.5 Golos": 1.72 },
+        implied: { "Menos de 3.5 Golos": 56 },
+      }),
+    );
+    const dobro = suggest(
+      input({
+        markets: [{ mercado: "Ambas Marcam", probabilidade_pct: 66 }],
+        prices: { "Ambas Marcam": 2.1 },
+        implied: { "Ambas Marcam": 50 },
+      }),
+    );
+
+    expect(limite.call).toBe("apostar");
+    expect(dobro.call).toBe("apostar");
+  });
+});
+
 describe("o juízo por cima do modelo", () => {
   /** Um jogo que, só pelo modelo e pelo preço, seria aposta. */
   const bom = {
